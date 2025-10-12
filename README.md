@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
@@ -72,4 +72,3 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 =======
 # game-of-life
 Simple Game of Life in react
->>>>>>> eeb329eddc9f2bf53e6854d02e4d9173c74b9f5f
