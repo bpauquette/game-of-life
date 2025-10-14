@@ -361,14 +361,19 @@ const GameOfLife = () => {
 
   return (
     <div className="canvas-container">
-      {/* Pan controls (use CSS for positioning/responsiveness) */}
-      <div className="pan-controls">
-        <button className="pan-up" aria-label="Pan up" onClick={() => panBy(0, -80)}>↑</button>
-        <div className="pan-middle">
-          <button className="pan-left" aria-label="Pan left" onClick={() => panBy(-80, 0)}>←</button>
-          <button className="pan-right" aria-label="Pan right" onClick={() => panBy(80, 0)}>→</button>
-        </div>
-        <button className="pan-down" aria-label="Pan down" onClick={() => panBy(0, 80)}>↓</button>
+      {/* Edge pan buttons: top center, left middle, right middle, bottom center */}
+      {/* Use consistent 12px edge offsets so all pan buttons align with the controls */}
+      <div style={{ position: 'absolute', left: '50%', top: 12, transform: 'translateX(-50%)', zIndex: 20 }}>
+        <button onClick={() => panBy(0, -80)} aria-label="Pan up">↑</button>
+      </div>
+      <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
+        <button onClick={() => panBy(-80, 0)} aria-label="Pan left">←</button>
+      </div>
+      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
+        <button onClick={() => panBy(80, 0)} aria-label="Pan right">→</button>
+      </div>
+      <div style={{ position: 'absolute', left: '50%', bottom: 12, transform: 'translateX(-50%)', zIndex: 20 }}>
+        <button onClick={() => panBy(0, 80)} aria-label="Pan down">↓</button>
       </div>
       <div className="controls">
         <label style={{ marginRight: 8 }}>
