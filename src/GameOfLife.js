@@ -329,6 +329,19 @@ const GameOfLife = () => {
 
   return (
     <div className="canvas-container">
+      {/* Pan buttons: mimic Arrow keys */}
+      <div style={{ position: 'absolute', left: '50%', top: 8, transform: 'translateX(-50%)' }}>
+        <button onClick={() => { if (offsetRef?.current) { offsetRef.current.y -= 20; drawWithOverlay(); } }}>↑</button>
+      </div>
+      <div style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)' }}>
+        <button onClick={() => { if (offsetRef?.current) { offsetRef.current.x -= 20; drawWithOverlay(); } }}>←</button>
+      </div>
+      <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}>
+        <button onClick={() => { if (offsetRef?.current) { offsetRef.current.x += 20; drawWithOverlay(); } }}>→</button>
+      </div>
+      <div style={{ position: 'absolute', left: '50%', bottom: 8, transform: 'translateX(-50%)' }}>
+        <button onClick={() => { if (offsetRef?.current) { offsetRef.current.y += 20; drawWithOverlay(); } }}>↓</button>
+      </div>
       <div className="controls">
         <label style={{ marginRight: 8 }}>
           Tool: <select value={selectedTool} onChange={(e) => setSelectedTool(e.target.value)} style={{ marginLeft: 8, marginRight: 12 }}>
