@@ -177,7 +177,7 @@ const GameOfLife = () => {
     // passive: false so preventDefault() works in browsers
     canvas.addEventListener('wheel', handleWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', handleWheel, { passive: false });
-  }, [setCellSize, draw]);
+  }, [setCellSize, draw, offsetRef]);
 
   // Initial draw
   useEffect(() => { draw(); }, [draw]);

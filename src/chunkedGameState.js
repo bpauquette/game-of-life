@@ -132,11 +132,11 @@ export function useChunkedGameState() {
 
   const placeShape = useCallback((x, y) => {
     if (!selectedShape) return;
-    const map = getLiveCells(); // just to get current
+    // getLiveCells() is available if callers need current state; we don't need it here
     shapes[selectedShape].forEach(([dx, dy]) => {
       setCellAlive(x + dx, y + dy, true);
     });
-  }, [selectedShape, setCellAlive, getLiveCells]);
+  }, [selectedShape, setCellAlive]);
 
   return {
     chunks: chunksRef.current,
