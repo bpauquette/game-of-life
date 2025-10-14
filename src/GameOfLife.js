@@ -1,8 +1,14 @@
 // GameOfLife.js
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { shapes } from './shapes';
 import { useChunkedGameState } from './chunkedGameState';
 import { colorSchemes } from './colorSchemes';
+import { drawTool } from './tools/drawTool';
+import { lineTool } from './tools/lineTool';
+import { rectTool } from './tools/rectTool';
+import { circleTool } from './tools/circleTool';
+import { ovalTool } from './tools/ovalTool';
+import { randomRectTool } from './tools/randomRectTool';
 import './GameOfLife.css';
 
 
@@ -15,7 +21,6 @@ const GameOfLife = () => {
     getLiveCells,
     setCellAlive,
     clear,
-    randomize,
     step,
     cellSize,
     setCellSize,
@@ -25,6 +30,19 @@ const GameOfLife = () => {
     isRunning,
     setIsRunning
   } = useChunkedGameState();
+
+  // Tool selection (e.g. freehand draw)
+  const [selectedTool, setSelectedTool] = React.useState(null);
+  const toolStateRef = useRef({});
+
+  const toolMap = useMemo(() => ({
+    draw: drawTool,
+    line: lineTool,
+    rect: rectTool,
+    circle: circleTool,
+    oval: ovalTool,
+    randomRect: randomRectTool
+  }), []);
 
   // local state: keeps a small flag so initial resize happens after draw is defined
   const [ready, setReady] = useState(false);
@@ -55,6 +73,26 @@ const GameOfLife = () => {
   });
 }, [getLiveCells, cellSize, offsetRef, colorScheme]);
 
+  // Enhanced draw: call tool overlay draw after main render
+  const drawWithOverlay = useCallback(() => {
+    draw();
+    try {
+      const ctx = canvasRef.current?.getContext('2d');
+      if (ctx && selectedTool && offsetRef?.current) {
+        const tool = toolMap[selectedTool];
+        if (tool && typeof tool.drawOverlay === 'function') {
+          tool.drawOverlay(ctx, toolStateRef.current, cellSize, offsetRef.current);
+        }
+      }
+    } catch (err) {
+      // overlay drawing should never break main render; at least log the error
+      // so lint rules about unused catch vars are satisfied.
+      // In tests or restricted contexts this may be a noop.
+      // eslint-disable-next-line no-console
+      console.error(err);
+    }
+  }, [draw, selectedTool, cellSize, offsetRef, toolMap]);
+
   // Resize canvas to fill window and account for devicePixelRatio
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -83,8 +121,8 @@ const GameOfLife = () => {
     }
 
     // Redraw after resize
-    draw();
-  }, [draw]);
+    drawWithOverlay();
+  }, [drawWithOverlay]);
 
   // Initial resize + listener
   useEffect(() => {
@@ -105,13 +143,13 @@ const GameOfLife = () => {
     const loop = () => {
       if (isRunning) {
         step();
-        draw();
+        drawWithOverlay();
         animationRef.current = requestAnimationFrame(loop);
       }
     };
     if (isRunning) animationRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationRef.current);
-  }, [isRunning, step, draw]);
+  }, [isRunning, step, drawWithOverlay]);
 
   // Canvas click: toggle or place shape
   const handleCanvasClick = (e) => {
@@ -121,13 +159,59 @@ const GameOfLife = () => {
     const x = Math.floor((e.clientX - rect.left) / cellSize + offsetRef.current.x / cellSize);
     const y = Math.floor((e.clientY - rect.top) / cellSize + offsetRef.current.y / cellSize);
 
+    // If a freehand tool is active, ignore click-toggle behavior
+    if (selectedTool === 'draw') return;
+
     if (selectedShape && shapes[selectedShape]) {
       shapes[selectedShape].forEach(([dx, dy]) => setCellAlive(x + dx, y + dy, true));
     } else {
       const liveMap = getLiveCells();
       setCellAlive(x, y, !liveMap.has(`${x},${y}`));
     }
-    draw();
+    drawWithOverlay();
+  };
+
+  // Helper to convert mouse event to cell coordinates
+  const eventToCell = (e) => {
+    if (!canvasRef.current || !offsetRef?.current) return null;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / cellSize + offsetRef.current.x / cellSize);
+    const y = Math.floor((e.clientY - rect.top) / cellSize + offsetRef.current.y / cellSize);
+    return { x, y };
+  };
+
+  // Mouse handlers to support tools (freehand draw)
+  const handleMouseDown = (e) => {
+    const tool = toolMap[selectedTool];
+    if (!tool) return;
+    const pt = eventToCell(e);
+    if (!pt) return;
+    if (typeof tool.onMouseDown === 'function') tool.onMouseDown(toolStateRef.current, pt.x, pt.y);
+    // allow tools to react to initial point; pass setCellAlive in case they want it
+    if (typeof tool.onMouseMove === 'function') tool.onMouseMove(toolStateRef.current, pt.x, pt.y, setCellAlive);
+    drawWithOverlay();
+  };
+
+  const handleMouseMove = (e) => {
+    const tool = toolMap[selectedTool];
+    if (!tool) return;
+    // Only draw while primary button is pressed or toolState has last/start
+    if (!(e.buttons & 1) && !toolStateRef.current.last && !toolStateRef.current.start) return;
+    const pt = eventToCell(e);
+    if (!pt) return;
+    if (typeof tool.onMouseMove === 'function') tool.onMouseMove(toolStateRef.current, pt.x, pt.y, setCellAlive);
+    drawWithOverlay();
+  };
+
+  const handleMouseUp = (e) => {
+    const tool = toolMap[selectedTool];
+    if (!tool) return;
+    const pt = eventToCell(e);
+    // Some tools expect coords; pass last known if no pt
+    const x = pt ? pt.x : toolStateRef.current.last?.x;
+    const y = pt ? pt.y : toolStateRef.current.last?.y;
+    if (typeof tool.onMouseUp === 'function') tool.onMouseUp(toolStateRef.current, x, y, setCellAlive);
+    drawWithOverlay();
   };
 
   // Arrow key panning
@@ -139,11 +223,11 @@ const GameOfLife = () => {
       if (e.key === "ArrowDown") offsetRef.current.y += panAmount;
       if (e.key === "ArrowLeft") offsetRef.current.x -= panAmount;
       if (e.key === "ArrowRight") offsetRef.current.x += panAmount;
-      draw();
+      drawWithOverlay();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [offsetRef, draw]);
+  }, [offsetRef, drawWithOverlay]);
 
   // Mouse wheel: adjust cell size (zoom)
   useEffect(() => {
@@ -157,34 +241,68 @@ const GameOfLife = () => {
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
 
-      // Update cellSize and adjust offset so the point under cursor remains fixed
+      // Update cellSize multiplicatively and adjust offset so the point under cursor remains fixed
       setCellSize(prev => {
-        const delta = e.deltaY < 0 ? 1 : -1;
-        const newSize = Math.min(50, Math.max(5, prev + delta));
-        if (newSize === prev) return prev;
-        const scale = newSize / prev;
+        const dpr = window.devicePixelRatio || 1;
+        const minCellSize = 1 / dpr; // one device pixel in logical units
+        const maxCellSize = 200;
+        const zoomFactor = 1.12; // per wheel tick
+        const factor = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
+        let newSize = prev * factor;
+        // clamp raw value
+        newSize = Math.max(minCellSize, Math.min(maxCellSize, newSize));
+
+        // directional snapping to device-pixel multiples so we can step up/down
+        const rawPixels = newSize * dpr;
+        let snappedPixels;
+        if (rawPixels === Math.round(rawPixels)) {
+          snappedPixels = rawPixels;
+        } else if (newSize > prev) {
+          // zooming in: ceil to next device pixel
+          snappedPixels = Math.ceil(rawPixels);
+        } else {
+          // zooming out: floor to previous device pixel
+          snappedPixels = Math.floor(rawPixels);
+        }
+        // ensure at least 1 device pixel
+        snappedPixels = Math.max(1, Math.min(Math.round(maxCellSize * dpr), snappedPixels));
+        const snappedSize = Math.max(minCellSize, snappedPixels / dpr);
+
+        if (snappedSize === prev) return prev;
+        const scale = snappedSize / prev;
         // offsetRef stores pixel offsets in logical units
         offsetRef.current.x = (sx + offsetRef.current.x) * scale - sx;
         offsetRef.current.y = (sy + offsetRef.current.y) * scale - sy;
-        return newSize;
+        return snappedSize;
       });
 
       // prevent page scroll while zooming
       if (e.cancelable) e.preventDefault();
-      draw();
+      drawWithOverlay();
     };
 
     // passive: false so preventDefault() works in browsers
     canvas.addEventListener('wheel', handleWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', handleWheel, { passive: false });
-  }, [setCellSize, draw]);
+  }, [setCellSize, drawWithOverlay, offsetRef]);
 
   // Initial draw
-  useEffect(() => { draw(); }, [draw]);
+  useEffect(() => { drawWithOverlay(); }, [drawWithOverlay]);
 
   return (
     <div className="canvas-container">
       <div className="controls">
+        <label style={{ marginRight: 8 }}>
+          Tool: <select value={selectedTool || ''} onChange={(e) => setSelectedTool(e.target.value || null)} style={{ marginLeft: 8, marginRight: 12 }}>
+            <option value=''>None</option>
+            <option value='draw'>Freehand</option>
+            <option value='line'>Line</option>
+            <option value='rect'>Rectangle</option>
+            <option value='circle'>Circle</option>
+            <option value='oval'>Oval</option>
+            <option value='randomRect'>Randomize Rect</option>
+          </select>
+        </label>
         <select
   value={colorSchemeKey}
   onChange={(e) => setColorSchemeKey(e.target.value)}
@@ -205,8 +323,7 @@ const GameOfLife = () => {
         <button onClick={() => setIsRunning(!isRunning)} style={{ marginLeft: 8 }}>
           {isRunning ? 'Stop' : 'Start'}
         </button>
-        <button onClick={() => { step(); draw(); }}>Step</button>
-        <button onClick={() => { randomize(); draw(); }}>Randomize</button>
+  <button onClick={() => { step(); draw(); }}>Step</button>
         <button onClick={() => { clear(); draw(); }}>Clear</button>
         <span style={{ marginLeft: 8 }}>Live Cells: {getLiveCells().size}</span>
       </div>
@@ -214,7 +331,10 @@ const GameOfLife = () => {
       <canvas
         ref={canvasRef}
         onClick={handleCanvasClick}
-        style={{ cursor: selectedShape ? 'crosshair' : 'default' }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        style={{ cursor: (selectedShape || selectedTool) ? 'crosshair' : 'default' }}
       />
     </div>
   );
