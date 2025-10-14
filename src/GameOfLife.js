@@ -50,6 +50,11 @@ const GameOfLife = () => {
   const [colorSchemeKey, setColorSchemeKey] = React.useState('neon');
   const colorScheme = colorSchemes[colorSchemeKey];
 
+  // Shapes context menu state (for the new Shapes tool)
+  const [shapesMenuOpen, setShapesMenuOpen] = useState(false);
+  const [shapesMenuPos, setShapesMenuPos] = useState({ x: 0, y: 0 });
+  const shapesMenuRef = useRef(null);
+
 
   // Draw function (keeps your original rendering)
   const draw = useCallback(() => {
@@ -159,8 +164,9 @@ const GameOfLife = () => {
     const x = Math.floor((e.clientX - rect.left) / cellSize + offsetRef.current.x / cellSize);
     const y = Math.floor((e.clientY - rect.top) / cellSize + offsetRef.current.y / cellSize);
 
-    // If a freehand tool is active, ignore click-toggle behavior
-    if (selectedTool === 'draw') return;
+  // Ignore direct click-toggle behavior for drawing tools, but allow when the Shapes tool is active
+  // so users can place selected shapes on left-click after choosing one with the right-click menu.
+  if (selectedTool && selectedTool !== 'shapes') return;
 
     if (selectedShape && shapes[selectedShape]) {
       shapes[selectedShape].forEach(([dx, dy]) => setCellAlive(x + dx, y + dy, true));
@@ -286,6 +292,37 @@ const GameOfLife = () => {
     return () => canvas.removeEventListener('wheel', handleWheel, { passive: false });
   }, [setCellSize, drawWithOverlay, offsetRef]);
 
+  // Context menu handler for Shapes tool
+  const handleCanvasContextMenu = (e) => {
+    if (selectedTool !== 'shapes') return;
+    e.preventDefault();
+    const rect = canvasRef.current.getBoundingClientRect();
+    // position menu at cursor (CSS pixels)
+    const x = Math.min(window.innerWidth - 8, e.clientX - rect.left + rect.left);
+    const y = Math.min(window.innerHeight - 8, e.clientY - rect.top + rect.top);
+    setShapesMenuPos({ x, y });
+    setShapesMenuOpen(true);
+  };
+
+  // Close shapes menu on outside click or Escape
+  useEffect(() => {
+    if (!shapesMenuOpen) return undefined;
+    const onDocClick = (e) => {
+      if (shapesMenuRef.current && !shapesMenuRef.current.contains(e.target)) {
+        setShapesMenuOpen(false);
+      }
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') setShapesMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [shapesMenuOpen]);
+
   // Initial draw
   useEffect(() => { drawWithOverlay(); }, [drawWithOverlay]);
 
@@ -300,10 +337,11 @@ const GameOfLife = () => {
             <option value='rect'>Rectangle</option>
             <option value='circle'>Circle</option>
             <option value='oval'>Oval</option>
-            <option value='randomRect'>Randomize Rect</option>
+              <option value='randomRect'>Randomize Rect</option>
+              <option value='shapes'>Shapes</option>
           </select>
         </label>
-  <label htmlFor="color-scheme-select" style={{ marginRight: 8 }}>Color Scheme:</label>
+          <label htmlFor="color-scheme-select" style={{ marginRight: 8 }}>Color Scheme:</label>
         <select
           id="color-scheme-select"
           value={colorSchemeKey}
@@ -315,12 +353,7 @@ const GameOfLife = () => {
           ))}
         </select>
 
-        <select value={selectedShape || ''} onChange={(e) => setSelectedShape?.(e.target.value || null)}>
-          <option value=''>Eraser</option>
-          {Object.keys(shapes).map(shape => (
-            <option key={shape} value={shape}>{shape}</option>
-          ))}
-        </select>
+        {/* Shapes selector is now a right-click context menu when the Shapes tool is active */}
 
         <button onClick={() => setIsRunning(!isRunning)} style={{ marginLeft: 8 }}>
           {isRunning ? 'Stop' : 'Start'}
@@ -333,11 +366,38 @@ const GameOfLife = () => {
       <canvas
         ref={canvasRef}
         onClick={handleCanvasClick}
+        onContextMenu={(e) => handleCanvasContextMenu?.(e)}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         style={{ cursor: (selectedShape || selectedTool) ? 'crosshair' : 'default' }}
       />
+      {shapesMenuOpen && (
+        <div
+          ref={shapesMenuRef}
+          className="shapes-menu"
+          style={{ left: shapesMenuPos.x, top: shapesMenuPos.y }}
+        >
+          {['', ...Object.keys(shapes)].map((shapeKey) => (
+            <div
+              key={shapeKey || '__eraser'}
+              className="shapes-menu-item"
+              onMouseDown={(ev) => {
+                // prevent canvas from also receiving the click
+                ev.stopPropagation();
+                ev.preventDefault();
+                const val = shapeKey || '';
+                setSelectedShape?.(val || null);
+                setShapesMenuOpen(false);
+                // redraw to reflect the selected shape immediately
+                drawWithOverlay();
+              }}
+            >
+              {shapeKey === '' ? 'Eraser' : shapeKey}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
