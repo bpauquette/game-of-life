@@ -1,5 +1,5 @@
 // GameOfLife.js
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { shapes } from './shapes';
 import { useChunkedGameState } from './chunkedGameState';
 import { colorSchemes } from './colorSchemes';
@@ -35,14 +35,14 @@ const GameOfLife = () => {
   const [selectedTool, setSelectedTool] = React.useState(null);
   const toolStateRef = useRef({});
 
-  const toolMap = {
+  const toolMap = useMemo(() => ({
     draw: drawTool,
     line: lineTool,
     rect: rectTool,
     circle: circleTool,
-    oval: ovalTool
-    ,randomRect: randomRectTool
-  };
+    oval: ovalTool,
+    randomRect: randomRectTool
+  }), []);
 
   // local state: keeps a small flag so initial resize happens after draw is defined
   const [ready, setReady] = useState(false);
@@ -241,16 +241,39 @@ const GameOfLife = () => {
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
 
-      // Update cellSize and adjust offset so the point under cursor remains fixed
+      // Update cellSize multiplicatively and adjust offset so the point under cursor remains fixed
       setCellSize(prev => {
-        const delta = e.deltaY < 0 ? 1 : -1;
-        const newSize = Math.min(50, Math.max(5, prev + delta));
-        if (newSize === prev) return prev;
-        const scale = newSize / prev;
+        const dpr = window.devicePixelRatio || 1;
+        const minCellSize = 1 / dpr; // one device pixel in logical units
+        const maxCellSize = 200;
+        const zoomFactor = 1.12; // per wheel tick
+        const factor = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
+        let newSize = prev * factor;
+        // clamp raw value
+        newSize = Math.max(minCellSize, Math.min(maxCellSize, newSize));
+
+        // directional snapping to device-pixel multiples so we can step up/down
+        const rawPixels = newSize * dpr;
+        let snappedPixels;
+        if (rawPixels === Math.round(rawPixels)) {
+          snappedPixels = rawPixels;
+        } else if (newSize > prev) {
+          // zooming in: ceil to next device pixel
+          snappedPixels = Math.ceil(rawPixels);
+        } else {
+          // zooming out: floor to previous device pixel
+          snappedPixels = Math.floor(rawPixels);
+        }
+        // ensure at least 1 device pixel
+        snappedPixels = Math.max(1, Math.min(Math.round(maxCellSize * dpr), snappedPixels));
+        const snappedSize = Math.max(minCellSize, snappedPixels / dpr);
+
+        if (snappedSize === prev) return prev;
+        const scale = snappedSize / prev;
         // offsetRef stores pixel offsets in logical units
         offsetRef.current.x = (sx + offsetRef.current.x) * scale - sx;
         offsetRef.current.y = (sy + offsetRef.current.y) * scale - sy;
-        return newSize;
+        return snappedSize;
       });
 
       // prevent page scroll while zooming
