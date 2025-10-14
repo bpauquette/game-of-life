@@ -1,0 +1,63 @@
+// Bresenham line drawing tool
+export const lineTool = {
+  onMouseDown(state, x, y) {
+    state.start = { x, y };
+    state.last = { x, y };
+    state.preview = [];
+  },
+
+  onMouseMove(state, x, y, setCellAlive) {
+    if (!state.start) return;
+    state.last = { x, y };
+    // preview only; do not commit until mouseup
+    state.preview = computeLine(state.start.x, state.start.y, x, y);
+  },
+
+  onMouseUp(state, x, y, setCellAlive) {
+    if (!state.start) return;
+    const pts = computeLine(state.start.x, state.start.y, x, y);
+    pts.forEach(([px, py]) => setCellAlive(px, py, true));
+    state.start = null;
+    state.last = null;
+    state.preview = [];
+  },
+
+  drawOverlay(ctx, state, cellSize, offset) {
+    if (!state.preview || state.preview.length === 0) return;
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = Math.max(1, Math.min(4, cellSize / 6));
+    ctx.beginPath();
+    state.preview.forEach(([x, y], idx) => {
+      const cx = x * cellSize - offset.x + cellSize / 2;
+      const cy = y * cellSize - offset.y + cellSize / 2;
+      if (idx === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+    });
+    ctx.stroke();
+  }
+};
+
+function computeLine(x0, y0, x1, y1) {
+  const pts = [];
+  let dx = Math.abs(x1 - x0);
+  let dy = -Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+
+  let x = x0;
+  let y = y0;
+  while (true) {
+    pts.push([x, y]);
+    if (x === x1 && y === y1) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) {
+      err += dy;
+      x += sx;
+    }
+    if (e2 <= dx) {
+      err += dx;
+      y += sy;
+    }
+  }
+  return pts;
+}
