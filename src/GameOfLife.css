@@ -29,6 +29,46 @@ html, body, #root {
   font-family: Arial, sans-serif;
 }
 
+/* Pan controls */
+.pan-controls {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  z-index: 20;
+}
+.pan-controls .pan-middle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.pan-controls button {
+  background: rgba(255,255,255,0.08);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+}
+.pan-controls button:hover { background: rgba(255,255,255,0.12); }
+
+/* responsive: move left/right to sides on wide screens, and reduce size on small screens */
+@media (min-width: 800px) {
+  .pan-controls { top: 8px; }
+  .pan-controls .pan-middle { gap: 12px; }
+  .pan-controls .pan-left { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); }
+  .pan-controls .pan-right { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
+}
+
+@media (max-width: 480px) {
+  .pan-controls button { padding: 6px 8px; font-size: 14px; }
+}
+
 canvas {
   display: block; /* remove inline gap */
   width: 100%;

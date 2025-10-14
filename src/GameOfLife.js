@@ -15,6 +15,7 @@ import './GameOfLife.css';
 const GameOfLife = () => {
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
+  const panAnimRef = useRef(null);
   
 
   const {
@@ -157,6 +158,8 @@ const GameOfLife = () => {
     return () => cancelAnimationFrame(animationRef.current);
   }, [isRunning, step, drawWithOverlay]);
 
+  
+
   // Canvas click: toggle or place shape
   const handleCanvasClick = (e) => {
     if (!canvasRef.current || !offsetRef?.current) return;
@@ -226,14 +229,16 @@ const GameOfLife = () => {
     const handleKeyDown = (e) => {
       if (!offsetRef?.current) return;
       const panAmount = 20; // pixels in logical space
-      if (e.key === "ArrowUp") offsetRef.current.y -= panAmount;
-      if (e.key === "ArrowDown") offsetRef.current.y += panAmount;
-      if (e.key === "ArrowLeft") offsetRef.current.x -= panAmount;
-      if (e.key === "ArrowRight") offsetRef.current.x += panAmount;
-      drawWithOverlay();
+      // use smooth pan for arrow keys as well
+      if (e.key === "ArrowUp") panBy(0, -panAmount);
+      if (e.key === "ArrowDown") panBy(0, panAmount);
+      if (e.key === "ArrowLeft") panBy(-panAmount, 0);
+      if (e.key === "ArrowRight") panBy(panAmount, 0);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+    // panBy is a stable callback defined in this component; avoid forcing it into the deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offsetRef, drawWithOverlay]);
 
   // Mouse wheel: adjust cell size (zoom)
@@ -327,20 +332,43 @@ const GameOfLife = () => {
   // Initial draw
   useEffect(() => { drawWithOverlay(); }, [drawWithOverlay]);
 
+  // Smooth panning helper: animate offsetRef from current to target change
+  const panBy = useCallback((dx, dy, duration = 220) => {
+    if (!offsetRef?.current) return;
+    const startX = offsetRef.current.x;
+    const startY = offsetRef.current.y;
+    const targetX = startX + dx;
+    const targetY = startY + dy;
+    const startTime = performance.now();
+
+    if (panAnimRef.current) cancelAnimationFrame(panAnimRef.current);
+
+    const step = (ts) => {
+      const t = Math.min(1, (ts - startTime) / duration);
+      // easeOutCubic
+      const ease = 1 - Math.pow(1 - t, 3);
+      offsetRef.current.x = startX + (targetX - startX) * ease;
+      offsetRef.current.y = startY + (targetY - startY) * ease;
+      drawWithOverlay();
+      if (t < 1) {
+        panAnimRef.current = requestAnimationFrame(step);
+      } else {
+        panAnimRef.current = null;
+      }
+    };
+    panAnimRef.current = requestAnimationFrame(step);
+  }, [offsetRef, drawWithOverlay]);
+
   return (
     <div className="canvas-container">
-      {/* Pan buttons: mimic Arrow keys */}
-      <div style={{ position: 'absolute', left: '50%', top: 8, transform: 'translateX(-50%)' }}>
-        <button onClick={() => { if (offsetRef?.current) { offsetRef.current.y -= 20; drawWithOverlay(); } }}>↑</button>
-      </div>
-      <div style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)' }}>
-        <button onClick={() => { if (offsetRef?.current) { offsetRef.current.x -= 20; drawWithOverlay(); } }}>←</button>
-      </div>
-      <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}>
-        <button onClick={() => { if (offsetRef?.current) { offsetRef.current.x += 20; drawWithOverlay(); } }}>→</button>
-      </div>
-      <div style={{ position: 'absolute', left: '50%', bottom: 8, transform: 'translateX(-50%)' }}>
-        <button onClick={() => { if (offsetRef?.current) { offsetRef.current.y += 20; drawWithOverlay(); } }}>↓</button>
+      {/* Pan controls (use CSS for positioning/responsiveness) */}
+      <div className="pan-controls">
+        <button className="pan-up" aria-label="Pan up" onClick={() => panBy(0, -80)}>↑</button>
+        <div className="pan-middle">
+          <button className="pan-left" aria-label="Pan left" onClick={() => panBy(-80, 0)}>←</button>
+          <button className="pan-right" aria-label="Pan right" onClick={() => panBy(80, 0)}>→</button>
+        </div>
+        <button className="pan-down" aria-label="Pan down" onClick={() => panBy(0, 80)}>↓</button>
       </div>
       <div className="controls">
         <label style={{ marginRight: 8 }}>
