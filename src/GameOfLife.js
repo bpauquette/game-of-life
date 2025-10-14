@@ -2,11 +2,14 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { shapes } from './shapes';
 import { useChunkedGameState } from './chunkedGameState';
+import { colorSchemes } from './colorSchemes';
 import './GameOfLife.css';
+
 
 const GameOfLife = () => {
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
+  
 
   const {
     getLiveCells,
@@ -26,29 +29,31 @@ const GameOfLife = () => {
   // local state: keeps a small flag so initial resize happens after draw is defined
   const [ready, setReady] = useState(false);
 
+  const [colorSchemeKey, setColorSchemeKey] = React.useState('neon');
+  const colorScheme = colorSchemes[colorSchemeKey];
+
+
   // Draw function (keeps your original rendering)
   const draw = useCallback(() => {
-    if (!canvasRef.current || !offsetRef?.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+  if (!canvasRef.current || !offsetRef?.current) return;
+  const ctx = canvasRef.current.getContext('2d');
 
-    // Because we set transform for DPR in resizeCanvas, we can draw in logical pixels.
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+  // Use the current color scheme
+  ctx.fillStyle = colorScheme.background;
+  ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
-    // Draw live cells
-    getLiveCells().forEach((_, key) => {
-      const [x, y] = key.split(',').map(Number);
-      const hue = ((x * 53 + y * 97) % 360);
-      ctx.fillStyle = `hsl(${hue}, 80%, 50%)`;
-      ctx.fillRect(
-        x * cellSize - offsetRef.current.x,
-        y * cellSize - offsetRef.current.y,
-        cellSize,
-        cellSize
-      );
-    });
-  }, [getLiveCells, cellSize, offsetRef]);
+  // Draw live cells
+  getLiveCells().forEach((_, key) => {
+    const [x, y] = key.split(',').map(Number);
+    ctx.fillStyle = colorScheme.getCellColor(x, y);
+    ctx.fillRect(
+      x * cellSize - offsetRef.current.x,
+      y * cellSize - offsetRef.current.y,
+      cellSize,
+      cellSize
+    );
+  });
+}, [getLiveCells, cellSize, offsetRef, colorScheme]);
 
   // Resize canvas to fill window and account for devicePixelRatio
   const resizeCanvas = useCallback(() => {
@@ -68,8 +73,14 @@ const GameOfLife = () => {
     canvas.height = Math.max(1, Math.floor(logicalHeight * dpr));
 
     const ctx = canvas.getContext('2d');
-    // Reset transform and scale to logical coordinate system
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // Reset transform and scale to logical coordinate system if available.
+    // Some test environments (jsdom) provide a mock context without setTransform.
+    if (ctx && typeof ctx.setTransform === 'function') {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    } else if (ctx && typeof ctx.scale === 'function') {
+      // Fallback: scale the context if setTransform isn't available
+      ctx.scale(dpr, dpr);
+    }
 
     // Redraw after resize
     draw();
@@ -139,14 +150,33 @@ const GameOfLife = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // add passive=false if you want to call preventDefault; keep default here
+    // handleWheel will zoom centered on the mouse cursor
     const handleWheel = (e) => {
-      // change cell size (logical pixels)
-      setCellSize(prev => Math.min(50, Math.max(5, prev + (e.deltaY < 0 ? 1 : -1))));
+      // Compute mouse position relative to canvas (CSS pixels / logical units)
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+
+      // Update cellSize and adjust offset so the point under cursor remains fixed
+      setCellSize(prev => {
+        const delta = e.deltaY < 0 ? 1 : -1;
+        const newSize = Math.min(50, Math.max(5, prev + delta));
+        if (newSize === prev) return prev;
+        const scale = newSize / prev;
+        // offsetRef stores pixel offsets in logical units
+        offsetRef.current.x = (sx + offsetRef.current.x) * scale - sx;
+        offsetRef.current.y = (sy + offsetRef.current.y) * scale - sy;
+        return newSize;
+      });
+
+      // prevent page scroll while zooming
+      if (e.cancelable) e.preventDefault();
       draw();
     };
-    canvas.addEventListener('wheel', handleWheel);
-    return () => canvas.removeEventListener('wheel', handleWheel);
+
+    // passive: false so preventDefault() works in browsers
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel, { passive: false });
   }, [setCellSize, draw]);
 
   // Initial draw
@@ -155,6 +185,16 @@ const GameOfLife = () => {
   return (
     <div className="canvas-container">
       <div className="controls">
+        <select
+  value={colorSchemeKey}
+  onChange={(e) => setColorSchemeKey(e.target.value)}
+  style={{ marginRight: 8 }}
+>
+  {Object.entries(colorSchemes).map(([key, scheme]) => (
+    <option key={key} value={key}>{scheme.name}</option>
+  ))}
+</select>
+
         <select value={selectedShape || ''} onChange={(e) => setSelectedShape?.(e.target.value || null)}>
           <option value=''>Eraser</option>
           {Object.keys(shapes).map(shape => (

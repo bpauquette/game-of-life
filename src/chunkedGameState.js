@@ -75,8 +75,10 @@ export function useChunkedGameState() {
   }, [getLiveCells, setCellAlive]);
 
   const clear = useCallback(() => {
-    chunksRef.current = new Map();
-  }, []);
+    const newChunks = new Map();
+    chunksRef.current = newChunks;
+    setChunks(newChunks);
+  }, [setChunks]);
 
   const randomize = useCallback(() => {
     const liveCells = getLiveCells();
@@ -103,7 +105,8 @@ export function useChunkedGameState() {
       }
     }
     chunksRef.current = newChunks;
-  }, [getLiveCells]);
+    setChunks(newChunks);
+  }, [getLiveCells, setChunks]);
 
   // Step using gameLogic.js
   const step = useCallback(() => {
