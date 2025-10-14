@@ -32,7 +32,8 @@ const GameOfLife = () => {
   } = useChunkedGameState();
 
   // Tool selection (e.g. freehand draw)
-  const [selectedTool, setSelectedTool] = React.useState(null);
+  // default to freehand draw so UI doesn't show an empty "None" selection
+  const [selectedTool, setSelectedTool] = React.useState('draw');
   const toolStateRef = useRef({});
 
   const toolMap = useMemo(() => ({
@@ -330,8 +331,7 @@ const GameOfLife = () => {
     <div className="canvas-container">
       <div className="controls">
         <label style={{ marginRight: 8 }}>
-          Tool: <select value={selectedTool || ''} onChange={(e) => setSelectedTool(e.target.value || null)} style={{ marginLeft: 8, marginRight: 12 }}>
-            <option value=''>None</option>
+          Tool: <select value={selectedTool} onChange={(e) => setSelectedTool(e.target.value)} style={{ marginLeft: 8, marginRight: 12 }}>
             <option value='draw'>Freehand</option>
             <option value='line'>Line</option>
             <option value='rect'>Rectangle</option>
