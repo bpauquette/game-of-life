@@ -303,15 +303,17 @@ const GameOfLife = () => {
             <option value='randomRect'>Randomize Rect</option>
           </select>
         </label>
+  <label htmlFor="color-scheme-select" style={{ marginRight: 8 }}>Color Scheme:</label>
         <select
-  value={colorSchemeKey}
-  onChange={(e) => setColorSchemeKey(e.target.value)}
-  style={{ marginRight: 8 }}
->
-  {Object.entries(colorSchemes).map(([key, scheme]) => (
-    <option key={key} value={key}>{scheme.name}</option>
-  ))}
-</select>
+          id="color-scheme-select"
+          value={colorSchemeKey}
+          onChange={(e) => setColorSchemeKey(e.target.value)}
+          style={{ marginRight: 8 }}
+        >
+          {Object.entries(colorSchemes).map(([key, scheme]) => (
+            <option key={key} value={key}>{scheme.name}</option>
+          ))}
+        </select>
 
         <select value={selectedShape || ''} onChange={(e) => setSelectedShape?.(e.target.value || null)}>
           <option value=''>Eraser</option>

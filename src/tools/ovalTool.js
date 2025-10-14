@@ -1,4 +1,4 @@
-// Filled oval (ellipse) tool - axis-aligned, commits on mouseup
+// Oval (ellipse) perimeter-only tool - axis-aligned, commits on mouseup
 export const ovalTool = {
   onMouseDown(state, x, y) {
     state.start = { x, y };
@@ -9,12 +9,12 @@ export const ovalTool = {
   onMouseMove(state, x, y) {
     if (!state.start) return;
     state.last = { x, y };
-    state.preview = computeFilledEllipse(state.start.x, state.start.y, x, y);
+    state.preview = computeEllipsePerimeter(state.start.x, state.start.y, x, y);
   },
 
   onMouseUp(state, x, y, setCellAlive) {
     if (!state.start) return;
-    const pts = computeFilledEllipse(state.start.x, state.start.y, x, y);
+    const pts = computeEllipsePerimeter(state.start.x, state.start.y, x, y);
     pts.forEach(([px, py]) => setCellAlive(px, py, true));
     state.start = null;
     state.last = null;
@@ -30,7 +30,7 @@ export const ovalTool = {
   }
 };
 
-function computeFilledEllipse(x0, y0, x1, y1) {
+function computeEllipsePerimeter(x0, y0, x1, y1) {
   const xMin = Math.min(x0, x1);
   const xMax = Math.max(x0, x1);
   const yMin = Math.min(y0, y1);
@@ -40,14 +40,26 @@ function computeFilledEllipse(x0, y0, x1, y1) {
   const cx = xMin + rx;
   const cy = yMin + ry;
   const pts = [];
-  const rx2 = rx * rx;
-  const ry2 = ry * ry;
-  for (let x = xMin; x <= xMax; x++) {
-    for (let y = yMin; y <= yMax; y++) {
-      const dx = x - cx;
-      const dy = y - cy;
-      if ((dx * dx) / rx2 + (dy * dy) / ry2 <= 1) pts.push([x, y]);
-    }
+
+  // Iterate angle steps and compute integer points on ellipse perimeter
+  // Choose step based on perimeter approximation to ensure continuity
+  const steps = Math.max(8, Math.ceil(2 * Math.PI * Math.max(rx, ry))); 
+  for (let i = 0; i < steps; i++) {
+    const theta = (i / steps) * 2 * Math.PI;
+    const fx = Math.round(cx + rx * Math.cos(theta));
+    const fy = Math.round(cy + ry * Math.sin(theta));
+    pts.push([fx, fy]);
   }
-  return pts;
+
+  // Deduplicate
+  const seen = new Set();
+  const unique = [];
+  pts.forEach(([px, py]) => {
+    const key = `${px},${py}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push([px, py]);
+    }
+  });
+  return unique;
 }
