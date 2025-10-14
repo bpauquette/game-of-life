@@ -32,13 +32,7 @@ export const drawTool = {
 
   // Optional: draw overlay (e.g., preview line)
   drawOverlay(ctx, toolState, cellSize, offset) {
-    if (toolState.start && toolState.last) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(toolState.start.x * cellSize - offset.x, toolState.start.y * cellSize - offset.y);
-      ctx.lineTo(toolState.last.x * cellSize - offset.x, toolState.last.y * cellSize - offset.y);
-      ctx.stroke();
-    }
+    // Intentionally left blank to avoid drawing a persistent overlay line
+    // Overlay preview was removed because it caused an unwanted white line artifact.
   }
 };
