@@ -20,9 +20,10 @@ beforeAll(() => {
   };
 });
 
-test('renders the main heading', () => {
+test('renders the app controls', () => {
   render(<App />);
-  const heading = screen.getByText(/Game of Life/i); // adjust to text in your app
-  expect(heading).toBeInTheDocument();
+  // the heading was removed; verify the app renders by checking for a control label present in the UI
+  const liveCells = screen.getByText(/Live Cells/i);
+  expect(liveCells).toBeInTheDocument();
 });
 
