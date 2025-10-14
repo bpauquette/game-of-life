@@ -48,7 +48,7 @@ const GameOfLife = () => {
   // local state: keeps a small flag so initial resize happens after draw is defined
   const [ready, setReady] = useState(false);
 
-  const [colorSchemeKey, setColorSchemeKey] = React.useState('neon');
+  const [colorSchemeKey, setColorSchemeKey] = React.useState('spectrum');
   const colorScheme = colorSchemes[colorSchemeKey];
 
   // Shapes context menu state (for the new Shapes tool)

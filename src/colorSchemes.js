@@ -1,5 +1,11 @@
 // colorSchemes.js
 export const colorSchemes = {
+  spectrum: {
+    name: "Spectrum Pulse",
+    background: "#000",
+    getCellColor: (x, y, t = Date.now()) => 
+      `hsl(${(t / 20 + x * 10 + y * 5) % 360}, 100%, 50%)`
+  },
   neon: {
     name: "Neon Grid",
     background: "#0a0a1a",
@@ -19,11 +25,5 @@ export const colorSchemes = {
     name: "Retro Vector",
     background: "#001f3f",
     getCellColor: () => "#39ff14"
-  },
-  spectrum: {
-    name: "Spectrum Pulse",
-    background: "#000",
-    getCellColor: (x, y, t = Date.now()) => 
-      `hsl(${(t / 20 + x * 10 + y * 5) % 360}, 100%, 50%)`
   }
 };
