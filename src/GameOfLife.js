@@ -64,10 +64,11 @@ const GameOfLife = () => {
   const rect = canvasRef.current.getBoundingClientRect();
   const centerX = rect.width / 2;
   const centerY = rect.height / 2;
-  // computedOffset matches previous semantics (pixel offsets in logical units)
+  // computedOffset: convert offset (in cells) to CSS pixels and subtract canvas center
+  // offsetRef.current is stored in cell units (world coords at canvas center)
   const computedOffset = {
-    x: offsetRef.current.x - centerX,
-    y: offsetRef.current.y - centerY
+    x: offsetRef.current.x * cellSize - centerX,
+    y: offsetRef.current.y * cellSize - centerY
   };
 
   // Use the current color scheme
@@ -97,8 +98,8 @@ const GameOfLife = () => {
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
         const computedOffset = {
-          x: offsetRef.current.x - centerX,
-          y: offsetRef.current.y - centerY
+          x: offsetRef.current.x * cellSize - centerX,
+          y: offsetRef.current.y * cellSize - centerY
         };
         const tool = toolMap[selectedTool];
         if (tool && typeof tool.drawOverlay === 'function') {
@@ -113,6 +114,53 @@ const GameOfLife = () => {
       console.error(err);
     }
   }, [draw, selectedTool, cellSize, offsetRef, toolMap]);
+
+  // Panning refs/state
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0 }); // pixels
+  const panOffsetStartRef = useRef({ x: 0, y: 0 }); // cell units
+  const spaceDownRef = useRef(false);
+
+  // Keyboard listeners for space (hold to pan) and arrow keys for nudging
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.code === 'Space') {
+        spaceDownRef.current = true;
+      }
+      // Arrow keys for nudging view (inverted: key press moves content opposite)
+      const amount = e.shiftKey ? 10 : 1; // more when shift held
+      if (e.key === 'ArrowLeft') {
+        // pressing left should move image to the left visually -> decrease offset.x
+        offsetRef.current.x -= amount;
+        drawWithOverlay();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        // pressing right moves image to the right visually -> increase offset.x
+        offsetRef.current.x += amount;
+        drawWithOverlay();
+        e.preventDefault();
+      } else if (e.key === 'ArrowUp') {
+        // pressing up should move image down visually -> decrease offset.y
+        offsetRef.current.y -= amount;
+        drawWithOverlay();
+        e.preventDefault();
+      } else if (e.key === 'ArrowDown') {
+        // pressing down moves image up visually -> increase offset.y
+        offsetRef.current.y += amount;
+        drawWithOverlay();
+        e.preventDefault();
+      }
+    };
+    const onKeyUp = (e) => {
+      if (e.code === 'Space') spaceDownRef.current = false;
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, [drawWithOverlay, offsetRef]);
 
   // Resize canvas to fill window and account for devicePixelRatio
   const resizeCanvas = useCallback(() => {
@@ -210,6 +258,16 @@ const GameOfLife = () => {
 
   // Mouse handlers to support tools (freehand draw)
   const handleMouseDown = (e) => {
+    // Panning: middle button or space+left-button
+    if ((e.button === 1) || (e.button === 0 && spaceDownRef.current)) {
+      // start panning
+      isPanningRef.current = true;
+      panStartRef.current = { x: e.clientX, y: e.clientY };
+      panOffsetStartRef.current = { x: offsetRef.current.x, y: offsetRef.current.y };
+      // prevent text selection / dragging artifacts
+      if (e.cancelable) e.preventDefault();
+      return;
+    }
     const tool = toolMap[selectedTool];
     if (!tool) return;
     const pt = eventToCell(e);
@@ -221,6 +279,20 @@ const GameOfLife = () => {
   };
 
   const handleMouseMove = (e) => {
+    // If panning, translate pointer delta to cell offset change
+    if (isPanningRef.current) {
+      const dxPixels = e.clientX - panStartRef.current.x;
+      const dyPixels = e.clientY - panStartRef.current.y;
+      const dxCells = dxPixels / cellSize;
+      const dyCells = dyPixels / cellSize;
+  // Inverted drag: move offset in same direction as pointer delta so content moves opposite
+  offsetRef.current.x = panOffsetStartRef.current.x + dxCells;
+  offsetRef.current.y = panOffsetStartRef.current.y + dyCells;
+      drawWithOverlay();
+      if (e.cancelable) e.preventDefault();
+      return;
+    }
+
     const tool = toolMap[selectedTool];
     if (!tool) return;
     // Only draw while primary button is pressed or toolState has last/start
@@ -232,6 +304,12 @@ const GameOfLife = () => {
   };
 
   const handleMouseUp = (e) => {
+    // stop panning if active
+    if (isPanningRef.current) {
+      isPanningRef.current = false;
+      if (e.cancelable) e.preventDefault();
+      return;
+    }
     const tool = toolMap[selectedTool];
     if (!tool) return;
     const pt = eventToCell(e);
