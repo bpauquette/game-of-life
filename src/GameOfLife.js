@@ -3,6 +3,7 @@ import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { shapes } from './shapes';
 import { useChunkedGameState } from './chunkedGameState';
 import { colorSchemes } from './colorSchemes';
+import isPopulationStable from './utils/populationUtils';
 import { drawTool } from './tools/drawTool';
 import { lineTool } from './tools/lineTool';
 import { rectTool } from './tools/rectTool';
@@ -11,6 +12,8 @@ import { ovalTool } from './tools/ovalTool';
 import { randomRectTool } from './tools/randomRectTool';
 import './GameOfLife.css';
 import PopulationChart from './PopulationChart';
+import ControlsBar from './ControlsBar';
+import { computeComputedOffset, eventToCellFromCanvas, drawLiveCells } from './utils/canvasUtils';
 
 
 const GameOfLife = () => {
@@ -35,11 +38,16 @@ const GameOfLife = () => {
   // population history (counts per generation)
   const [showChart, setShowChart] = React.useState(false);
   const popHistoryRef = React.useRef([]);
+  // population-stability detection params (window N and tolerance X)
+  const [popWindowSize, setPopWindowSize] = React.useState(50);
+  const [popTolerance, setPopTolerance] = React.useState(3);
   // steady state detection
   const snapshotsRef = React.useRef([]);
-  const [steadyInfo, setSteadyInfo] = React.useState({ steady: false, period: 0 });
+  const [steadyInfo, setSteadyInfo] = React.useState({ steady: false, period: 0, popChanging: false });
   const MAX_SNAPSHOTS = 60;
   const steadyDetectedRef = React.useRef(false);
+
+  // population stability checker moved to src/utils/populationUtils.js
 
   // Tool selection (e.g. freehand draw)
   // default to freehand draw so UI doesn't show an empty "None" selection
@@ -64,7 +72,15 @@ const GameOfLife = () => {
   const [ready, setReady] = useState(false);
 
   const [colorSchemeKey, setColorSchemeKey] = React.useState('spectrum');
-  const colorScheme = colorSchemes[colorSchemeKey];
+  // defensive: create a shallow copy and freeze it so external code cannot
+  // accidentally mutate the active scheme object and change colors unexpectedly
+  const colorScheme = useMemo(() => {
+    const base = colorSchemes[colorSchemeKey] || {};
+    // shallow copy functions/properties then freeze
+    const copy = Object.assign({}, base);
+    try { Object.freeze(copy); } catch (err) { /* ignore in older envs */ }
+    return copy;
+  }, [colorSchemeKey]);
 
   // Shapes context menu state (for the new Shapes tool)
   const [shapesMenuOpen, setShapesMenuOpen] = useState(false);
@@ -74,34 +90,17 @@ const GameOfLife = () => {
 
   // Draw function (keeps your original rendering)
   const draw = useCallback(() => {
-  if (!canvasRef.current || !offsetRef) return;
-  const ctx = canvasRef.current.getContext('2d');
-  const rect = canvasRef.current.getBoundingClientRect();
-  const centerX = rect.width / 2;
-  const centerY = rect.height / 2;
-  // computedOffset: offsetRef is stored in cell units (world coord at center)
-  // convert to CSS pixels for drawing
-  const computedOffset = {
-    x: offsetRef.current.x * cellSize - centerX,
-    y: offsetRef.current.y * cellSize - centerY
-  };
+    if (!canvasRef.current || !offsetRef) return;
+    const ctx = canvasRef.current.getContext('2d');
+    const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
 
-  // Use the current color scheme
-  ctx.fillStyle = colorScheme.background;
-  ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    // Use the current color scheme
+    ctx.fillStyle = colorScheme.background;
+    ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
-  // Draw live cells
-  getLiveCells().forEach((_, key) => {
-    const [x, y] = key.split(',').map(Number);
-    ctx.fillStyle = colorScheme.getCellColor(x, y);
-    ctx.fillRect(
-      x * cellSize - computedOffset.x,
-      y * cellSize - computedOffset.y,
-      cellSize,
-      cellSize
-    );
-  });
-}, [getLiveCells, cellSize, offsetRef, colorScheme]);
+    // Draw live cells
+    drawLiveCells(ctx, getLiveCells(), computedOffset, cellSize, colorScheme);
+  }, [getLiveCells, cellSize, offsetRef, colorScheme]);
 
   // Enhanced draw: call tool overlay draw after main render
   const drawWithOverlay = useCallback(() => {
@@ -109,15 +108,7 @@ const GameOfLife = () => {
     try {
       const ctx = canvasRef.current?.getContext('2d');
       if (ctx && selectedTool && offsetRef?.current) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        // computedOffset: offsetRef is stored in cell units (world coord at center)
-        // convert to CSS pixels for overlay drawing (same as main draw())
-        const computedOffset = {
-          x: offsetRef.current.x * cellSize - centerX,
-          y: offsetRef.current.y * cellSize - centerY
-        };
+        const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
         const tool = toolMap[selectedTool];
         if (tool && typeof tool.drawOverlay === 'function') {
           tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset);
@@ -205,9 +196,9 @@ const GameOfLife = () => {
           if (snaps.length > MAX_SNAPSHOTS) snaps.shift();
           snapshotsRef.current = snaps;
 
-          // population-based steady detection: same population count as previous generation
+          // population-based steady detection: use configurable window+tolerance
           const ph = popHistoryRef.current;
-          const popSteady = ph.length >= 2 && ph[ph.length - 1] === ph[ph.length - 2];
+          const popSteady = isPopulationStable(ph, popWindowSize, popTolerance);
 
           let detected = false;
           let detectedPeriod = 0;
@@ -222,9 +213,10 @@ const GameOfLife = () => {
             detectedPeriod = matchIdx + 1;
           }
 
-          setSteadyInfo(detected ? { steady: true, period: detectedPeriod } : { steady: false, period: 0 });
+          // popChanging is true when population is changing between generations
+          setSteadyInfo(detected ? { steady: true, period: detectedPeriod, popChanging: !popSteady } : { steady: false, period: 0, popChanging: !popSteady });
 
-          // Only auto-stop when the population count is unchanged between consecutive generations.
+          // Auto-stop when the population is considered stable by the window/tolerance
           // Keep snapshot/oscillation detection for the UI indicator, but do not stop on those alone.
           if (popSteady) {
             if (!steadyDetectedRef.current) {
@@ -232,7 +224,7 @@ const GameOfLife = () => {
               setIsRunning(false);
             }
           } else {
-            // Do not treat snapshot-only detection as a stop condition; clear the stop guard.
+            // clear the stop guard when not stable
             steadyDetectedRef.current = false;
           }
         } catch (err) {}
@@ -242,7 +234,7 @@ const GameOfLife = () => {
     };
     if (isRunning) animationRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationRef.current);
-  }, [isRunning, step, drawWithOverlay]);
+  }, [isRunning, step, drawWithOverlay, getLiveCells, popWindowSize, popTolerance, setIsRunning]);
 
   
 
@@ -271,13 +263,7 @@ const GameOfLife = () => {
 
   // Helper to convert mouse event to cell coordinates
   const eventToCell = (e) => {
-    if (!canvasRef.current || !offsetRef?.current) return null;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const x = Math.floor(offsetRef.current.x + (e.clientX - rect.left - centerX) / cellSize);
-    const y = Math.floor(offsetRef.current.y + (e.clientY - rect.top - centerY) / cellSize);
-    return { x, y };
+    return eventToCellFromCanvas(e, canvasRef.current, offsetRef, cellSize);
   };
 
   // Mouse handlers to support tools (freehand draw)
@@ -448,71 +434,46 @@ const GameOfLife = () => {
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [drawWithOverlay]);
+  }, [drawWithOverlay, offsetRef]);
 
   // Panning helper removed.
 
   return (
     <div className="canvas-container">
-      <div className="controls">
-        <label style={{ marginRight: 8 }}>
-          Tool: <select value={selectedTool} onChange={(e) => setSelectedTool(e.target.value)} style={{ marginLeft: 8, marginRight: 12 }}>
-            <option value='draw'>Freehand</option>
-            <option value='line'>Line</option>
-            <option value='rect'>Rectangle</option>
-            <option value='circle'>Circle</option>
-            <option value='oval'>Oval</option>
-              <option value='randomRect'>Randomize Rect</option>
-              <option value='shapes'>Shapes</option>
-          </select>
-        </label>
-          <label htmlFor="color-scheme-select" style={{ marginRight: 8 }}>Color Scheme:</label>
-        <select
-          id="color-scheme-select"
-          value={colorSchemeKey}
-          onChange={(e) => setColorSchemeKey(e.target.value)}
-          style={{ marginRight: 8 }}
-        >
-          {Object.entries(colorSchemes).map(([key, scheme]) => (
-            <option key={key} value={key}>{scheme.name}</option>
-          ))}
-        </select>
-
-        {/* Shapes selector is now a right-click context menu when the Shapes tool is active */}
-
-        <button onClick={() => setIsRunning(!isRunning)} style={{ marginLeft: 8 }}>
-          {isRunning ? 'Stop' : 'Start'}
-        </button>
-  <button onClick={() => { step(); draw(); }}>Step</button>
-          <button onClick={() => { clear(); draw(); snapshotsRef.current = []; setSteadyInfo({ steady: false, period: 0 }); }}>Clear</button>
-        <button onClick={() => {
-          // Place a centered blinker (3-cell oscillator, period 2) for testing
-          const canvas = canvasRef.current;
-          if (!canvas || !offsetRef?.current) return;
-          const rect = canvas.getBoundingClientRect();
-          const centerCssX = rect.width / 2;
-          const centerCssY = rect.height / 2;
-          // compute center cell with center-origin semantics
-          const cx = Math.floor(offsetRef.current.x + (centerCssX - centerCssX) / cellSize);
-          const cy = Math.floor(offsetRef.current.y + (centerCssY - centerCssY) / cellSize);
-          const coords = [
-            [-1, 0], [0, 0], [1, 0]
-          ];
-          coords.forEach(([dx,dy]) => setCellAlive(cx + dx, cy + dy, true));
-          // update history/snapshots after placing
-          try { popHistoryRef.current.push(getLiveCells().size); if (popHistoryRef.current.length > 1000) popHistoryRef.current.shift(); } catch (err) {}
-          snapshotsRef.current = [];
-          setSteadyInfo({ steady: false, period: 0 });
-          drawWithOverlay();
-        }}>Place Blinker</button>
-        <button style={{ marginLeft: 8 }} onClick={() => setShowChart(true)}>Show Population Chart</button>
-        <span style={{ marginLeft: 8 }}>Live Cells: {getLiveCells().size}</span>
-        <span title={steadyInfo.steady ? `Steady state (period ${steadyInfo.period})` : 'Running'} style={{ marginLeft: 12, display: 'inline-flex', alignItems: 'center' }}>
-          {/* bulb: lit when not steady, dim when steady */}
-          <span style={{ fontSize: 18, opacity: steadyInfo.steady ? 0.25 : 1 }}>{steadyInfo.steady ? '💡' : '💡'}</span>
-          <span style={{ marginLeft: 6, fontSize: 12, opacity: 0.8 }}>{steadyInfo.steady ? `Steady (p=${steadyInfo.period})` : 'Running'}</span>
-        </span>
-      </div>
+      <ControlsBar
+        selectedTool={selectedTool}
+        setSelectedTool={setSelectedTool}
+        colorSchemeKey={colorSchemeKey}
+        setColorSchemeKey={setColorSchemeKey}
+        colorSchemes={colorSchemes}
+        isRunning={isRunning}
+        setIsRunning={(v) => { if (!v) {} ; setIsRunning(v); }}
+        step={step}
+        draw={draw}
+        clear={clear}
+        snapshotsRef={snapshotsRef}
+        setSteadyInfo={setSteadyInfo}
+        canvasRef={canvasRef}
+        offsetRef={offsetRef}
+        cellSize={cellSize}
+        setCellAlive={setCellAlive}
+        popHistoryRef={popHistoryRef}
+        setShowChart={setShowChart}
+        getLiveCells={getLiveCells}
+        popWindowSize={popWindowSize}
+        setPopWindowSize={setPopWindowSize}
+        popTolerance={popTolerance}
+        setPopTolerance={setPopTolerance}
+        shapes={shapes}
+        shapesMenuOpen={shapesMenuOpen}
+        setShapesMenuOpen={setShapesMenuOpen}
+        shapesMenuPos={shapesMenuPos}
+        setShapesMenuPos={setShapesMenuPos}
+        shapesMenuRef={shapesMenuRef}
+        setSelectedShape={setSelectedShape}
+        drawWithOverlay={drawWithOverlay}
+        steadyInfo={steadyInfo}
+      />
 
       <canvas
         ref={canvasRef}
