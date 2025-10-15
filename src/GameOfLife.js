@@ -262,15 +262,15 @@ const GameOfLife = () => {
         const factor = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
 
         // device pixel snapping
-        const prevDevice = prev * dpr;
-        let newDevice = prevDevice * factor;
-        const maxDevice = maxCellSize * dpr;
-        newDevice = Math.max(1, Math.min(maxDevice, newDevice));
-        let snappedDevice = Math.round(newDevice);
-        if (newDevice > prevDevice) snappedDevice = Math.ceil(newDevice);
-        else snappedDevice = Math.floor(newDevice);
-        snappedDevice = Math.max(1, Math.min(Math.round(maxDevice), snappedDevice));
-        const snappedSize = Math.max(minCellSize, snappedDevice / dpr);
+  const prevDevice = prev * dpr;
+  let newDevice = prevDevice * factor;
+  // allow unlimited zoom-in; only clamp to minimum of 1 device pixel
+  newDevice = Math.max(1, newDevice);
+  let snappedDevice = Math.round(newDevice);
+  if (newDevice > prevDevice) snappedDevice = Math.ceil(newDevice);
+  else snappedDevice = Math.floor(newDevice);
+  snappedDevice = Math.max(1, snappedDevice);
+  const snappedSize = Math.max(minCellSize, snappedDevice / dpr);
         return snappedSize === prev ? prev : snappedSize;
       });
 
