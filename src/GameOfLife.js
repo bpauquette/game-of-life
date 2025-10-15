@@ -224,12 +224,17 @@ const GameOfLife = () => {
 
           setSteadyInfo(detected ? { steady: true, period: detectedPeriod } : { steady: false, period: 0 });
 
-          // stop the simulation once steady is first detected
-          if (detected && !steadyDetectedRef.current) {
-            steadyDetectedRef.current = true;
-            setIsRunning(false);
+          // Only auto-stop when the population count is unchanged between consecutive generations.
+          // Keep snapshot/oscillation detection for the UI indicator, but do not stop on those alone.
+          if (popSteady) {
+            if (!steadyDetectedRef.current) {
+              steadyDetectedRef.current = true;
+              setIsRunning(false);
+            }
+          } else {
+            // Do not treat snapshot-only detection as a stop condition; clear the stop guard.
+            steadyDetectedRef.current = false;
           }
-          if (!detected) steadyDetectedRef.current = false;
         } catch (err) {}
         drawWithOverlay();
         animationRef.current = requestAnimationFrame(loop);
