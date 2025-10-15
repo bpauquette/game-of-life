@@ -68,6 +68,19 @@ const GameOfLife = () => {
     randomRect: randomRectTool
   }), []);
 
+  // Cursor tracking for tool status (throttled via RAF)
+  const [cursorCell, setCursorCell] = useState(null);
+  const latestCursorRef = useRef(null);
+  const rafCursorRef = useRef(null);
+  const scheduleCursorUpdate = (cell) => {
+    latestCursorRef.current = cell;
+    if (rafCursorRef.current) return;
+    rafCursorRef.current = requestAnimationFrame(() => {
+      setCursorCell(latestCursorRef.current);
+      rafCursorRef.current = null;
+    });
+  };
+
   // local state: keeps a small flag so initial resize happens after draw is defined
   const [ready, setReady] = useState(false);
 
@@ -282,8 +295,9 @@ const GameOfLife = () => {
 
     const tool = toolMap[selectedTool];
     if (!tool) return;
-    const pt = eventToCell(e);
+  const pt = eventToCell(e);
     if (!pt) return;
+  scheduleCursorUpdate(pt);
     if (typeof tool.onMouseDown === 'function') tool.onMouseDown(toolStateRef.current, pt.x, pt.y);
     // allow tools to react to initial point; pass setCellAlive in case they want it
     if (typeof tool.onMouseMove === 'function') tool.onMouseMove(toolStateRef.current, pt.x, pt.y, setCellAlive);
@@ -312,6 +326,7 @@ const GameOfLife = () => {
     if (!(e.buttons & 1) && !toolStateRef.current.last && !toolStateRef.current.start) return;
     const pt = eventToCell(e);
     if (!pt) return;
+    scheduleCursorUpdate(pt);
     if (typeof tool.onMouseMove === 'function') tool.onMouseMove(toolStateRef.current, pt.x, pt.y, setCellAlive);
     drawWithOverlay();
   };
@@ -473,6 +488,8 @@ const GameOfLife = () => {
         setSelectedShape={setSelectedShape}
         drawWithOverlay={drawWithOverlay}
         steadyInfo={steadyInfo}
+        toolStateRef={toolStateRef}
+        cursorCell={cursorCell}
       />
 
       <canvas
