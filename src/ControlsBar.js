@@ -73,22 +73,7 @@ const ControlsBar = ({
       </button>
       <button onClick={() => { step(); draw(); }}>Step</button>
       <button onClick={() => { clear(); draw(); snapshotsRef.current = []; setSteadyInfo({ steady: false, period: 0, popChanging: false }); }}>Clear</button>
-      <button onClick={() => {
-        // Place a centered blinker
-        const canvas = canvasRef.current;
-        if (!canvas || !offsetRef?.current) return;
-        const rect = canvas.getBoundingClientRect();
-        const centerCssX = rect.width / 2;
-        const centerCssY = rect.height / 2;
-        const cx = Math.floor(offsetRef.current.x + (centerCssX - centerCssX) / cellSize);
-        const cy = Math.floor(offsetRef.current.y + (centerCssY - centerCssY) / cellSize);
-        const coords = [ [-1,0],[0,0],[1,0] ];
-        coords.forEach(([dx,dy]) => setCellAlive(cx + dx, cy + dy, true));
-        try { popHistoryRef.current.push(getLiveCells().size); if (popHistoryRef.current.length > 1000) popHistoryRef.current.shift(); } catch (err) {}
-        snapshotsRef.current = [];
-        setSteadyInfo({ steady: false, period: 0, popChanging: false });
-        drawWithOverlay();
-      }}>Place Blinker</button>
+      
       <button style={{ marginLeft: 8 }} onClick={() => setShowChart(true)}>Show Population Chart</button>
       <span style={{ marginLeft: 8 }}>Live Cells: {getLiveCells().size}</span>
       <label style={{ marginLeft: 12, fontSize: 12 }}>N:
