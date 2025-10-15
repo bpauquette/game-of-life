@@ -29,7 +29,8 @@ export function useChunkedGameState() {
     const map = new Map();
     chunksRef.current.forEach((cellSet, key) => {
       const [cx, cy] = key.split(',').map(Number);
-      cellSet.forEach(([lx, ly]) => {
+      cellSet.forEach((cellKey) => {
+        const [lx, ly] = cellKey.split(',').map(Number);
         const x = cx * CHUNK_SIZE + lx;
         const y = cy * CHUNK_SIZE + ly;
         map.set(`${x},${y}`, true);
@@ -53,14 +54,9 @@ export function useChunkedGameState() {
     }
 
     if (alive) {
-      cellSet.add([lx, ly]);
+      cellSet.add(`${lx},${ly}`);
     } else if (cellSet) {
-      for (let item of cellSet) {
-        if (item[0] === lx && item[1] === ly) {
-          cellSet.delete(item);
-          break;
-        }
-      }
+      cellSet.delete(`${lx},${ly}`);
       if (cellSet.size === 0) newChunks.delete(key);
     }
 
@@ -100,7 +96,7 @@ export function useChunkedGameState() {
             cellSet = new Set();
             newChunks.set(key, cellSet);
           }
-          cellSet.add([x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE]);
+          cellSet.add(`${x - cx * CHUNK_SIZE},${y - cy * CHUNK_SIZE}`);
         }
       }
     }
@@ -124,7 +120,7 @@ export function useChunkedGameState() {
         cellSet = new Set();
         newChunks.set(chunkKeyStr, cellSet);
       }
-      cellSet.add([x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE]);
+      cellSet.add(`${x - cx * CHUNK_SIZE},${y - cy * CHUNK_SIZE}`);
     });
     chunksRef.current = newChunks;
     setChunks(newChunks); 
