@@ -15,7 +15,6 @@ import './GameOfLife.css';
 const GameOfLife = () => {
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
-  const panAnimRef = useRef(null);
   
 
   const {
@@ -60,8 +59,16 @@ const GameOfLife = () => {
 
   // Draw function (keeps your original rendering)
   const draw = useCallback(() => {
-  if (!canvasRef.current || !offsetRef?.current) return;
+  if (!canvasRef.current || !offsetRef) return;
   const ctx = canvasRef.current.getContext('2d');
+  const rect = canvasRef.current.getBoundingClientRect();
+  const centerX = rect.width / 2;
+  const centerY = rect.height / 2;
+  // computedOffset matches previous semantics (pixel offsets in logical units)
+  const computedOffset = {
+    x: offsetRef.current.x - centerX,
+    y: offsetRef.current.y - centerY
+  };
 
   // Use the current color scheme
   ctx.fillStyle = colorScheme.background;
@@ -72,8 +79,8 @@ const GameOfLife = () => {
     const [x, y] = key.split(',').map(Number);
     ctx.fillStyle = colorScheme.getCellColor(x, y);
     ctx.fillRect(
-      x * cellSize - offsetRef.current.x,
-      y * cellSize - offsetRef.current.y,
+      x * cellSize - computedOffset.x,
+      y * cellSize - computedOffset.y,
       cellSize,
       cellSize
     );
@@ -86,9 +93,16 @@ const GameOfLife = () => {
     try {
       const ctx = canvasRef.current?.getContext('2d');
       if (ctx && selectedTool && offsetRef?.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const computedOffset = {
+          x: offsetRef.current.x - centerX,
+          y: offsetRef.current.y - centerY
+        };
         const tool = toolMap[selectedTool];
         if (tool && typeof tool.drawOverlay === 'function') {
-          tool.drawOverlay(ctx, toolStateRef.current, cellSize, offsetRef.current);
+          tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset);
         }
       }
     } catch (err) {
@@ -164,9 +178,11 @@ const GameOfLife = () => {
   const handleCanvasClick = (e) => {
     if (!canvasRef.current || !offsetRef?.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
-    // rect is in CSS pixels; we've set transform to map logical pixels -> CSS pixels, so we can use CSS coords and divide by cellSize
-    const x = Math.floor((e.clientX - rect.left) / cellSize + offsetRef.current.x / cellSize);
-    const y = Math.floor((e.clientY - rect.top) / cellSize + offsetRef.current.y / cellSize);
+    // compute cell relative to canvas center (center is world origin)
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const x = Math.floor(offsetRef.current.x + (e.clientX - rect.left - centerX) / cellSize);
+    const y = Math.floor(offsetRef.current.y + (e.clientY - rect.top - centerY) / cellSize);
 
   // Ignore direct click-toggle behavior for drawing tools, but allow when the Shapes tool is active
   // so users can place selected shapes on left-click after choosing one with the right-click menu.
@@ -185,8 +201,10 @@ const GameOfLife = () => {
   const eventToCell = (e) => {
     if (!canvasRef.current || !offsetRef?.current) return null;
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / cellSize + offsetRef.current.x / cellSize);
-    const y = Math.floor((e.clientY - rect.top) / cellSize + offsetRef.current.y / cellSize);
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const x = Math.floor(offsetRef.current.x + (e.clientX - rect.left - centerX) / cellSize);
+    const y = Math.floor(offsetRef.current.y + (e.clientY - rect.top - centerY) / cellSize);
     return { x, y };
   };
 
@@ -224,68 +242,36 @@ const GameOfLife = () => {
     drawWithOverlay();
   };
 
-  // Arrow key panning
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (!offsetRef?.current) return;
-      const panAmount = 20; // pixels in logical space
-      // use smooth pan for arrow keys as well
-      if (e.key === "ArrowUp") panBy(0, -panAmount);
-      if (e.key === "ArrowDown") panBy(0, panAmount);
-      if (e.key === "ArrowLeft") panBy(-panAmount, 0);
-      if (e.key === "ArrowRight") panBy(panAmount, 0);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-    // panBy is a stable callback defined in this component; avoid forcing it into the deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offsetRef, drawWithOverlay]);
+  // Panning support removed to simplify zoom behavior per user request.
 
   // Mouse wheel: adjust cell size (zoom)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // handleWheel will zoom centered on the mouse cursor
+    // handleWheel will zoom centered on the canvas center (simpler UX)
     const handleWheel = (e) => {
-      // Compute mouse position relative to canvas (CSS pixels / logical units)
       const rect = canvas.getBoundingClientRect();
-      const sx = e.clientX - rect.left;
-      const sy = e.clientY - rect.top;
-
-      // Update cellSize multiplicatively and adjust offset so the point under cursor remains fixed
+      // Use canvas center rather than cursor position (center is world origin)
+      // Update cellSize multiplicatively but do NOT change offsetRef (center remains world origin)
       setCellSize(prev => {
         const dpr = window.devicePixelRatio || 1;
         const minCellSize = 1 / dpr; // one device pixel in logical units
         const maxCellSize = 200;
         const zoomFactor = 1.12; // per wheel tick
         const factor = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
-        let newSize = prev * factor;
-        // clamp raw value
-        newSize = Math.max(minCellSize, Math.min(maxCellSize, newSize));
 
-        // directional snapping to device-pixel multiples so we can step up/down
-        const rawPixels = newSize * dpr;
-        let snappedPixels;
-        if (rawPixels === Math.round(rawPixels)) {
-          snappedPixels = rawPixels;
-        } else if (newSize > prev) {
-          // zooming in: ceil to next device pixel
-          snappedPixels = Math.ceil(rawPixels);
-        } else {
-          // zooming out: floor to previous device pixel
-          snappedPixels = Math.floor(rawPixels);
-        }
-        // ensure at least 1 device pixel
-        snappedPixels = Math.max(1, Math.min(Math.round(maxCellSize * dpr), snappedPixels));
-        const snappedSize = Math.max(minCellSize, snappedPixels / dpr);
-
-        if (snappedSize === prev) return prev;
-        const scale = snappedSize / prev;
-        // offsetRef stores pixel offsets in logical units
-        offsetRef.current.x = (sx + offsetRef.current.x) * scale - sx;
-        offsetRef.current.y = (sy + offsetRef.current.y) * scale - sy;
-        return snappedSize;
+        // device pixel snapping
+        const prevDevice = prev * dpr;
+        let newDevice = prevDevice * factor;
+        const maxDevice = maxCellSize * dpr;
+        newDevice = Math.max(1, Math.min(maxDevice, newDevice));
+        let snappedDevice = Math.round(newDevice);
+        if (newDevice > prevDevice) snappedDevice = Math.ceil(newDevice);
+        else snappedDevice = Math.floor(newDevice);
+        snappedDevice = Math.max(1, Math.min(Math.round(maxDevice), snappedDevice));
+        const snappedSize = Math.max(minCellSize, snappedDevice / dpr);
+        return snappedSize === prev ? prev : snappedSize;
       });
 
       // prevent page scroll while zooming
@@ -332,49 +318,10 @@ const GameOfLife = () => {
   // Initial draw
   useEffect(() => { drawWithOverlay(); }, [drawWithOverlay]);
 
-  // Smooth panning helper: animate offsetRef from current to target change
-  const panBy = useCallback((dx, dy, duration = 220) => {
-    if (!offsetRef?.current) return;
-    const startX = offsetRef.current.x;
-    const startY = offsetRef.current.y;
-    const targetX = startX + dx;
-    const targetY = startY + dy;
-    const startTime = performance.now();
-
-    if (panAnimRef.current) cancelAnimationFrame(panAnimRef.current);
-
-    const step = (ts) => {
-      const t = Math.min(1, (ts - startTime) / duration);
-      // easeOutCubic
-      const ease = 1 - Math.pow(1 - t, 3);
-      offsetRef.current.x = startX + (targetX - startX) * ease;
-      offsetRef.current.y = startY + (targetY - startY) * ease;
-      drawWithOverlay();
-      if (t < 1) {
-        panAnimRef.current = requestAnimationFrame(step);
-      } else {
-        panAnimRef.current = null;
-      }
-    };
-    panAnimRef.current = requestAnimationFrame(step);
-  }, [offsetRef, drawWithOverlay]);
+  // Panning helper removed.
 
   return (
     <div className="canvas-container">
-      {/* Edge pan buttons: top center, left middle, right middle, bottom center */}
-      {/* Use consistent 12px edge offsets so all pan buttons align with the controls */}
-      <div style={{ position: 'absolute', left: '50%', top: 12, transform: 'translateX(-50%)', zIndex: 20 }}>
-        <button onClick={() => panBy(0, -80)} aria-label="Pan up">↑</button>
-      </div>
-      <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
-        <button onClick={() => panBy(-80, 0)} aria-label="Pan left">←</button>
-      </div>
-      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
-        <button onClick={() => panBy(80, 0)} aria-label="Pan right">→</button>
-      </div>
-      <div style={{ position: 'absolute', left: '50%', bottom: 12, transform: 'translateX(-50%)', zIndex: 20 }}>
-        <button onClick={() => panBy(0, 80)} aria-label="Pan down">↓</button>
-      </div>
       <div className="controls">
         <label style={{ marginRight: 8 }}>
           Tool: <select value={selectedTool} onChange={(e) => setSelectedTool(e.target.value)} style={{ marginLeft: 8, marginRight: 12 }}>
@@ -406,6 +353,22 @@ const GameOfLife = () => {
         </button>
   <button onClick={() => { step(); draw(); }}>Step</button>
         <button onClick={() => { clear(); draw(); }}>Clear</button>
+        <button onClick={() => {
+          // Place a centered blinker (3-cell oscillator, period 2) for testing
+          const canvas = canvasRef.current;
+          if (!canvas || !offsetRef?.current) return;
+          const rect = canvas.getBoundingClientRect();
+          const centerCssX = rect.width / 2;
+          const centerCssY = rect.height / 2;
+          // compute center cell with center-origin semantics
+          const cx = Math.floor(offsetRef.current.x + (centerCssX - centerCssX) / cellSize);
+          const cy = Math.floor(offsetRef.current.y + (centerCssY - centerCssY) / cellSize);
+          const coords = [
+            [-1, 0], [0, 0], [1, 0]
+          ];
+          coords.forEach(([dx,dy]) => setCellAlive(cx + dx, cy + dy, true));
+          drawWithOverlay();
+        }}>Place Blinker</button>
         <span style={{ marginLeft: 8 }}>Live Cells: {getLiveCells().size}</span>
       </div>
 
