@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import OptionsPanel from './OptionsPanel';
 
 const ControlsBar = ({
   selectedTool,
@@ -34,6 +35,45 @@ const ControlsBar = ({
   drawWithOverlay,
   steadyInfo
 }) => {
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [wasRunningBeforeOptions, setWasRunningBeforeOptions] = useState(false);
+
+  const OptionsToggle = () => {
+    const open = () => {
+      setWasRunningBeforeOptions(isRunning);
+      // pause simulation while options modal is open
+      if (isRunning) setIsRunning(false);
+      setOptionsOpen(true);
+    };
+    const handleOk = () => {
+      setOptionsOpen(false);
+      // restore running state if it was running before
+      if (wasRunningBeforeOptions) setIsRunning(true);
+    };
+    const handleCancel = () => {
+      setOptionsOpen(false);
+      if (wasRunningBeforeOptions) setIsRunning(true);
+    };
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 8 }}>
+        <button onClick={open} title="Show options (color scheme and steady-state settings)">Options</button>
+        {optionsOpen && (
+          <OptionsPanel
+            colorSchemes={colorSchemes}
+            colorSchemeKey={colorSchemeKey}
+            setColorSchemeKey={setColorSchemeKey}
+            popWindowSize={popWindowSize}
+            setPopWindowSize={setPopWindowSize}
+            popTolerance={popTolerance}
+            setPopTolerance={setPopTolerance}
+            onOk={handleOk}
+            onCancel={handleCancel}
+          />
+        )}
+      </span>
+    );
+  };
+
   return (
     <div className="controls">
       <label style={{ marginRight: 8 }}>
@@ -47,17 +87,10 @@ const ControlsBar = ({
           <option value='shapes'>Shapes</option>
         </select>
       </label>
-      <label htmlFor="color-scheme-select" style={{ marginRight: 8 }}>Color Scheme:</label>
-      <select
-        id="color-scheme-select"
-        value={colorSchemeKey}
-        onChange={(e) => setColorSchemeKey(e.target.value)}
-        style={{ marginRight: 8 }}
-      >
-        {Object.entries(colorSchemes).map(([key, scheme]) => (
-          <option key={key} value={key}>{scheme.name}</option>
-        ))}
-      </select>
+      {/* Options button toggles a small panel containing color scheme and steady-state options */}
+      {/** Options toggle handled locally so the ControlsBar stays generic */}
+      
+      
 
       <button
         onClick={() => {
@@ -74,28 +107,10 @@ const ControlsBar = ({
       <button onClick={() => { step(); draw(); }}>Step</button>
       <button onClick={() => { clear(); draw(); snapshotsRef.current = []; setSteadyInfo({ steady: false, period: 0, popChanging: false }); }}>Clear</button>
       
-      <button style={{ marginLeft: 8 }} onClick={() => setShowChart(true)}>Show Population Chart</button>
+  <button style={{ marginLeft: 8 }} onClick={() => setShowChart(true)}>Show Population Chart</button>
+  <OptionsToggle />
       <span style={{ marginLeft: 8 }}>Live Cells: {getLiveCells().size}</span>
-      <label style={{ marginLeft: 12, fontSize: 12 }}>N:
-        <input
-          type="number"
-          min={1}
-          max={500}
-          value={popWindowSize}
-          onChange={(e) => setPopWindowSize(Math.max(1, Number(e.target.value) || 1))}
-          style={{ width: 60, marginLeft: 6 }}
-        />
-      </label>
-      <label style={{ marginLeft: 8, fontSize: 12 }}>X:
-        <input
-          type="number"
-          min={0}
-          max={1000}
-          value={popTolerance}
-          onChange={(e) => setPopTolerance(Math.max(0, Number(e.target.value) || 0))}
-          style={{ width: 60, marginLeft: 6 }}
-        />
-      </label>
+      {/* OptionsPanel is rendered via the OptionsToggle component below */}
       <span title={steadyInfo.steady ? `Steady state (period ${steadyInfo.period})` : 'Running'} style={{ marginLeft: 12, display: 'inline-flex', alignItems: 'center' }}>
         <span style={{ fontSize: 18, opacity: (isRunning && steadyInfo.popChanging) ? 1 : 0.25 }}>{(isRunning && steadyInfo.popChanging) ? '💡' : '💡'}</span>
         <span style={{ marginLeft: 6, fontSize: 12, opacity: 0.8 }}>{steadyInfo.steady ? `Steady (p=${steadyInfo.period})` : (isRunning ? 'Running' : 'Idle')}</span>
