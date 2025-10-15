@@ -35,6 +35,11 @@ const GameOfLife = () => {
   // population history (counts per generation)
   const [showChart, setShowChart] = React.useState(false);
   const popHistoryRef = React.useRef([]);
+  // steady state detection
+  const snapshotsRef = React.useRef([]);
+  const [steadyInfo, setSteadyInfo] = React.useState({ steady: false, period: 0 });
+  const MAX_SNAPSHOTS = 60;
+  const steadyDetectedRef = React.useRef(false);
 
   // Tool selection (e.g. freehand draw)
   // default to freehand draw so UI doesn't show an empty "None" selection
@@ -180,8 +185,51 @@ const GameOfLife = () => {
         // record population after stepping
         try {
           popHistoryRef.current.push(getLiveCells().size);
-          // clamp history length to something reasonable
           if (popHistoryRef.current.length > 1000) popHistoryRef.current.shift();
+        } catch (err) {}
+        // record snapshot and detect steady state
+        try {
+          const liveMap = getLiveCells();
+          const keys = Array.from(liveMap.keys()).sort();
+          const snap = keys.join(';');
+          const snaps = snapshotsRef.current;
+          // search for a previous identical snapshot from the end
+          let matchIdx = -1;
+          for (let i = snaps.length - 1; i >= 0; i--) {
+            if (snaps[i] === snap) {
+              matchIdx = snaps.length - 1 - i; // distance
+              break;
+            }
+          }
+          snaps.push(snap);
+          if (snaps.length > MAX_SNAPSHOTS) snaps.shift();
+          snapshotsRef.current = snaps;
+
+          // population-based steady detection: same population count as previous generation
+          const ph = popHistoryRef.current;
+          const popSteady = ph.length >= 2 && ph[ph.length - 1] === ph[ph.length - 2];
+
+          let detected = false;
+          let detectedPeriod = 0;
+          if (popSteady) {
+            detected = true;
+            detectedPeriod = 1;
+          } else if (matchIdx === 0) {
+            detected = true;
+            detectedPeriod = 1;
+          } else if (matchIdx > 0) {
+            detected = true;
+            detectedPeriod = matchIdx + 1;
+          }
+
+          setSteadyInfo(detected ? { steady: true, period: detectedPeriod } : { steady: false, period: 0 });
+
+          // stop the simulation once steady is first detected
+          if (detected && !steadyDetectedRef.current) {
+            steadyDetectedRef.current = true;
+            setIsRunning(false);
+          }
+          if (!detected) steadyDetectedRef.current = false;
         } catch (err) {}
         drawWithOverlay();
         animationRef.current = requestAnimationFrame(loop);
@@ -431,7 +479,7 @@ const GameOfLife = () => {
           {isRunning ? 'Stop' : 'Start'}
         </button>
   <button onClick={() => { step(); draw(); }}>Step</button>
-        <button onClick={() => { clear(); draw(); }}>Clear</button>
+          <button onClick={() => { clear(); draw(); snapshotsRef.current = []; setSteadyInfo({ steady: false, period: 0 }); }}>Clear</button>
         <button onClick={() => {
           // Place a centered blinker (3-cell oscillator, period 2) for testing
           const canvas = canvasRef.current;
@@ -446,10 +494,19 @@ const GameOfLife = () => {
             [-1, 0], [0, 0], [1, 0]
           ];
           coords.forEach(([dx,dy]) => setCellAlive(cx + dx, cy + dy, true));
+          // update history/snapshots after placing
+          try { popHistoryRef.current.push(getLiveCells().size); if (popHistoryRef.current.length > 1000) popHistoryRef.current.shift(); } catch (err) {}
+          snapshotsRef.current = [];
+          setSteadyInfo({ steady: false, period: 0 });
           drawWithOverlay();
         }}>Place Blinker</button>
         <button style={{ marginLeft: 8 }} onClick={() => setShowChart(true)}>Show Population Chart</button>
         <span style={{ marginLeft: 8 }}>Live Cells: {getLiveCells().size}</span>
+        <span title={steadyInfo.steady ? `Steady state (period ${steadyInfo.period})` : 'Running'} style={{ marginLeft: 12, display: 'inline-flex', alignItems: 'center' }}>
+          {/* bulb: lit when not steady, dim when steady */}
+          <span style={{ fontSize: 18, opacity: steadyInfo.steady ? 0.25 : 1 }}>{steadyInfo.steady ? '💡' : '💡'}</span>
+          <span style={{ marginLeft: 6, fontSize: 12, opacity: 0.8 }}>{steadyInfo.steady ? `Steady (p=${steadyInfo.period})` : 'Running'}</span>
+        </span>
       </div>
 
       <canvas
