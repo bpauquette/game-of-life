@@ -10,6 +10,7 @@ import { circleTool } from './tools/circleTool';
 import { ovalTool } from './tools/ovalTool';
 import { randomRectTool } from './tools/randomRectTool';
 import './GameOfLife.css';
+import PopulationChart from './PopulationChart';
 
 
 const GameOfLife = () => {
@@ -30,6 +31,10 @@ const GameOfLife = () => {
     isRunning,
     setIsRunning
   } = useChunkedGameState();
+
+  // population history (counts per generation)
+  const [showChart, setShowChart] = React.useState(false);
+  const popHistoryRef = React.useRef([]);
 
   // Tool selection (e.g. freehand draw)
   // default to freehand draw so UI doesn't show an empty "None" selection
@@ -172,6 +177,12 @@ const GameOfLife = () => {
     const loop = () => {
       if (isRunning) {
         step();
+        // record population after stepping
+        try {
+          popHistoryRef.current.push(getLiveCells().size);
+          // clamp history length to something reasonable
+          if (popHistoryRef.current.length > 1000) popHistoryRef.current.shift();
+        } catch (err) {}
         drawWithOverlay();
         animationRef.current = requestAnimationFrame(loop);
       }
@@ -437,6 +448,7 @@ const GameOfLife = () => {
           coords.forEach(([dx,dy]) => setCellAlive(cx + dx, cy + dy, true));
           drawWithOverlay();
         }}>Place Blinker</button>
+        <button style={{ marginLeft: 8 }} onClick={() => setShowChart(true)}>Show Population Chart</button>
         <span style={{ marginLeft: 8 }}>Live Cells: {getLiveCells().size}</span>
       </div>
 
@@ -474,6 +486,9 @@ const GameOfLife = () => {
             </div>
           ))}
         </div>
+      )}
+      {showChart && (
+        <PopulationChart history={popHistoryRef.current.slice()} onClose={() => setShowChart(false)} />
       )}
     </div>
   );
