@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import OptionsPanel from './OptionsPanel';
+import ToolStatus from './ToolStatus';
 
 const ControlsBar = ({
   selectedTool,
@@ -112,19 +113,8 @@ const ControlsBar = ({
   <button style={{ marginLeft: 8 }} onClick={() => setShowChart(true)}>Show Population Chart</button>
   <OptionsToggle />
       <span style={{ marginLeft: 8 }}>Live Cells: {getLiveCells().size}</span>
-      {/* Tool status area */}
-      <div style={{ marginLeft: 12, fontFamily: 'monospace', fontSize: 12 }}>
-        {selectedTool === 'line' ? (() => {
-          const ts = toolStateRef?.current || {};
-          const start = ts.start || ts.lastStart || null;
-          const end = ts.last || cursorCell || null;
-          const fmt = (p) => p ? `${p.x},${p.y}` : '—';
-          const dx = (start && end) ? (end.x - start.x) : null;
-          const dy = (start && end) ? (end.y - start.y) : null;
-          return (<span>Start: {fmt(start)}  End: {fmt(end)}  Δ: {dx == null ? '—' : `${dx},${dy}`}</span>);
-        })() : (
-          <span>Cursor: {cursorCell ? `${cursorCell.x},${cursorCell.y}` : '—'}</span>
-        )}
+      <div style={{ marginLeft: 12 }}>
+        <ToolStatus selectedTool={selectedTool} toolStateRef={toolStateRef} cursorCell={cursorCell} />
       </div>
       {/* OptionsPanel is rendered via the OptionsToggle component below */}
       <span title={steadyInfo.steady ? `Steady state (period ${steadyInfo.period})` : 'Running'} style={{ marginLeft: 12, display: 'inline-flex', alignItems: 'center' }}>
