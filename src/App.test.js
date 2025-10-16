@@ -20,10 +20,8 @@ beforeAll(() => {
   };
 });
 
-test('renders the app controls', () => {
+test('renders the app controls (renamed)', () => {
   render(<App />);
-  // the heading was removed; verify the app renders by checking for a control label present in the UI
   const liveCells = screen.getByText(/Live Cells/i);
   expect(liveCells).toBeInTheDocument();
 });
-
