@@ -14,6 +14,8 @@ import './GameOfLife.css';
 import PopulationChart from './PopulationChart';
 import ControlsBar from './ControlsBar';
 import { computeComputedOffset, eventToCellFromCanvas, drawLiveCells } from './utils/canvasUtils';
+import Tooltip from '@mui/material/Tooltip';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 
 
 const GameOfLife = () => {
@@ -533,6 +535,12 @@ const GameOfLife = () => {
       {showChart && (
         <PopulationChart history={popHistoryRef.current.slice()} onClose={() => setShowChart(false)} />
       )}
+      {/* Steady-state indicator (top-right overlay) - separate from ControlsBar to avoid jitter */}
+      <div className="steady-indicator" title={steadyInfo.steady ? `Steady (period ${steadyInfo.period})` : 'Not steady'}>
+        <Tooltip title={steadyInfo.steady ? `Steady — period ${steadyInfo.period}` : 'Not steady'}>
+          <LightbulbIcon style={{ color: steadyInfo.steady ? '#FFC107' : 'rgba(255,255,255,0.35)' }} />
+        </Tooltip>
+      </div>
     </div>
   );
 };
