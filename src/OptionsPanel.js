@@ -1,4 +1,15 @@
 import React, { useState } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import Stack from '@mui/material/Stack';
+import InputAdornment from '@mui/material/InputAdornment';
+import Tooltip from '@mui/material/Tooltip';
+import InfoIcon from '@mui/icons-material/Info';
 
 const OptionsPanel = ({
   colorSchemes,
@@ -27,55 +38,73 @@ const OptionsPanel = ({
   };
 
   return (
-    <div className="options-modal-overlay" style={{ position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-      <div className="options-modal" role="dialog" aria-modal="true" style={{ background: 'var(--panel-bg, #111)', padding: 16, borderRadius: 8, minWidth: 420, color: 'var(--text, #fff)' }}>
-        <h3 style={{ marginTop: 0, marginBottom: 8 }}>Options</h3>
-        <div style={{ marginBottom: 12 }}>
-          <label htmlFor="color-scheme-select" style={{ marginRight: 8 }}>Color Scheme:</label>
-          <select
-            id="color-scheme-select"
+    <Dialog open onClose={handleCancel} maxWidth="sm" fullWidth>
+      <DialogTitle>Options</DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <TextField
+            select
+            label="Color scheme"
             value={localScheme}
             onChange={(e) => setLocalScheme(e.target.value)}
-            title="Choose a rendering color scheme used to draw cells and the background"
+            helperText="Choose a rendering color scheme"
+            size="small"
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <Tooltip title="Choose the renderer color scheme used for cells and grid.">
+                    <InfoIcon fontSize="small" />
+                  </Tooltip>
+                </InputAdornment>
+              )
+            }}
           >
             {Object.entries(colorSchemes).map(([key, scheme]) => (
-              <option key={key} value={key}>{scheme.name}</option>
+              <MenuItem key={key} value={key}>{scheme.name}</MenuItem>
             ))}
-          </select>
-        </div>
+          </TextField>
 
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-          <label title="Number of recent generations to consider when deciding if the population is stable">
-            Steady window (generations):
-            <input
+          <Stack direction="row" spacing={2}>
+            <TextField
+              label="Steady window (generations)"
               type="number"
-              min={1}
-              max={500}
+              size="small"
               value={localWindow}
               onChange={(e) => setLocalWindow(Math.max(1, Number(e.target.value) || 1))}
-              style={{ width: 80, marginLeft: 8 }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Tooltip title="Number of past generations used to evaluate population stability.">
+                      <InfoIcon fontSize="small" />
+                    </Tooltip>
+                  </InputAdornment>
+                )
+              }}
             />
-          </label>
-
-          <label title="Maximum allowed change in population over the steady window to consider the world stable">
-            Population tolerance:
-            <input
+            <TextField
+              label="Population tolerance"
               type="number"
-              min={0}
-              max={1000}
+              size="small"
               value={localTolerance}
               onChange={(e) => setLocalTolerance(Math.max(0, Number(e.target.value) || 0))}
-              style={{ width: 80, marginLeft: 8 }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Tooltip title="Allowed change in population count over the window before we consider it stable.">
+                      <InfoIcon fontSize="small" />
+                    </Tooltip>
+                  </InputAdornment>
+                )
+              }}
             />
-          </label>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={handleCancel}>Cancel</button>
-          <button onClick={handleOk}>OK</button>
-        </div>
-      </div>
-    </div>
+          </Stack>
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleCancel}>Cancel</Button>
+        <Button onClick={handleOk} variant="contained">OK</Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
