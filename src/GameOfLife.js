@@ -232,7 +232,10 @@ const GameOfLife = () => {
           // Auto-stop when the population is considered stable by the window/tolerance
           // Keep snapshot/oscillation detection for the UI indicator, but do not stop on those alone.
           if (popSteady) {
-            if (!steadyDetectedRef.current) {
+            // Only auto-stop when there is at least one live cell. This avoids
+            // immediately stopping on empty worlds (which are trivially 'stable')
+            // and gives the user control to run/stop explicitly.
+            if (!steadyDetectedRef.current && liveMap.size > 0) {
               steadyDetectedRef.current = true;
               setIsRunning(false);
             }
