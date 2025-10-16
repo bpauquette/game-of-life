@@ -535,10 +535,10 @@ const GameOfLife = () => {
       {showChart && (
         <PopulationChart history={popHistoryRef.current.slice()} onClose={() => setShowChart(false)} />
       )}
-      {/* Steady-state indicator (top-right overlay) - separate from ControlsBar to avoid jitter */}
-      <div className="steady-indicator" title={steadyInfo.steady ? `Steady (period ${steadyInfo.period})` : 'Not steady'}>
-        <Tooltip title={steadyInfo.steady ? `Steady — period ${steadyInfo.period}` : 'Not steady'}>
-          <LightbulbIcon style={{ color: steadyInfo.steady ? '#FFC107' : 'rgba(255,255,255,0.35)' }} />
+      {/* Run-state indicator (top-right overlay) - lights while running, dark when stopped */}
+      <div className="steady-indicator" title={isRunning ? 'Running' : 'Stopped'}>
+        <Tooltip title={isRunning ? 'Running' : 'Stopped'}>
+          <LightbulbIcon style={{ color: isRunning ? '#FFC107' : 'rgba(255,255,255,0.35)' }} />
         </Tooltip>
       </div>
     </div>
