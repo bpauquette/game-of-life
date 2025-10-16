@@ -325,13 +325,22 @@ const GameOfLife = () => {
       return;
     }
 
-    const tool = toolMap[selectedTool];
-    if (!tool) return;
-    // Only draw while primary button is pressed or toolState has last/start
-    if (!(e.buttons & 1) && !toolStateRef.current.last && !toolStateRef.current.start) return;
+    // Always update cursor position (throttled via RAF) so the ToolStatus can
+    // display the mouse coordinates even when no tool is selected.
     const pt = eventToCell(e);
     if (!pt) return;
     scheduleCursorUpdate(pt);
+
+    const tool = toolMap[selectedTool];
+    if (!tool) {
+      // No active tool — nothing more to do
+      return;
+    }
+
+    // Only let tools modify state/draw while primary button is pressed or
+    // when the tool already has an active start/last state.
+    if (!(e.buttons & 1) && !toolStateRef.current.last && !toolStateRef.current.start) return;
+
     if (typeof tool.onMouseMove === 'function') tool.onMouseMove(toolStateRef.current, pt.x, pt.y, setCellAlive);
     drawWithOverlay();
   };
