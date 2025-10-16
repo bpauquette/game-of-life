@@ -36,4 +36,5 @@ export function drawLiveCells(ctx, liveMap, computedOffset, cellSize, colorSchem
   });
 }
 
-export default { computeComputedOffset, eventToCellFromCanvas, drawLiveCells };
+// No default export: prefer named exports used across the codebase to avoid
+// anonymous default export lint warnings.

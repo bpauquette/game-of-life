@@ -14,6 +14,10 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import BrushIcon from '@mui/icons-material/Brush';
 import LineAxisIcon from '@mui/icons-material/ShowChart';
+import CropSquareIcon from '@mui/icons-material/CropSquare';
+import CircleIcon from '@mui/icons-material/Circle';
+import WidgetsIcon from '@mui/icons-material/Widgets';
+import CasinoIcon from '@mui/icons-material/Casino';
 
 // Minimal, correct ControlsBar to replace corrupted file. Keep layout simple to avoid JSX nesting issues.
 const ControlsBar = ({
@@ -76,11 +80,11 @@ const ControlsBar = ({
         >
           <ToggleButton value="draw" aria-label="draw"><Tooltip title="Freehand draw"><BrushIcon fontSize="small"/></Tooltip></ToggleButton>
           <ToggleButton value="line" aria-label="line"><Tooltip title="Line tool"><LineAxisIcon fontSize="small"/></Tooltip></ToggleButton>
-          <ToggleButton value="rect" aria-label="rect"><Tooltip title="Rectangle tool">rect</Tooltip></ToggleButton>
-          <ToggleButton value="circle" aria-label="circle"><Tooltip title="Circle tool">circle</Tooltip></ToggleButton>
-          <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool">oval</Tooltip></ToggleButton>
-          <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect">rnd</Tooltip></ToggleButton>
-          <ToggleButton value="shapes" aria-label="shapes"><Tooltip title="Shapes menu">shp</Tooltip></ToggleButton>
+          <ToggleButton value="rect" aria-label="rect"><Tooltip title="Rectangle tool"><CropSquareIcon fontSize="small"/></Tooltip></ToggleButton>
+          <ToggleButton value="circle" aria-label="circle"><Tooltip title="Circle tool"><CircleIcon fontSize="small"/></Tooltip></ToggleButton>
+          <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
+          <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect"><CasinoIcon fontSize="small"/></Tooltip></ToggleButton>
+          <ToggleButton value="shapes" aria-label="shapes"><Tooltip title="Shapes menu"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
         </ToggleButtonGroup>
 
         <Button size="small" onClick={() => { step(); draw(); }}>Step</Button>
