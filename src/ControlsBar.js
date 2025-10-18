@@ -18,6 +18,7 @@ import CropSquareIcon from '@mui/icons-material/CropSquare';
 import CircleIcon from '@mui/icons-material/Circle';
 import WidgetsIcon from '@mui/icons-material/Widgets';
 import CasinoIcon from '@mui/icons-material/Casino';
+// ShapePaletteDialog is rendered by the parent (GameOfLife)
 
 // Minimal, correct ControlsBar to replace corrupted file. Keep layout simple to avoid JSX nesting issues.
 const ControlsBar = ({
@@ -33,16 +34,13 @@ const ControlsBar = ({
   setShowChart,
   getLiveCells,
   shapes,
-  shapesMenuOpen,
-  setShapesMenuOpen,
-  shapesMenuPos,
-  setShapesMenuPos,
-  shapesMenuRef,
-  setSelectedShape,
+  selectShape,
   drawWithOverlay,
   steadyInfo,
   toolStateRef,
   cursorCell,
+  selectedShape,
+  openPalette,
   // Options-related props (must be forwarded to OptionsPanel)
   colorSchemes,
   colorSchemeKey,
@@ -53,6 +51,7 @@ const ControlsBar = ({
   setPopTolerance
 }) => {
   const [optionsOpen, setOptionsOpen] = useState(false);
+  // paletteOpen is now controlled by parent (GameOfLife)
   const [wasRunningBeforeOptions, setWasRunningBeforeOptions] = useState(false);
 
   const openOptions = () => {
@@ -84,7 +83,8 @@ const ControlsBar = ({
           <ToggleButton value="circle" aria-label="circle"><Tooltip title="Circle tool"><CircleIcon fontSize="small"/></Tooltip></ToggleButton>
           <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
           <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect"><CasinoIcon fontSize="small"/></Tooltip></ToggleButton>
-          <ToggleButton value="shapes" aria-label="shapes"><Tooltip title="Shapes menu"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
+          {/* Palette toggle: opens the ShapePaletteDialog while selected */}
+          <ToggleButton value="shapes" aria-label="shapes" onClick={() => openPalette && openPalette()}><Tooltip title="Shapes"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
         </ToggleButtonGroup>
 
         <Button size="small" onClick={() => { step(); draw(); }}>Step</Button>
@@ -99,13 +99,14 @@ const ControlsBar = ({
         <Button size="small" onClick={() => { clear(); draw(); snapshotsRef.current = []; setSteadyInfo({ steady: false, period: 0, popChanging: false }); }}>Clear</Button>
 
         <IconButton size="small" onClick={() => setShowChart(true)} aria-label="chart"><BarChartIcon fontSize="small"/></IconButton>
-
+  {/* palette opener removed; use the palette toggle in the tool group instead */}
+        
         <IconButton size="small" onClick={openOptions} aria-label="options"><SettingsIcon fontSize="small"/></IconButton>
 
-        <Chip label={`Live: ${getLiveCells().size}`} size="small" variant="outlined" />
+  <Chip label={`Live Cells: ${getLiveCells().size}`} size="small" variant="outlined" />
 
         <div style={{ marginLeft: 12 }}>
-          <ToolStatus selectedTool={selectedTool} toolStateRef={toolStateRef} cursorCell={cursorCell} />
+          <ToolStatus selectedTool={selectedTool} toolStateRef={toolStateRef} cursorCell={cursorCell} selectedShape={selectedShape} />
         </div>
       </Stack>
 
@@ -122,6 +123,7 @@ const ControlsBar = ({
           onCancel={handleCancel}
         />
       )}
+      
     </div>
   );
 };

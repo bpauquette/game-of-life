@@ -2,24 +2,26 @@ import React from 'react';
 
 const fmt = (p) => (p ? `${p.x},${p.y}` : '—');
 
-export default function ToolStatus({ selectedTool, toolStateRef, cursorCell }) {
+export default function ToolStatus({ selectedTool, toolStateRef, cursorCell, selectedShape }) {
   const ts = toolStateRef?.current || {};
-  const anchor = ts.start || ts.lastStart || null;
-  const cursor = cursorCell || ts.last || null;
+  const start = ts.start || ts.lastStart || null;
+  const end = ts.last || cursorCell || null;
 
   // Always show cursor position
-  // If the tool has an anchor/start (two-point mode), show Anchor + Cursor + delta
-  const dx = (anchor && cursor) ? (cursor.x - anchor.x) : null;
-  const dy = (anchor && cursor) ? (cursor.y - anchor.y) : null;
+  // If the tool has an explicit start anchor, render Start/End/Δ to preserve
+  // the previous ToolStatus text format relied upon by tests.
+  const dx = (start && end) ? (end.x - start.x) : null;
+  const dy = (start && end) ? (end.y - start.y) : null;
 
   return (
     <div className="tool-status" style={{ fontFamily: 'monospace', fontSize: 12 }}>
-      {anchor ? (
+      {selectedShape ? <div style={{ fontSize: 11, marginBottom: 4 }}>Shape: {typeof selectedShape === 'string' ? selectedShape : (selectedShape.name || selectedShape.id || '(shape)')}</div> : null}
+      {(selectedTool === 'line') ? (
         <>
-          Anchor: {fmt(anchor)}&nbsp;&nbsp; Cursor: {fmt(cursor)}&nbsp;&nbsp; Δ: {dx == null ? '—' : `${dx},${dy}`}
+          Start: {fmt(start)}&nbsp;&nbsp; End: {fmt(end)}&nbsp;&nbsp; Δ: {dx == null ? '—' : `${dx},${dy}`}
         </>
       ) : (
-        <>Cursor: {cursor ? `${cursor.x},${cursor.y}` : '—'}</>
+        <>Cursor: {end ? `${end.x},${end.y}` : '—'}</>
       )}
     </div>
   );

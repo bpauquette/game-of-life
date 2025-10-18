@@ -1,7 +1,7 @@
 // chunkedGameState.js
 import { useState, useRef, useCallback } from 'react';
 import { step as gameStep } from './gameLogic';
-import { shapes } from './shapes';
+// frontend shapes module removed; shapes may be provided as objects via selectedShape
 
 const CHUNK_SIZE = 64;
 
@@ -128,10 +128,24 @@ export function useChunkedGameState() {
 
   const placeShape = useCallback((x, y) => {
     if (!selectedShape) return;
-    // getLiveCells() is available if callers need current state; we don't need it here
-    shapes[selectedShape].forEach(([dx, dy]) => {
-      setCellAlive(x + dx, y + dy, true);
-    });
+    // selectedShape can be an array of [dx,dy] pairs or an object with a
+    // `cells` array (each cell may be [x,y] or {x,y}). Normalize to an
+    // array of pairs and apply.
+    let cells = [];
+    if (Array.isArray(selectedShape)) {
+      cells = selectedShape;
+    } else if (selectedShape && Array.isArray(selectedShape.cells)) {
+      cells = selectedShape.cells;
+    } else {
+      // unknown shape format — nothing to place
+      return;
+    }
+
+    for (const c of cells) {
+      const cx = (c && (c.x !== undefined)) ? c.x : (Array.isArray(c) ? c[0] : 0);
+      const cy = (c && (c.y !== undefined)) ? c.y : (Array.isArray(c) ? c[1] : 0);
+      setCellAlive(x + cx, y + cy, true);
+    }
   }, [selectedShape, setCellAlive]);
 
   return {

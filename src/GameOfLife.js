@@ -1,6 +1,6 @@
 // GameOfLife.js
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { shapes } from './shapes';
+// shapes list removed from frontend; shape data is provided by palette or backend
 import { useChunkedGameState } from './chunkedGameState';
 import { colorSchemes } from './colorSchemes';
 import isPopulationStable from './utils/populationUtils';
@@ -10,12 +10,14 @@ import { rectTool } from './tools/rectTool';
 import { circleTool } from './tools/circleTool';
 import { ovalTool } from './tools/ovalTool';
 import { randomRectTool } from './tools/randomRectTool';
+import { shapesTool } from './tools/shapesTool';
 import './GameOfLife.css';
 import PopulationChart from './PopulationChart';
 import ControlsBar from './ControlsBar';
 import { computeComputedOffset, eventToCellFromCanvas, drawLiveCells } from './utils/canvasUtils';
 import Tooltip from '@mui/material/Tooltip';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import ShapePaletteDialog from './ShapePaletteDialog';
 
 
 const GameOfLife = () => {
@@ -30,6 +32,7 @@ const GameOfLife = () => {
     step,
     cellSize,
     setCellSize,
+    placeShape,
     selectedShape,
     setSelectedShape,
     offsetRef,
@@ -68,6 +71,8 @@ const GameOfLife = () => {
     circle: circleTool,
     oval: ovalTool,
     randomRect: randomRectTool
+    ,
+    shapes: shapesTool
   }), []);
 
   // Cursor tracking for tool status (throttled via RAF)
@@ -97,10 +102,11 @@ const GameOfLife = () => {
     return copy;
   }, [colorSchemeKey]);
 
-  // Shapes context menu state (for the new Shapes tool)
-  const [shapesMenuOpen, setShapesMenuOpen] = useState(false);
-  const [shapesMenuPos, setShapesMenuPos] = useState({ x: 0, y: 0 });
-  const shapesMenuRef = useRef(null);
+  // Shapes menu removed — selection is handled via palette or recent strip
+  // recent shapes (last 20 selected)
+  const [recentShapes, setRecentShapes] = useState([]);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const prevToolRef = useRef(null);
 
 
   // Draw function (keeps your original rendering)
@@ -126,7 +132,36 @@ const GameOfLife = () => {
         const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
         const tool = toolMap[selectedTool];
         if (tool && typeof tool.drawOverlay === 'function') {
-          tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset);
+          tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset, colorScheme);
+        }
+        // Draw selected-shape preview if present. This is a non-committing
+        // overlay drawn from the non-reactive toolStateRef so it remains fast.
+        const selShape = toolStateRef.current.selectedShapeData || selectedShape;
+        const last = toolStateRef.current.last;
+        if (selShape && last) {
+          // resolve cells from shape object or array
+          let cells = [];
+          if (Array.isArray(selShape)) cells = selShape;
+          else if (selShape && Array.isArray(selShape.cells)) cells = selShape.cells;
+
+          if (cells && cells.length > 0) {
+            ctx.save();
+            ctx.globalAlpha = 0.45;
+            for (let i = 0; i < cells.length; i++) {
+              const c = cells[i];
+              const cx = (c.x !== undefined) ? c.x : c[0];
+              const cy = (c.y !== undefined) ? c.y : c[1];
+              const drawX = (last.x + cx) * cellSize - computedOffset.x;
+              const drawY = (last.y + cy) * cellSize - computedOffset.y;
+              try {
+                ctx.fillStyle = (typeof (colorScheme.getCellColor) === 'function') ? colorScheme.getCellColor(last.x + cx, last.y + cy) : '#222';
+              } catch (err) {
+                ctx.fillStyle = '#222';
+              }
+              ctx.fillRect(drawX, drawY, cellSize, cellSize);
+            }
+            ctx.restore();
+          }
         }
       }
     } catch (err) {
@@ -266,16 +301,15 @@ const GameOfLife = () => {
     const x = Math.floor(offsetRef.current.x + (e.clientX - rect.left - centerX) / cellSize);
     const y = Math.floor(offsetRef.current.y + (e.clientY - rect.top - centerY) / cellSize);
 
-  // Ignore direct click-toggle behavior for drawing tools, but allow when the Shapes tool is active
-  // so users can place selected shapes on left-click after choosing one with the right-click menu.
-  if (selectedTool && selectedTool !== 'shapes') return;
+  // Ignore direct click-toggle behavior for drawing tools. Shape placement is
+  // handled on mouseup by the palette tool, so clicks do nothing here.
+  if (selectedTool && selectedTool !== 'palette') return;
+  if (selectedTool === 'palette') return;
 
-    if (selectedShape && shapes[selectedShape]) {
-      shapes[selectedShape].forEach(([dx, dy]) => setCellAlive(x + dx, y + dy, true));
-    } else {
-      const liveMap = getLiveCells();
-      setCellAlive(x, y, !liveMap.has(`${x},${y}`));
-    }
+  // Default click behavior toggles a single cell when no shape placement
+  // is intended.
+  const liveMap = getLiveCells();
+  setCellAlive(x, y, !liveMap.has(`${x},${y}`));
     drawWithOverlay();
   };
 
@@ -300,9 +334,10 @@ const GameOfLife = () => {
 
     const tool = toolMap[selectedTool];
     if (!tool) return;
-  const pt = eventToCell(e);
+    const pt = eventToCell(e);
     if (!pt) return;
-  scheduleCursorUpdate(pt);
+    scheduleCursorUpdate(pt);
+
     if (typeof tool.onMouseDown === 'function') tool.onMouseDown(toolStateRef.current, pt.x, pt.y);
     // allow tools to react to initial point; pass setCellAlive in case they want it
     if (typeof tool.onMouseMove === 'function') tool.onMouseMove(toolStateRef.current, pt.x, pt.y, setCellAlive);
@@ -337,7 +372,18 @@ const GameOfLife = () => {
       return;
     }
 
-    // Only let tools modify state/draw while primary button is pressed or
+    // If shapes tool is active, update preview position while hovering
+    // (no mouse button required). This lets users see the shape preview as
+    // they move the cursor after selecting a shape from the palette.
+    if (selectedTool === 'shapes') {
+      toolStateRef.current.last = { x: pt.x, y: pt.y };
+      // allow tool-specific onMouseMove if it wants to run as well
+      if (typeof tool.onMouseMove === 'function') tool.onMouseMove(toolStateRef.current, pt.x, pt.y, setCellAlive);
+      drawWithOverlay();
+      return;
+    }
+
+    // Only let other tools modify state/draw while primary button is pressed or
     // when the tool already has an active start/last state.
     if (!(e.buttons & 1) && !toolStateRef.current.last && !toolStateRef.current.start) return;
 
@@ -357,10 +403,11 @@ const GameOfLife = () => {
     const tool = toolMap[selectedTool];
     if (!tool) return;
     const pt = eventToCell(e);
+
     // Some tools expect coords; pass last known if no pt
     const x = pt ? pt.x : toolStateRef.current.last?.x;
     const y = pt ? pt.y : toolStateRef.current.last?.y;
-    if (typeof tool.onMouseUp === 'function') tool.onMouseUp(toolStateRef.current, x, y, setCellAlive);
+    if (typeof tool.onMouseUp === 'function') tool.onMouseUp(toolStateRef.current, x, y, setCellAlive, placeShape);
     drawWithOverlay();
   };
 
@@ -405,39 +452,46 @@ const GameOfLife = () => {
     return () => canvas.removeEventListener('wheel', handleWheel, { passive: false });
   }, [setCellSize, drawWithOverlay, offsetRef]);
 
-  // Context menu handler for Shapes tool
-  const handleCanvasContextMenu = (e) => {
-    if (selectedTool !== 'shapes') return;
-    e.preventDefault();
-    const rect = canvasRef.current.getBoundingClientRect();
-    // position menu at cursor (CSS pixels)
-    const x = Math.min(window.innerWidth - 8, e.clientX - rect.left + rect.left);
-    const y = Math.min(window.innerHeight - 8, e.clientY - rect.top + rect.top);
-    setShapesMenuPos({ x, y });
-    setShapesMenuOpen(true);
-  };
-
-  // Close shapes menu on outside click or Escape
-  useEffect(() => {
-    if (!shapesMenuOpen) return undefined;
-    const onDocClick = (e) => {
-      if (shapesMenuRef.current && !shapesMenuRef.current.contains(e.target)) {
-        setShapesMenuOpen(false);
-      }
-    };
-    const onKey = (e) => {
-      if (e.key === 'Escape') setShapesMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [shapesMenuOpen]);
+  // shapes menu removed: no context menu handler
 
   // Initial draw
   useEffect(() => { drawWithOverlay(); }, [drawWithOverlay]);
+
+  // Centralized shape selection helper: sets the selected shape, updates the tool
+  // state and maintains the recent-shapes list in one place.
+  const selectShape = useCallback((shape) => {
+    // update reactive state
+    setSelectedShape?.(shape || null);
+    // update non-reactive tool state for fast access by render/overlay
+    toolStateRef.current.selectedShapeData = shape || null;
+    // maintain recent shapes list (unique, newest-first, max 20)
+    if (shape) {
+      setRecentShapes(prev => {
+        const newEntry = shape;
+        const filtered = prev.filter(p => {
+          if (typeof p === 'string' && typeof newEntry === 'string') return p !== newEntry;
+          if (p && newEntry && p.id && newEntry.id) return p.id !== newEntry.id;
+          return true;
+        });
+        return [newEntry, ...filtered].slice(0, 20);
+      });
+    }
+    // Refresh overlay immediately so the preview appears right after selection
+    drawWithOverlay();
+  }, [setSelectedShape, drawWithOverlay]);
+
+  const openPalette = useCallback(() => {
+    prevToolRef.current = selectedTool;
+    // activate shapes tool while the palette is open so previews work
+    setSelectedTool && setSelectedTool('shapes');
+    setPaletteOpen(true);
+  }, [selectedTool, setSelectedTool]);
+
+  const closePalette = useCallback((restorePrev = true) => {
+    setPaletteOpen(false);
+    if (restorePrev && prevToolRef.current) setSelectedTool && setSelectedTool(prevToolRef.current);
+    prevToolRef.current = null;
+  }, [setSelectedTool]);
 
   // Keyboard pan: arrow keys nudge view in cell units
   useEffect(() => {
@@ -469,6 +523,32 @@ const GameOfLife = () => {
 
   return (
     <div className="canvas-container">
+      {/* Left-side recent shapes strip */}
+      <div className="recent-shapes" style={{ position: 'absolute', left: 8, top: 80, zIndex: 20 }}>
+        {recentShapes.map((s, idx) => {
+          const key = s && s.id ? s.id : idx;
+          const cells = (s && Array.isArray(s.cells)) ? s.cells : (Array.isArray(s) ? s : []);
+          const width = cells.reduce((max, c) => Math.max(max, (Array.isArray(c) ? c[0] : (c.x || 0))), 0) + 1 || 8;
+          const height = cells.reduce((max, c) => Math.max(max, (Array.isArray(c) ? c[1] : (c.y || 0))), 0) + 1 || 8;
+          const title = s?.name || s?.meta?.name || (s && s.id) || `shape ${idx}`;
+          return (
+            <div key={key} style={{ marginBottom: 8, cursor: 'pointer' }} onClick={() => { selectShape(s); drawWithOverlay(); }} title={title}>
+              <svg width={48} height={48} viewBox={`0 0 ${Math.max(1, width)} ${Math.max(1, height)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 6 }}>
+                {Array.from({ length: width }).map((_, cx) => (
+                  Array.from({ length: height }).map((__, cy) => (
+                    <rect key={`g-${key}-${cx}-${cy}`} x={cx} y={cy} width={1} height={1} fill="transparent" stroke="rgba(255,255,255,0.02)" />
+                  ))
+                ))}
+                {cells.map((c, i) => {
+                  const x = Array.isArray(c) ? c[0] : (c.x || 0);
+                  const y = Array.isArray(c) ? c[1] : (c.y || 0);
+                  return <rect key={`c-${key}-${i}`} x={x} y={y} width={1} height={1} fill={typeof (colorScheme.getCellColor) === 'function' ? colorScheme.getCellColor(x, y) : '#222'} />
+                })}
+              </svg>
+            </div>
+          );
+        })}
+      </div>
       <ControlsBar
         selectedTool={selectedTool}
         setSelectedTool={setSelectedTool}
@@ -493,54 +573,36 @@ const GameOfLife = () => {
         setPopWindowSize={setPopWindowSize}
         popTolerance={popTolerance}
         setPopTolerance={setPopTolerance}
-        shapes={shapes}
-        shapesMenuOpen={shapesMenuOpen}
-        setShapesMenuOpen={setShapesMenuOpen}
-        shapesMenuPos={shapesMenuPos}
-        setShapesMenuPos={setShapesMenuPos}
-        shapesMenuRef={shapesMenuRef}
-        setSelectedShape={setSelectedShape}
+  
+  selectShape={selectShape}
+  selectedShape={selectedShape}
         drawWithOverlay={drawWithOverlay}
+        openPalette={openPalette}
         steadyInfo={steadyInfo}
         toolStateRef={toolStateRef}
         cursorCell={cursorCell}
       />
 
+      {paletteOpen && (
+        <ShapePaletteDialog
+          open={paletteOpen}
+          onClose={() => closePalette(true)}
+          onSelectShape={(shape) => { selectShape(shape); closePalette(false); }}
+          backendBase={'http://localhost:55000'}
+          colorScheme={colorSchemes ? (colorSchemes[colorSchemeKey] || {}) : {}}
+        />
+      )}
+
       <canvas
         ref={canvasRef}
         onClick={handleCanvasClick}
-        onContextMenu={(e) => handleCanvasContextMenu?.(e)}
+  onContextMenu={undefined}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         style={{ cursor: (selectedShape || selectedTool) ? 'crosshair' : 'default' }}
       />
-      {shapesMenuOpen && (
-        <div
-          ref={shapesMenuRef}
-          className="shapes-menu"
-          style={{ left: shapesMenuPos.x, top: shapesMenuPos.y }}
-        >
-          {['', ...Object.keys(shapes)].map((shapeKey) => (
-            <div
-              key={shapeKey || '__eraser'}
-              className="shapes-menu-item"
-              onMouseDown={(ev) => {
-                // prevent canvas from also receiving the click
-                ev.stopPropagation();
-                ev.preventDefault();
-                const val = shapeKey || '';
-                setSelectedShape?.(val || null);
-                setShapesMenuOpen(false);
-                // redraw to reflect the selected shape immediately
-                drawWithOverlay();
-              }}
-            >
-              {shapeKey === '' ? 'Eraser' : shapeKey}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* shapes menu removed — use palette or recent strip to select shapes */}
       {showChart && (
         <PopulationChart history={popHistoryRef.current.slice()} onClose={() => setShowChart(false)} />
       )}
