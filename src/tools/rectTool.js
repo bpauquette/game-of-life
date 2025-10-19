@@ -1,4 +1,10 @@
 // Rectangle perimeter-only tool
+// Rectangle tool constants
+const RECT_PREVIEW_COLOR = 'rgba(255,255,255,0.12)';
+const ARRAY_FIRST_ELEMENT = 0;
+const ARRAY_SECOND_ELEMENT = 1;
+const PERIMETER_BORDER_OFFSET = 1;
+
 export const rectTool = {
   onMouseDown(state, x, y) {
     state.start = { x, y };
@@ -16,8 +22,8 @@ export const rectTool = {
     if (!state.start) return;
     const pts = computeRectPerimeter(state.start.x, state.start.y, x, y);
     for (const p of pts) {
-      const px = p[0];
-      const py = p[1];
+      const px = p[ARRAY_FIRST_ELEMENT];
+      const py = p[ARRAY_SECOND_ELEMENT];
       setCellAlive(px, py, true);
     }
     state.start = null;
@@ -27,10 +33,10 @@ export const rectTool = {
 
   drawOverlay(ctx, state, cellSize, offset) {
     if (!state.preview || state.preview.length === 0) return;
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillStyle = RECT_PREVIEW_COLOR;
     for (const p of state.preview) {
-      const x = p[0];
-      const y = p[1];
+      const x = p[ARRAY_FIRST_ELEMENT];
+      const y = p[ARRAY_SECOND_ELEMENT];
       ctx.fillRect(x * cellSize - offset.x, y * cellSize - offset.y, cellSize, cellSize);
     }
   }
@@ -48,7 +54,7 @@ const computeRectPerimeter = (x0, y0, x1, y1) => {
     if (yMax !== yMin) pts.push([x, yMax]);
   }
   // Left and right edges (excluding corners already added)
-  for (let y = yMin + 1; y <= yMax - 1; y++) {
+  for (let y = yMin + PERIMETER_BORDER_OFFSET; y <= yMax - PERIMETER_BORDER_OFFSET; y++) {
     pts.push([xMin, y]);
     if (xMax !== xMin) pts.push([xMax, y]);
   }
