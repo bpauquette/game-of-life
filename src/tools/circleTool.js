@@ -38,7 +38,7 @@ export const circleTool = {
   }
 };
 
-function computeCirclePerimeter(cx, cy, r) {
+const computeCirclePerimeter = (cx, cy, r) => {
   const pts = [];
   if (r <= 0) return pts;
   // Midpoint / Bresenham circle algorithm (integer points on circumference)

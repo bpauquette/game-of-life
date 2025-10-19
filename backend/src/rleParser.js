@@ -3,7 +3,7 @@
 
 const HEADER_RE = /x\s*=\s*(\-?\d+)\s*,\s*y\s*=\s*(\-?\d+)(?:\s*,\s*rule\s*=\s*([^\s,]+))?/i;
 
-function parseHeader(lines){
+const parseHeader = (lines) => {
   const meta = {comments:[]};
   let headerLine = null;
   for(const line of lines){
@@ -24,9 +24,9 @@ function parseHeader(lines){
     }
   }
   return {meta, headerLine};
-}
+};
 
-function tokenizeRLE(body){
+const tokenizeRLE = (body) => {
   // remove whitespace other than letters/numbers/$/! and concatenate
   const text = body.replace(/\s+/g,'');
   const tokens = [];
@@ -39,9 +39,9 @@ function tokenizeRLE(body){
     if(tag === '!') break;
   }
   return tokens;
-}
+};
 
-function parseRLE(text){
+const parseRLE = (text) => {
   if(!text || !text.trim()) throw new Error('Empty RLE text');
   const lines = text.split(/\r?\n/);
   const {meta, headerLine} = parseHeader(lines);
@@ -79,7 +79,7 @@ function parseRLE(text){
 }
 
 // Helper: extract body text from lines
-function getBodyText(lines, headerLine) {
+const getBodyText = (lines, headerLine) => {
   const bodyLines = [];
   let inBody = false;
   for (const line of lines) {
@@ -98,10 +98,10 @@ function getBodyText(lines, headerLine) {
     bodyLines.push(...alt);
   }
   return bodyLines.join('');
-}
+};
 
 // Helper: expand RLE tokens into cell coordinates
-function expandTokensToCells(tokens) {
+const expandTokensToCells = (tokens) => {
   let cx = 0, cy = 0;
   const cells = [];
   for (const tk of tokens) {
@@ -122,10 +122,10 @@ function expandTokensToCells(tokens) {
     }
   }
   return cells;
-}
+};
 
 // Helper: compute bounding box for a list of points
-function computeBoundingBox(cells) {
+const computeBoundingBox = (cells) => {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const p of cells) {
     if (p.x < minX) minX = p.x;

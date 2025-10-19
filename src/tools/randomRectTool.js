@@ -39,7 +39,7 @@ export const randomRectTool = {
   }
 };
 
-function computeRect(x0, y0, x1, y1) {
+const computeRect = (x0, y0, x1, y1) => {
   const xMin = Math.min(x0, x1);
   const xMax = Math.max(x0, x1);
   const yMin = Math.min(y0, y1);

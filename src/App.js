@@ -2,7 +2,7 @@
 import React from 'react';
 import GameOfLife from './GameOfLife';
 
-function App() {
+const App = () => {
 return React.createElement(
 'div',
 { style: { backgroundColor: 'black', minHeight: '100vh', padding: '16px' } },

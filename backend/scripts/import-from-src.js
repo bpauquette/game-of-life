@@ -3,16 +3,16 @@ const fs = require('node:fs').promises;
 const path = require('node:path');
 const os = require('node:os');
 
-function makeId(){
+const makeId = () => {
   return `${Date.now()}-${Math.floor(Math.random()*100000)}`;
-}
+};
 
-function shapeSignature(s){
+const shapeSignature = (s) => {
   const cells = (s.cells || []).map(c => `${c.x},${c.y}`).sort().join('|');
   return `${s.name||''}::${cells}`;
-}
+};
 
-async function main(){
+const main = async () => {
   const repoRoot = path.join(__dirname, '..', '..');
   const srcPath = path.join(repoRoot, 'src', 'shapes.js');
   const dbPath = path.join(repoRoot, 'backend', 'data', 'shapes.json');

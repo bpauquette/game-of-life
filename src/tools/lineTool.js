@@ -40,7 +40,7 @@ export const lineTool = {
   }
 };
 
-function computeLine(x0, y0, x1, y1) {
+const computeLine = (x0, y0, x1, y1) => {
   const pts = [];
   const dx = Math.abs(x1 - x0);
   const dy = -Math.abs(y1 - y0);

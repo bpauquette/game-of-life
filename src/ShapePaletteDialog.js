@@ -20,7 +20,7 @@ import Alert from '@mui/material/Alert';
 import Slide from '@mui/material/Slide';
 
 // Helper function to resolve base URL consistently
-function getBaseUrl(backendBase) {
+const getBaseUrl = (backendBase) => {
   if (typeof backendBase === 'string' && backendBase.length > 0) {
     return backendBase;
   }

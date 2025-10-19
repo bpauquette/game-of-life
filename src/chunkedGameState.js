@@ -9,13 +9,13 @@ const DEFAULT_RANDOMIZE_AREA_SIZE = 20;
 const RANDOMIZATION_PROBABILITY = 0.5;
 const DEFAULT_COORDINATE = 0;
 
-function chunkKey(cx, cy) {
+const chunkKey = (cx, cy) => {
   return `${cx},${cy}`;
-}
+};
 
-function getChunkCoords(x, y) {
+const getChunkCoords = (x, y) => {
   return [Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE)];
-}
+};
 
 export function useChunkedGameState() {
   // Standard UI state

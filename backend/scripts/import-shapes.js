@@ -2,26 +2,26 @@
 const fs = require('node:fs').promises;
 const path = require('node:path');
 
-function makeId(){
+const makeId = () => {
   return `${Date.now()}-${Math.floor(Math.random()*100000)}`;
-}
+};
 
-async function readJson(p){
+const readJson = async (p) => {
   const txt = await fs.readFile(p, 'utf8');
   return JSON.parse(txt || '[]');
-}
+};
 
-async function writeJson(p, data){
+const writeJson = async (p, data) => {
   await fs.writeFile(p, JSON.stringify(data, null, 2), 'utf8');
-}
+};
 
-function shapeSignature(s){
+const shapeSignature = (s) => {
   // signature based on name and sorted cells for simple dedupe
   const cells = (s.cells || []).map(c => `${c.x},${c.y}`).sort().join('|');
   return `${s.name||''}::${cells}`;
-}
+};
 
-async function main(){
+const main = async () => {
   const argv = process.argv.slice(2);
   const src = argv[0] || path.join(__dirname, '..', 'data', 'shapes.json');
   const dst = argv[1] || path.join(__dirname, '..', 'data', 'shapes.json');

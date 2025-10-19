@@ -5,11 +5,11 @@ const { parseRLE } = require('./rleParser');
 const db = require('./db');
 const logger = require('./logger');
 
-function makeId(){
+const makeId = () => {
   return `${Date.now()}-${Math.floor(Math.random()*100000)}`;
-}
+};
 
-async function start(){
+const start = async () => {
   const app = express();
   app.use(cors());
   app.use(express.json());
