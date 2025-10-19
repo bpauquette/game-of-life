@@ -2,5 +2,5 @@ projectKey=game-of-life
 serverUrl=http://localhost:9000
 serverVersion=25.10.0.114319
 dashboardUrl=http://localhost:9000/dashboard?id=game-of-life
-ceTaskId=6d4104be-a69d-40be-bcaf-028f8e7e0156
-ceTaskUrl=http://localhost:9000/api/ce/task?id=6d4104be-a69d-40be-bcaf-028f8e7e0156
+ceTaskId=1a1d6387-ff7c-4ae4-a3e5-eb9e6a4b447d
+ceTaskUrl=http://localhost:9000/api/ce/task?id=1a1d6387-ff7c-4ae4-a3e5-eb9e6a4b447d

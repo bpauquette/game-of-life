@@ -15,10 +15,16 @@ export const drawTool = {
     const dx = x - lx;
     const dy = y - ly;
     const steps = Math.max(Math.abs(dx), Math.abs(dy));
-    for (let i = 0; i <= steps; i++) {
-      const px = Math.round(lx + (dx * i) / steps);
-      const py = Math.round(ly + (dy * i) / steps);
-      setCellAlive(px, py, true);
+    
+    if (steps === 0) {
+      // Same position - just draw the single cell
+      setCellAlive(x, y, true);
+    } else {
+      for (let i = 0; i <= steps; i++) {
+        const px = Math.round(lx + (dx * i) / steps);
+        const py = Math.round(ly + (dy * i) / steps);
+        setCellAlive(px, py, true);
+      }
     }
 
     toolState.last = { x, y };
