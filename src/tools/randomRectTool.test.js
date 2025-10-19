@@ -283,10 +283,10 @@ describe('randomRectTool', () => {
 
     it('should handle negative coordinates', () => {
       toolState.start = { x: -1, y: -1 };
-      toolState.prob = 1; // All alive for predictable test
+      toolState.prob = 0.8; // High probability for mostly alive cells
       
-      // Mock random to return values < 1 for all cells
-      Math.random.mockReturnValue(0.5);
+      // Mock random to return values that will result in alive cells
+      Math.random.mockReturnValue(0.5); // 0.5 < 0.8, so should be alive
 
       randomRectTool.onMouseUp(toolState, 0, 0, mockSetCellAlive);
 
@@ -300,7 +300,7 @@ describe('randomRectTool', () => {
       expect(calledCoords).toContainEqual([-1, 0]);
       expect(calledCoords).toContainEqual([0, 0]);
       
-      // All should be alive due to prob = 1
+      // All should be alive due to 0.5 < 0.8
       mockSetCellAlive.mock.calls.forEach(call => {
         expect(call[2]).toBe(true);
       });
