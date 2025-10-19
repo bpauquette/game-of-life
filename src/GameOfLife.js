@@ -11,6 +11,7 @@ import { circleTool } from './tools/circleTool';
 import { ovalTool } from './tools/ovalTool';
 import { randomRectTool } from './tools/randomRectTool';
 import { shapesTool } from './tools/shapesTool';
+import logger from './utils/logger';
 import './GameOfLife.css';
 import PopulationChart from './PopulationChart';
 import ControlsBar from './ControlsBar';
@@ -109,11 +110,10 @@ const GameOfLife = () => {
     const base = colorSchemes[colorSchemeKey] || {};
     // shallow copy functions/properties then freeze
     const copy = { ...base };
-    try { 
-      Object.freeze(copy); 
-    } catch (err) { 
-      // Object.freeze not supported in older environments - continue without freezing
-      console.warn('Object.freeze not supported:', err.message);
+    // Object.freeze is widely supported in modern environments
+    // If running in legacy environment, Object.freeze will be a no-op rather than throw
+    if (typeof Object.freeze === 'function') {
+      Object.freeze(copy);
     }
     return copy;
   }, [colorSchemeKey]);
@@ -179,11 +179,9 @@ const GameOfLife = () => {
         }
       }
       } catch (err) {
-        // overlay drawing should never break main render; at least log the error
-        // so lint rules about unused catch vars are satisfied.
-        // In tests or restricted contexts this may be a noop.
-        // eslint-disable-next-line no-console
-        console.error(err);
+        // overlay drawing should never break main render
+        // Log for development debugging but don't disrupt production
+        logger.warn('Overlay rendering failed:', err);
       }
     }, [draw, selectedTool, cellSize, offsetRef, toolMap, colorScheme, selectedShape]);  // Resize canvas to fill window and account for devicePixelRatio
   const resizeCanvas = useCallback(() => {
@@ -240,11 +238,8 @@ const GameOfLife = () => {
           popHistoryRef.current.push(getLiveCells().size);
           if (popHistoryRef.current.length > MAX_POPULATION_HISTORY) popHistoryRef.current.shift();
         } catch (err) {
-          // Avoid silently swallowing errors - log for diagnostics. Tests may run
-          // in environments where console is a noop, but logging helps during
-          // development and CI analysis tools to surface issues.
-          // eslint-disable-next-line no-console
-          console.warn('Failed to update population history', err);
+          // Failed to update population history - continue without population tracking
+          logger.debug('Population history update failed:', err);
         }
         // record snapshot and detect steady state
         try {
@@ -299,10 +294,8 @@ const GameOfLife = () => {
             steadyDetectedRef.current = false;
           }
         } catch (err) {
-          // Avoid swallowing snapshot/steady-state detection errors so they
-          // can be investigated if they occur in CI or a user's browser.
-          // eslint-disable-next-line no-console
-          console.warn('Failed to compute snapshots or steady-state info', err);
+          // Failed to compute snapshots or steady-state info - continue simulation
+          logger.debug('Snapshot computation failed:', err);
         }
         drawWithOverlay();
         animationRef.current = requestAnimationFrame(loop);
