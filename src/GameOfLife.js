@@ -15,6 +15,7 @@ import logger from './utils/logger';
 import './GameOfLife.css';
 import PopulationChart from './PopulationChart';
 import ControlsBar from './ControlsBar';
+import RecentShapesStrip from './RecentShapesStrip';
 import { computeComputedOffset, eventToCellFromCanvas, drawLiveCells } from './utils/canvasUtils';
 import Tooltip from '@mui/material/Tooltip';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
@@ -234,82 +235,86 @@ const GameOfLife = () => {
     return () => globalThis.window.removeEventListener('resize', resizeCanvas);
   }, [ready, resizeCanvas]);
 
+  // Helper functions for game loop
+  const updatePopulationHistory = useCallback(() => {
+    try {
+      popHistoryRef.current.push(getLiveCells().size);
+      if (popHistoryRef.current.length > MAX_POPULATION_HISTORY) popHistoryRef.current.shift();
+    } catch (err) {
+      logger.debug('Population history update failed:', err);
+    }
+  }, [getLiveCells]);
+
+  const createSnapshot = useCallback((liveMap) => {
+    const keys = Array.from(liveMap.keys()).sort();
+    return keys.join(';');
+  }, []);
+
+  const findSnapshotMatch = useCallback((snap, snaps) => {
+    for (let i = snaps.length - 1; i >= 0; i--) {
+      if (snaps[i] === snap) {
+        return snaps.length - 1 - i; // distance
+      }
+    }
+    return -1;
+  }, []);
+
+  const updateSteadyState = useCallback(() => {
+    try {
+      const liveMap = getLiveCells();
+      const snap = createSnapshot(liveMap);
+      const snaps = snapshotsRef.current;
+      const matchIdx = findSnapshotMatch(snap, snaps);
+      
+      snaps.push(snap);
+      if (snaps.length > MAX_SNAPSHOTS) snaps.shift();
+      snapshotsRef.current = snaps;
+
+      const popSteady = isPopulationStable(popHistoryRef.current, popWindowSize, popTolerance);
+      
+      let detected = false;
+      let detectedPeriod = 0;
+      if (popSteady) {
+        detected = true;
+        detectedPeriod = 1;
+      } else if (matchIdx === 0) {
+        detected = true;
+        detectedPeriod = 1;
+      } else if (matchIdx > 0) {
+        detected = true;
+        detectedPeriod = matchIdx + 1;
+      }
+
+      setSteadyInfo(detected ? 
+        { steady: true, period: detectedPeriod, popChanging: !popSteady } : 
+        { steady: false, period: 0, popChanging: !popSteady }
+      );
+
+      if (popSteady && !steadyDetectedRef.current && liveMap.size > 0) {
+        steadyDetectedRef.current = true;
+        setIsRunning(false);
+      } else if (!popSteady) {
+        steadyDetectedRef.current = false;
+      }
+    } catch (err) {
+      logger.debug('Snapshot computation failed:', err);
+    }
+  }, [getLiveCells, createSnapshot, findSnapshotMatch, popWindowSize, popTolerance, setIsRunning]);
+
   // Game loop
   useEffect(() => {
     const loop = () => {
       if (isRunning) {
         step();
-        // record population after stepping
-        try {
-          popHistoryRef.current.push(getLiveCells().size);
-          if (popHistoryRef.current.length > MAX_POPULATION_HISTORY) popHistoryRef.current.shift();
-        } catch (err) {
-          // Failed to update population history - continue without population tracking
-          logger.debug('Population history update failed:', err);
-        }
-        // record snapshot and detect steady state
-        try {
-          const liveMap = getLiveCells();
-          const keys = Array.from(liveMap.keys()).sort();
-          const snap = keys.join(';');
-          const snaps = snapshotsRef.current;
-          // search for a previous identical snapshot from the end
-          let matchIdx = -1;
-          for (let i = snaps.length - 1; i >= 0; i--) {
-            if (snaps[i] === snap) {
-              matchIdx = snaps.length - 1 - i; // distance
-              break;
-            }
-          }
-          snaps.push(snap);
-          if (snaps.length > MAX_SNAPSHOTS) snaps.shift();
-          snapshotsRef.current = snaps;
-
-          // population-based steady detection: use configurable window+tolerance
-          const ph = popHistoryRef.current;
-          const popSteady = isPopulationStable(ph, popWindowSize, popTolerance);
-
-          let detected = false;
-          let detectedPeriod = 0;
-          if (popSteady) {
-            detected = true;
-            detectedPeriod = 1;
-          } else if (matchIdx === 0) {
-            detected = true;
-            detectedPeriod = 1;
-          } else if (matchIdx > 0) {
-            detected = true;
-            detectedPeriod = matchIdx + 1;
-          }
-
-          // popChanging is true when population is changing between generations
-          setSteadyInfo(detected ? { steady: true, period: detectedPeriod, popChanging: !popSteady } : { steady: false, period: 0, popChanging: !popSteady });
-
-          // Auto-stop when the population is considered stable by the window/tolerance
-          // Keep snapshot/oscillation detection for the UI indicator, but do not stop on those alone.
-          if (popSteady) {
-            // Only auto-stop when there is at least one live cell. This avoids
-            // immediately stopping on empty worlds (which are trivially 'stable')
-            // and gives the user control to run/stop explicitly.
-            if (!steadyDetectedRef.current && liveMap.size > 0) {
-              steadyDetectedRef.current = true;
-              setIsRunning(false);
-            }
-          } else {
-            // clear the stop guard when not stable
-            steadyDetectedRef.current = false;
-          }
-        } catch (err) {
-          // Failed to compute snapshots or steady-state info - continue simulation
-          logger.debug('Snapshot computation failed:', err);
-        }
+        updatePopulationHistory();
+        updateSteadyState();
         drawWithOverlay();
         animationRef.current = requestAnimationFrame(loop);
       }
     };
     if (isRunning) animationRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationRef.current);
-  }, [isRunning, step, drawWithOverlay, getLiveCells, popWindowSize, popTolerance, setIsRunning]);
+  }, [isRunning, step, drawWithOverlay, updatePopulationHistory, updateSteadyState]);
 
   
 
@@ -340,20 +345,20 @@ const GameOfLife = () => {
     return eventToCellFromCanvas(e, canvasRef.current, offsetRef, cellSize);
   };
 
-  // Mouse handlers to support tools (freehand draw)
-  const handleMouseDown = (e) => {
-    // Start panning if middle button or space+left
-    if ((e.button === 1) || (e.button === 0 && e.nativeEvent && e.nativeEvent.shiftKey)) {
-      // use shift as an alternative pan modifier (space can be noisy in some browsers)
-      isPanningRef.current = true;
-      panStartRef.current = { x: e.clientX, y: e.clientY };
-      panOffsetStartRef.current = { x: offsetRef.current.x, y: offsetRef.current.y };
-      if (e.preventDefault) e.preventDefault();
-      // capture pointer if available
-      try { e.target.setPointerCapture?.(e.pointerId); } catch { /* setPointerCapture not supported in some browsers */ }
-      return;
-    }
+  // Helper functions for mouse handling
+  const startPanning = useCallback((e) => {
+    isPanningRef.current = true;
+    panStartRef.current = { x: e.clientX, y: e.clientY };
+    panOffsetStartRef.current = { x: offsetRef.current.x, y: offsetRef.current.y };
+    if (e.preventDefault) e.preventDefault();
+    try { e.target.setPointerCapture?.(e.pointerId); } catch { /* setPointerCapture not supported */ }
+  }, []);
 
+  const shouldStartPanning = useCallback((e) => {
+    return (e.button === 1) || (e.button === 0 && e.nativeEvent && e.nativeEvent.shiftKey);
+  }, []);
+
+  const handleToolMouseDown = useCallback((e) => {
     const tool = toolMap[selectedTool];
     if (!tool) return;
     const pt = eventToCell(e);
@@ -361,148 +366,163 @@ const GameOfLife = () => {
     scheduleCursorUpdate(pt);
 
     tool.onMouseDown?.(toolStateRef.current, pt.x, pt.y);
-    // allow tools to react to initial point; pass setCellAlive in case they want it
     tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
     drawWithOverlay();
-  };
+  }, [toolMap, selectedTool, eventToCell, scheduleCursorUpdate, setCellAlive, drawWithOverlay]);
 
-  const handleMouseMove = (e) => {
-    // If currently panning, update offsetRef in pixels so draw uses same semantics
+  // Mouse handlers to support tools (freehand draw)
+  const handleMouseDown = useCallback((e) => {
+    if (shouldStartPanning(e)) {
+      startPanning(e);
+      return;
+    }
+    handleToolMouseDown(e);
+  }, [shouldStartPanning, startPanning, handleToolMouseDown]);
+
+  const updatePanning = useCallback((e) => {
+    const dx = e.clientX - panStartRef.current.x;
+    const dy = e.clientY - panStartRef.current.y;
+    const dxCells = dx / cellSize;
+    const dyCells = dy / cellSize;
+    offsetRef.current.x = panOffsetStartRef.current.x - dxCells;
+    offsetRef.current.y = panOffsetStartRef.current.y - dyCells;
+    drawWithOverlay();
+    if (e.preventDefault) e.preventDefault();
+  }, [cellSize, drawWithOverlay]);
+
+  const handleShapeToolMove = useCallback((e, tool, pt) => {
+    toolStateRef.current.last = { x: pt.x, y: pt.y };
+    tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
+    drawWithOverlay();
+  }, [setCellAlive, drawWithOverlay]);
+
+  const shouldToolMove = useCallback((e) => {
+    return (e.buttons & 1) || toolStateRef.current.last || toolStateRef.current.start;
+  }, []);
+
+  const handleMouseMove = useCallback((e) => {
     if (isPanningRef.current) {
-      const dx = e.clientX - panStartRef.current.x;
-      const dy = e.clientY - panStartRef.current.y;
-      // convert pixel delta to cell units so offsetRef (in cells) remains consistent
-      const dxCells = dx / cellSize;
-      const dyCells = dy / cellSize;
-      // move offset so content follows the pointer (drag right -> content moves right)
-      offsetRef.current.x = panOffsetStartRef.current.x - dxCells;
-      offsetRef.current.y = panOffsetStartRef.current.y - dyCells;
-      drawWithOverlay();
-      if (e.preventDefault) e.preventDefault();
+      updatePanning(e);
       return;
     }
 
-    // Always update cursor position (throttled via RAF) so the ToolStatus can
-    // display the mouse coordinates even when no tool is selected.
     const pt = eventToCell(e);
     if (!pt) return;
     scheduleCursorUpdate(pt);
 
     const tool = toolMap[selectedTool];
-    if (!tool) {
-      // No active tool — nothing more to do
-      return;
-    }
+    if (!tool) return;
 
-    // If shapes tool is active, update preview position while hovering
-    // (no mouse button required). This lets users see the shape preview as
-    // they move the cursor after selecting a shape from the palette.
     if (selectedTool === 'shapes') {
-      toolStateRef.current.last = { x: pt.x, y: pt.y };
-      // allow tool-specific onMouseMove if it wants to run as well
-      tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
-      drawWithOverlay();
+      handleShapeToolMove(e, tool, pt);
       return;
     }
 
-    // Only let other tools modify state/draw while primary button is pressed or
-    // when the tool already has an active start/last state.
-    if (!(e.buttons & 1) && !toolStateRef.current.last && !toolStateRef.current.start) return;
+    if (!shouldToolMove(e)) return;
 
     tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
     drawWithOverlay();
-  };
+  }, [updatePanning, eventToCell, scheduleCursorUpdate, toolMap, selectedTool, handleShapeToolMove, shouldToolMove, setCellAlive, drawWithOverlay]);
 
-  const handleMouseUp = (e) => {
-    // If we were panning, stop and release capture
-    if (isPanningRef.current) {
-      isPanningRef.current = false;
-      try { e.target.releasePointerCapture?.(e.pointerId); } catch { /* releasePointerCapture not supported in some browsers */ }
-      if (e.preventDefault) e.preventDefault();
-      return;
-    }
+  const stopPanning = useCallback((e) => {
+    isPanningRef.current = false;
+    try { e.target.releasePointerCapture?.(e.pointerId); } catch { /* releasePointerCapture not supported */ }
+    if (e.preventDefault) e.preventDefault();
+  }, []);
 
+  const handleToolMouseUp = useCallback((e) => {
     const tool = toolMap[selectedTool];
     if (!tool) return;
     const pt = eventToCell(e);
-
-    // Some tools expect coords; pass last known if no pt
     const x = pt ? pt.x : toolStateRef.current.last?.x;
     const y = pt ? pt.y : toolStateRef.current.last?.y;
     tool.onMouseUp?.(toolStateRef.current, x, y, setCellAlive, placeShape);
     drawWithOverlay();
-  };
+  }, [toolMap, selectedTool, eventToCell, setCellAlive, placeShape, drawWithOverlay]);
+
+  const handleMouseUp = useCallback((e) => {
+    if (isPanningRef.current) {
+      stopPanning(e);
+      return;
+    }
+    handleToolMouseUp(e);
+  }, [stopPanning, handleToolMouseUp]);
 
   // Panning support removed to simplify zoom behavior per user request.
+
+  // Helper function for wheel zoom calculations
+  const calculateNewCellSize = useCallback((currentSize, zoomDirection) => {
+    const dpr = globalThis.window.devicePixelRatio || 1;
+    const minCellSize = 1 / dpr;
+    const maxCellSize = MAX_CELL_SIZE;
+    const factor = zoomDirection < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
+
+    const prevDevice = currentSize * dpr;
+    let newDevice = prevDevice * factor;
+    const maxDevice = maxCellSize * dpr;
+    
+    newDevice = Math.max(1, Math.min(maxDevice, newDevice));
+    let snappedDevice = Math.round(newDevice);
+    
+    if (newDevice > prevDevice) snappedDevice = Math.ceil(newDevice);
+    else snappedDevice = Math.floor(newDevice);
+    
+    snappedDevice = Math.max(1, Math.min(Math.round(maxDevice), snappedDevice));
+    const snappedSize = Math.max(minCellSize, snappedDevice / dpr);
+    
+    return snappedSize === currentSize ? currentSize : snappedSize;
+  }, []);
+
+  const handleWheelZoom = useCallback((e) => {
+    setCellSize(prev => calculateNewCellSize(prev, e.deltaY));
+    if (e.cancelable) e.preventDefault();
+    drawWithOverlay();
+  }, [setCellSize, calculateNewCellSize, drawWithOverlay]);
 
   // Mouse wheel: adjust cell size (zoom)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // handleWheel will zoom centered on the canvas center (simpler UX)
-    const handleWheel = (e) => {
-      // Use canvas center rather than cursor position (center is world origin)
-      // Update cellSize multiplicatively but do NOT change offsetRef (center remains world origin)
-      setCellSize(prev => {
-        const dpr = globalThis.window.devicePixelRatio || 1;
-        const minCellSize = 1 / dpr; // one device pixel in logical units
-        const maxCellSize = MAX_CELL_SIZE;
-        const zoomFactor = ZOOM_FACTOR; // per wheel tick
-        const factor = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
-
-        // device pixel snapping
-        const prevDevice = prev * dpr;
-        let newDevice = prevDevice * factor;
-        const maxDevice = maxCellSize * dpr;
-        newDevice = Math.max(1, Math.min(maxDevice, newDevice));
-        let snappedDevice = Math.round(newDevice);
-        if (newDevice > prevDevice) snappedDevice = Math.ceil(newDevice);
-        else snappedDevice = Math.floor(newDevice);
-        snappedDevice = Math.max(1, Math.min(Math.round(maxDevice), snappedDevice));
-        const snappedSize = Math.max(minCellSize, snappedDevice / dpr);
-        return snappedSize === prev ? prev : snappedSize;
-      });
-
-      // prevent page scroll while zooming
-      if (e.cancelable) e.preventDefault();
-      drawWithOverlay();
-    };
-
-    // passive: false so preventDefault() works in browsers
-    canvas.addEventListener('wheel', handleWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', handleWheel, { passive: false });
-  }, [setCellSize, drawWithOverlay, offsetRef]);
+    canvas.addEventListener('wheel', handleWheelZoom, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheelZoom, { passive: false });
+  }, [handleWheelZoom]);
 
   // shapes menu removed: no context menu handler
 
   // Initial draw
   useEffect(() => { drawWithOverlay(); }, [drawWithOverlay]);
 
+  // Helper functions for shape selection
+  const generateShapeKey = useCallback((shape) => {
+    if (shape && shape.id) return String(shape.id);
+    if (typeof shape === 'string') return shape;
+    return JSON.stringify(shape);
+  }, []);
+
+  const updateRecentShapesList = useCallback((newShape) => {
+    setRecentShapes(prev => {
+      const newKey = generateShapeKey(newShape);
+      const filtered = prev.filter(shape => generateShapeKey(shape) !== newKey);
+      return [newShape, ...filtered].slice(0, MAX_RECENT_SHAPES);
+    });
+  }, [generateShapeKey]);
+
+  const updateShapeState = useCallback((shape) => {
+    const normalizedShape = shape || null;
+    setSelectedShape?.(normalizedShape);
+    toolStateRef.current.selectedShapeData = normalizedShape;
+  }, [setSelectedShape]);
+
   // Centralized shape selection helper: sets the selected shape, updates the tool
   // state and maintains the recent-shapes list in one place.
   const selectShape = useCallback((shape) => {
-    // update reactive state
-    setSelectedShape?.(shape || null);
-    // update non-reactive tool state for fast access by render/overlay
-    toolStateRef.current.selectedShapeData = shape || null;
-    // maintain recent shapes list (unique, newest-first, max MAX_RECENT_SHAPES)
+    updateShapeState(shape);
     if (shape) {
-      setRecentShapes(prev => {
-        const newEntry = shape;
-        const keyFor = (it) => {
-          if (it && it.id) return String(it.id);
-          if (typeof it === 'string') return it;
-          return JSON.stringify(it);
-        };
-        const newKey = keyFor(newEntry);
-        const filtered = prev.filter(p => keyFor(p) !== newKey);
-        return [newEntry, ...filtered].slice(0, MAX_RECENT_SHAPES);
-      });
+      updateRecentShapesList(shape);
     }
-    // Refresh overlay immediately so the preview appears right after selection
     drawWithOverlay();
-  }, [setSelectedShape, drawWithOverlay]);
+  }, [updateShapeState, updateRecentShapesList, drawWithOverlay]);
 
   const openPalette = useCallback(() => {
     prevToolRef.current = selectedTool;
@@ -549,29 +569,12 @@ const GameOfLife = () => {
     <div className="canvas-container">
       {/* Left-side recent shapes strip */}
       <div className="recent-shapes" style={{ position: 'absolute', left: RECENT_SHAPES_LEFT_OFFSET, top: RECENT_SHAPES_TOP_OFFSET, zIndex: RECENT_SHAPES_Z_INDEX }}>
-        {recentShapes.map((s, idx) => {
-          const key = s && s.id ? s.id : idx;
-          const cells = (s && Array.isArray(s.cells)) ? s.cells : (Array.isArray(s) ? s : []);
-          const width = cells.reduce((max, c) => Math.max(max, (Array.isArray(c) ? c[0] : (c.x || 0))), 0) + 1 || 8;
-          const height = cells.reduce((max, c) => Math.max(max, (Array.isArray(c) ? c[1] : (c.y || 0))), 0) + 1 || 8;
-          const title = s?.name || s?.meta?.name || (s && s.id) || `shape ${idx}`;
-          return (
-            <div key={key} style={{ marginBottom: 8, cursor: 'pointer' }} onClick={() => { selectShape(s); drawWithOverlay(); }} title={title}>
-              <svg width={RECENT_SHAPES_THUMBNAIL_SIZE} height={RECENT_SHAPES_THUMBNAIL_SIZE} viewBox={`0 0 ${Math.max(1, width)} ${Math.max(1, height)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 6 }}>
-                {Array.from({ length: width }).map((_, cx) => (
-                  Array.from({ length: height }).map((__, cy) => (
-                    <rect key={`g-${key}-${cx}-${cy}`} x={cx} y={cy} width={1} height={1} fill="transparent" stroke="rgba(255,255,255,0.02)" />
-                  ))
-                ))}
-                {cells.map((c, i) => {
-                  const x = Array.isArray(c) ? c[0] : (c.x || 0);
-                  const y = Array.isArray(c) ? c[1] : (c.y || 0);
-                  return <rect key={`c-${key}-${i}`} x={x} y={y} width={1} height={1} fill={colorScheme?.getCellColor?.(x, y) ?? '#222'} />
-                })}
-              </svg>
-            </div>
-          );
-        })}
+        <RecentShapesStrip 
+          recentShapes={recentShapes}
+          selectShape={selectShape}
+          drawWithOverlay={drawWithOverlay}
+          colorScheme={colorScheme}
+        />
       </div>
       <ControlsBar
         selectedTool={selectedTool}
