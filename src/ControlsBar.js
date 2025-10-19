@@ -13,6 +13,11 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import SettingsIcon from '@mui/icons-material/Settings';
 import BarChartIcon from '@mui/icons-material/BarChart';
+
+// UI Layout Constants  
+const CONTROL_SPACING = 1;
+const TOOL_STATUS_MARGIN_LEFT = 12;
+const STEADY_STATE_PERIOD_INITIAL = 0;
 import BrushIcon from '@mui/icons-material/Brush';
 import LineAxisIcon from '@mui/icons-material/ShowChart';
 import CropSquareIcon from '@mui/icons-material/CropSquare';
@@ -71,7 +76,7 @@ const ControlsBar = ({
 
   return (
     <div className="controls">
-      <Stack direction="row" spacing={1} alignItems="center">
+      <Stack direction="row" spacing={CONTROL_SPACING} alignItems="center">
         <ToggleButtonGroup
           value={selectedTool}
           exclusive
@@ -97,7 +102,7 @@ const ControlsBar = ({
         >
           {isRunning ? 'Stop' : 'Start'}
         </Button>
-        <Button size="small" onClick={() => { clear(); draw(); snapshotsRef.current = []; setSteadyInfo({ steady: false, period: 0, popChanging: false }); }}>Clear</Button>
+        <Button size="small" onClick={() => { clear(); draw(); snapshotsRef.current = []; setSteadyInfo({ steady: false, period: STEADY_STATE_PERIOD_INITIAL, popChanging: false }); }}>Clear</Button>
 
         <IconButton size="small" onClick={() => setShowChart(true)} aria-label="chart"><BarChartIcon fontSize="small"/></IconButton>
   {/* palette opener removed; use the palette toggle in the tool group instead */}
@@ -106,7 +111,7 @@ const ControlsBar = ({
 
   <Chip label={`Live Cells: ${getLiveCells().size}`} size="small" variant="outlined" />
 
-        <div style={{ marginLeft: 12 }}>
+        <div style={{ marginLeft: TOOL_STATUS_MARGIN_LEFT }}>
           <ToolStatus selectedTool={selectedTool} toolStateRef={toolStateRef} cursorCell={cursorCell} selectedShape={selectedShape} />
         </div>
       </Stack>

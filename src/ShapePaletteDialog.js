@@ -19,6 +19,13 @@ import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Slide from '@mui/material/Slide';
 
+// UI Constants
+const PREVIEW_BOX_SIZE = 72;
+const PREVIEW_SVG_SIZE = 64;
+const PREVIEW_BORDER_OPACITY = 0.06;
+const PREVIEW_BORDER_RADIUS = 6;
+const GRID_LINE_OFFSET = 0.5;
+
 // Helper function to resolve base URL consistently
 const getBaseUrl = (backendBase) => {
   if (typeof backendBase === 'string' && backendBase.length > 0) {
@@ -136,20 +143,20 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
               <IconButton edge="end" aria-label="delete" onClick={(e) => { e.stopPropagation(); setToDelete(s); setConfirmOpen(true); }}>
                 <DeleteIcon />
               </IconButton>
-              <Box sx={{ ml: 1, width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width={64} height={64} viewBox={`0 0 ${Math.max(1, s.width||1)} ${Math.max(1, s.height||1)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 6 }}>
+              <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width={PREVIEW_SVG_SIZE} height={PREVIEW_SVG_SIZE} viewBox={`0 0 ${Math.max(1, s.width||1)} ${Math.max(1, s.height||1)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: `1px solid rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`, borderRadius: PREVIEW_BORDER_RADIUS }}>
                   {Array.isArray(s.cells) && s.cells.length > 0 ? (
                     s.cells.map((c, idx) => (
                       <rect key={idx} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
                     ))
                   ) : (
                     // small empty placeholder grid
-                    <g stroke="rgba(0,0,0,0.06)" fill="none">
+                    <g stroke={`rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`} fill="none">
                       {Array.from({length: Math.max(1, s.width||1)}).map((_, i) => (
-                        <line key={`vx-${i}`} x1={i+0.5} y1={0} x2={i+0.5} y2={Math.max(1, s.height||1)} />
+                        <line key={`vx-${i}`} x1={i+GRID_LINE_OFFSET} y1={0} x2={i+GRID_LINE_OFFSET} y2={Math.max(1, s.height||1)} />
                       ))}
                       {Array.from({length: Math.max(1, s.height||1)}).map((_, j) => (
-                        <line key={`hy-${j}`} x1={0} y1={j+0.5} x2={Math.max(1, s.width||1)} y2={j+0.5} />
+                        <line key={`hy-${j}`} x1={0} y1={j+GRID_LINE_OFFSET} x2={Math.max(1, s.width||1)} y2={j+GRID_LINE_OFFSET} />
                       ))}
                     </g>
                   )}

@@ -3,6 +3,16 @@
 // non-reactive selectedShapeData and the preview anchor/last coordinates.
 import logger from '../utils/logger';
 
+const SHAPE_PREVIEW_ALPHA = 0.45;
+const STROKE_WIDTH_SCALE_FACTOR = 0.06;
+const MIN_STROKE_WIDTH = 1;
+const MAX_STROKE_WIDTH = 2;
+const DEFAULT_CELL_COLOR = '#222';
+const FULL_OPACITY = 1;
+const OUTLINE_STROKE_COLOR = 'rgba(255,255,255,0.22)';
+const DEFAULT_CELL_X = 0;
+const DEFAULT_CELL_Y = 0;
+
 export const shapesTool = {
   onMouseDown(toolState, x, y) {
     toolState.start = { x, y };
@@ -43,26 +53,26 @@ export const shapesTool = {
       if (!cells.length) return;
 
       ctx.save();
-      ctx.globalAlpha = 0.45;
-      const strokeW = Math.max(1, Math.min(2, Math.floor(cellSize * 0.06)));
+      ctx.globalAlpha = SHAPE_PREVIEW_ALPHA;
+      const strokeW = Math.max(MIN_STROKE_WIDTH, Math.min(MAX_STROKE_WIDTH, Math.floor(cellSize * STROKE_WIDTH_SCALE_FACTOR)));
       for (const c of cells) {
-        const cx = c?.x ?? (Array.isArray(c) ? c[0] : 0);
-        const cy = c?.y ?? (Array.isArray(c) ? c[1] : 0);
+        const cx = c?.x ?? (Array.isArray(c) ? c[DEFAULT_CELL_X] : DEFAULT_CELL_X);
+        const cy = c?.y ?? (Array.isArray(c) ? c[DEFAULT_CELL_Y] : DEFAULT_CELL_Y);
         const drawX = (last.x + cx) * cellSize - computedOffset.x;
         const drawY = (last.y + cy) * cellSize - computedOffset.y;
         try {
-          ctx.fillStyle = (typeof colorScheme?.getCellColor === 'function') ? colorScheme.getCellColor(last.x + cx, last.y + cy) : '#222';
+          ctx.fillStyle = (typeof colorScheme?.getCellColor === 'function') ? colorScheme.getCellColor(last.x + cx, last.y + cy) : DEFAULT_CELL_COLOR;
         } catch (err) {
           logger.debug('colorScheme.getCellColor failed:', err);
-          ctx.fillStyle = '#222';
+          ctx.fillStyle = DEFAULT_CELL_COLOR;
         }
         ctx.fillRect(drawX, drawY, cellSize, cellSize);
         // outline for visibility regardless of theme
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+        ctx.globalAlpha = FULL_OPACITY;
+        ctx.strokeStyle = OUTLINE_STROKE_COLOR;
         ctx.lineWidth = strokeW;
         ctx.strokeRect(drawX, drawY, cellSize, cellSize);
-        ctx.globalAlpha = 0.45;
+        ctx.globalAlpha = SHAPE_PREVIEW_ALPHA;
       }
       ctx.restore();
     } catch (err) {

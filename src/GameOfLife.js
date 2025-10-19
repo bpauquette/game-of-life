@@ -30,6 +30,12 @@ const ZOOM_FACTOR = 1.12;
 const RECENT_SHAPES_THUMBNAIL_SIZE = 48;
 const KEYBOARD_PAN_AMOUNT = 1;
 const KEYBOARD_PAN_AMOUNT_SHIFT = 10;
+const SHAPE_PREVIEW_ALPHA = 0.45;
+const DEFAULT_WINDOW_WIDTH = 800;
+const DEFAULT_WINDOW_HEIGHT = 600;
+const RECENT_SHAPES_LEFT_OFFSET = 8;
+const RECENT_SHAPES_TOP_OFFSET = 80;
+const RECENT_SHAPES_Z_INDEX = 20;
 
 
 const GameOfLife = () => {
@@ -160,7 +166,7 @@ const GameOfLife = () => {
 
           if (cells && cells.length > 0) {
             ctx.save();
-            ctx.globalAlpha = 0.45;
+            ctx.globalAlpha = SHAPE_PREVIEW_ALPHA;
             for (let i = 0; i < cells.length; i++) {
               const c = cells[i];
               const cx = (c.x !== undefined) ? c.x : c[0];
@@ -189,8 +195,8 @@ const GameOfLife = () => {
     if (!canvas) return;
 
     const dpr = (globalThis.window?.devicePixelRatio) || 1;
-    const logicalWidth = globalThis.window?.innerWidth || 800;
-    const logicalHeight = globalThis.window?.innerHeight || 600;
+    const logicalWidth = globalThis.window?.innerWidth || DEFAULT_WINDOW_WIDTH;
+    const logicalHeight = globalThis.window?.innerHeight || DEFAULT_WINDOW_HEIGHT;
 
     // set CSS size (so canvas looks correct in layout)
     canvas.style.width = `${logicalWidth}px`;
@@ -542,7 +548,7 @@ const GameOfLife = () => {
   return (
     <div className="canvas-container">
       {/* Left-side recent shapes strip */}
-      <div className="recent-shapes" style={{ position: 'absolute', left: 8, top: 80, zIndex: 20 }}>
+      <div className="recent-shapes" style={{ position: 'absolute', left: RECENT_SHAPES_LEFT_OFFSET, top: RECENT_SHAPES_TOP_OFFSET, zIndex: RECENT_SHAPES_Z_INDEX }}>
         {recentShapes.map((s, idx) => {
           const key = s && s.id ? s.id : idx;
           const cells = (s && Array.isArray(s.cells)) ? s.cells : (Array.isArray(s) ? s : []);
