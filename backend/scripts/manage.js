@@ -93,43 +93,9 @@ function start() {
   let child;
   try {
     if (shouldDetach) {
-      let outFd;
-      try {
-        outFd = fs.openSync(config.logFile, 'a');
-      } catch (e) {
-        console.warn('Unable to open log file for writing, falling back to ignore:', e.message);
-        outFd = 'ignore';
-      }
-
-  const stdioOption = (typeof outFd === 'number') ? ['ignore', outFd, outFd] : ['ignore', 'ignore', 'ignore'];
-
-      child = spawn(spawnCmd, spawnArgs, {
-        cwd: config.cwd,
-        stdio: stdioOption,
-        detached: true,
-        env: Object.assign({}, process.env, { PORT: config.portEnv }),
-      });
-
-      try { if (typeof outFd === 'number') fs.closeSync(outFd); } catch (e) {}
+      child = spawnDetached(spawnCmd, spawnArgs);
     } else {
-      // Foreground: inherit stdio so the child appears in this terminal and
-      // Ctrl+C behaves normally. On Windows, spawn npm.cmd directly where
-      // possible to avoid the extra cmd.exe wrapper.
-      if (process.platform === 'win32' && config.cmd && config.cmd.toLowerCase().indexOf('npm') !== -1) {
-        child = spawn(npmCmd, config.args, {
-          cwd: config.cwd,
-          stdio: 'inherit',
-          detached: false,
-          env: Object.assign({}, process.env, { PORT: config.portEnv }),
-        });
-      } else {
-        child = spawn(spawnCmd, spawnArgs, {
-          cwd: config.cwd,
-          stdio: 'inherit',
-          detached: false,
-          env: Object.assign({}, process.env, { PORT: config.portEnv }),
-        });
-      }
+      child = spawnForeground(spawnCmd, spawnArgs);
     }
   } catch (err) {
     console.error('spawn threw synchronously:', err && err.stack ? err.stack : err);
@@ -174,6 +140,42 @@ function start() {
     process.on('SIGINT', () => forward('SIGINT'));
     process.on('SIGTERM', () => forward('SIGTERM'));
   }
+}
+
+function spawnDetached(cmd, args) {
+  let outFd;
+  try {
+    outFd = fs.openSync(config.logFile, 'a');
+  } catch (e) {
+    console.warn('Unable to open log file for writing, falling back to ignore:', e.message);
+    outFd = 'ignore';
+  }
+  const stdioOption = (typeof outFd === 'number') ? ['ignore', outFd, outFd] : ['ignore', 'ignore', 'ignore'];
+  const child = spawn(cmd, args, {
+    cwd: config.cwd,
+    stdio: stdioOption,
+    detached: true,
+    env: Object.assign({}, process.env, { PORT: config.portEnv }),
+  });
+  try { if (typeof outFd === 'number') fs.closeSync(outFd); } catch (e) {}
+  return child;
+}
+
+function spawnForeground(cmd, args) {
+  if (process.platform === 'win32' && config.cmd && config.cmd.toLowerCase().indexOf('npm') !== -1) {
+    return spawn(npmCmd, config.args, {
+      cwd: config.cwd,
+      stdio: 'inherit',
+      detached: false,
+      env: Object.assign({}, process.env, { PORT: config.portEnv }),
+    });
+  }
+  return spawn(cmd, args, {
+    cwd: config.cwd,
+    stdio: 'inherit',
+    detached: false,
+    env: Object.assign({}, process.env, { PORT: config.portEnv }),
+  });
 }
 
 function stop() {

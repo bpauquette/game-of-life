@@ -15,7 +15,11 @@ export const rectTool = {
   onMouseUp(state, x, y, setCellAlive) {
     if (!state.start) return;
     const pts = computeRectPerimeter(state.start.x, state.start.y, x, y);
-    pts.forEach(([px, py]) => setCellAlive(px, py, true));
+    for (const p of pts) {
+      const px = p[0];
+      const py = p[1];
+      setCellAlive(px, py, true);
+    }
     state.start = null;
     state.last = null;
     state.preview = [];
@@ -24,9 +28,11 @@ export const rectTool = {
   drawOverlay(ctx, state, cellSize, offset) {
     if (!state.preview || state.preview.length === 0) return;
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    state.preview.forEach(([x, y]) => {
+    for (const p of state.preview) {
+      const x = p[0];
+      const y = p[1];
       ctx.fillRect(x * cellSize - offset.x, y * cellSize - offset.y, cellSize, cellSize);
-    });
+    }
   }
 };
 

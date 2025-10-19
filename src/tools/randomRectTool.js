@@ -18,9 +18,11 @@ export const randomRectTool = {
     if (!state.start) return;
     const pts = computeRect(state.start.x, state.start.y, x, y);
     const p = Math.max(0, Math.min(1, state.prob ?? 0.5));
-    pts.forEach(([px, py]) => {
+    for (const point of pts) {
+      const px = point[0];
+      const py = point[1];
       setCellAlive(px, py, Math.random() < p);
-    });
+    }
     state.start = null;
     state.last = null;
     state.preview = [];
@@ -29,9 +31,11 @@ export const randomRectTool = {
   drawOverlay(ctx, state, cellSize, offset) {
     if (!state.preview || state.preview.length === 0) return;
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    state.preview.forEach(([x, y]) => {
+    for (const p of state.preview) {
+      const x = p[0];
+      const y = p[1];
       ctx.fillRect(x * cellSize - offset.x, y * cellSize - offset.y, cellSize, cellSize);
-    });
+    }
   }
 };
 

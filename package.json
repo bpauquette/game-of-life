@@ -29,6 +29,12 @@
   "backend:status": "node ./backend/scripts/manage.js status",
     "eject": "react-scripts eject"
   },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/gameLogic.js",
+      "src/utils/populationUtils.js"
+    ]
+  },
   "eslintConfig": {
     "extends": [
       "react-app",

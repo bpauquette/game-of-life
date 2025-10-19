@@ -110,21 +110,26 @@ export function useChunkedGameState() {
     const newLiveMap = gameStep(liveMap);
     
     // Convert newLiveMap to chunked structure
-    const newChunks = new Map();
-    newLiveMap.forEach((_, key) => {
-      const [x, y] = key.split(',').map(Number);
-      const [cx, cy] = getChunkCoords(x, y);
-      const chunkKeyStr = chunkKey(cx, cy);
-      let cellSet = newChunks.get(chunkKeyStr);
-      if (!cellSet) {
-        cellSet = new Set();
-        newChunks.set(chunkKeyStr, cellSet);
-      }
-      cellSet.add(`${x - cx * CHUNK_SIZE},${y - cy * CHUNK_SIZE}`);
-    });
+    const newChunks = convertLiveMapToChunks(newLiveMap);
     chunksRef.current = newChunks;
     setChunks(newChunks); 
   }, [getLiveCells]);
+
+  function convertLiveMapToChunks(map) {
+    const out = new Map();
+    for (const [key] of map.entries()) {
+      const [x, y] = key.split(',').map(Number);
+      const [cx, cy] = getChunkCoords(x, y);
+      const chunkKeyStr = chunkKey(cx, cy);
+      let cellSet = out.get(chunkKeyStr);
+      if (!cellSet) {
+        cellSet = new Set();
+        out.set(chunkKeyStr, cellSet);
+      }
+      cellSet.add(`${x - cx * CHUNK_SIZE},${y - cy * CHUNK_SIZE}`);
+    }
+    return out;
+  }
 
   const placeShape = useCallback((x, y) => {
     if (!selectedShape) return;

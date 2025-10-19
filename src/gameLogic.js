@@ -10,19 +10,18 @@ export const getNeighbors = (x, y) => {
 
 export const step = (liveCellsMap) => {
   const neighborCounts = new Map();
-
-  liveCellsMap.forEach((_, key) => {
+  for (const key of liveCellsMap.keys()) {
     const [x, y] = key.split(',').map(Number);
-    getNeighbors(x, y).forEach(([nx, ny]) => {
+    for (const [nx, ny] of getNeighbors(x, y)) {
       const nKey = `${nx},${ny}`;
       neighborCounts.set(nKey, (neighborCounts.get(nKey) || 0) + 1);
-    });
-  });
+    }
+  }
 
   const newMap = new Map();
-  neighborCounts.forEach((count, key) => {
+  for (const [key, count] of neighborCounts.entries()) {
     if (count === 3 || (count === 2 && liveCellsMap.has(key))) newMap.set(key, true);
-  });
+  }
 
   return newMap;
 };

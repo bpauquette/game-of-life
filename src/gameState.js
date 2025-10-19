@@ -25,7 +25,11 @@ export const useGameState = () => {
 
   const placeShape = useCallback((x, y, shapes, selectedShape) => {
     if (!selectedShape) return;
-    shapes[selectedShape].forEach(([dx, dy]) => liveCellsRef.current.set(`${x + dx},${y + dy}`, true));
+    for (const pair of shapes[selectedShape]) {
+      const dx = pair[0];
+      const dy = pair[1];
+      liveCellsRef.current.set(`${x + dx},${y + dy}`, true);
+    }
     setLiveCount(liveCellsRef.current.size);
   }, []);
 

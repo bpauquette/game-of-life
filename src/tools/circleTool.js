@@ -17,7 +17,11 @@ export const circleTool = {
     if (!state.start) return;
     const r = Math.round(Math.hypot(x - state.start.x, y - state.start.y));
     const pts = computeCirclePerimeter(state.start.x, state.start.y, r);
-    pts.forEach(([px, py]) => setCellAlive(px, py, true));
+    for (const p of pts) {
+      const px = p[0];
+      const py = p[1];
+      setCellAlive(px, py, true);
+    }
     state.start = null;
     state.last = null;
     state.preview = [];
@@ -26,9 +30,11 @@ export const circleTool = {
   drawOverlay(ctx, state, cellSize, offset) {
     if (!state.preview || state.preview.length === 0) return;
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    state.preview.forEach(([x, y]) => {
+    for (const p of state.preview) {
+      const x = p[0];
+      const y = p[1];
       ctx.fillRect(x * cellSize - offset.x, y * cellSize - offset.y, cellSize, cellSize);
-    });
+    }
   }
 };
 
@@ -68,12 +74,14 @@ function computeCirclePerimeter(cx, cy, r) {
   // Deduplicate points
   const seen = new Set();
   const unique = [];
-  pts.forEach(([px, py]) => {
+  for (const p of pts) {
+    const px = p[0];
+    const py = p[1];
     const key = `${px},${py}`;
     if (!seen.has(key)) {
       seen.add(key);
       unique.push([px, py]);
     }
-  });
+  }
   return unique;
 }

@@ -45,60 +45,14 @@ function parseRLE(text){
   if(!text || !text.trim()) throw new Error('Empty RLE text');
   const lines = text.split(/\r?\n/);
   const {meta, headerLine} = parseHeader(lines);
-  // body lines are non-# lines and lines after header line
-  const bodyLines = [];
-  let inBody = false;
-  for(const line of lines){
-    const t = line.trim();
-    if(!inBody && HEADER_RE.test(t)){
-      inBody = true; // next lines are body (but header line may be followed by body on same or next line)
-      // header line may have no body; continue
-      continue;
-    }
-    if(!t.startsWith('#') && (inBody || !HEADER_RE.test(t))){
-      if(t.length>0) bodyLines.push(t);
-    }
-  }
-  // If no header line found, attempt to treat all non-# lines as body
-  if(!headerLine){
-    // take all non-# lines
-    const alt = lines.filter(l => !l.trim().startsWith('#')).map(l=>l.trim()).filter(Boolean);
-    bodyLines.length = 0;
-    bodyLines.push(...alt);
-  }
-  const body = bodyLines.join('');
+
+  const body = getBodyText(lines, headerLine);
   const tokens = tokenizeRLE(body);
+  const cells = expandTokensToCells(tokens);
 
-  let cx = 0, cy = 0;
-  const cells = [];
-  for(const tk of tokens){
-    const c = tk.count;
-    const tag = tk.tag.toLowerCase();
-    if(tag === 'o'){
-      for(let i=0;i<c;i++){
-        cells.push({x: cx + i, y: cy});
-      }
-      cx += c;
-    } else if(tag === 'b'){
-      cx += c;
-    } else if(tag === '$'){
-      cy += c;
-      cx = 0;
-    } else if(tag === '!'){
-      break;
-    }
-  }
-
-  // compute bounding box (should already start at 0 but be safe)
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for(const p of cells){
-    if(p.x < minX) minX = p.x;
-    if(p.y < minY) minY = p.y;
-    if(p.x > maxX) maxX = p.x;
-    if(p.y > maxY) maxY = p.y;
-  }
-  if(minX === Infinity){
-    // empty pattern
+  // compute bounding box and early-return if empty
+  const bbox = computeBoundingBox(cells);
+  if (bbox.empty) {
     return {
       name: meta.name || 'unnamed',
       width: meta.width || 0,
@@ -110,9 +64,9 @@ function parseRLE(text){
   }
 
   // normalize so minX/minY -> 0
-  const normalized = cells.map(p => ({x: p.x - minX, y: p.y - minY}));
-  const width = (maxX - minX) + 1;
-  const height = (maxY - minY) + 1;
+  const normalized = cells.map(p => ({x: p.x - bbox.minX, y: p.y - bbox.minY}));
+  const width = (bbox.maxX - bbox.minX) + 1;
+  const height = (bbox.maxY - bbox.minY) + 1;
 
   return {
     name: meta.name || 'unnamed',
@@ -122,6 +76,65 @@ function parseRLE(text){
     rule: meta.rule || null,
     meta: { ...meta, originalHeader: headerLine }
   };
+}
+
+// Helper: extract body text from lines
+function getBodyText(lines, headerLine) {
+  const bodyLines = [];
+  let inBody = false;
+  for (const line of lines) {
+    const t = line.trim();
+    if (!inBody && HEADER_RE.test(t)) {
+      inBody = true;
+      continue;
+    }
+    if (!t.startsWith('#') && (inBody || !HEADER_RE.test(t))) {
+      if (t.length > 0) bodyLines.push(t);
+    }
+  }
+  if (!headerLine) {
+    const alt = lines.filter(l => !l.trim().startsWith('#')).map(l => l.trim()).filter(Boolean);
+    bodyLines.length = 0;
+    bodyLines.push(...alt);
+  }
+  return bodyLines.join('');
+}
+
+// Helper: expand RLE tokens into cell coordinates
+function expandTokensToCells(tokens) {
+  let cx = 0, cy = 0;
+  const cells = [];
+  for (const tk of tokens) {
+    const c = tk.count;
+    const tag = tk.tag.toLowerCase();
+    if (tag === 'o') {
+      for (let i = 0; i < c; i++) {
+        cells.push({ x: cx + i, y: cy });
+      }
+      cx += c;
+    } else if (tag === 'b') {
+      cx += c;
+    } else if (tag === '$') {
+      cy += c;
+      cx = 0;
+    } else if (tag === '!') {
+      break;
+    }
+  }
+  return cells;
+}
+
+// Helper: compute bounding box for a list of points
+function computeBoundingBox(cells) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of cells) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  if (minX === Infinity) return { empty: true };
+  return { empty: false, minX, minY, maxX, maxY };
 }
 
 module.exports = { parseRLE };
