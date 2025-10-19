@@ -164,16 +164,14 @@ const GameOfLife = () => {
           }
         }
       }
-    } catch (err) {
-      // overlay drawing should never break main render; at least log the error
-      // so lint rules about unused catch vars are satisfied.
-      // In tests or restricted contexts this may be a noop.
-      // eslint-disable-next-line no-console
-      console.error(err);
-    }
-  }, [draw, selectedTool, cellSize, offsetRef, toolMap]);
-
-  // Resize canvas to fill window and account for devicePixelRatio
+      } catch (err) {
+        // overlay drawing should never break main render; at least log the error
+        // so lint rules about unused catch vars are satisfied.
+        // In tests or restricted contexts this may be a noop.
+        // eslint-disable-next-line no-console
+        console.error(err);
+      }
+    }, [draw, selectedTool, cellSize, offsetRef, toolMap, colorScheme, selectedShape]);  // Resize canvas to fill window and account for devicePixelRatio
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -339,7 +337,7 @@ const GameOfLife = () => {
       panOffsetStartRef.current = { x: offsetRef.current.x, y: offsetRef.current.y };
       if (e.preventDefault) e.preventDefault();
       // capture pointer if available
-      try { e.target.setPointerCapture?.(e.pointerId); } catch (err) {};
+      try { e.target.setPointerCapture?.(e.pointerId); } catch (err) { /* setPointerCapture not supported in some browsers */ }
       return;
     }
 
@@ -406,7 +404,7 @@ const GameOfLife = () => {
     // If we were panning, stop and release capture
     if (isPanningRef.current) {
       isPanningRef.current = false;
-      try { e.target.releasePointerCapture?.(e.pointerId); } catch (err) {}
+      try { e.target.releasePointerCapture?.(e.pointerId); } catch (err) { /* releasePointerCapture not supported in some browsers */ }
       if (e.preventDefault) e.preventDefault();
       return;
     }

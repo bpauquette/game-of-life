@@ -1,41 +1,69 @@
 #!/usr/bin/env bash
-# usage: ./scripts/sonar-local.sh <TOKEN>
+# usage: ./scripts/sonar-local.sh [TOKEN]
+# If no token provided, will use SONAR_TOKEN environment variable
 set -euo pipefail
 
-TOKEN="$1"
+# Load .env.local if it exists
+if [ -f ".env.local" ]; then
+  export $(grep -v '^#' .env.local | xargs)
+fi
+
+TOKEN="${1:-${SONAR_TOKEN:-}}"
 if [ -z "$TOKEN" ]; then
-  echo "Usage: $0 <SONAR_TOKEN>"
+  echo "Usage: $0 [SONAR_TOKEN]"
   echo "Example: $0 squ_<your_token>"
+  echo ""
+  echo "Alternatively, set SONAR_TOKEN environment variable or add it to .env.local"
+  echo "Create .env.local with: echo 'SONAR_TOKEN=squ_your_token' > .env.local"
   exit 1
 fi
 
-# Compute a host path that Docker for Windows understands when running from Git Bash
-# Prefer pwd -W (Git Bash) which returns a Windows-style path; otherwise use $PWD
-# Prefer POSIX path from pwd (e.g. /c/Users/...) when running in Git Bash
-# because Docker on Windows will handle MSYS paths reliably.
-HOST_PWD_POSIX=""
-HOST_PWD_WIN=""
-if command -v pwd >/dev/null 2>&1; then
+# Detect environment and set appropriate paths
+if grep -qi microsoft /proc/version 2>/dev/null || [ -n "${WSL_DISTRO_NAME:-}" ]; then
+  # Running in WSL - use Linux paths directly
+  HOST_PROJECT_PATH="$(pwd)"
+  # For WSL with Docker Desktop, try host.docker.internal first, fallback to localhost
+  SONAR_HOST_URL=${SONAR_HOST_URL:-http://host.docker.internal:9000}
+  DOCKER_NETWORK_ARG="--network=host"
+  echo "Detected WSL environment"
+elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+  # Running in Git Bash/MSYS - use Windows path conversion
   HOST_PWD_POSIX=$(pwd 2>/dev/null || true)
   HOST_PWD_WIN=$(pwd -W 2>/dev/null || true)
-fi
-# choose POSIX path if it looks like /c/..., otherwise fall back to Windows path
-if [ -n "$HOST_PWD_POSIX" ] && [[ "$HOST_PWD_POSIX" == /* ]]; then
-  HOST_PWD="$HOST_PWD_POSIX"
-elif [ -n "$HOST_PWD_WIN" ]; then
-  HOST_PWD="$HOST_PWD_WIN"
+  if [ -n "$HOST_PWD_POSIX" ] && [[ "$HOST_PWD_POSIX" == /* ]]; then
+    HOST_PROJECT_PATH="$HOST_PWD_POSIX"
+  elif [ -n "$HOST_PWD_WIN" ]; then
+    HOST_PROJECT_PATH="$HOST_PWD_WIN"
+  else
+    HOST_PROJECT_PATH="$PWD"
+  fi
+  SONAR_HOST_URL=${SONAR_HOST_URL:-http://host.docker.internal:9000}
+  DOCKER_NETWORK_ARG=""
+  echo "Detected Windows/Git Bash environment"
 else
-  HOST_PWD="$PWD"
+  # Running on native Linux/macOS
+  HOST_PROJECT_PATH="$(pwd)"
+  SONAR_HOST_URL=${SONAR_HOST_URL:-http://localhost:9000}
+  DOCKER_NETWORK_ARG="--network=host"
+  echo "Detected native Linux/macOS environment"
 fi
 
-echo "Using host path: $HOST_PWD"
+echo "Using host project path: $HOST_PROJECT_PATH"
+echo "SonarQube URL: $SONAR_HOST_URL"
 
-# default host URL when not provided in env
-SONAR_HOST_URL=${SONAR_HOST_URL:-http://host.docker.internal:9000}
+# Check if Docker is available
+if ! command -v docker &> /dev/null; then
+  echo "Error: Docker is not installed or not in PATH"
+  exit 1
+fi
 
-# Explicitly mount the Windows project path to avoid Git-Bash path mangling.
-# Using the explicit path requested by the user: C:\\Users\\bryan\\repos\\game-of-life
-HOST_PROJECT_PATH="C:/Users/bryan/repos/game-of-life"
+# Check if SonarQube is accessible
+echo "Checking if SonarQube is accessible..."
+if ! curl -s --connect-timeout 5 "$SONAR_HOST_URL/api/system/status" > /dev/null 2>&1; then
+  echo "Warning: SonarQube may not be running at $SONAR_HOST_URL"
+  echo "Start it with: docker-compose -f docker-compose.sonarqube.yml up -d"
+  echo "Continuing anyway..."
+fi
 
 echo "Mounting host project path: $HOST_PROJECT_PATH -> /usr/src"
 
@@ -43,5 +71,9 @@ docker run --rm \
   -e SONAR_HOST_URL="$SONAR_HOST_URL" \
   -e SONAR_TOKEN="$TOKEN" \
   -v "$HOST_PROJECT_PATH:/usr/src" \
+  $DOCKER_NETWORK_ARG \
   sonarsource/sonar-scanner-cli \
-  sh -c "cd /usr/src && sonar-scanner -Dsonar.host.url=\"$SONAR_HOST_URL\" -Dsonar.token=\"$TOKEN\" -Dsonar.projectBaseDir=/usr/src"
+  sh -c "cd /usr/src && sonar-scanner \
+    -Dsonar.host.url=\"$SONAR_HOST_URL\" \
+    -Dsonar.token=\"$TOKEN\" \
+    -Dsonar.projectBaseDir=/usr/src"

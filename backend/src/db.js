@@ -7,7 +7,9 @@ async function ensureDbFile(){
   const dir = path.dirname(DB_FILE);
   try{
     await fs.mkdir(dir, { recursive: true });
-  }catch(e){ /* ignore */ }
+  } catch(e) { 
+    // File may not exist yet, this is expected on first run
+  }
   try{
     await fs.access(DB_FILE);
   }catch(err){
