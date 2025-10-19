@@ -3,7 +3,7 @@ const fs = require('node:fs').promises;
 
 const DB_FILE = path.join(__dirname, '..', 'data', 'shapes.json');
 
-async function ensureDbFile(){
+const ensureDbFile = async () => {
   const dir = path.dirname(DB_FILE);
   try{
     await fs.mkdir(dir, { recursive: true });
@@ -16,9 +16,9 @@ async function ensureDbFile(){
     // create empty array file
     await fs.writeFile(DB_FILE, '[]', 'utf8');
   }
-}
+};
 
-async function readDb(){
+const readDb = async () => {
   await ensureDbFile();
   const txt = await fs.readFile(DB_FILE, 'utf8');
   try{
@@ -28,36 +28,36 @@ async function readDb(){
     await fs.writeFile(DB_FILE, '[]', 'utf8');
     return [];
   }
-}
+};
 
-async function writeDb(data){
+const writeDb = async (data) => {
   await ensureDbFile();
   await fs.writeFile(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
-}
+};
 
-async function listShapes(){
+const listShapes = async () => {
   return await readDb();
-}
+};
 
-async function getShape(id){
+const getShape = async (id) => {
   const data = await readDb();
   return data.find(s => s.id === id) || null;
-}
+};
 
-async function addShape(shape){
+const addShape = async (shape) => {
   const data = await readDb();
   data.push(shape);
   await writeDb(data);
   return shape;
-}
+};
 
-async function deleteShape(id){
+const deleteShape = async (id) => {
   const data = await readDb();
   const idx = data.findIndex(s => s.id === id);
   if(idx === -1) return false;
   data.splice(idx, 1);
   await writeDb(data);
   return true;
-}
+};
 
 module.exports = { listShapes, getShape, addShape, deleteShape };
