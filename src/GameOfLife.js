@@ -488,7 +488,11 @@ const GameOfLife = () => {
     if (shape) {
       setRecentShapes(prev => {
         const newEntry = shape;
-        const keyFor = (it) => (it && it.id) ? String(it.id) : (typeof it === 'string' ? it : JSON.stringify(it));
+        const keyFor = (it) => {
+          if (it && it.id) return String(it.id);
+          if (typeof it === 'string') return it;
+          return JSON.stringify(it);
+        };
         const newKey = keyFor(newEntry);
         const filtered = prev.filter(p => keyFor(p) !== newKey);
         return [newEntry, ...filtered].slice(0, MAX_RECENT_SHAPES);

@@ -151,8 +151,21 @@ export function useChunkedGameState() {
     }
 
     for (const c of cells) {
-      const cx = (c && (c.x !== undefined)) ? c.x : (Array.isArray(c) ? c[0] : DEFAULT_COORDINATE);
-      const cy = (c && (c.y !== undefined)) ? c.y : (Array.isArray(c) ? c[1] : DEFAULT_COORDINATE);
+      let cx = DEFAULT_COORDINATE;
+      let cy = DEFAULT_COORDINATE;
+      
+      if (c && (c.x !== undefined)) {
+        cx = c.x;
+      } else if (Array.isArray(c)) {
+        cx = c[0];
+      }
+      
+      if (c && (c.y !== undefined)) {
+        cy = c.y;
+      } else if (Array.isArray(c)) {
+        cy = c[1];
+      }
+      
       setCellAlive(x + cx, y + cy, true);
     }
   }, [selectedShape, setCellAlive]);

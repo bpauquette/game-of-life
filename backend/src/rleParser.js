@@ -18,8 +18,8 @@ function parseHeader(lines){
     } else if(HEADER_RE.test(t) && !headerLine){
       headerLine = t;
       const m = HEADER_RE.exec(t);
-      meta.width = parseInt(m[1],10);
-      meta.height = parseInt(m[2],10);
+      meta.width = Number.parseInt(m[1],10);
+      meta.height = Number.parseInt(m[2],10);
       if(m[3]) meta.rule = m[3];
     }
   }
@@ -33,7 +33,7 @@ function tokenizeRLE(body){
   const re = /(\d*)([ob$!])/gi;
   let m;
   while((m = re.exec(text)) !== null){
-    const count = m[1] ? parseInt(m[1],10) : 1;
+    const count = m[1] ? Number.parseInt(m[1],10) : 1;
     const tag = m[2];
     tokens.push({count,tag});
     if(tag === '!') break;
