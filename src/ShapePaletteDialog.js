@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import Dialog from '@mui/material/Dialog';
+import logger from './utils/logger';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import TextField from '@mui/material/TextField';
@@ -73,8 +74,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
         url.searchParams.set('offset', String(offset));
         const res = await fetch(url.toString());
         if (!res.ok) {
-          // eslint-disable-next-line no-console
-          console.warn('Shape search returned non-OK status', res.status);
+          logger.warn('Shape search returned non-OK status:', res.status);
           setResults([]);
           setTotal(0);
         } else {
@@ -86,8 +86,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
           setResults(prev => (offset > 0 ? [...prev, ...items] : items));
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error('shape search error', e);
+        logger.error('Shape search error:', e);
         setResults([]);
       } finally { setLoading(false); }
     }, 300);
@@ -197,9 +196,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
                   const res = await fetch(url.toString(), { method: 'DELETE' });
                   if (!res.ok) {
                     // restore on failure
-                    setResults(old);
-                    // eslint-disable-next-line no-console
-                    console.warn('Delete failed', res.status);
+                    logger.warn('Delete failed:', res.status);
                     let bodyText = '';
                     try { bodyText = await res.text(); } catch (e) { bodyText = '<no body>'; }
                     const details = `DELETE ${url.toString()}\nStatus: ${res.status}\nBody: ${bodyText}`;
@@ -214,8 +211,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
                   }
                 } catch (err) {
                   setResults(old);
-                  // eslint-disable-next-line no-console
-                  console.error('Delete error', err);
+                  logger.error('Delete error:', err);
                   setSnackMsg('Delete error');
                   setSnackDetails(err && err.stack ? err.stack : String(err));
                   setSnackOpen(true);
@@ -250,8 +246,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
                     setSnackMsg('Restore failed');
                   }
                 } catch (err) {
-                  // eslint-disable-next-line no-console
-                  console.error('Restore error', err);
+                  logger.error('Restore error:', err);
                   setSnackMsg('Restore error');
                 }
               }}>UNDO</Button>

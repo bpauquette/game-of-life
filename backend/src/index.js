@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('node:path');
 const { parseRLE } = require('./rleParser');
 const db = require('./db');
+const logger = require('./logger');
 
 function makeId(){
   return `${Date.now()}-${Math.floor(Math.random()*100000)}`;
@@ -30,7 +31,7 @@ async function start(){
   const items = page; // full objects
   res.json({ items, total });
     }catch(err){
-      console.error('shapes list error', err);
+      logger.error('shapes list error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -47,7 +48,7 @@ async function start(){
       if(!ok) return res.status(404).json({error:'not found'});
       res.status(204).end();
     }catch(err){
-      console.error('delete error', err);
+      logger.error('delete error:', err);
       res.status(500).json({error: err.message});
     }
   });
@@ -61,7 +62,7 @@ async function start(){
       await db.addShape(shape);
       res.status(201).json(shape);
     }catch(err){
-      console.error('add shape error', err);
+      logger.error('add shape error:', err);
       res.status(500).json({error: err.message});
     }
   });
@@ -81,7 +82,7 @@ async function start(){
       await db.addShape(shape);
       res.status(201).json(shape);
     }catch(err){
-      console.error('import error', err);
+      logger.error('import error:', err);
       res.status(500).json({error: err.message});
     }
   });
@@ -102,10 +103,10 @@ async function start(){
   // 2) PORT env var (common)
   // 3) default 55000
   const port = process.env.GOL_BACKEND_PORT || process.env.PORT || 55000;
-  app.listen(port, ()=> console.log(`Shapes catalog backend listening on ${port}`));
+  app.listen(port, ()=> logger.info(`Shapes catalog backend listening on ${port}`));
 }
 
 start().catch(err=>{
-  console.error('Failed to start server', err);
+  logger.error('Failed to start server:', err);
   process.exit(1);
 });

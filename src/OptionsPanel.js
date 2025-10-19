@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import Dialog from '@mui/material/Dialog';
+import logger from './utils/logger';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
@@ -28,9 +29,9 @@ const OptionsPanel = ({
   const [localTolerance, setLocalTolerance] = useState(popTolerance);
 
   const handleOk = () => {
-    try { setColorSchemeKey(localScheme); } catch (err) { /* eslint-disable-next-line no-console */ console.warn('setColorSchemeKey failed', err); }
-    try { setPopWindowSize(Math.max(1, Number(localWindow) || 1)); } catch (err) { /* eslint-disable-next-line no-console */ console.warn('setPopWindowSize failed', err); }
-    try { setPopTolerance(Math.max(0, Number(localTolerance) || 0)); } catch (err) { /* eslint-disable-next-line no-console */ console.warn('setPopTolerance failed', err); }
+    try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
+    try { setPopWindowSize(Math.max(1, Number(localWindow) || 1)); } catch (err) { logger.debug('setPopWindowSize failed:', err); }
+    try { setPopTolerance(Math.max(0, Number(localTolerance) || 0)); } catch (err) { logger.debug('setPopTolerance failed:', err); }
     onOk?.();
   };
 

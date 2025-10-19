@@ -1,6 +1,8 @@
 // shapesTool.js — handles preview and placement of shapes selected from the
 // Shape Palette. This tool uses the shared toolState object to store a
 // non-reactive selectedShapeData and the preview anchor/last coordinates.
+import logger from '../utils/logger';
+
 export const shapesTool = {
   onMouseDown(toolState, x, y) {
     toolState.start = { x, y };
@@ -51,8 +53,7 @@ export const shapesTool = {
         try {
           ctx.fillStyle = (typeof colorScheme?.getCellColor === 'function') ? colorScheme.getCellColor(last.x + cx, last.y + cy) : '#222';
         } catch (err) {
-          // eslint-disable-next-line no-console
-          console.warn('colorScheme.getCellColor failed', err);
+          logger.debug('colorScheme.getCellColor failed:', err);
           ctx.fillStyle = '#222';
         }
         ctx.fillRect(drawX, drawY, cellSize, cellSize);
@@ -65,8 +66,7 @@ export const shapesTool = {
       }
       ctx.restore();
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('shapesTool.drawOverlay error', err);
+      logger.error('shapesTool.drawOverlay error:', err);
     }
   }
 };
