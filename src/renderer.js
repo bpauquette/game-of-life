@@ -32,14 +32,14 @@ export function drawScene(ctx, { liveCellsRef, offsetRef, cellSizePx }) {
   ctx.stroke();
 
   // Alive cells
-  liveCellsRef.current.forEach((_, key) => {
+  for (const [key] of liveCellsRef.current.entries()) {
     const [cx, cy] = key.split(',').map(Number);
     const sx = (cx - off.x) * s;
     const sy = (cy - off.y) * s;
-    if (sx + s < 0 || sx >= width || sy + s < 0 || sy >= height) return;
+    if (sx + s < 0 || sx >= width || sy + s < 0 || sy >= height) continue;
 
     const hue = (cx * 53 + cy * 97) % 360;
     ctx.fillStyle = `hsl(${hue}, 80%, 55%)`;
     ctx.fillRect(Math.floor(sx), Math.floor(sy), Math.ceil(s), Math.ceil(s));
-  });
+  }
 }

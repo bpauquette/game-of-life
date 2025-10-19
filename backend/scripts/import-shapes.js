@@ -8,7 +8,7 @@ function makeId(){
 
 async function readJson(p){
   const txt = await fs.readFile(p, 'utf8');
-  return JSON.parse(txt || '[]');
+  return JSON.parse(txt || '[]');cmd.exe /c "netstat -ano | findstr /R /C:\":3000\""
 }
 
 async function writeJson(p, data){

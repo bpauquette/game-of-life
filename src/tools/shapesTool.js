@@ -41,6 +41,8 @@ export const shapesTool = {
       if (!cells.length) return;
 
       ctx.save();
+      ctx.globalAlpha = 0.45;
+      const strokeW = Math.max(1, Math.min(2, Math.floor(cellSize * 0.06)));
       for (const c of cells) {
         const cx = (c && (c.x !== undefined)) ? c.x : (Array.isArray(c) ? c[0] : 0);
         const cy = (c && (c.y !== undefined)) ? c.y : (Array.isArray(c) ? c[1] : 0);
@@ -48,18 +50,23 @@ export const shapesTool = {
         const drawY = (last.y + cy) * cellSize - computedOffset.y;
         try {
           ctx.fillStyle = (typeof colorScheme?.getCellColor === 'function') ? colorScheme.getCellColor(last.x + cx, last.y + cy) : '#222';
-        } catch (err) { ctx.fillStyle = '#222'; }
-        ctx.globalAlpha = 0.45;
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn('colorScheme.getCellColor failed', err);
+          ctx.fillStyle = '#222';
+        }
         ctx.fillRect(drawX, drawY, cellSize, cellSize);
         // outline for visibility regardless of theme
         ctx.globalAlpha = 1;
         ctx.strokeStyle = 'rgba(255,255,255,0.22)';
-        ctx.lineWidth = Math.max(1, Math.min(2, Math.floor(cellSize * 0.06)));
+        ctx.lineWidth = strokeW;
         ctx.strokeRect(drawX, drawY, cellSize, cellSize);
+        ctx.globalAlpha = 0.45;
       }
       ctx.restore();
     } catch (err) {
-      // swallow overlay drawing errors — should not break main render
+      // eslint-disable-next-line no-console
+      console.error('shapesTool.drawOverlay error', err);
     }
   }
 };

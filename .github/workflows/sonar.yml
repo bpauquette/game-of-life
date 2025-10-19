@@ -1,0 +1,37 @@
+name: SonarQube Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonar:
+    name: Run SonarQube Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run tests and collect coverage
+        run: |
+          npm test -- --watchAll=false
+          # ensure coverage exists for sonar if your project produces it
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarcloud-github-action@v1
+        with:
+          args: >
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

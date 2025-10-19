@@ -227,7 +227,13 @@ const GameOfLife = () => {
         try {
           popHistoryRef.current.push(getLiveCells().size);
           if (popHistoryRef.current.length > 1000) popHistoryRef.current.shift();
-        } catch (err) {}
+        } catch (err) {
+          // Avoid silently swallowing errors - log for diagnostics. Tests may run
+          // in environments where console is a noop, but logging helps during
+          // development and CI analysis tools to surface issues.
+          // eslint-disable-next-line no-console
+          console.warn('Failed to update population history', err);
+        }
         // record snapshot and detect steady state
         try {
           const liveMap = getLiveCells();
@@ -280,7 +286,12 @@ const GameOfLife = () => {
             // clear the stop guard when not stable
             steadyDetectedRef.current = false;
           }
-        } catch (err) {}
+        } catch (err) {
+          // Avoid swallowing snapshot/steady-state detection errors so they
+          // can be investigated if they occur in CI or a user's browser.
+          // eslint-disable-next-line no-console
+          console.warn('Failed to compute snapshots or steady-state info', err);
+        }
         drawWithOverlay();
         animationRef.current = requestAnimationFrame(loop);
       }
@@ -468,11 +479,9 @@ const GameOfLife = () => {
     if (shape) {
       setRecentShapes(prev => {
         const newEntry = shape;
-        const filtered = prev.filter(p => {
-          if (typeof p === 'string' && typeof newEntry === 'string') return p !== newEntry;
-          if (p && newEntry && p.id && newEntry.id) return p.id !== newEntry.id;
-          return true;
-        });
+        const keyFor = (it) => (it && it.id) ? String(it.id) : (typeof it === 'string' ? it : JSON.stringify(it));
+        const newKey = keyFor(newEntry);
+        const filtered = prev.filter(p => keyFor(p) !== newKey);
         return [newEntry, ...filtered].slice(0, 20);
       });
     }
@@ -588,7 +597,7 @@ const GameOfLife = () => {
           open={paletteOpen}
           onClose={() => closePalette(true)}
           onSelectShape={(shape) => { selectShape(shape); closePalette(false); }}
-          backendBase={'http://localhost:55000'}
+          backendBase={process.env.REACT_APP_BACKEND_BASE || 'http://localhost:55000'}
           colorScheme={colorSchemes ? (colorSchemes[colorSchemeKey] || {}) : {}}
         />
       )}
@@ -596,13 +605,12 @@ const GameOfLife = () => {
       <canvas
         ref={canvasRef}
         onClick={handleCanvasClick}
-  onContextMenu={undefined}
+        onContextMenu={(e) => { if (e && e.preventDefault) e.preventDefault(); }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         style={{ cursor: (selectedShape || selectedTool) ? 'crosshair' : 'default' }}
       />
-      {/* shapes menu removed — use palette or recent strip to select shapes */}
       {showChart && (
         <PopulationChart history={popHistoryRef.current.slice()} onClose={() => setShowChart(false)} />
       )}

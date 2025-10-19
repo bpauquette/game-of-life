@@ -16,7 +16,9 @@ export const lineTool = {
   onMouseUp(state, x, y, setCellAlive) {
     if (!state.start) return;
     const pts = computeLine(state.start.x, state.start.y, x, y);
-    pts.forEach(([px, py]) => setCellAlive(px, py, true));
+    for (const [px, py] of pts) {
+      setCellAlive(px, py, true);
+    }
     state.start = null;
     state.last = null;
     state.preview = [];
@@ -27,11 +29,13 @@ export const lineTool = {
     ctx.strokeStyle = 'rgba(255,255,255,0.6)';
     ctx.lineWidth = Math.max(1, Math.min(4, cellSize / 6));
     ctx.beginPath();
-    state.preview.forEach(([x, y], idx) => {
+    let idx = 0;
+    for (const [x, y] of state.preview) {
       const cx = x * cellSize - offset.x + cellSize / 2;
       const cy = y * cellSize - offset.y + cellSize / 2;
       if (idx === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
-    });
+      idx++;
+    }
     ctx.stroke();
   }
 };

@@ -27,9 +27,9 @@ const OptionsPanel = ({
   const [localTolerance, setLocalTolerance] = useState(popTolerance);
 
   const handleOk = () => {
-    try { setColorSchemeKey(localScheme); } catch (err) {}
-    try { setPopWindowSize(Math.max(1, Number(localWindow) || 1)); } catch (err) {}
-    try { setPopTolerance(Math.max(0, Number(localTolerance) || 0)); } catch (err) {}
+    try { setColorSchemeKey(localScheme); } catch (err) { /* eslint-disable-next-line no-console */ console.warn('setColorSchemeKey failed', err); }
+    try { setPopWindowSize(Math.max(1, Number(localWindow) || 1)); } catch (err) { /* eslint-disable-next-line no-console */ console.warn('setPopWindowSize failed', err); }
+    try { setPopTolerance(Math.max(0, Number(localTolerance) || 0)); } catch (err) { /* eslint-disable-next-line no-console */ console.warn('setPopTolerance failed', err); }
     if (typeof onOk === 'function') onOk();
   };
 

@@ -24,7 +24,7 @@ export function eventToCellFromCanvas(e, canvas, offsetRef, cellSize) {
 
 export function drawLiveCells(ctx, liveMap, computedOffset, cellSize, colorScheme) {
   if (!ctx || !liveMap) return;
-  liveMap.forEach((_, key) => {
+  for (const [key] of liveMap.entries()) {
     const [x, y] = key.split(',').map(Number);
     ctx.fillStyle = colorScheme.getCellColor(x, y);
     ctx.fillRect(
@@ -33,7 +33,7 @@ export function drawLiveCells(ctx, liveMap, computedOffset, cellSize, colorSchem
       cellSize,
       cellSize
     );
-  });
+  }
 }
 
 // No default export: prefer named exports used across the codebase to avoid

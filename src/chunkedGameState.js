@@ -27,15 +27,15 @@ export function useChunkedGameState() {
   // Get all live cells as "x,y" => true
   const getLiveCells = useCallback(() => {
     const map = new Map();
-    chunksRef.current.forEach((cellSet, key) => {
+    for (const [key, cellSet] of chunksRef.current.entries()) {
       const [cx, cy] = key.split(',').map(Number);
-      cellSet.forEach((cellKey) => {
+      for (const cellKey of cellSet) {
         const [lx, ly] = cellKey.split(',').map(Number);
         const x = cx * CHUNK_SIZE + lx;
         const y = cy * CHUNK_SIZE + ly;
         map.set(`${x},${y}`, true);
-      });
-    });
+      }
+    }
     return map;
   }, []);
 
@@ -79,11 +79,11 @@ export function useChunkedGameState() {
   const randomize = useCallback(() => {
     const liveCells = getLiveCells();
     let maxX = 20, maxY = 20;
-    liveCells.forEach((_, key) => {
-      const [x, y] = key.split(',').map(Number);
-      if (x > maxX) maxX = x;
-      if (y > maxY) maxY = y;
-    });
+      for (const [key] of liveCells.entries()) {
+        const [x, y] = key.split(',').map(Number);
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
 
     const newChunks = new Map();
     for (let x = 0; x <= maxX; x++) {

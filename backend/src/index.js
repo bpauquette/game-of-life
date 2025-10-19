@@ -17,10 +17,22 @@ async function start(){
   app.get('/v1/health', (req,res)=> res.json({ok:true}));
 
   app.get('/v1/shapes', async (req,res)=>{
-    const q = (req.query.q || '').toLowerCase();
-    const shapes = await db.listShapes();
-    const out = q ? shapes.filter(s => (s.name||'').toLowerCase().includes(q)) : shapes;
-    res.json(out);
+    try{
+      const q = (req.query.q || '').toLowerCase();
+      const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
+      const offset = Math.max(0, Number(req.query.offset) || 0);
+      const shapes = await db.listShapes();
+      // filter by query if present
+      const filtered = q ? shapes.filter(s => (s.name||'').toLowerCase().includes(q)) : shapes;
+      const total = filtered.length;
+      const page = filtered.slice(offset, offset + limit);
+  // return full shape objects (including cells) for each page
+  const items = page; // full objects
+  res.json({ items, total });
+    }catch(err){
+      console.error('shapes list error', err);
+      res.status(500).json({ error: err.message });
+    }
   });
 
   app.get('/v1/shapes/:id', async (req,res)=>{

@@ -3,8 +3,6 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Available Scripts
-
 In the project directory, you can run:
 
 ### `npm start`
@@ -22,23 +20,40 @@ See the section about [running tests](https://facebook.github.io/create-react-ap
 
 ### `npm run build`
 
+## SonarQube (static analysis)
+
+This repository includes a minimal SonarQube setup to run code analysis locally or in CI.
+
+Run locally with Docker Compose (requires Docker):
+
+```bash
+docker compose -f docker-compose.sonarqube.yml up -d
+# Wait for Sonar to start (~1-2 minutes), then open http://localhost:9000
+# Default admin/admin - create a token for CI.
+```
+
+To run an analysis locally you can use the official scanner Docker image (replace <TOKEN> with your admin token):
+
+```bash
+# from repo root
+docker run --rm -e SONAR_HOST_URL="http://host.docker.internal:9000" -e SONAR_LOGIN="<TOKEN>" \
+	-v "${PWD}:/usr/src" \
+	sonarsource/sonar-scanner-cli \
+	-Dsonar.projectBaseDir=/usr/src
+```
+
+CI: Add a secret named `SONAR_TOKEN` containing a token created in SonarQube and the workflow will pick it up.
+
 Builds the app for production to the `build` folder.\
 It correctly bundles React in production mode and optimizes the build for the best performance.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
 
 **Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
 If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
 Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
 
 ## Learn More
 
@@ -53,11 +68,6 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/c
 ### Analyzing the Bundle Size
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
 ### Advanced Configuration
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
@@ -80,17 +90,12 @@ This repository contains two main pieces:
 - Frontend: a React (Create React App) app in the repository root `src/` folder.
 - Backend: a small Express-based API inside the `backend/` folder used to store and serve predefined shapes.
 
-The sections below describe a few developer conveniences, runtime configuration, and the backend API.
-
 ### Configurable backend port
 
 The backend server binds to a port chosen using the following precedence (highest to lowest):
-
 1. `GOL_BACKEND_PORT` environment variable
 2. `PORT` environment variable
 3. default `55000`
-
-This avoids collisions with common local services (for example NoMachine uses port 4000 on some systems). To run the backend on a custom port set `GOL_BACKEND_PORT` (or `PORT`) before starting it.
 
 Example (bash):
 
