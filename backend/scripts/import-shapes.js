@@ -42,7 +42,7 @@ async function main(){
     if(s.id && existingById.has(s.id)) continue;
     const sig = shapeSignature(s);
     if(existingSig.has(sig)) continue;
-    const shape = Object.assign({}, s);
+    const shape = { ...s };
     if(!shape.id) shape.id = makeId();
     shape.meta = shape.meta || {};
     shape.meta.importedAt = shape.meta.importedAt || (new Date()).toISOString();

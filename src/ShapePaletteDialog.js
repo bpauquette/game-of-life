@@ -49,7 +49,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   // helper to pick a cell color for the small SVG preview
   const getCellColor = (x, y) => {
     try {
-      if (typeof colorScheme.getCellColor === 'function') return colorScheme.getCellColor(x, y);
+      return colorScheme?.getCellColor?.(x, y) ?? '#4a9';
     } catch (e) {
       // ignore failures in color function
     }

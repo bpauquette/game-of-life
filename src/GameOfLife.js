@@ -108,8 +108,13 @@ const GameOfLife = () => {
   const colorScheme = useMemo(() => {
     const base = colorSchemes[colorSchemeKey] || {};
     // shallow copy functions/properties then freeze
-    const copy = Object.assign({}, base);
-    try { Object.freeze(copy); } catch (err) { /* ignore in older envs */ }
+    const copy = { ...base };
+    try { 
+      Object.freeze(copy); 
+    } catch (err) { 
+      // Object.freeze not supported in older environments - continue without freezing
+      console.warn('Object.freeze not supported:', err.message);
+    }
     return copy;
   }, [colorSchemeKey]);
 
@@ -142,7 +147,7 @@ const GameOfLife = () => {
       if (ctx && selectedTool && offsetRef?.current) {
         const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
         const tool = toolMap[selectedTool];
-        if (tool && typeof tool.drawOverlay === 'function') {
+        if (tool?.drawOverlay) {
           tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset, colorScheme);
         }
         // Draw selected-shape preview if present. This is a non-committing
@@ -151,9 +156,7 @@ const GameOfLife = () => {
         const last = toolStateRef.current.last;
         if (selShape && last) {
           // resolve cells from shape object or array
-          let cells = [];
-          if (Array.isArray(selShape)) cells = selShape;
-          else if (selShape && Array.isArray(selShape.cells)) cells = selShape.cells;
+          const cells = Array.isArray(selShape) ? selShape : selShape?.cells || [];
 
           if (cells && cells.length > 0) {
             ctx.save();
@@ -165,7 +168,7 @@ const GameOfLife = () => {
               const drawX = (last.x + cx) * cellSize - computedOffset.x;
               const drawY = (last.y + cy) * cellSize - computedOffset.y;
               try {
-                ctx.fillStyle = (typeof (colorScheme.getCellColor) === 'function') ? colorScheme.getCellColor(last.x + cx, last.y + cy) : '#222';
+                ctx.fillStyle = colorScheme?.getCellColor?.(last.x + cx, last.y + cy) ?? '#222';
               } catch (err) {
                 ctx.fillStyle = '#222';
               }
@@ -202,9 +205,9 @@ const GameOfLife = () => {
     const ctx = canvas.getContext('2d');
     // Reset transform and scale to logical coordinate system if available.
     // Some test environments (jsdom) provide a mock context without setTransform.
-    if (ctx && typeof ctx.setTransform === 'function') {
+    if (ctx?.setTransform) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    } else if (ctx && typeof ctx.scale === 'function') {
+    } else if (ctx?.scale) {
       // Fallback: scale the context if setTransform isn't available
       ctx.scale(dpr, dpr);
     }
@@ -358,9 +361,9 @@ const GameOfLife = () => {
     if (!pt) return;
     scheduleCursorUpdate(pt);
 
-    if (typeof tool.onMouseDown === 'function') tool.onMouseDown(toolStateRef.current, pt.x, pt.y);
+    tool.onMouseDown?.(toolStateRef.current, pt.x, pt.y);
     // allow tools to react to initial point; pass setCellAlive in case they want it
-    if (typeof tool.onMouseMove === 'function') tool.onMouseMove(toolStateRef.current, pt.x, pt.y, setCellAlive);
+    tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
     drawWithOverlay();
   };
 
@@ -398,7 +401,7 @@ const GameOfLife = () => {
     if (selectedTool === 'shapes') {
       toolStateRef.current.last = { x: pt.x, y: pt.y };
       // allow tool-specific onMouseMove if it wants to run as well
-      if (typeof tool.onMouseMove === 'function') tool.onMouseMove(toolStateRef.current, pt.x, pt.y, setCellAlive);
+      tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
       drawWithOverlay();
       return;
     }
@@ -407,7 +410,7 @@ const GameOfLife = () => {
     // when the tool already has an active start/last state.
     if (!(e.buttons & 1) && !toolStateRef.current.last && !toolStateRef.current.start) return;
 
-    if (typeof tool.onMouseMove === 'function') tool.onMouseMove(toolStateRef.current, pt.x, pt.y, setCellAlive);
+    tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
     drawWithOverlay();
   };
 
@@ -427,7 +430,7 @@ const GameOfLife = () => {
     // Some tools expect coords; pass last known if no pt
     const x = pt ? pt.x : toolStateRef.current.last?.x;
     const y = pt ? pt.y : toolStateRef.current.last?.y;
-    if (typeof tool.onMouseUp === 'function') tool.onMouseUp(toolStateRef.current, x, y, setCellAlive, placeShape);
+    tool.onMouseUp?.(toolStateRef.current, x, y, setCellAlive, placeShape);
     drawWithOverlay();
   };
 
@@ -564,7 +567,7 @@ const GameOfLife = () => {
                 {cells.map((c, i) => {
                   const x = Array.isArray(c) ? c[0] : (c.x || 0);
                   const y = Array.isArray(c) ? c[1] : (c.y || 0);
-                  return <rect key={`c-${key}-${i}`} x={x} y={y} width={1} height={1} fill={typeof (colorScheme.getCellColor) === 'function' ? colorScheme.getCellColor(x, y) : '#222'} />
+                  return <rect key={`c-${key}-${i}`} x={x} y={y} width={1} height={1} fill={colorScheme?.getCellColor?.(x, y) ?? '#222'} />
                 })}
               </svg>
             </div>

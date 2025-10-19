@@ -108,7 +108,7 @@ function start() {
   });
 
   try {
-    if (shouldDetach && typeof child.unref === 'function') child.unref();
+    if (shouldDetach && child.unref) child.unref();
     if (child.pid) {
       fs.writeFileSync(config.pidFile, String(child.pid));
       if (shouldDetach) console.log(`backend started in background (pid=${child.pid}). Logs: ${config.logFile}`);
@@ -131,12 +131,26 @@ function start() {
   if (!shouldDetach) {
     child.on('exit', (code, signal) => {
       // cleanup pidfile on foreground exit
-      try { if (fs.existsSync(config.pidFile)) fs.unlinkSync(config.pidFile); } catch (e) {}
+      if (fs.existsSync(config.pidFile)) {
+        try { 
+          fs.unlinkSync(config.pidFile); 
+        } catch (e) { 
+          console.warn('Failed to remove PID file:', e.message); 
+        }
+      }
       if (typeof code === 'number') process.exit(code);
       if (signal) process.exit(1);
       process.exit(0);
     });
-    const forward = (sig) => { try { if (child && child.pid) child.kill(sig); } catch (e) {} };
+    const forward = (sig) => { 
+      if (child && child.pid) {
+        try { 
+          child.kill(sig); 
+        } catch (e) { 
+          console.warn(`Failed to send ${sig} to process:`, e.message); 
+        }
+      }
+    };
     process.on('SIGINT', () => forward('SIGINT'));
     process.on('SIGTERM', () => forward('SIGTERM'));
   }
@@ -155,9 +169,15 @@ function spawnDetached(cmd, args) {
     cwd: config.cwd,
     stdio: stdioOption,
     detached: true,
-    env: Object.assign({}, process.env, { PORT: config.portEnv }),
+    env: { ...process.env, PORT: config.portEnv },
   });
-  try { if (typeof outFd === 'number') fs.closeSync(outFd); } catch (e) {}
+  if (typeof outFd === 'number') {
+    try { 
+      fs.closeSync(outFd); 
+    } catch (e) { 
+      console.warn('Failed to close file descriptor:', e.message); 
+    }
+  }
   return child;
 }
 
@@ -167,14 +187,14 @@ function spawnForeground(cmd, args) {
       cwd: config.cwd,
       stdio: 'inherit',
       detached: false,
-      env: Object.assign({}, process.env, { PORT: config.portEnv }),
+      env: { ...process.env, PORT: config.portEnv },
     });
   }
   return spawn(cmd, args, {
     cwd: config.cwd,
     stdio: 'inherit',
     detached: false,
-    env: Object.assign({}, process.env, { PORT: config.portEnv }),
+    env: { ...process.env, PORT: config.portEnv },
   });
 }
 
@@ -186,7 +206,13 @@ function stop() {
   }
   if (!isRunning(pid)) {
     console.log(`Process ${pid} not running. Removing stale PID file.`);
-    try { fs.unlinkSync(config.pidFile); } catch (e) {}
+    if (fs.existsSync(config.pidFile)) {
+      try { 
+        fs.unlinkSync(config.pidFile); 
+      } catch (e) { 
+        console.warn('Failed to remove stale PID file:', e.message); 
+      }
+    }
     process.exit(0);
   }
   console.log(`Stopping backend (pid=${pid})`);
@@ -194,13 +220,27 @@ function stop() {
     process.kill(parseInt(pid, 10));
   } catch (e) {
     console.warn('Error sending SIGTERM, attempting kill -9');
-    try { process.kill(parseInt(pid, 10), 'SIGKILL'); } catch (e2) {}
+    try { 
+      process.kill(parseInt(pid, 10), 'SIGKILL'); 
+    } catch (e2) { 
+      console.warn('Failed to kill process with SIGKILL:', e2.message); 
+    }
   }
   setTimeout(() => {
     if (isRunning(pid)) {
-      try { process.kill(parseInt(pid, 10), 'SIGKILL'); } catch (e) {}
+      try { 
+        process.kill(parseInt(pid, 10), 'SIGKILL'); 
+      } catch (e) { 
+        console.warn('Failed to force kill process:', e.message); 
+      }
     }
-    try { fs.unlinkSync(config.pidFile); } catch (e) {}
+    if (fs.existsSync(config.pidFile)) {
+      try { 
+        fs.unlinkSync(config.pidFile); 
+      } catch (e) { 
+        console.warn('Failed to remove PID file:', e.message); 
+      }
+    }
     console.log(`backend stopped.`);
     process.exit(0);
   }, 500);

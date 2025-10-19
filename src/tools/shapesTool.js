@@ -17,7 +17,7 @@ export const shapesTool = {
   // the chunked game state. setCellAlive is unused but accepted for parity.
   onMouseUp(toolState, x, y, setCellAlive, placeShape) {
     const last = toolState.last || (x !== undefined ? { x, y } : null);
-    if (last && typeof placeShape === 'function') {
+    if (last && placeShape) {
       placeShape(last.x, last.y);
     }
     // clear preview state
@@ -35,7 +35,7 @@ export const shapesTool = {
       // normalize cells: either an array of [x,y] pairs or an object { cells: [...] }
       let cells = [];
       if (Array.isArray(sel)) cells = sel;
-      else if (sel && Array.isArray(sel.cells)) cells = sel.cells;
+      else if (sel && Array.isArray(sel?.cells)) cells = sel.cells;
       else return;
 
       if (!cells.length) return;
@@ -44,8 +44,8 @@ export const shapesTool = {
       ctx.globalAlpha = 0.45;
       const strokeW = Math.max(1, Math.min(2, Math.floor(cellSize * 0.06)));
       for (const c of cells) {
-        const cx = (c && (c.x !== undefined)) ? c.x : (Array.isArray(c) ? c[0] : 0);
-        const cy = (c && (c.y !== undefined)) ? c.y : (Array.isArray(c) ? c[1] : 0);
+        const cx = c?.x ?? (Array.isArray(c) ? c[0] : 0);
+        const cy = c?.y ?? (Array.isArray(c) ? c[1] : 0);
         const drawX = (last.x + cx) * cellSize - computedOffset.x;
         const drawY = (last.y + cy) * cellSize - computedOffset.y;
         try {

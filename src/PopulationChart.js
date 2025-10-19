@@ -69,7 +69,7 @@ export default function PopulationChart({ history = [], onClose }) {
           {/* Y axis and ticks */}
           <line x1={pad} x2={pad} y1={pad} y2={h - pad} stroke="rgba(255,255,255,0.2)" />
           <line x1={pad} x2={w - pad} y1={h - pad} y2={h - pad} stroke="rgba(255,255,255,0.2)" />
-          {[...Array(yTicks + 1)].map((_, i) => {
+          {[...new Array(yTicks + 1)].map((_, i) => {
             const t = i / yTicks;
             const y = pad + t * (h - pad * 2);
             const val = Math.round((1 - t) * max);
@@ -82,7 +82,7 @@ export default function PopulationChart({ history = [], onClose }) {
           })}
 
           {/* X axis ticks (generation numbers) */}
-          {[...Array(xTicks + 1)].map((_, i) => {
+          {[...new Array(xTicks + 1)].map((_, i) => {
             const t = i / xTicks;
             const x = pad + t * (w - pad * 2);
             const gen = Math.round(t * Math.max(0, history.length - 1));
