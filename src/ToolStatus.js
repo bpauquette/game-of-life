@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 const fmt = (p) => (p ? `${p.x},${p.y}` : '—');
 
@@ -26,3 +27,10 @@ export default function ToolStatus({ selectedTool, toolStateRef, cursorCell, sel
     </div>
   );
 }
+
+ToolStatus.propTypes = {
+  selectedTool: PropTypes.string.isRequired,
+  toolStateRef: PropTypes.object,
+  cursorCell: PropTypes.object,
+  selectedShape: PropTypes.oneOfType([PropTypes.string, PropTypes.object])
+};

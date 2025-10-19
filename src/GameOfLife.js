@@ -187,9 +187,9 @@ const GameOfLife = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    const logicalWidth = window.innerWidth;
-    const logicalHeight = window.innerHeight;
+    const dpr = (globalThis.window?.devicePixelRatio) || 1;
+    const logicalWidth = globalThis.window?.innerWidth || 800;
+    const logicalHeight = globalThis.window?.innerHeight || 600;
 
     // set CSS size (so canvas looks correct in layout)
     canvas.style.width = `${logicalWidth}px`;
@@ -223,8 +223,8 @@ const GameOfLife = () => {
     if (!ready) return;
     // initial size and subscribe
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    return () => window.removeEventListener('resize', resizeCanvas);
+    globalThis.window.addEventListener('resize', resizeCanvas);
+    return () => globalThis.window.removeEventListener('resize', resizeCanvas);
   }, [ready, resizeCanvas]);
 
   // Game loop
@@ -443,7 +443,7 @@ const GameOfLife = () => {
       // Use canvas center rather than cursor position (center is world origin)
       // Update cellSize multiplicatively but do NOT change offsetRef (center remains world origin)
       setCellSize(prev => {
-        const dpr = window.devicePixelRatio || 1;
+        const dpr = globalThis.window.devicePixelRatio || 1;
         const minCellSize = 1 / dpr; // one device pixel in logical units
         const maxCellSize = MAX_CELL_SIZE;
         const zoomFactor = ZOOM_FACTOR; // per wheel tick

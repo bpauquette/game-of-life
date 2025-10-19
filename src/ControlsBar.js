@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import OptionsPanel from './OptionsPanel';
 import ToolStatus from './ToolStatus';
 import Stack from '@mui/material/Stack';
@@ -126,6 +127,35 @@ const ControlsBar = ({
       
     </div>
   );
+};
+
+ControlsBar.propTypes = {
+  selectedTool: PropTypes.string.isRequired,
+  setSelectedTool: PropTypes.func.isRequired,
+  isRunning: PropTypes.bool.isRequired,
+  setIsRunning: PropTypes.func.isRequired,
+  step: PropTypes.func.isRequired,
+  draw: PropTypes.func.isRequired,
+  clear: PropTypes.func.isRequired,
+  snapshotsRef: PropTypes.object.isRequired,
+  setSteadyInfo: PropTypes.func.isRequired,
+  setShowChart: PropTypes.func.isRequired,
+  getLiveCells: PropTypes.func.isRequired,
+  shapes: PropTypes.array.isRequired,
+  selectShape: PropTypes.func.isRequired,
+  drawWithOverlay: PropTypes.func.isRequired,
+  steadyInfo: PropTypes.string,
+  toolStateRef: PropTypes.object.isRequired,
+  cursorCell: PropTypes.object,
+  selectedShape: PropTypes.object,
+  openPalette: PropTypes.func.isRequired,
+  colorSchemes: PropTypes.object.isRequired,
+  colorSchemeKey: PropTypes.string.isRequired,
+  setColorSchemeKey: PropTypes.func.isRequired,
+  popWindowSize: PropTypes.number.isRequired,
+  setPopWindowSize: PropTypes.func.isRequired,
+  popTolerance: PropTypes.number.isRequired,
+  setPopTolerance: PropTypes.func.isRequired
 };
 
 export default ControlsBar;

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import PropTypes from 'prop-types';
 
 // Chart dimensions and styling constants
 const CHART_WIDTH = 640;
@@ -116,3 +117,12 @@ export default function PopulationChart({ history = [], onClose }) {
     </div>
   );
 }
+
+PopulationChart.propTypes = {
+  history: PropTypes.array,
+  onClose: PropTypes.func.isRequired
+};
+
+PopulationChart.defaultProps = {
+  history: []
+};

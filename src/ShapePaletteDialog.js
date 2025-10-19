@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -22,8 +23,8 @@ function getBaseUrl(backendBase) {
   if (typeof backendBase === 'string' && backendBase.length > 0) {
     return backendBase;
   }
-  const fallbackOrigin = (typeof window !== 'undefined' && window.location && window.location.origin) 
-    ? String(window.location.origin) 
+  const fallbackOrigin = globalThis.window?.location?.origin 
+    ? String(globalThis.window.location.origin) 
     : 'http://localhost';
   return fallbackOrigin;
 }
@@ -270,3 +271,15 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     </Dialog>
   );
 }
+
+ShapePaletteDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func,
+  onSelectShape: PropTypes.func,
+  backendBase: PropTypes.string,
+  colorScheme: PropTypes.object
+};
+
+ShapePaletteDialog.defaultProps = {
+  colorScheme: {}
+};

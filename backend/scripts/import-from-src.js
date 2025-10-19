@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-const fs = require('fs').promises;
-const path = require('path');
-const os = require('os');
+const fs = require('node:fs').promises;
+const path = require('node:path');
+const os = require('node:os');
 
 function makeId(){
   return `${Date.now()}-${Math.floor(Math.random()*100000)}`;

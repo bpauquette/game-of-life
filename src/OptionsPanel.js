@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -106,6 +107,18 @@ const OptionsPanel = ({
       </DialogActions>
     </Dialog>
   );
+};
+
+OptionsPanel.propTypes = {
+  colorSchemes: PropTypes.object.isRequired,
+  colorSchemeKey: PropTypes.string.isRequired,
+  setColorSchemeKey: PropTypes.func.isRequired,
+  popWindowSize: PropTypes.number.isRequired,
+  setPopWindowSize: PropTypes.func.isRequired,
+  popTolerance: PropTypes.number.isRequired,
+  setPopTolerance: PropTypes.func.isRequired,
+  onOk: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired
 };
 
 export default OptionsPanel;

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const { spawn } = require('cross-spawn');
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // Simple cross-platform process manager for the backend dev server.
 // Usage: node backend/scripts/manage.js <start|stop|status> [--foreground]

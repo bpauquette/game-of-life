@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
+const path = require('node:path');
 const { parseRLE } = require('./rleParser');
 const db = require('./db');
 
