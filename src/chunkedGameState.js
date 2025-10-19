@@ -66,7 +66,7 @@ export function useChunkedGameState() {
 
     chunksRef.current = newChunks;
     setChunks(newChunks)
-  }, []);
+  }, [setChunks]);
 
   const toggleCell = useCallback((x, y) => {
     const liveMap = getLiveCells();
@@ -117,7 +117,7 @@ export function useChunkedGameState() {
     const newChunks = convertLiveMapToChunks(newLiveMap);
     chunksRef.current = newChunks;
     setChunks(newChunks); 
-  }, [getLiveCells]);
+  }, [getLiveCells, setChunks]);
 
   function convertLiveMapToChunks(map) {
     const out = new Map();

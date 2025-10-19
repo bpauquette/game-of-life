@@ -189,7 +189,7 @@ const GameOfLife = () => {
         // Log for development debugging but don't disrupt production
         logger.warn('Overlay rendering failed:', err);
       }
-    }, [draw, selectedTool, cellSize, offsetRef, toolMap, colorScheme, selectedShape]);  // Resize canvas to fill window and account for devicePixelRatio
+    }, [draw, selectedTool, cellSize, offsetRef, toolMap, colorScheme, selectedShape, logger]);  // Resize canvas to fill window and account for devicePixelRatio
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -298,7 +298,7 @@ const GameOfLife = () => {
     } catch (err) {
       logger.debug('Snapshot computation failed:', err);
     }
-  }, [getLiveCells, createSnapshot, findSnapshotMatch, popWindowSize, popTolerance, setIsRunning]);
+  }, [getLiveCells, createSnapshot, findSnapshotMatch, popWindowSize, popTolerance, setIsRunning, setSteadyInfo, logger]);
 
   // Game loop
   useEffect(() => {
