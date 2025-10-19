@@ -19,6 +19,17 @@ import Tooltip from '@mui/material/Tooltip';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import ShapePaletteDialog from './ShapePaletteDialog';
 
+// Constants to avoid magic numbers
+const DEFAULT_POPULATION_WINDOW_SIZE = 50;
+const DEFAULT_POPULATION_TOLERANCE = 3;
+const MAX_POPULATION_HISTORY = 1000;
+const MAX_RECENT_SHAPES = 20;
+const MAX_CELL_SIZE = 200;
+const ZOOM_FACTOR = 1.12;
+const RECENT_SHAPES_THUMBNAIL_SIZE = 48;
+const KEYBOARD_PAN_AMOUNT = 1;
+const KEYBOARD_PAN_AMOUNT_SHIFT = 10;
+
 
 const GameOfLife = () => {
   const canvasRef = useRef(null);
@@ -44,8 +55,8 @@ const GameOfLife = () => {
   const [showChart, setShowChart] = React.useState(false);
   const popHistoryRef = React.useRef([]);
   // population-stability detection params (window N and tolerance X)
-  const [popWindowSize, setPopWindowSize] = React.useState(50);
-  const [popTolerance, setPopTolerance] = React.useState(3);
+  const [popWindowSize, setPopWindowSize] = React.useState(DEFAULT_POPULATION_WINDOW_SIZE);
+  const [popTolerance, setPopTolerance] = React.useState(DEFAULT_POPULATION_TOLERANCE);
   // steady state detection
   const snapshotsRef = React.useRef([]);
   const [steadyInfo, setSteadyInfo] = React.useState({ steady: false, period: 0, popChanging: false });
@@ -224,7 +235,7 @@ const GameOfLife = () => {
         // record population after stepping
         try {
           popHistoryRef.current.push(getLiveCells().size);
-          if (popHistoryRef.current.length > 1000) popHistoryRef.current.shift();
+          if (popHistoryRef.current.length > MAX_POPULATION_HISTORY) popHistoryRef.current.shift();
         } catch (err) {
           // Avoid silently swallowing errors - log for diagnostics. Tests may run
           // in environments where console is a noop, but logging helps during
@@ -434,8 +445,8 @@ const GameOfLife = () => {
       setCellSize(prev => {
         const dpr = window.devicePixelRatio || 1;
         const minCellSize = 1 / dpr; // one device pixel in logical units
-        const maxCellSize = 200;
-        const zoomFactor = 1.12; // per wheel tick
+        const maxCellSize = MAX_CELL_SIZE;
+        const zoomFactor = ZOOM_FACTOR; // per wheel tick
         const factor = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
 
         // device pixel snapping
@@ -473,14 +484,14 @@ const GameOfLife = () => {
     setSelectedShape?.(shape || null);
     // update non-reactive tool state for fast access by render/overlay
     toolStateRef.current.selectedShapeData = shape || null;
-    // maintain recent shapes list (unique, newest-first, max 20)
+    // maintain recent shapes list (unique, newest-first, max MAX_RECENT_SHAPES)
     if (shape) {
       setRecentShapes(prev => {
         const newEntry = shape;
         const keyFor = (it) => (it && it.id) ? String(it.id) : (typeof it === 'string' ? it : JSON.stringify(it));
         const newKey = keyFor(newEntry);
         const filtered = prev.filter(p => keyFor(p) !== newKey);
-        return [newEntry, ...filtered].slice(0, 20);
+        return [newEntry, ...filtered].slice(0, MAX_RECENT_SHAPES);
       });
     }
     // Refresh overlay immediately so the preview appears right after selection
@@ -503,7 +514,7 @@ const GameOfLife = () => {
   // Keyboard pan: arrow keys nudge view in cell units
   useEffect(() => {
     const onKeyDown = (e) => {
-      const amount = e.shiftKey ? 10 : 1;
+      const amount = e.shiftKey ? KEYBOARD_PAN_AMOUNT_SHIFT : KEYBOARD_PAN_AMOUNT;
       if (e.key === 'ArrowLeft') {
         offsetRef.current.x -= amount;
         drawWithOverlay();
@@ -540,7 +551,7 @@ const GameOfLife = () => {
           const title = s?.name || s?.meta?.name || (s && s.id) || `shape ${idx}`;
           return (
             <div key={key} style={{ marginBottom: 8, cursor: 'pointer' }} onClick={() => { selectShape(s); drawWithOverlay(); }} title={title}>
-              <svg width={48} height={48} viewBox={`0 0 ${Math.max(1, width)} ${Math.max(1, height)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 6 }}>
+              <svg width={RECENT_SHAPES_THUMBNAIL_SIZE} height={RECENT_SHAPES_THUMBNAIL_SIZE} viewBox={`0 0 ${Math.max(1, width)} ${Math.max(1, height)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 6 }}>
                 {Array.from({ length: width }).map((_, cx) => (
                   Array.from({ length: height }).map((__, cy) => (
                     <rect key={`g-${key}-${cx}-${cy}`} x={cx} y={cy} width={1} height={1} fill="transparent" stroke="rgba(255,255,255,0.02)" />

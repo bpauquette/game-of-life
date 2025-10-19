@@ -17,6 +17,17 @@ import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Slide from '@mui/material/Slide';
 
+// Helper function to resolve base URL consistently
+function getBaseUrl(backendBase) {
+  if (typeof backendBase === 'string' && backendBase.length > 0) {
+    return backendBase;
+  }
+  const fallbackOrigin = (typeof window !== 'undefined' && window.location && window.location.origin) 
+    ? String(window.location.origin) 
+    : 'http://localhost';
+  return fallbackOrigin;
+}
+
 export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {} }){
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]); // metadata items
@@ -54,10 +65,8 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   setLoading(true);
     timerRef.current = setTimeout(async () => {
       try {
-  const base = (typeof backendBase === 'string' && backendBase.length > 0) ? backendBase : '';
-    // Use URL to avoid accidental double-slashes or missing slashes
-    const fallbackOrigin = (typeof window !== 'undefined' && window.location && window.location.origin) ? String(window.location.origin) : 'http://localhost';
-    const url = base ? new URL('/v1/shapes', base) : new URL(`/v1/shapes`, fallbackOrigin);
+        const base = getBaseUrl(backendBase);
+        const url = new URL('/v1/shapes', base);
         url.searchParams.set('q', q);
         url.searchParams.set('limit', String(limit));
         url.searchParams.set('offset', String(offset));
@@ -105,7 +114,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
             <ListItem key={s.id} button onClick={async () => {
               // fetch full shape by id before returning selection
               try{
-                const base = (typeof backendBase === 'string' && backendBase.length > 0) ? backendBase : ((typeof window !== 'undefined' && window.location && window.location.origin) ? String(window.location.origin) : 'http://localhost');
+                const base = getBaseUrl(backendBase);
                 const url = new URL(`/v1/shapes/${encodeURIComponent(s.id)}`, base);
                 const res = await fetch(url.toString());
                 if(res.ok){
@@ -182,7 +191,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
               setToDelete(null);
               // no-op: removed deletingId tracking
                 try {
-                  const base = (typeof backendBase === 'string' && backendBase.length > 0) ? backendBase : ((typeof window !== 'undefined' && window.location && window.location.origin) ? String(window.location.origin) : 'http://localhost');
+                  const base = getBaseUrl(backendBase);
                   const url = new URL(`/v1/shapes/${encodeURIComponent(id)}`, base);
                   const res = await fetch(url.toString(), { method: 'DELETE' });
                   if (!res.ok) {
@@ -229,7 +238,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
                 // re-add shape
                 const shape = snackUndoShape;
                 try {
-                  const base = (typeof backendBase === 'string' && backendBase.length > 0) ? backendBase : ((typeof window !== 'undefined' && window.location && window.location.origin) ? String(window.location.origin) : 'http://localhost');
+                  const base = getBaseUrl(backendBase);
                   const url = new URL('/v1/shapes', base);
                   const res = await fetch(url.toString(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(shape) });
                   if (res.ok) {

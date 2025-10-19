@@ -4,6 +4,10 @@ import { step as gameStep } from './gameLogic';
 // frontend shapes module removed; shapes may be provided as objects via selectedShape
 
 const CHUNK_SIZE = 64;
+const DEFAULT_CELL_SIZE = 20;
+const DEFAULT_RANDOMIZE_AREA_SIZE = 20;
+const RANDOMIZATION_PROBABILITY = 0.5;
+const DEFAULT_COORDINATE = 0;
 
 function chunkKey(cx, cy) {
   return `${cx},${cy}`;
@@ -16,13 +20,13 @@ function getChunkCoords(x, y) {
 export function useChunkedGameState() {
   // Standard UI state
   const [isRunning, setIsRunning] = useState(false);
-  const [cellSize, setCellSize] = useState(20);
+  const [cellSize, setCellSize] = useState(DEFAULT_CELL_SIZE);
   const [selectedShape, setSelectedShape] = useState(null);
   const [chunks, setChunks] = useState(new Map()); // reactive for tests
   const chunksRef = useRef(chunks);               // fast access for GameOfLife
 
 
-  const offsetRef = useRef({ x: 0, y: 0 });
+  const offsetRef = useRef({ x: DEFAULT_COORDINATE, y: DEFAULT_COORDINATE });
 
   // Get all live cells as "x,y" => true
   const getLiveCells = useCallback(() => {
@@ -78,7 +82,7 @@ export function useChunkedGameState() {
 
   const randomize = useCallback(() => {
     const liveCells = getLiveCells();
-    let maxX = 20, maxY = 20;
+    let maxX = DEFAULT_RANDOMIZE_AREA_SIZE, maxY = DEFAULT_RANDOMIZE_AREA_SIZE;
       for (const [key] of liveCells.entries()) {
         const [x, y] = key.split(',').map(Number);
         if (x > maxX) maxX = x;
@@ -88,7 +92,7 @@ export function useChunkedGameState() {
     const newChunks = new Map();
     for (let x = 0; x <= maxX; x++) {
       for (let y = 0; y <= maxY; y++) {
-        if (Math.random() < 0.5) {
+        if (Math.random() < RANDOMIZATION_PROBABILITY) {
           const [cx, cy] = getChunkCoords(x, y);
           const key = chunkKey(cx, cy);
           let cellSet = newChunks.get(key);
@@ -147,8 +151,8 @@ export function useChunkedGameState() {
     }
 
     for (const c of cells) {
-      const cx = (c && (c.x !== undefined)) ? c.x : (Array.isArray(c) ? c[0] : 0);
-      const cy = (c && (c.y !== undefined)) ? c.y : (Array.isArray(c) ? c[1] : 0);
+      const cx = (c && (c.x !== undefined)) ? c.x : (Array.isArray(c) ? c[0] : DEFAULT_COORDINATE);
+      const cy = (c && (c.y !== undefined)) ? c.y : (Array.isArray(c) ? c[1] : DEFAULT_COORDINATE);
       setCellAlive(x + cx, y + cy, true);
     }
   }, [selectedShape, setCellAlive]);
