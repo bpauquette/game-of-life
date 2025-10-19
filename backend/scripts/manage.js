@@ -35,7 +35,7 @@ function readPid(pidFile) {
 function isRunning(pid) {
   if (!pid) return false;
   try {
-    process.kill(parseInt(pid, 10), 0);
+    process.kill(Number.parseInt(pid, 10), 0);
     return true;
   } catch (e) {
     return false;
@@ -119,7 +119,7 @@ function start() {
 
     const waitPort = config.portEnv;
     const host = '127.0.0.1';
-    waitForPort(host, parseInt(waitPort, 10), 20000)
+    waitForPort(host, Number.parseInt(waitPort, 10), 20000)
       .then(() => console.log(`backend appears to be accepting connections on ${host}:${waitPort}`))
       .catch((err) => console.warn(`backend port check failed: ${err.message}`));
   } catch (e) {
@@ -217,11 +217,11 @@ function stop() {
   }
   console.log(`Stopping backend (pid=${pid})`);
   try {
-    process.kill(parseInt(pid, 10));
+    process.kill(Number.parseInt(pid, 10));
   } catch (e) {
     console.warn('Error sending SIGTERM, attempting kill -9');
     try { 
-      process.kill(parseInt(pid, 10), 'SIGKILL'); 
+      process.kill(Number.parseInt(pid, 10), 'SIGKILL'); 
     } catch (e2) { 
       console.warn('Failed to kill process with SIGKILL:', e2.message); 
     }
@@ -229,7 +229,7 @@ function stop() {
   setTimeout(() => {
     if (isRunning(pid)) {
       try { 
-        process.kill(parseInt(pid, 10), 'SIGKILL'); 
+        process.kill(Number.parseInt(pid, 10), 'SIGKILL'); 
       } catch (e) { 
         console.warn('Failed to force kill process:', e.message); 
       }
