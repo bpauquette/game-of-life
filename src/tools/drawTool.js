@@ -31,7 +31,7 @@ export const drawTool = {
   },
 
   // Optional: draw overlay (e.g., preview line)
-  drawOverlay(ctx, toolState, cellSize, offset) {
+  drawOverlay(_ctx, _toolState, _cellSize, _offset) {
     // Intentionally left blank to avoid drawing a persistent overlay line
     // Overlay preview was removed because it caused an unwanted white line artifact.
   }

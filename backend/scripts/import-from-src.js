@@ -54,7 +54,7 @@ const main = async () => {
   // read existing DB
   await fs.mkdir(path.dirname(dbPath), { recursive: true });
   let db = [];
-  try{ const dbtxt = await fs.readFile(dbPath, 'utf8'); db = JSON.parse(dbtxt||'[]'); }catch(e){ db = []; }
+  try{ const dbtxt = await fs.readFile(dbPath, 'utf8'); db = JSON.parse(dbtxt||'[]'); }catch{ db = []; }
 
   const existingSig = new Set(db.map(shapeSignature));
   let added = 0;

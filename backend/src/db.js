@@ -7,12 +7,12 @@ async function ensureDbFile(){
   const dir = path.dirname(DB_FILE);
   try{
     await fs.mkdir(dir, { recursive: true });
-  } catch(e) { 
+  } catch { 
     // File may not exist yet, this is expected on first run
   }
   try{
     await fs.access(DB_FILE);
-  }catch(err){
+  }catch{
     // create empty array file
     await fs.writeFile(DB_FILE, '[]', 'utf8');
   }
@@ -23,7 +23,7 @@ async function readDb(){
   const txt = await fs.readFile(DB_FILE, 'utf8');
   try{
     return JSON.parse(txt || '[]');
-  }catch(e){
+  }catch{
     // if file corrupted, reset to empty
     await fs.writeFile(DB_FILE, '[]', 'utf8');
     return [];

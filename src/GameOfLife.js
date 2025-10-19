@@ -344,7 +344,7 @@ const GameOfLife = () => {
       panOffsetStartRef.current = { x: offsetRef.current.x, y: offsetRef.current.y };
       if (e.preventDefault) e.preventDefault();
       // capture pointer if available
-      try { e.target.setPointerCapture?.(e.pointerId); } catch (err) { /* setPointerCapture not supported in some browsers */ }
+      try { e.target.setPointerCapture?.(e.pointerId); } catch { /* setPointerCapture not supported in some browsers */ }
       return;
     }
 
@@ -411,7 +411,7 @@ const GameOfLife = () => {
     // If we were panning, stop and release capture
     if (isPanningRef.current) {
       isPanningRef.current = false;
-      try { e.target.releasePointerCapture?.(e.pointerId); } catch (err) { /* releasePointerCapture not supported in some browsers */ }
+      try { e.target.releasePointerCapture?.(e.pointerId); } catch { /* releasePointerCapture not supported in some browsers */ }
       if (e.preventDefault) e.preventDefault();
       return;
     }

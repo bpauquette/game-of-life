@@ -79,7 +79,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
           setTotal(0);
         } else {
           let data = { items: [], total: 0 };
-          try { data = await res.json(); } catch (parseErr) { /* ignore parse errors and treat as empty */ data = { items: [], total: 0 }; }
+          try { data = await res.json(); } catch (_parseErr) { /* ignore parse errors and treat as empty */ data = { items: [], total: 0 }; }
           const items = Array.isArray(data.items) ? data.items : [];
           setTotal(Number(data.total) || 0);
           // append when offset > 0 (load more), otherwise replace
@@ -198,7 +198,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
                     // restore on failure
                     logger.warn('Delete failed:', res.status);
                     let bodyText = '';
-                    try { bodyText = await res.text(); } catch (e) { bodyText = '<no body>'; }
+                    try { bodyText = await res.text(); } catch { bodyText = '<no body>'; }
                     const details = `DELETE ${url.toString()}\nStatus: ${res.status}\nBody: ${bodyText}`;
                     setSnackMsg('Delete failed');
                     setSnackDetails(details);
