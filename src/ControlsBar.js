@@ -13,17 +13,17 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import SettingsIcon from '@mui/icons-material/Settings';
 import BarChartIcon from '@mui/icons-material/BarChart';
-
-// UI Layout Constants  
-const CONTROL_SPACING = 1;
-const TOOL_STATUS_MARGIN_LEFT = 12;
-const STEADY_STATE_PERIOD_INITIAL = 0;
 import BrushIcon from '@mui/icons-material/Brush';
 import LineAxisIcon from '@mui/icons-material/ShowChart';
 import CropSquareIcon from '@mui/icons-material/CropSquare';
 import CircleIcon from '@mui/icons-material/Circle';
 import WidgetsIcon from '@mui/icons-material/Widgets';
 import CasinoIcon from '@mui/icons-material/Casino';
+
+// UI Layout Constants  
+const CONTROL_SPACING = 1;
+const TOOL_STATUS_MARGIN_LEFT = 12;
+const STEADY_STATE_PERIOD_INITIAL = 0;
 // ShapePaletteDialog is rendered by the parent (GameOfLife)
 
 // Minimal, correct ControlsBar to replace corrupted file. Keep layout simple to avoid JSX nesting issues.

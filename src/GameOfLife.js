@@ -28,7 +28,6 @@ const MAX_POPULATION_HISTORY = 1000;
 const MAX_RECENT_SHAPES = 20;
 const MAX_CELL_SIZE = 200;
 const ZOOM_FACTOR = 1.12;
-const RECENT_SHAPES_THUMBNAIL_SIZE = 48;
 const KEYBOARD_PAN_AMOUNT = 1;
 const KEYBOARD_PAN_AMOUNT_SHIFT = 10;
 const SHAPE_PREVIEW_ALPHA = 0.45;
@@ -98,14 +97,14 @@ const GameOfLife = () => {
   const [cursorCell, setCursorCell] = useState(null);
   const latestCursorRef = useRef(null);
   const rafCursorRef = useRef(null);
-  const scheduleCursorUpdate = (cell) => {
+  const scheduleCursorUpdate = useCallback((cell) => {
     latestCursorRef.current = cell;
     if (rafCursorRef.current) return;
     rafCursorRef.current = requestAnimationFrame(() => {
       setCursorCell(latestCursorRef.current);
       rafCursorRef.current = null;
     });
-  };
+  }, []);
 
   // local state: keeps a small flag so initial resize happens after draw is defined
   const [ready, setReady] = useState(false);
@@ -341,9 +340,9 @@ const GameOfLife = () => {
   };
 
   // Helper to convert mouse event to cell coordinates
-  const eventToCell = (e) => {
+  const eventToCell = useCallback((e) => {
     return eventToCellFromCanvas(e, canvasRef.current, offsetRef, cellSize);
-  };
+  }, [offsetRef, cellSize]);
 
   // Helper functions for mouse handling
   const startPanning = useCallback((e) => {
@@ -352,7 +351,7 @@ const GameOfLife = () => {
     panOffsetStartRef.current = { x: offsetRef.current.x, y: offsetRef.current.y };
     if (e.preventDefault) e.preventDefault();
     try { e.target.setPointerCapture?.(e.pointerId); } catch { /* setPointerCapture not supported */ }
-  }, []);
+  }, [offsetRef]);
 
   const shouldStartPanning = useCallback((e) => {
     return (e.button === 1) || (e.button === 0 && e.nativeEvent && e.nativeEvent.shiftKey);
@@ -388,7 +387,7 @@ const GameOfLife = () => {
     offsetRef.current.y = panOffsetStartRef.current.y - dyCells;
     drawWithOverlay();
     if (e.preventDefault) e.preventDefault();
-  }, [cellSize, drawWithOverlay]);
+  }, [cellSize, drawWithOverlay, offsetRef]);
 
   const handleShapeToolMove = useCallback((e, tool, pt) => {
     toolStateRef.current.last = { x: pt.x, y: pt.y };

@@ -1,4 +1,9 @@
 // Bresenham line drawing tool
+// Line drawing constants
+const LINE_DIRECTION_POS = 1;
+const LINE_DIRECTION_NEG = -1;
+const ERROR_MULTIPLIER = 2;
+
 export const lineTool = {
   onMouseDown(state, x, y) {
     state.start = { x, y };
