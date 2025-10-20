@@ -46,6 +46,9 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
   const max = useMemo(() => Math.max(1, ...history), [history]);
   const w = CHART_WIDTH, h = CHART_HEIGHT, pad = CHART_PADDING;
 
+  // Show empty state when no data
+  const isEmpty = history.length === 0;
+
   // Build points
   const points = history.map((v, i) => {
     const x = pad + (i / Math.max(1, history.length - 1)) * (w - pad * 2);
@@ -102,8 +105,35 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
           {[0, 0.25, 0.5, 0.75, 1].map((t) => (
             <line key={t} x1={pad} x2={w - pad} y1={pad + t * (h - pad * 2)} y2={pad + t * (h - pad * 2)} stroke="rgba(255,255,255,0.04)" />
           ))}
+          
+          {/* Empty state overlay */}
+          {isEmpty && (
+            <g>
+              <rect x={0} y={0} width={w} height={h} fill="rgba(0,0,0,0.3)" />
+              <text 
+                x={w/2} 
+                y={h/2 - 10} 
+                fontSize={16} 
+                fill="#888" 
+                textAnchor="middle"
+                fontStyle="italic"
+              >
+                No data to display
+              </text>
+              <text 
+                x={w/2} 
+                y={h/2 + 15} 
+                fontSize={12} 
+                fill="#666" 
+                textAnchor="middle"
+              >
+                Start the simulation to see population changes
+              </text>
+            </g>
+          )}
+          
           {/* points & hover */}
-          {points.map((p, i) => (
+          {!isEmpty && points.map((p, i) => (
             <g key={i} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
               <circle cx={p[0]} cy={p[1]} r={hoverIdx === i ? POINT_RADIUS_HOVERED : POINT_RADIUS_NORMAL} fill={hoverIdx === i ? '#fff' : '#7bd'} />
               {hoverIdx === i && (
@@ -134,7 +164,9 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
             </Tooltip>
             <span>{isRunning ? 'Running' : 'Stopped'}</span>
           </div>
-          <span>Generations: {history.length}</span>
+          <span>
+            {isEmpty ? 'No data recorded' : `Generations: ${history.length}`}
+          </span>
         </div>
       </div>
     </div>

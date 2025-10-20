@@ -13,6 +13,8 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import SettingsIcon from '@mui/icons-material/Settings';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import HelpIcon from '@mui/icons-material/Help';
+import InfoIcon from '@mui/icons-material/Info';
 import BrushIcon from '@mui/icons-material/Brush';
 import LineAxisIcon from '@mui/icons-material/ShowChart';
 import CropSquareIcon from '@mui/icons-material/CropSquare';
@@ -20,6 +22,8 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import WidgetsIcon from '@mui/icons-material/Widgets';
 import CasinoIcon from '@mui/icons-material/Casino';
 import OvalIcon from './components/OvalIcon';
+import HelpDialog from './HelpDialog';
+import AboutDialog from './AboutDialog';
 
 // UI Layout Constants  
 const CONTROL_SPACING = 1;
@@ -59,6 +63,8 @@ const ControlsBar = ({
   setPopTolerance
 }) => {
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   // paletteOpen is now controlled by parent (GameOfLife)
   const [wasRunningBeforeOptions, setWasRunningBeforeOptions] = useState(false);
 
@@ -75,6 +81,11 @@ const ControlsBar = ({
     setOptionsOpen(false);
     if (wasRunningBeforeOptions) setIsRunning(true);
   };
+
+  const openHelp = () => setHelpOpen(true);
+  const closeHelp = () => setHelpOpen(false);
+  const openAbout = () => setAboutOpen(true);
+  const closeAbout = () => setAboutOpen(false);
 
   return (
     <div className="controls">
@@ -109,6 +120,8 @@ const ControlsBar = ({
         <IconButton size="small" onClick={() => setShowChart(true)} aria-label="chart"><BarChartIcon fontSize="small"/></IconButton>
   {/* palette opener removed; use the palette toggle in the tool group instead */}
         
+        <IconButton size="small" onClick={openHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small"/></Tooltip></IconButton>
+        <IconButton size="small" onClick={openAbout} aria-label="about"><Tooltip title="About"><InfoIcon fontSize="small"/></Tooltip></IconButton>
         <IconButton size="small" onClick={openOptions} aria-label="options"><SettingsIcon fontSize="small"/></IconButton>
 
   <Chip label={`Live Cells: ${getLiveCells().size}`} size="small" variant="outlined" />
@@ -132,6 +145,16 @@ const ControlsBar = ({
           onCancel={handleCancel}
         />
       )}
+
+      <HelpDialog 
+        open={helpOpen} 
+        onClose={closeHelp} 
+      />
+
+      <AboutDialog 
+        open={aboutOpen} 
+        onClose={closeAbout} 
+      />
       
     </div>
   );

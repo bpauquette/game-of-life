@@ -80,6 +80,8 @@ const GameOfLife = () => {
   const clearWithGeneration = React.useCallback(() => {
     clear();
     setGeneration(0);
+    // Clear population history when clearing the game
+    popHistoryRef.current = [];
   }, [clear]);
 
   // population stability checker moved to src/utils/populationUtils.js
