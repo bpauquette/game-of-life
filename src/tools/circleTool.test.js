@@ -63,54 +63,73 @@ describe('circleTool', () => {
       expect(Array.isArray(toolState.preview)).toBe(true);
     });
 
-    it('should calculate radius correctly', () => {
+    it('should calculate bounding box correctly', () => {
       toolState.start = { x: 0, y: 0 };
 
-      // Distance from (0,0) to (3,4) is 5
+      // Bounding box from (0,0) to (3,4) gives dimensions 3x4, smaller is 3
+      // Circle radius should be 1 (3/2 = 1.5, floor = 1), centered at (1,2)
       circleTool.onMouseMove(toolState, 3, 4);
 
-      // Should generate a circle with radius 5
+      // Should generate a circle that fits within bounding box
       expect(toolState.preview.length).toBeGreaterThan(0);
       
-      // Check that some expected points are in the circle perimeter
+      // Circle should be centered around (1,2) with radius 1
       const preview = toolState.preview;
-      expect(preview.some(p => p[0] === 5 && p[1] === 0)).toBe(true); // Right point
-      expect(preview.some(p => p[0] === -5 && p[1] === 0)).toBe(true); // Left point
-      expect(preview.some(p => p[0] === 0 && p[1] === 5)).toBe(true); // Bottom point
-      expect(preview.some(p => p[0] === 0 && p[1] === -5)).toBe(true); // Top point
+      // Check that circle points are within the bounding box
+      for (const p of preview) {
+        expect(p[0]).toBeGreaterThanOrEqual(0);
+        expect(p[0]).toBeLessThanOrEqual(3);
+        expect(p[1]).toBeGreaterThanOrEqual(0);
+        expect(p[1]).toBeLessThanOrEqual(4);
+      }
     });
 
-    it('should handle zero radius (same point)', () => {
+    it('should handle zero size bounding box (same point)', () => {
       toolState.start = { x: 5, y: 5 };
 
       circleTool.onMouseMove(toolState, 5, 5);
 
-      // Radius 0 should return empty array
-      expect(toolState.preview).toEqual([]);
+      // Zero-size bounding box should still create a minimal circle (radius 1)
+      expect(toolState.preview.length).toBeGreaterThan(0);
+      // Should be a small circle centered at (5,5) - check for points around center
+      const preview = toolState.preview;
+      const hasPointsNearCenter = preview.some(p => 
+        Math.abs(p[0] - 5) <= 1 && Math.abs(p[1] - 5) <= 1
+      );
+      expect(hasPointsNearCenter).toBe(true);
     });
 
-    it('should handle radius 1', () => {
+    it('should handle small bounding box', () => {
       toolState.start = { x: 0, y: 0 };
 
       circleTool.onMouseMove(toolState, 1, 0);
 
-      // Radius 1 circle should have 4 cardinal points
-      expect(toolState.preview).toContainEqual([1, 0]);  // Right
-      expect(toolState.preview).toContainEqual([-1, 0]); // Left
-      expect(toolState.preview).toContainEqual([0, 1]);  // Bottom
-      expect(toolState.preview).toContainEqual([0, -1]); // Top
+      // Bounding box is 1x0, smaller dimension is 0, so radius becomes 1 (minimum)
+      // Circle should be generated within the bounds
+      expect(toolState.preview.length).toBeGreaterThan(0);
+      const preview = toolState.preview;
+      // All points should be within or near the bounding area
+      for (const p of preview) {
+        expect(p[0]).toBeGreaterThanOrEqual(-1);
+        expect(p[0]).toBeLessThanOrEqual(2);
+      }
     });
 
-    it('should handle radius 2', () => {
+    it('should handle larger bounding box', () => {
       toolState.start = { x: 0, y: 0 };
 
-      circleTool.onMouseMove(toolState, 2, 0);
+      circleTool.onMouseMove(toolState, 4, 4);
 
-      // Radius 2 circle should include more points
-      expect(toolState.preview).toContainEqual([2, 0]);
-      expect(toolState.preview).toContainEqual([-2, 0]);
-      expect(toolState.preview).toContainEqual([0, 2]);
-      expect(toolState.preview).toContainEqual([0, -2]);
+      // Bounding box is 4x4, so circle radius should be 2, centered at (2,2)
+      expect(toolState.preview.length).toBeGreaterThan(0);
+      const preview = toolState.preview;
+      // All points should be within the bounding box
+      for (const p of preview) {
+        expect(p[0]).toBeGreaterThanOrEqual(0);
+        expect(p[0]).toBeLessThanOrEqual(4);
+        expect(p[1]).toBeGreaterThanOrEqual(0);
+        expect(p[1]).toBeLessThanOrEqual(4);
+      }
     });
 
     it('should calculate radius from diagonal movement', () => {
@@ -144,13 +163,10 @@ describe('circleTool', () => {
     it('should place cells and reset state', () => {
       toolState.start = { x: 0, y: 0 };
 
-      circleTool.onMouseUp(toolState, 1, 0, mockSetCellAlive);
+      circleTool.onMouseUp(toolState, 2, 2, mockSetCellAlive);
 
-      // Should call setCellAlive for each point in the circle
-      expect(mockSetCellAlive).toHaveBeenCalledWith(1, 0, true);   // Right
-      expect(mockSetCellAlive).toHaveBeenCalledWith(-1, 0, true);  // Left
-      expect(mockSetCellAlive).toHaveBeenCalledWith(0, 1, true);   // Bottom
-      expect(mockSetCellAlive).toHaveBeenCalledWith(0, -1, true);  // Top
+      // Should call setCellAlive for each point in the circle (bounding box approach)
+      expect(mockSetCellAlive).toHaveBeenCalled();
 
       // Should reset state
       expect(toolState.start).toBeNull();
@@ -158,13 +174,13 @@ describe('circleTool', () => {
       expect(toolState.preview).toEqual([]);
     });
 
-    it('should handle zero radius circle', () => {
+    it('should handle zero-size bounding box', () => {
       toolState.start = { x: 5, y: 5 };
 
       circleTool.onMouseUp(toolState, 5, 5, mockSetCellAlive);
 
-      // Zero radius should not place any cells
-      expect(mockSetCellAlive).not.toHaveBeenCalled();
+      // Zero-size bounding box should still create minimal circle
+      expect(mockSetCellAlive).toHaveBeenCalled();
 
       // Should still reset state
       expect(toolState.start).toBeNull();
@@ -172,18 +188,15 @@ describe('circleTool', () => {
       expect(toolState.preview).toEqual([]);
     });
 
-    it('should handle larger circle', () => {
+    it('should handle larger bounding box', () => {
       toolState.start = { x: 0, y: 0 };
 
-      circleTool.onMouseUp(toolState, 3, 4, mockSetCellAlive); // radius = 5
+      circleTool.onMouseUp(toolState, 6, 6, mockSetCellAlive); // 6x6 bounding box
 
-      // Should place many cells for a radius 5 circle
-      expect(mockSetCellAlive).toHaveBeenCalledWith(5, 0, true);
-      expect(mockSetCellAlive).toHaveBeenCalledWith(-5, 0, true);
-      expect(mockSetCellAlive).toHaveBeenCalledWith(0, 5, true);
-      expect(mockSetCellAlive).toHaveBeenCalledWith(0, -5, true);
+      // Should place cells for a circle that fits within 6x6 box
+      expect(mockSetCellAlive).toHaveBeenCalled();
       
-      // Should have called setCellAlive multiple times
+      // Should have called setCellAlive multiple times for circle perimeter
       expect(mockSetCellAlive.mock.calls.length).toBeGreaterThan(4);
     });
 

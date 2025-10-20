@@ -9,14 +9,12 @@ export const circleTool = {
   onMouseMove(state, x, y) {
     if (!state.start) return;
     state.last = { x, y };
-    const r = Math.round(Math.hypot(x - state.start.x, y - state.start.y));
-    state.preview = computeCirclePerimeter(state.start.x, state.start.y, r);
+    state.preview = computeCirclePerimeterFromBounds(state.start.x, state.start.y, x, y);
   },
 
   onMouseUp(state, x, y, setCellAlive) {
     if (!state.start) return;
-    const r = Math.round(Math.hypot(x - state.start.x, y - state.start.y));
-    const pts = computeCirclePerimeter(state.start.x, state.start.y, r);
+    const pts = computeCirclePerimeterFromBounds(state.start.x, state.start.y, x, y);
     for (const p of pts) {
       const px = p[0];
       const py = p[1];
@@ -36,6 +34,28 @@ export const circleTool = {
       ctx.fillRect(x * cellSize - offset.x, y * cellSize - offset.y, cellSize, cellSize);
     }
   }
+};
+
+// New function: compute circle that fits within bounding box defined by two points
+const computeCirclePerimeterFromBounds = (x0, y0, x1, y1) => {
+  const xMin = Math.min(x0, x1);
+  const xMax = Math.max(x0, x1);
+  const yMin = Math.min(y0, y1);
+  const yMax = Math.max(y0, y1);
+  
+  // Calculate bounding box dimensions
+  const width = xMax - xMin;
+  const height = yMax - yMin;
+  
+  // For a circle, use the smaller dimension to ensure it fits in the box
+  const diameter = Math.min(width, height);
+  const r = Math.max(1, Math.floor(diameter / 2));
+  
+  // Center the circle in the bounding box
+  const cx = Math.floor(xMin + width / 2);
+  const cy = Math.floor(yMin + height / 2);
+  
+  return computeCirclePerimeter(cx, cy, r);
 };
 
 const computeCirclePerimeter = (cx, cy, r) => {
