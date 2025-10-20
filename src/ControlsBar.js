@@ -16,9 +16,10 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import BrushIcon from '@mui/icons-material/Brush';
 import LineAxisIcon from '@mui/icons-material/ShowChart';
 import CropSquareIcon from '@mui/icons-material/CropSquare';
-import CircleIcon from '@mui/icons-material/Circle';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import WidgetsIcon from '@mui/icons-material/Widgets';
 import CasinoIcon from '@mui/icons-material/Casino';
+import OvalIcon from './components/OvalIcon';
 
 // UI Layout Constants  
 const CONTROL_SPACING = 1;
@@ -87,8 +88,8 @@ const ControlsBar = ({
           <ToggleButton value="draw" aria-label="draw"><Tooltip title="Freehand draw"><BrushIcon fontSize="small"/></Tooltip></ToggleButton>
           <ToggleButton value="line" aria-label="line"><Tooltip title="Line tool"><LineAxisIcon fontSize="small"/></Tooltip></ToggleButton>
           <ToggleButton value="rect" aria-label="rect"><Tooltip title="Rectangle tool"><CropSquareIcon fontSize="small"/></Tooltip></ToggleButton>
-          <ToggleButton value="circle" aria-label="circle"><Tooltip title="Circle tool"><CircleIcon fontSize="small"/></Tooltip></ToggleButton>
-          <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
+          <ToggleButton value="circle" aria-label="circle"><Tooltip title="Circle tool"><RadioButtonUncheckedIcon fontSize="small"/></Tooltip></ToggleButton>
+          <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool"><OvalIcon fontSize="small"/></Tooltip></ToggleButton>
           <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect"><CasinoIcon fontSize="small"/></Tooltip></ToggleButton>
           {/* Palette toggle: opens the ShapePaletteDialog while selected */}
           <ToggleButton value="shapes" aria-label="shapes" onClick={() => openPalette && openPalette()}><Tooltip title="Shapes"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
