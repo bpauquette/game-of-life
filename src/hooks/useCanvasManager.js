@@ -71,11 +71,11 @@ export const useCanvasManager = ({
         if (tool?.drawOverlay) {
           tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset, colorScheme);
         }
-        // Draw selected-shape preview if present. This is a non-committing
+        // Draw selected-shape preview if present and shapes tool is active
         // overlay drawn from the non-reactive toolStateRef so it remains fast.
         const selShape = toolStateRef.current.selectedShapeData || selectedShape;
         const last = toolStateRef.current.last;
-        if (selShape && last) {
+        if (selShape && last && selectedTool === 'shapes') {
           // resolve cells from shape object or array
           const cells = Array.isArray(selShape) ? selShape : selShape?.cells || [];
 

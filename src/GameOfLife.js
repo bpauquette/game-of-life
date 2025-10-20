@@ -86,6 +86,15 @@ const GameOfLife = () => {
     shapes: shapesTool
   }), []);
 
+  // Reset tool state when switching tools to prevent overlay artifacts
+  React.useEffect(() => {
+    toolStateRef.current = {};
+    // Clear selected shape when switching away from shapes tool
+    if (selectedTool !== 'shapes') {
+      setSelectedShape(null);
+    }
+  }, [selectedTool, setSelectedShape]);
+
   // Cursor tracking for tool status (throttled via RAF)
   const [cursorCell, setCursorCell] = useState(null);
   const latestCursorRef = useRef(null);
