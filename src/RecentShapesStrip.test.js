@@ -59,6 +59,21 @@ describe('RecentShapesStrip', () => {
       const svgElements = container.querySelectorAll('svg');
       expect(svgElements).toHaveLength(2);
     });
+
+    test('renders container with enhanced styling and header', () => {
+      render(<RecentShapesStrip {...defaultProps} recentShapes={mockShapes} />);
+      
+      // Check for "Recent Shapes" header text
+      expect(screen.getByText('Recent Shapes')).toBeInTheDocument();
+    });
+
+    test('renders shape labels below thumbnails', () => {
+      render(<RecentShapesStrip {...defaultProps} recentShapes={mockShapes} />);
+      
+      // Labels should be present as text content (in addition to title attributes)
+      expect(screen.getByText('Glider')).toBeInTheDocument();
+      expect(screen.getByText('Block')).toBeInTheDocument();
+    });
   });
 
   describe('Shape Key Generation', () => {
@@ -258,7 +273,7 @@ describe('RecentShapesStrip', () => {
       render(<RecentShapesStrip {...defaultProps} recentShapes={mockShapes} />);
       
       const shapeElement = screen.getByTitle('Glider');
-      expect(shapeElement).toHaveStyle('margin-bottom: 8px');
+      expect(shapeElement).toHaveStyle('margin-bottom: 12px');
     });
 
     test('uses colorScheme background when provided', () => {
@@ -276,11 +291,11 @@ describe('RecentShapesStrip', () => {
       expect(svg).toHaveStyle('background: rgb(18, 52, 86)'); // #123456 converted
     });
 
-    test('uses transparent background when no colorScheme provided', () => {
+    test('uses default dark background when no colorScheme provided', () => {
       const { container } = render(<RecentShapesStrip {...defaultProps} recentShapes={mockShapes} />);
       
       const svg = container.querySelector('svg');
-      expect(svg).toHaveStyle('background: transparent');
+      expect(svg).toHaveStyle('background: #1a1a1a');
     });
   });
 
@@ -368,8 +383,8 @@ describe('RecentShapesStrip', () => {
       const { container } = render(<RecentShapesStrip {...defaultProps} recentShapes={mockShapes} />);
       
       const svg = container.querySelector('svg');
-      expect(svg).toHaveStyle('border: 1px solid rgba(0,0,0,0.06)');
-      expect(svg).toHaveStyle('border-radius: 6px');
+      expect(svg).toHaveStyle('border: 1px solid rgba(255,255,255,0.15)');
+      expect(svg).toHaveStyle('border-radius: 8px');
     });
   });
 

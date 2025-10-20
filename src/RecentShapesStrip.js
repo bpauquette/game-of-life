@@ -3,14 +3,25 @@ import PropTypes from 'prop-types';
 
 // Constants for recent shapes strip
 const RECENT_SHAPES_THUMBNAIL_SIZE = 48;
-const SHAPE_MARGIN_BOTTOM = 8;
-const SHAPE_BORDER_RADIUS = 6;
-const SHAPE_BORDER_COLOR = 'rgba(0,0,0,0.06)';
+const SHAPE_MARGIN_BOTTOM = 12;
+const SHAPE_BORDER_RADIUS = 8;
+const SHAPE_BORDER_COLOR = 'rgba(255,255,255,0.15)';
+const SHAPE_BORDER_HOVER_COLOR = 'rgba(255,255,255,0.3)';
 const GRID_STROKE_COLOR = 'rgba(255,255,255,0.02)';
 const DEFAULT_SHAPE_COLOR = '#222';
 const DEFAULT_SHAPE_SIZE = 8;
 const ARRAY_X_INDEX = 0;
 const ARRAY_Y_INDEX = 1;
+
+// Styling constants for enhanced appearance
+const CONTAINER_BACKGROUND = 'rgba(0,0,0,0.7)';
+const CONTAINER_BORDER = '1px solid rgba(255,255,255,0.1)';
+const CONTAINER_SHADOW = '0 4px 12px rgba(0,0,0,0.4)';
+const LABEL_BACKGROUND = 'rgba(0,0,0,0.8)';
+const LABEL_COLOR = '#ffffff';
+const LABEL_FONT_SIZE = '10px';
+const LABEL_PADDING = '2px 6px';
+const LABEL_BORDER_RADIUS = '4px';
 
 const RecentShapesStrip = ({ 
   recentShapes = [], 
@@ -97,8 +108,34 @@ const RecentShapesStrip = ({
     drawWithOverlay();
   };
 
+  if (recentShapes.length === 0) {
+    return null;
+  }
+
   return (
-    <>
+    <div 
+      style={{
+        background: CONTAINER_BACKGROUND,
+        border: CONTAINER_BORDER,
+        borderRadius: SHAPE_BORDER_RADIUS,
+        boxShadow: CONTAINER_SHADOW,
+        padding: '12px 8px',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)'
+      }}
+    >
+      <div 
+        style={{
+          fontSize: '12px',
+          color: LABEL_COLOR,
+          marginBottom: '8px',
+          fontWeight: '500',
+          textAlign: 'center',
+          opacity: 0.8
+        }}
+      >
+        Recent Shapes
+      </div>
       {recentShapes.map((shape, index) => {
         const key = getShapeKey(shape, index);
         const cells = getShapeCells(shape);
@@ -110,10 +147,20 @@ const RecentShapesStrip = ({
             key={key} 
             style={{ 
               marginBottom: SHAPE_MARGIN_BOTTOM, 
-              cursor: 'pointer' 
+              cursor: 'pointer',
+              position: 'relative',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease'
             }} 
             onClick={() => handleShapeClick(shape)} 
             title={title}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.05)';
+              e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_HOVER_COLOR;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_COLOR;
+            }}
           >
             <svg 
               width={RECENT_SHAPES_THUMBNAIL_SIZE} 
@@ -121,18 +168,40 @@ const RecentShapesStrip = ({
               viewBox={`0 0 ${Math.max(1, width)} ${Math.max(1, height)}`} 
               preserveAspectRatio="xMidYMid meet" 
               style={{ 
-                background: colorScheme.background || 'transparent', 
+                background: colorScheme.background || '#1a1a1a', 
                 border: `1px solid ${SHAPE_BORDER_COLOR}`, 
-                borderRadius: SHAPE_BORDER_RADIUS 
+                borderRadius: SHAPE_BORDER_RADIUS,
+                transition: 'border-color 0.2s ease'
               }}
             >
               {renderGridBackground(width, height, key)}
               {renderShapeCells(cells, key, colorScheme)}
             </svg>
+            <div 
+              style={{
+                position: 'absolute',
+                bottom: '-2px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: LABEL_BACKGROUND,
+                color: LABEL_COLOR,
+                fontSize: LABEL_FONT_SIZE,
+                padding: LABEL_PADDING,
+                borderRadius: LABEL_BORDER_RADIUS,
+                whiteSpace: 'nowrap',
+                maxWidth: `${RECENT_SHAPES_THUMBNAIL_SIZE}px`,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                textAlign: 'center',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+              }}
+            >
+              {title}
+            </div>
           </div>
         );
       })}
-    </>
+    </div>
   );
 };
 
