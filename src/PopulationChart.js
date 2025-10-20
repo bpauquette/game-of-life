@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
+import Tooltip from '@mui/material/Tooltip';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 
 // Chart dimensions and styling constants
 const CHART_WIDTH = 640;
@@ -37,7 +39,8 @@ const Y_AXIS_TEXT_OFFSET_Y = 4;
 // Props:
 // - history: array of integers (population count per generation)
 // - onClose: function to close the modal
-export default function PopulationChart({ history = [], onClose }) {
+// - isRunning: boolean indicating if simulation is running
+export default function PopulationChart({ history = [], onClose, isRunning = false }) {
   const [hoverIdx, setHoverIdx] = useState(null);
 
   const max = useMemo(() => Math.max(1, ...history), [history]);
@@ -112,7 +115,27 @@ export default function PopulationChart({ history = [], onClose }) {
             </g>
           ))}
         </svg>
-        <div style={{ marginTop: 8, textAlign: 'right', fontSize: 12, opacity: 0.8 }}>Generations: {history.length}</div>
+        <div style={{ 
+          marginTop: 8, 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          fontSize: 12, 
+          opacity: 0.8 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Tooltip title={isRunning ? 'Running' : 'Stopped'}>
+              <LightbulbIcon 
+                style={{ 
+                  color: isRunning ? '#FFC107' : 'rgba(255,255,255,0.35)',
+                  fontSize: 18
+                }} 
+              />
+            </Tooltip>
+            <span>{isRunning ? 'Running' : 'Stopped'}</span>
+          </div>
+          <span>Generations: {history.length}</span>
+        </div>
       </div>
     </div>
   );
@@ -120,9 +143,11 @@ export default function PopulationChart({ history = [], onClose }) {
 
 PopulationChart.propTypes = {
   history: PropTypes.array,
-  onClose: PropTypes.func.isRequired
+  onClose: PropTypes.func.isRequired,
+  isRunning: PropTypes.bool
 };
 
 PopulationChart.defaultProps = {
-  history: []
+  history: [],
+  isRunning: false
 };

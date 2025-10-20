@@ -17,8 +17,6 @@ import PopulationChart from './PopulationChart';
 import ControlsBar from './ControlsBar';
 import RecentShapesStrip from './RecentShapesStrip';
 import { computeComputedOffset, eventToCellFromCanvas, drawLiveCells } from './utils/canvasUtils';
-import Tooltip from '@mui/material/Tooltip';
-import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import ShapePaletteDialog from './ShapePaletteDialog';
 import { useCanvasManager } from './hooks/useCanvasManager';
 import { useShapeManager } from './hooks/useShapeManager';
@@ -385,14 +383,12 @@ const GameOfLife = () => {
         style={{ cursor: (selectedShape || selectedTool) ? 'crosshair' : 'default' }}
       />
       {showChart && (
-        <PopulationChart history={popHistoryRef.current.slice()} onClose={() => setShowChart(false)} />
+        <PopulationChart 
+          history={popHistoryRef.current.slice()} 
+          onClose={() => setShowChart(false)}
+          isRunning={isRunning}
+        />
       )}
-      {/* Run-state indicator (top-right overlay) - lights while running, dark when stopped */}
-      <div className="steady-indicator" title={isRunning ? 'Running' : 'Stopped'}>
-        <Tooltip title={isRunning ? 'Running' : 'Stopped'}>
-          <LightbulbIcon style={{ color: isRunning ? '#FFC107' : 'rgba(255,255,255,0.35)' }} />
-        </Tooltip>
-      </div>
     </div>
   );
 };

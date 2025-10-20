@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import Dialog from '@mui/material/Dialog';
 import logger from './utils/logger';
@@ -18,6 +18,9 @@ import DialogActions from '@mui/material/DialogActions';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Slide from '@mui/material/Slide';
+import CloseIcon from '@mui/icons-material/Close';
+import UndoIcon from '@mui/icons-material/Undo';
+import Typography from '@mui/material/Typography';
 
 // UI Constants
 const PREVIEW_BOX_SIZE = 72;
@@ -45,6 +48,11 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
   const LARGE_CATALOG_THRESHOLD = 1000; // UI hint threshold
+  
+  // Backend server management states
+  const [showBackendDialog, setShowBackendDialog] = useState(false);
+  const [backendStarting, setBackendStarting] = useState(false);
+  const [backendError, setBackendError] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [snackOpen, setSnackOpen] = useState(false);
@@ -62,6 +70,68 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       // ignore failures in color function
     }
     return colorScheme.cellColor || '#39ff14';
+  };
+
+  // Check if backend is reachable
+  const checkBackendHealth = useCallback(async () => {
+    try {
+      const base = getBaseUrl(backendBase);
+      const healthUrl = new URL('/health', base);
+      const response = await fetch(healthUrl.toString(), {
+        method: 'GET',
+        timeout: 3000 // 3 second timeout
+      });
+      return response.ok;
+    } catch (error) {
+      return false;
+    }
+  }, [backendBase]);
+
+  // Start the backend server
+  const startBackendServer = async () => {
+    setBackendStarting(true);
+    setBackendError('');
+    
+    try {
+      // Since we can't directly start the backend from the frontend,
+      // we'll provide instructions and offer to retry the connection
+      setBackendError(`To start the backend server, please run one of these commands in your terminal:
+
+1. From the project root: npm run backend:start
+2. From the backend directory: cd backend && npm start
+
+The backend will start on port 55000.`);
+      
+      // Don't close the dialog, let user retry after starting manually
+    } catch (error) {
+      logger.error('Backend start instructions shown:', error);
+      setBackendError(`Please start the backend manually: npm run backend:start`);
+    } finally {
+      setBackendStarting(false);
+    }
+  };
+
+  // Retry connecting to backend
+  const retryBackendConnection = async () => {
+    setBackendStarting(true);
+    setBackendError('');
+    
+    try {
+      const isHealthy = await checkBackendHealth();
+      if (isHealthy) {
+        setShowBackendDialog(false);
+        // Retry the original search
+        setLoading(true);
+        setResults([]);
+        setOffset(0);
+      } else {
+        setBackendError('Backend server is still not responding. Please make sure it\'s running on port 55000.');
+      }
+    } catch (error) {
+      setBackendError('Failed to connect to backend. Please ensure it\'s running.');
+    } finally {
+      setBackendStarting(false);
+    }
   };
 
   useEffect(()=>{ if(!open){ setQ(''); setResults([]); setLoading(false); } }, [open]);
@@ -94,14 +164,28 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
         }
       } catch (e) {
         logger.error('Shape search error:', e);
+        
+        // Check if this is a connection error that might indicate backend is down
+        if (e.message.includes('fetch') || e.message.includes('NetworkError') || 
+            e.message.includes('ECONNREFUSED') || e.code === 'ECONNREFUSED') {
+          // Backend might be down, offer to start it
+          const isHealthy = await checkBackendHealth();
+          if (!isHealthy) {
+            setLoading(false);
+            setShowBackendDialog(true);
+            return; // Don't set empty results yet
+          }
+        }
+        
         setResults([]);
       } finally { setLoading(false); }
     }, 300);
     return ()=>{ if(timerRef.current) clearTimeout(timerRef.current); };
-  }, [q, backendBase, offset, limit]);
+  }, [q, backendBase, offset, limit, checkBackendHealth]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Insert shape from catalog</DialogTitle>
       <DialogContent>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
@@ -271,6 +355,55 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
         </Snackbar>
       </DialogContent>
     </Dialog>
+    
+    {/* Backend Server Start Dialog */}
+    <Dialog open={showBackendDialog} onClose={() => setShowBackendDialog(false)} maxWidth="sm">
+      <DialogTitle>
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Typography variant="h6">Backend Server Not Found</Typography>
+          <IconButton onClick={() => setShowBackendDialog(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Typography paragraph>
+          The shapes catalog backend server doesn't appear to be running. 
+          You need to start it to access the shapes catalog.
+        </Typography>
+        {backendError && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="body2" component="pre" style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+              {backendError}
+            </Typography>
+          </Alert>
+        )}
+        <Typography variant="body2" color="text.secondary">
+          The backend provides access to a catalog of Conway's Game of Life patterns and shapes.
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setShowBackendDialog(false)}>
+          Cancel
+        </Button>
+        <Button 
+          onClick={retryBackendConnection} 
+          variant="outlined" 
+          disabled={backendStarting}
+          startIcon={backendStarting ? <CircularProgress size={16} /> : <UndoIcon />}
+        >
+          {backendStarting ? 'Checking...' : 'Retry Connection'}
+        </Button>
+        <Button 
+          onClick={startBackendServer} 
+          variant="contained" 
+          disabled={backendStarting}
+        >
+          Show Instructions
+        </Button>
+      </DialogActions>
+    </Dialog>
+    </>
   );
 }
 
