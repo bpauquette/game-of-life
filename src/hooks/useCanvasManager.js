@@ -89,7 +89,7 @@ export const useCanvasManager = ({
               try {
                 ctx.fillStyle = colorScheme?.getCellColor?.(last.x + cx, last.y + cy) ?? '#222';
               } catch (err) {
-                log.console.error(err);
+                logger.warn(err);
                 ctx.fillStyle = '#222';
               }
               ctx.fillRect(drawX, drawY, cellSize, cellSize);
