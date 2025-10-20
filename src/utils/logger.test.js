@@ -1,3 +1,4 @@
+/* eslint-disable testing-library/no-debugging-utils */
 import logger from './logger';
 
 // Mock console methods
@@ -36,6 +37,7 @@ describe('logger', () => {
       expect(mockConsole.error).not.toHaveBeenCalled();
       expect(mockConsole.warn).not.toHaveBeenCalled();
       expect(mockConsole.info).not.toHaveBeenCalled();
+      // eslint-disable-next-line testing-library/no-debugging-utils
       expect(mockConsole.debug).not.toHaveBeenCalled();
     });
   });
@@ -76,6 +78,7 @@ describe('logger', () => {
       
       logger.debug('test debug', { data: 'object' });
       
+      // eslint-disable-next-line testing-library/no-debugging-utils
       expect(mockConsole.debug).toHaveBeenCalledWith('test debug', { data: 'object' });
     });
   });
@@ -115,6 +118,7 @@ describe('logger', () => {
       
       logger.debug('production debug');
       
+      // eslint-disable-next-line testing-library/no-debugging-utils
       expect(mockConsole.debug).not.toHaveBeenCalled();
     });
   });
@@ -153,6 +157,7 @@ describe('logger', () => {
       
       logger.debug('');
       
+      // eslint-disable-next-line testing-library/no-debugging-utils
       expect(mockConsole.debug).toHaveBeenCalledWith('');
     });
   });
@@ -176,6 +181,7 @@ describe('logger', () => {
       expect(mockConsole.error).toHaveBeenCalled();
       expect(mockConsole.warn).toHaveBeenCalled();
       expect(mockConsole.info).toHaveBeenCalled();
+      // eslint-disable-next-line testing-library/no-debugging-utils
       expect(mockConsole.debug).toHaveBeenCalled();
     });
   });

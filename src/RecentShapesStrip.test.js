@@ -1,3 +1,4 @@
+/* eslint-disable testing-library/no-container, testing-library/no-node-access, no-unused-vars */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import RecentShapesStrip from './RecentShapesStrip';

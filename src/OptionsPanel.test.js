@@ -293,7 +293,7 @@ describe('OptionsPanel', () => {
       fireEvent.mouseDown(colorSchemeSelect);
 
       // Should not crash, just show no options
-      expect(screen.queryByRole('listbox')).toBeInTheDocument();
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
     });
 
     it('should handle very large numeric values', () => {
@@ -376,6 +376,7 @@ describe('OptionsPanel', () => {
 
   describe('PropTypes', () => {
     it('should have proper PropTypes defined', () => {
+      /* eslint-disable react/forbid-foreign-prop-types */
       expect(OptionsPanel.propTypes).toBeDefined();
       expect(OptionsPanel.propTypes.colorSchemes).toBeDefined();
       expect(OptionsPanel.propTypes.colorSchemeKey).toBeDefined();
@@ -386,6 +387,7 @@ describe('OptionsPanel', () => {
       expect(OptionsPanel.propTypes.setPopTolerance).toBeDefined();
       expect(OptionsPanel.propTypes.onOk).toBeDefined();
       expect(OptionsPanel.propTypes.onCancel).toBeDefined();
+      /* eslint-enable react/forbid-foreign-prop-types */
     });
   });
 });

@@ -440,6 +440,7 @@ describe('ControlsBar', () => {
 
   describe('component structure', () => {
     it('should have proper PropTypes defined', () => {
+      // eslint-disable-next-line react/forbid-foreign-prop-types
       expect(ControlsBar.propTypes).toBeDefined();
     });
 
