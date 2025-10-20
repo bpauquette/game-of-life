@@ -67,6 +67,20 @@ const GameOfLife = () => {
   const [steadyInfo, setSteadyInfo] = React.useState({ steady: false, period: 0, popChanging: false });
   const MAX_SNAPSHOTS = 60;
   const steadyDetectedRef = React.useRef(false);
+  
+  // generation counter
+  const [generation, setGeneration] = React.useState(0);
+
+  // Wrapper functions to handle generation counter
+  const stepWithGeneration = React.useCallback(() => {
+    step();
+    setGeneration(prev => prev + 1);
+  }, [step]);
+
+  const clearWithGeneration = React.useCallback(() => {
+    clear();
+    setGeneration(0);
+  }, [clear]);
 
   // population stability checker moved to src/utils/populationUtils.js
 
@@ -241,6 +255,7 @@ const GameOfLife = () => {
     const loop = () => {
       if (isRunning) {
         step();
+        setGeneration(prev => prev + 1);
         updatePopulationHistory();
         updateSteadyState();
         drawWithOverlay();
@@ -348,9 +363,10 @@ const GameOfLife = () => {
         colorSchemes={colorSchemes}
         isRunning={isRunning}
         setIsRunning={(v) => { if (!v) {} ; setIsRunning(v); }}
-        step={step}
+        step={stepWithGeneration}
         draw={draw}
-        clear={clear}
+        clear={clearWithGeneration}
+        generation={generation}
         snapshotsRef={snapshotsRef}
         setSteadyInfo={setSteadyInfo}
         canvasRef={canvasRef}

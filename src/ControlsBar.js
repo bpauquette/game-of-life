@@ -47,6 +47,7 @@ const ControlsBar = ({
   cursorCell,
   selectedShape,
   openPalette,
+  generation,
   // Options-related props (must be forwarded to OptionsPanel)
   colorSchemes,
   colorSchemeKey,
@@ -110,6 +111,7 @@ const ControlsBar = ({
         <IconButton size="small" onClick={openOptions} aria-label="options"><SettingsIcon fontSize="small"/></IconButton>
 
   <Chip label={`Live Cells: ${getLiveCells().size}`} size="small" variant="outlined" />
+        <Chip label={`Generation: ${generation}`} size="small" variant="outlined" />
 
         <div style={{ marginLeft: TOOL_STATUS_MARGIN_LEFT }}>
           <ToolStatus selectedTool={selectedTool} toolStateRef={toolStateRef} cursorCell={cursorCell} />
@@ -154,6 +156,7 @@ ControlsBar.propTypes = {
   cursorCell: PropTypes.object,
   selectedShape: PropTypes.object,
   openPalette: PropTypes.func.isRequired,
+  generation: PropTypes.number.isRequired,
   colorSchemes: PropTypes.object.isRequired,
   colorSchemeKey: PropTypes.string.isRequired,
   setColorSchemeKey: PropTypes.func.isRequired,
