@@ -112,7 +112,7 @@ const ControlsBar = ({
   <Chip label={`Live Cells: ${getLiveCells().size}`} size="small" variant="outlined" />
 
         <div style={{ marginLeft: TOOL_STATUS_MARGIN_LEFT }}>
-          <ToolStatus selectedTool={selectedTool} toolStateRef={toolStateRef} cursorCell={cursorCell} selectedShape={selectedShape} />
+          <ToolStatus selectedTool={selectedTool} toolStateRef={toolStateRef} cursorCell={cursorCell} />
         </div>
       </Stack>
 

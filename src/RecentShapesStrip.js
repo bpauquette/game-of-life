@@ -22,12 +22,17 @@ const LABEL_COLOR = '#ffffff';
 const LABEL_FONT_SIZE = '10px';
 const LABEL_PADDING = '2px 6px';
 const LABEL_BORDER_RADIUS = '4px';
+const SELECTED_BORDER_COLOR = '#00ff88';
+const SELECTED_BORDER_WIDTH = '3px';
+const SELECTED_BOX_SHADOW = '0 0 10px rgba(0, 255, 136, 0.6), inset 0 0 5px rgba(0, 255, 136, 0.2)';
+const SELECTED_BACKGROUND_OVERLAY = 'rgba(0, 255, 136, 0.1)';
 
 const RecentShapesStrip = ({ 
   recentShapes = [], 
   selectShape, 
   drawWithOverlay, 
-  colorScheme = {} 
+  colorScheme = {},
+  selectedShape = null
 }) => {
   const getShapeKey = (shape, index) => {
     if (shape && shape.id) return shape.id;
@@ -60,6 +65,15 @@ const RecentShapesStrip = ({
 
   const getShapeTitle = (shape, index) => {
     return shape?.name || shape?.meta?.name || (shape && shape.id) || `shape ${index}`;
+  };
+
+  const isShapeSelected = (shape) => {
+    if (!selectedShape || !shape) return false;
+    
+    // Compare by key generation (same logic as for React keys)
+    const shapeKey = getShapeKey(shape, -1);
+    const selectedKey = getShapeKey(selectedShape, -1);
+    return shapeKey === selectedKey;
   };
 
   const getCellCoordinates = (cell) => {
@@ -155,11 +169,15 @@ const RecentShapesStrip = ({
             title={title}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'scale(1.05)';
-              e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_HOVER_COLOR;
+              if (!isShapeSelected(shape, selectedShape)) {
+                e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_HOVER_COLOR;
+              }
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_COLOR;
+              if (!isShapeSelected(shape, selectedShape)) {
+                e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_COLOR;
+              }
             }}
           >
             <svg 
@@ -168,15 +186,43 @@ const RecentShapesStrip = ({
               viewBox={`0 0 ${Math.max(1, width)} ${Math.max(1, height)}`} 
               preserveAspectRatio="xMidYMid meet" 
               style={{ 
-                background: colorScheme.background || '#1a1a1a', 
-                border: `1px solid ${SHAPE_BORDER_COLOR}`, 
+                background: isShapeSelected(shape, selectedShape)
+                  ? `linear-gradient(${SELECTED_BACKGROUND_OVERLAY}, ${SELECTED_BACKGROUND_OVERLAY}), ${colorScheme.background || '#1a1a1a'}`
+                  : colorScheme.background || '#1a1a1a',
+                border: isShapeSelected(shape, selectedShape) 
+                  ? `${SELECTED_BORDER_WIDTH} solid ${SELECTED_BORDER_COLOR}` 
+                  : `1px solid ${SHAPE_BORDER_COLOR}`, 
                 borderRadius: SHAPE_BORDER_RADIUS,
-                transition: 'border-color 0.2s ease'
+                boxShadow: isShapeSelected(shape, selectedShape) ? SELECTED_BOX_SHADOW : 'none',
+                transition: 'all 0.3s ease'
               }}
             >
               {renderGridBackground(width, height, key)}
               {renderShapeCells(cells, key, colorScheme)}
             </svg>
+            {isShapeSelected(shape, selectedShape) && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '-3px',
+                  right: '-3px',
+                  width: '16px',
+                  height: '16px',
+                  background: SELECTED_BORDER_COLOR,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '10px',
+                  color: '#000',
+                  fontWeight: 'bold',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                  zIndex: 10
+                }}
+              >
+                ✓
+              </div>
+            )}
             <div 
               style={{
                 position: 'absolute',
@@ -209,7 +255,8 @@ RecentShapesStrip.propTypes = {
   recentShapes: PropTypes.array,
   selectShape: PropTypes.func.isRequired,
   drawWithOverlay: PropTypes.func.isRequired,
-  colorScheme: PropTypes.object
+  colorScheme: PropTypes.object,
+  selectedShape: PropTypes.object
 };
 
 export default RecentShapesStrip;

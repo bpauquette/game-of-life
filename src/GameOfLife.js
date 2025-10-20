@@ -328,6 +328,7 @@ const GameOfLife = () => {
           selectShape={selectShape}
           drawWithOverlay={drawWithOverlay}
           colorScheme={colorScheme}
+          selectedShape={selectedShape}
         />
       </div>
       <ControlsBar
