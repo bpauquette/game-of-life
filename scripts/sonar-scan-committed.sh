@@ -32,6 +32,13 @@ echo "📋 Analyzing commit: $COMMIT_HASH"
 # Clean any previous scan cache to ensure fresh analysis
 rm -rf .scannerwork
 
+# Check if SONAR_TOKEN environment variable is set
+if [ -z "$SONAR_TOKEN" ]; then
+    echo "❌ Error: SONAR_TOKEN environment variable is not set"
+    echo "Please set it with: export SONAR_TOKEN=your_token_here"
+    exit 1
+fi
+
 # Run SonarQube scan with explicit SCM settings
 echo "🚀 Starting SonarQube analysis..."
 docker run --rm \
@@ -41,7 +48,7 @@ docker run --rm \
     -Dsonar.projectKey=game-of-life \
     -Dsonar.sources=/usr/src \
     -Dsonar.host.url=http://sonarqube:9000 \
-    -Dsonar.token=REDACTED_TOKEN \
+    -Dsonar.token="$SONAR_TOKEN" \
     -Dsonar.scm.provider=git \
     -Dsonar.scm.forceReloadAll=true \
     -Dsonar.projectVersion="$COMMIT_HASH"
