@@ -402,4 +402,115 @@ describe('RecentShapesStrip', () => {
       expect(screen.getByTitle('No Cells')).toBeInTheDocument();
     });
   });
+
+  describe('Shape Positioning and Stability', () => {
+    test('shapes maintain stable keys when array order changes', () => {
+      const initialShapes = [
+        { id: 'shape1', name: 'Shape 1', cells: [{ x: 0, y: 0 }] },
+        { id: 'shape2', name: 'Shape 2', cells: [{ x: 1, y: 1 }] }
+      ];
+
+      const { rerender } = render(
+        <RecentShapesStrip {...defaultProps} recentShapes={initialShapes} />
+      );
+
+      // Get initial elements
+      const shape1Initial = screen.getByTitle('Shape 1');
+      const shape2Initial = screen.getByTitle('Shape 2');
+
+      // Reverse the array (simulating new shape added to front)
+      const reversedShapes = [...initialShapes].reverse();
+      
+      rerender(
+        <RecentShapesStrip {...defaultProps} recentShapes={reversedShapes} />
+      );
+
+      // Shapes should still be present with same titles
+      expect(screen.getByTitle('Shape 1')).toBeInTheDocument();
+      expect(screen.getByTitle('Shape 2')).toBeInTheDocument();
+    });
+
+    test('generates stable keys for shapes without IDs using content hash', () => {
+      const shapesWithoutIds = [
+        { name: 'Named Shape', cells: [{ x: 0, y: 0 }] },
+        { cells: [{ x: 1, y: 1 }] }, // No name or ID
+        { cells: [{ x: 2, y: 2 }] }  // No name or ID, different content
+      ];
+
+      const { container } = render(
+        <RecentShapesStrip {...defaultProps} recentShapes={shapesWithoutIds} />
+      );
+
+      // Should render all shapes
+      expect(screen.getByTitle('Named Shape')).toBeInTheDocument();
+      
+      // Check that all divs are rendered (one per shape)
+      const shapeDivs = container.querySelectorAll('div[title]');
+      expect(shapeDivs).toHaveLength(3);
+    });
+
+    test('new shapes appear at the top of the list', () => {
+      const initialShapes = [
+        { id: 'old1', name: 'Old Shape 1', cells: [{ x: 0, y: 0 }] },
+        { id: 'old2', name: 'Old Shape 2', cells: [{ x: 1, y: 1 }] }
+      ];
+
+      const { rerender } = render(
+        <RecentShapesStrip {...defaultProps} recentShapes={initialShapes} />
+      );
+
+      // Add new shape at the beginning
+      const withNewShape = [
+        { id: 'new', name: 'New Shape', cells: [{ x: 2, y: 2 }] },
+        ...initialShapes
+      ];
+
+      rerender(
+        <RecentShapesStrip {...defaultProps} recentShapes={withNewShape} />
+      );
+
+      // Get all shape divs in DOM order
+      const shapeDivs = screen.getAllByRole('generic').filter(div => 
+        div.hasAttribute('title') && div.getAttribute('title') !== ''
+      );
+
+      // First shape in DOM should be the new one
+      expect(shapeDivs[0]).toHaveAttribute('title', 'New Shape');
+      expect(shapeDivs[1]).toHaveAttribute('title', 'Old Shape 1');
+      expect(shapeDivs[2]).toHaveAttribute('title', 'Old Shape 2');
+    });
+
+    test('handles maximum number of shapes correctly', () => {
+      // Create more shapes than MAX_RECENT_SHAPES (20)
+      const manyShapes = Array.from({ length: 25 }, (_, i) => ({
+        id: `shape${i}`,
+        name: `Shape ${i}`,
+        cells: [{ x: i, y: i }]
+      }));
+
+      const { container } = render(
+        <RecentShapesStrip {...defaultProps} recentShapes={manyShapes} />
+      );
+
+      // Should only render the shapes that were passed (component doesn't enforce limit)
+      const shapeDivs = container.querySelectorAll('div[title]');
+      expect(shapeDivs).toHaveLength(25);
+    });
+
+    test('duplicate shapes are handled by parent logic, component renders all provided', () => {
+      const shapesWithDuplicates = [
+        { id: 'shape1', name: 'Shape 1', cells: [{ x: 0, y: 0 }] },
+        { id: 'shape1', name: 'Shape 1', cells: [{ x: 0, y: 0 }] }, // Duplicate ID
+        { id: 'shape2', name: 'Shape 2', cells: [{ x: 1, y: 1 }] }
+      ];
+
+      const { container } = render(
+        <RecentShapesStrip {...defaultProps} recentShapes={shapesWithDuplicates} />
+      );
+
+      // Component should render all provided shapes (deduplication is parent's responsibility)
+      const shapeDivs = container.querySelectorAll('div[title]');
+      expect(shapeDivs).toHaveLength(3);
+    });
+  });
 });

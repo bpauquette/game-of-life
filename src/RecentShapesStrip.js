@@ -19,7 +19,10 @@ const RecentShapesStrip = ({
   colorScheme = {} 
 }) => {
   const getShapeKey = (shape, index) => {
-    return shape && shape.id ? shape.id : index;
+    if (shape && shape.id) return shape.id;
+    if (shape && shape.name) return shape.name;
+    // Generate a stable content-based key instead of using array index
+    return JSON.stringify(shape);
   };
 
   const getShapeCells = (shape) => {

@@ -389,4 +389,197 @@ describe('useShapeManager', () => {
       }).not.toThrow();
     });
   });
+
+  describe('Shape Array Management and Positioning', () => {
+    const createShape = (id, name = null) => ({
+      id,
+      name: name || `Shape ${id}`,
+      cells: [{ x: 0, y: 0 }]
+    });
+
+    it('should add new shapes to the beginning of the array', () => {
+      const { result } = renderHook(() => useShapeManager(mockProps));
+
+      // Add first shape
+      act(() => {
+        result.current.updateRecentShapesList(createShape('shape1'));
+      });
+
+      expect(result.current.recentShapes).toEqual([createShape('shape1')]);
+
+      // Add second shape - should go to beginning
+      act(() => {
+        result.current.updateRecentShapesList(createShape('shape2'));
+      });
+
+      expect(result.current.recentShapes).toEqual([
+        createShape('shape2'),
+        createShape('shape1')
+      ]);
+
+      // Add third shape - should go to beginning
+      act(() => {
+        result.current.updateRecentShapesList(createShape('shape3'));
+      });
+
+      expect(result.current.recentShapes).toEqual([
+        createShape('shape3'),
+        createShape('shape2'),
+        createShape('shape1')
+      ]);
+    });
+
+    it('should remove duplicates and move to front when same shape is selected again', () => {
+      const { result } = renderHook(() => useShapeManager(mockProps));
+      const shape1 = createShape('shape1');
+      const shape2 = createShape('shape2');
+      const shape3 = createShape('shape3');
+
+      // Add initial shapes
+      act(() => {
+        result.current.updateRecentShapesList(shape1);
+        result.current.updateRecentShapesList(shape2);
+        result.current.updateRecentShapesList(shape3);
+      });
+
+      expect(result.current.recentShapes).toEqual([shape3, shape2, shape1]);
+
+      // Re-select shape1 - should move to front and remove duplicate
+      act(() => {
+        result.current.updateRecentShapesList(shape1);
+      });
+
+      expect(result.current.recentShapes).toEqual([shape1, shape3, shape2]);
+      expect(result.current.recentShapes).toHaveLength(3); // No duplicates
+    });
+
+    it('should enforce MAX_RECENT_SHAPES limit (20)', () => {
+      const { result } = renderHook(() => useShapeManager(mockProps));
+
+      // Add 25 shapes (more than MAX_RECENT_SHAPES = 20)
+      const shapes = Array.from({ length: 25 }, (_, i) => createShape(`shape${i}`));
+      
+      act(() => {
+        shapes.forEach(shape => {
+          result.current.updateRecentShapesList(shape);
+        });
+      });
+
+      // Should only keep the latest 20 shapes
+      expect(result.current.recentShapes).toHaveLength(20);
+      
+      // Should be the last 20 shapes in reverse order (newest first)
+      const expectedShapes = shapes.slice(-20).reverse();
+      expect(result.current.recentShapes).toEqual(expectedShapes);
+    });
+
+    it('should maintain FIFO behavior - oldest shapes disappear when limit exceeded', () => {
+      const { result } = renderHook(() => useShapeManager(mockProps));
+
+      // Add exactly 20 shapes (the limit)
+      const initialShapes = Array.from({ length: 20 }, (_, i) => createShape(`initial${i}`));
+      
+      act(() => {
+        initialShapes.forEach(shape => {
+          result.current.updateRecentShapesList(shape);
+        });
+      });
+
+      expect(result.current.recentShapes).toHaveLength(20);
+      
+      // The first shape added should be at the end
+      const firstShape = createShape('initial0');
+      expect(result.current.recentShapes[19]).toEqual(firstShape);
+
+      // Add one more shape
+      const newShape = createShape('new');
+      act(() => {
+        result.current.updateRecentShapesList(newShape);
+      });
+
+      // Should still have 20 shapes
+      expect(result.current.recentShapes).toHaveLength(20);
+      
+      // New shape should be at the beginning
+      expect(result.current.recentShapes[0]).toEqual(newShape);
+      
+      // Oldest shape should have been removed
+      expect(result.current.recentShapes).not.toContain(firstShape);
+    });
+
+    it('should handle deduplication correctly with different key generation strategies', () => {
+      const { result } = renderHook(() => useShapeManager(mockProps));
+
+      const shapeWithId = { id: 'test', cells: [{ x: 0, y: 0 }] };
+      const shapeWithString = 'stringShape';
+      const shapeWithObject = { cells: [{ x: 1, y: 1 }] };
+
+      act(() => {
+        result.current.updateRecentShapesList(shapeWithId);
+        result.current.updateRecentShapesList(shapeWithString);
+        result.current.updateRecentShapesList(shapeWithObject);
+      });
+
+      // All shapes should be present
+      expect(result.current.recentShapes).toHaveLength(3);
+
+      // Re-add the same shapes - should deduplicate and move to front
+      act(() => {
+        result.current.updateRecentShapesList(shapeWithId); // Same ID
+        result.current.updateRecentShapesList(shapeWithString); // Same string
+        result.current.updateRecentShapesList(shapeWithObject); // Same JSON
+      });
+
+      // Should still have 3 unique shapes, but in new order
+      expect(result.current.recentShapes).toHaveLength(3);
+      expect(result.current.recentShapes[0]).toEqual(shapeWithObject);
+      expect(result.current.recentShapes[1]).toEqual(shapeWithString);
+      expect(result.current.recentShapes[2]).toEqual(shapeWithId);
+    });
+
+    it('should handle selectShape with proper array management', () => {
+      const { result } = renderHook(() => useShapeManager(mockProps));
+      const shape1 = createShape('shape1');
+      const shape2 = createShape('shape2');
+
+      // selectShape should update both game state and recent shapes
+      act(() => {
+        result.current.selectShape(shape1);
+      });
+
+      expect(mockProps.setSelectedShape).toHaveBeenCalledWith(shape1);
+      expect(result.current.recentShapes).toEqual([shape1]);
+      expect(mockProps.toolStateRef.current.selectedShapeData).toBe(shape1);
+      expect(mockProps.drawWithOverlay).toHaveBeenCalled();
+
+      // Select another shape
+      act(() => {
+        result.current.selectShape(shape2);
+      });
+
+      expect(result.current.recentShapes).toEqual([shape2, shape1]);
+      expect(mockProps.setSelectedShape).toHaveBeenCalledWith(shape2);
+    });
+
+    it('should not add shape to recent list when selectShape called with null', () => {
+      const { result } = renderHook(() => useShapeManager(mockProps));
+      const shape = createShape('shape1');
+
+      // Add a shape first
+      act(() => {
+        result.current.selectShape(shape);
+      });
+
+      expect(result.current.recentShapes).toEqual([shape]);
+
+      // Clear selection
+      act(() => {
+        result.current.selectShape(null);
+      });
+
+      // Recent shapes should remain unchanged
+      expect(result.current.recentShapes).toEqual([shape]);
+      expect(mockProps.setSelectedShape).toHaveBeenCalledWith(null);
+    });
+  });
 });
