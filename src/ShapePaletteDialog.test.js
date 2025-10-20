@@ -11,7 +11,7 @@ jest.mock('./utils/logger', () => ({
 }));
 
 // Mock fetch globally
-global.fetch = jest.fn();
+globalThis.fetch = jest.fn();
 
 // Mock timers for debouncing
 jest.useFakeTimers();

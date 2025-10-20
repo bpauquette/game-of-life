@@ -80,8 +80,8 @@ export const useCanvasManager = ({
           if (cells && cells.length > 0) {
             ctx.save();
             ctx.globalAlpha = SHAPE_PREVIEW_ALPHA;
-            for (let i = 0; i < cells.length; i++) {
-              const c = cells[i];
+            for (const element of cells) {
+              const c = element;
               const cx = (c.x !== undefined) ? c.x : c[0];
               const cy = (c.y !== undefined) ? c.y : c[1];
               const drawX = (last.x + cx) * cellSize - computedOffset.x;
@@ -89,6 +89,7 @@ export const useCanvasManager = ({
               try {
                 ctx.fillStyle = colorScheme?.getCellColor?.(last.x + cx, last.y + cy) ?? '#222';
               } catch (err) {
+                log.console.error(err);
                 ctx.fillStyle = '#222';
               }
               ctx.fillRect(drawX, drawY, cellSize, cellSize);
