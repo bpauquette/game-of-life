@@ -19,6 +19,7 @@ const SHAPE_PREVIEW_ALPHA = 0.6;
  * @param {Function} params.setCellAlive - Function to set cell alive/dead
  * @param {Function} params.scheduleCursorUpdate - Function to update cursor position
  * @param {Object} params.selectedShape - Currently selected shape for placement
+ * @param {Function} params.placeShape - Function to place a shape at coordinates
  * @param {Object} params.logger - Logger instance for debugging
  * 
  * @returns {Object} Canvas manager interface
@@ -34,6 +35,7 @@ export const useCanvasManager = ({
   setCellAlive,
   scheduleCursorUpdate,
   selectedShape,
+  placeShape,
   logger
 }) => {
   const canvasRef = useRef(null);
@@ -252,10 +254,10 @@ export const useCanvasManager = ({
 
     const pt = eventToCell(e);
     if (pt) {
-      tool.onMouseUp?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
+      tool.onMouseUp?.(toolStateRef.current, pt.x, pt.y, setCellAlive, placeShape);
       drawWithOverlay();
     }
-  }, [toolMap, selectedTool, eventToCell, setCellAlive, drawWithOverlay]);
+  }, [toolMap, selectedTool, eventToCell, setCellAlive, placeShape, drawWithOverlay]);
 
   // Initial setup and resize handling
   useEffect(() => {

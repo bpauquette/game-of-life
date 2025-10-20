@@ -140,6 +140,7 @@ const GameOfLife = () => {
     setCellAlive,
     scheduleCursorUpdate,
     selectedShape,
+    placeShape,
     logger
   });
 
