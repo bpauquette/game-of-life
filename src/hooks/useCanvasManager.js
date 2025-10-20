@@ -105,6 +105,7 @@ export const useCanvasManager = ({
       // Log for development debugging but don't disrupt production
       logger.warn('Overlay rendering failed:', err);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draw, selectedTool, cellSize, offsetRef, toolMap, colorScheme, selectedShape, logger]);
 
   // Resize canvas to fill window and account for devicePixelRatio
@@ -200,6 +201,7 @@ export const useCanvasManager = ({
     tool.onMouseDown?.(toolStateRef.current, pt.x, pt.y);
     tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
     drawWithOverlay();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toolMap, selectedTool, eventToCell, scheduleCursorUpdate, setCellAlive, drawWithOverlay]);
 
   const handleShapeToolMove = useCallback((e, tool, pt) => {
@@ -207,10 +209,12 @@ export const useCanvasManager = ({
     toolStateRef.current.last = { x: pt.x, y: pt.y };
     tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
     drawWithOverlay();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setCellAlive, drawWithOverlay]);
 
   const shouldToolMove = useCallback((e) => {
     return (e.buttons & 1) || toolStateRef.current.last || toolStateRef.current.start;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Mouse event handlers
@@ -240,6 +244,7 @@ export const useCanvasManager = ({
       toolStateRef.current.last = { x: pt.x, y: pt.y };
       drawWithOverlay();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventToCell, scheduleCursorUpdate, toolMap, selectedTool, shouldToolMove, handleShapeToolMove, drawWithOverlay, updatePanning]);
 
   const handleMouseUp = useCallback((e) => {
@@ -257,6 +262,7 @@ export const useCanvasManager = ({
       tool.onMouseUp?.(toolStateRef.current, pt.x, pt.y, setCellAlive, placeShape);
       drawWithOverlay();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toolMap, selectedTool, eventToCell, setCellAlive, placeShape, drawWithOverlay]);
 
   // Initial setup and resize handling

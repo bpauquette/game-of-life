@@ -28,7 +28,6 @@ import {
   Casino as CasinoIcon,
   Widgets as WidgetsIcon,
   PlayArrow as PlayArrowIcon,
-  Stop as StopIcon,
   BarChart as BarChartIcon,
   Settings as SettingsIcon
 } from '@mui/icons-material';

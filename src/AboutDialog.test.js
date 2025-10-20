@@ -60,13 +60,13 @@ describe('AboutDialog', () => {
     const onClose = jest.fn();
     render(<AboutDialog open={true} onClose={onClose} />);
     
-    const githubLink = screen.getByText('Source Code Repository');
-    expect(githubLink.closest('a')).toHaveAttribute('href', 'https://github.com/bpauquette/game-of-life');
-    expect(githubLink.closest('a')).toHaveAttribute('target', '_blank');
+    const githubLink = screen.getByRole('link', { name: 'Source Code Repository' });
+    expect(githubLink).toHaveAttribute('href', 'https://github.com/bpauquette/game-of-life');
+    expect(githubLink).toHaveAttribute('target', '_blank');
     
-    const lifewikiLink = screen.getByText('LifeWiki - Pattern Database');
-    expect(lifewikiLink.closest('a')).toHaveAttribute('href', 'https://conwaylife.com/');
-    expect(lifewikiLink.closest('a')).toHaveAttribute('target', '_blank');
+    const lifewikiLink = screen.getByRole('link', { name: 'LifeWiki - Pattern Database' });
+    expect(lifewikiLink).toHaveAttribute('href', 'https://conwaylife.com/');
+    expect(lifewikiLink).toHaveAttribute('target', '_blank');
   });
 
   test('includes information about John Conway', () => {

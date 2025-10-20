@@ -16,7 +16,7 @@ import './GameOfLife.css';
 import PopulationChart from './PopulationChart';
 import ControlsBar from './ControlsBar';
 import RecentShapesStrip from './RecentShapesStrip';
-import { computeComputedOffset, eventToCellFromCanvas, drawLiveCells } from './utils/canvasUtils';
+// Removed unused imports: computeComputedOffset, eventToCellFromCanvas, drawLiveCells
 import ShapePaletteDialog from './ShapePaletteDialog';
 import { useCanvasManager } from './hooks/useCanvasManager';
 import { useShapeManager } from './hooks/useShapeManager';
@@ -29,9 +29,7 @@ const MAX_CELL_SIZE = 200;
 const ZOOM_FACTOR = 1.12;
 const KEYBOARD_PAN_AMOUNT = 1;
 const KEYBOARD_PAN_AMOUNT_SHIFT = 10;
-const SHAPE_PREVIEW_ALPHA = 0.45;
-const DEFAULT_WINDOW_WIDTH = 800;
-const DEFAULT_WINDOW_HEIGHT = 600;
+// Removed unused constants: SHAPE_PREVIEW_ALPHA, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
 const RECENT_SHAPES_LEFT_OFFSET = 8;
 const RECENT_SHAPES_TOP_OFFSET = 80;
 const RECENT_SHAPES_Z_INDEX = 20;
@@ -144,16 +142,13 @@ const GameOfLife = () => {
   // Canvas management hook - handles all canvas operations and mouse interactions
   const {
     canvasRef,
-    ready,
-    setReady,
+    // ready, setReady, resizeCanvas, eventToCell - unused variables removed
     draw,
     drawWithOverlay,
-    resizeCanvas,
     handleCanvasClick,
     handleMouseDown,
     handleMouseMove,
-    handleMouseUp,
-    eventToCell
+    handleMouseUp
   } = useCanvasManager({
     getLiveCells,
     cellSize,
@@ -250,7 +245,7 @@ const GameOfLife = () => {
     } catch (err) {
       logger.debug('Snapshot computation failed:', err);
     }
-  }, [getLiveCells, createSnapshot, findSnapshotMatch, popWindowSize, popTolerance, setIsRunning, setSteadyInfo, logger]);
+  }, [getLiveCells, createSnapshot, findSnapshotMatch, popWindowSize, popTolerance, setIsRunning, setSteadyInfo]);
 
   // Game loop
   useEffect(() => {
@@ -308,7 +303,7 @@ const GameOfLife = () => {
 
     canvas.addEventListener('wheel', handleWheelZoom, { passive: false });
     return () => canvas.removeEventListener('wheel', handleWheelZoom, { passive: false });
-  }, [handleWheelZoom]);
+  }, [handleWheelZoom, canvasRef]);
 
   // shapes menu removed: no context menu handler
 
