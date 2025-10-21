@@ -24,28 +24,39 @@ export function drawScene(ctx, { liveCellsRef, offsetRef, cellSizePx }) {
   ctx.fillStyle = BACKGROUND_COLOR;
   ctx.fillRect(0, 0, width, height);
 
-  // Grid
+  // Grid - use center-based coordinate system
   ctx.strokeStyle = GRID_COLOR;
   ctx.beginPath();
-  let startX = (-off.x * s) % s;
-  if (startX < 0) startX += s;
-  for (let x = startX; x < width; x += s) {
-    ctx.moveTo(x + GRID_LINE_OFFSET, 0);
-    ctx.lineTo(x + GRID_LINE_OFFSET, height);
+  
+  // Calculate grid starting position using center-based coordinates
+  const gridOffsetX = -computedOffset.x % s;
+  const gridOffsetY = -computedOffset.y % s;
+  
+  // Vertical lines
+  for (let x = gridOffsetX; x < width; x += s) {
+    ctx.moveTo(Math.floor(x) + GRID_LINE_OFFSET, 0);
+    ctx.lineTo(Math.floor(x) + GRID_LINE_OFFSET, height);
   }
-  let startY = (-off.y * s) % s;
-  if (startY < 0) startY += s;
-  for (let y = startY; y < height; y += s) {
-    ctx.moveTo(0, y + GRID_LINE_OFFSET);
-    ctx.lineTo(width, y + GRID_LINE_OFFSET);
+  
+  // Horizontal lines
+  for (let y = gridOffsetY; y < height; y += s) {
+    ctx.moveTo(0, Math.floor(y) + GRID_LINE_OFFSET);
+    ctx.lineTo(width, Math.floor(y) + GRID_LINE_OFFSET);
   }
   ctx.stroke();
 
-  // Alive cells
+  // Alive cells - use center-based coordinate system like optimized renderer
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const computedOffset = {
+    x: off.x * s - centerX,
+    y: off.y * s - centerY
+  };
+  
   for (const [key] of liveCellsRef.current.entries()) {
     const [cx, cy] = key.split(',').map(Number);
-    const sx = (cx - off.x) * s;
-    const sy = (cy - off.y) * s;
+    const sx = cx * s - computedOffset.x;
+    const sy = cy * s - computedOffset.y;
     if (sx + s < 0 || sx >= width || sy + s < 0 || sy >= height) continue;
 
     const hue = (cx * HUE_MULTIPLIER_X + cy * HUE_MULTIPLIER_Y) % HUE_MAX;

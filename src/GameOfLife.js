@@ -230,6 +230,11 @@ const GameOfLife = () => {
     
     const renderTime = performance.now() - startTime;
     trackFrame(renderTime);
+    
+    // Also notify SpeedGauge tracker if available
+    if (window.speedGaugeTracker) {
+      window.speedGaugeTracker(renderTime, renderTime);
+    }
   }, [canvasRef, useOptimizedRenderer, cellSize, drawWithOverlay, trackFrame, getLiveCells, offsetRef, toolMap, selectedTool, toolStateRef, colorScheme]);
 
   // Shape management hook - handles all shape-related functionality
