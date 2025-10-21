@@ -75,12 +75,12 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
           {/* Y axis and ticks */}
           <line x1={pad} x2={pad} y1={pad} y2={h - pad} stroke="rgba(255,255,255,0.2)" />
           <line x1={pad} x2={w - pad} y1={h - pad} y2={h - pad} stroke="rgba(255,255,255,0.2)" />
-          {[...new Array(yTicks + 1)].map((_, i) => {
+          {Array.from({ length: yTicks + 1 }, (_, i) => {
             const t = i / yTicks;
             const y = pad + t * (h - pad * 2);
             const val = Math.round((1 - t) * max);
             return (
-              <g key={`yt-${i}`}>
+              <g key={`ytick-${val}-${y.toFixed(1)}`}>
                 <line x1={pad - Y_AXIS_LABEL_OFFSET} x2={pad} y1={y} y2={y} stroke="rgba(255,255,255,0.2)" />
                 <text x={Y_AXIS_LABEL_OFFSET} y={y + Y_AXIS_TEXT_OFFSET_Y} fontSize={CHART_FONT_SIZE} fill="#bbb">{val}</text>
               </g>
@@ -88,12 +88,12 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
           })}
 
           {/* X axis ticks (generation numbers) */}
-          {[...new Array(xTicks + 1)].map((_, i) => {
+          {Array.from({ length: xTicks + 1 }, (_, i) => {
             const t = i / xTicks;
             const x = pad + t * (w - pad * 2);
             const gen = Math.round(t * Math.max(0, history.length - 1));
             return (
-              <g key={`xt-${i}`}>
+              <g key={`xtick-${gen}-${x.toFixed(1)}`}>
                 <line x1={x} x2={x} y1={h - pad} y2={h - pad + TICK_LENGTH} stroke="rgba(255,255,255,0.2)" />
                 <text x={x - AXIS_LABEL_OFFSET_X} y={h - AXIS_LABEL_OFFSET_Y} fontSize={AXIS_LABEL_FONT_SIZE} fill="#bbb">{gen}</text>
               </g>
@@ -134,7 +134,7 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
           
           {/* points & hover */}
           {!isEmpty && points.map((p, i) => (
-            <g key={i} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
+            <g key={`point-${i}-${p[0]}-${p[1]}`} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
               <circle cx={p[0]} cy={p[1]} r={hoverIdx === i ? POINT_RADIUS_HOVERED : POINT_RADIUS_NORMAL} fill={hoverIdx === i ? '#fff' : '#7bd'} />
               {hoverIdx === i && (
                 <g>

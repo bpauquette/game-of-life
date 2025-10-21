@@ -192,7 +192,7 @@ const GameOfLife = () => {
   }, [getLiveCells]);
 
   const createSnapshot = useCallback((liveMap) => {
-    const keys = Array.from(liveMap.keys()).sort();
+    const keys = Array.from(liveMap.keys()).sort((a, b) => a.localeCompare(b));
     return keys.join(';');
   }, []);
 
@@ -223,10 +223,7 @@ const GameOfLife = () => {
       if (popSteady) {
         detected = true;
         detectedPeriod = 1;
-      } else if (matchIdx === 0) {
-        detected = true;
-        detectedPeriod = 1;
-      } else if (matchIdx > 0) {
+      } else if (matchIdx >= 0) {
         detected = true;
         detectedPeriod = matchIdx + 1;
       }
@@ -279,7 +276,7 @@ const GameOfLife = () => {
     const maxDevice = maxCellSize * dpr;
     
     newDevice = Math.max(1, Math.min(maxDevice, newDevice));
-    let snappedDevice = Math.round(newDevice);
+    let snappedDevice;
     
     if (newDevice > prevDevice) snappedDevice = Math.ceil(newDevice);
     else snappedDevice = Math.floor(newDevice);
@@ -359,7 +356,7 @@ const GameOfLife = () => {
         setColorSchemeKey={setColorSchemeKey}
         colorSchemes={colorSchemes}
         isRunning={isRunning}
-        setIsRunning={(v) => { if (!v) {} ; setIsRunning(v); }}
+        setIsRunning={setIsRunning}
         step={stepWithGeneration}
         draw={draw}
         clear={clearWithGeneration}
@@ -400,7 +397,7 @@ const GameOfLife = () => {
       <canvas
         ref={canvasRef}
         onClick={handleCanvasClick}
-        onContextMenu={(e) => { if (e && e.preventDefault) e.preventDefault(); }}
+        onContextMenu={(e) => { e?.preventDefault?.(); }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}

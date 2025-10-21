@@ -61,52 +61,67 @@ export const useCanvasManager = ({
   }, [getLiveCells, cellSize, offsetRef, colorScheme]);
 
   // Enhanced draw: call tool overlay draw after main render
+  // Helper function to draw shape preview overlay
+  const drawShapePreview = useCallback((ctx, selShape, last, computedOffset) => {
+    const cells = Array.isArray(selShape) ? selShape : selShape?.cells || [];
+    if (!cells?.length) return;
+
+    ctx.save();
+    ctx.globalAlpha = SHAPE_PREVIEW_ALPHA;
+    
+    for (const element of cells) {
+      const c = element;
+      const cx = (c.x === undefined) ? c[0] : c.x;
+      const cy = (c.y === undefined) ? c[1] : c.y;
+      const drawX = (last.x + cx) * cellSize - computedOffset.x;
+      const drawY = (last.y + cy) * cellSize - computedOffset.y;
+      
+      try {
+        ctx.fillStyle = colorScheme?.getCellColor?.(last.x + cx, last.y + cy) ?? '#222';
+      } catch (err) {
+        logger.warn(err);
+        ctx.fillStyle = '#222';
+      }
+      ctx.fillRect(drawX, drawY, cellSize, cellSize);
+    }
+    ctx.restore();
+  }, [cellSize, colorScheme, logger]);
+
+  // Helper function to draw tool overlays
+  const drawToolOverlay = useCallback((ctx, computedOffset) => {
+    const tool = toolMap[selectedTool];
+    if (tool?.drawOverlay) {
+      tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset, colorScheme);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toolMap, selectedTool, cellSize, colorScheme]);
+
   const drawWithOverlay = useCallback(() => {
     draw();
+    
     try {
       const ctx = canvasRef.current?.getContext('2d');
-      if (ctx && selectedTool && offsetRef?.current) {
-        const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
-        const tool = toolMap[selectedTool];
-        if (tool?.drawOverlay) {
-          tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset, colorScheme);
-        }
-        // Draw selected-shape preview if present and shapes tool is active
-        // overlay drawn from the non-reactive toolStateRef so it remains fast.
+      if (!ctx || !selectedTool || !offsetRef?.current) return;
+
+      const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
+      
+      // Draw tool overlay
+      drawToolOverlay(ctx, computedOffset);
+      
+      // Draw shape preview if shapes tool is active
+      if (selectedTool === 'shapes') {
         const selShape = toolStateRef.current.selectedShapeData || selectedShape;
         const last = toolStateRef.current.last;
-        if (selShape && last && selectedTool === 'shapes') {
-          // resolve cells from shape object or array
-          const cells = Array.isArray(selShape) ? selShape : selShape?.cells || [];
-
-          if (cells && cells.length > 0) {
-            ctx.save();
-            ctx.globalAlpha = SHAPE_PREVIEW_ALPHA;
-            for (const element of cells) {
-              const c = element;
-              const cx = (c.x !== undefined) ? c.x : c[0];
-              const cy = (c.y !== undefined) ? c.y : c[1];
-              const drawX = (last.x + cx) * cellSize - computedOffset.x;
-              const drawY = (last.y + cy) * cellSize - computedOffset.y;
-              try {
-                ctx.fillStyle = colorScheme?.getCellColor?.(last.x + cx, last.y + cy) ?? '#222';
-              } catch (err) {
-                logger.warn(err);
-                ctx.fillStyle = '#222';
-              }
-              ctx.fillRect(drawX, drawY, cellSize, cellSize);
-            }
-            ctx.restore();
-          }
+        if (selShape && last) {
+          drawShapePreview(ctx, selShape, last, computedOffset);
         }
       }
     } catch (err) {
       // overlay drawing should never break main render
-      // Log for development debugging but don't disrupt production
       logger.warn('Overlay rendering failed:', err);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draw, selectedTool, cellSize, offsetRef, toolMap, colorScheme, selectedShape, logger]);
+  }, [draw, selectedTool, cellSize, offsetRef, drawToolOverlay, drawShapePreview, selectedShape, logger]);
 
   // Resize canvas to fill window and account for devicePixelRatio
   const resizeCanvas = useCallback(() => {
@@ -176,7 +191,7 @@ export const useCanvasManager = ({
   }, [offsetRef]);
 
   const shouldStartPanning = useCallback((e) => {
-    return (e.button === 1) || (e.button === 0 && e.nativeEvent && e.nativeEvent.shiftKey);
+    return (e.button === 1) || (e.button === 0 && e.nativeEvent?.shiftKey);
   }, []);
 
   const updatePanning = useCallback((e) => {

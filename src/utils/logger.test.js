@@ -2,7 +2,7 @@
 import logger from './logger';
 
 // Mock console methods
-const originalConsole = global.console;
+const originalConsole = globalThis.console;
 const mockConsole = {
   error: jest.fn(),
   warn: jest.fn(),
@@ -14,12 +14,12 @@ describe('logger', () => {
   const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
-    global.console = mockConsole;
+    globalThis.console = mockConsole;
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    global.console = originalConsole;
+    globalThis.console = originalConsole;
     process.env.NODE_ENV = originalNodeEnv;
   });
 

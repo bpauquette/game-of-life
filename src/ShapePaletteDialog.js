@@ -29,6 +29,9 @@ const PREVIEW_BORDER_OPACITY = 0.06;
 const PREVIEW_BORDER_RADIUS = 6;
 const GRID_LINE_OFFSET = 0.5;
 
+// Transition component for Snackbar - moved outside to avoid recreation on each render
+const SlideUpTransition = (props) => <Slide {...props} direction="up" />;
+
 // Helper function to resolve base URL consistently
 const getBaseUrl = (backendBase) => {
   if (typeof backendBase === 'string' && backendBase.length > 0) {
@@ -64,12 +67,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
 
   // helper to pick a cell color for the small SVG preview
   const getCellColor = (x, y) => {
-    try {
       return colorScheme?.getCellColor?.(x, y) ?? '#4a9';
-    } catch (e) {
-      // ignore failures in color function
-    }
-    return colorScheme.cellColor || '#39ff14';
   };
 
   // Check if backend is reachable
@@ -83,6 +81,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       });
       return response.ok;
     } catch (error) {
+      logger.warn('Backend health check failed:', error);
       return false;
     }
   }, [backendBase]);
@@ -128,6 +127,7 @@ The backend will start on port 55000.`);
         setBackendError('Backend server is still not responding. Please make sure it\'s running on port 55000.');
       }
     } catch (error) {
+      logger.warn('Backend health check failed:', error.message);
       setBackendError('Failed to connect to backend. Please ensure it\'s running.');
     } finally {
       setBackendStarting(false);
@@ -150,13 +150,18 @@ The backend will start on port 55000.`);
         url.searchParams.set('limit', String(limit));
         url.searchParams.set('offset', String(offset));
         const res = await fetch(url.toString());
-        if (!res.ok) {
+        if (res.ok === false) {
           logger.warn('Shape search returned non-OK status:', res.status);
           setResults([]);
           setTotal(0);
         } else {
           let data = { items: [], total: 0 };
-          try { data = await res.json(); } catch (_parseErr) { /* ignore parse errors and treat as empty */ data = { items: [], total: 0 }; }
+          try { 
+            data = await res.json(); 
+          } catch (error_) { 
+            logger.warn('Failed to parse JSON response:', error_.message);
+            // data remains as default empty structure
+          }
           const items = Array.isArray(data.items) ? data.items : [];
           setTotal(Number(data.total) || 0);
           // append when offset > 0 (load more), otherwise replace
@@ -218,7 +223,8 @@ The backend will start on port 55000.`);
                   onClose?.();
                 }
               }catch(err){
-                // network error - fallback
+                logger.warn('Failed to fetch full shape data, using metadata only:', err);
+                // network error - fallback to metadata
                 onSelectShape?.(s);
                 onClose?.();
               }
@@ -230,17 +236,17 @@ The backend will start on port 55000.`);
               <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width={PREVIEW_SVG_SIZE} height={PREVIEW_SVG_SIZE} viewBox={`0 0 ${Math.max(1, s.width||1)} ${Math.max(1, s.height||1)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: `1px solid rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`, borderRadius: PREVIEW_BORDER_RADIUS }}>
                   {Array.isArray(s.cells) && s.cells.length > 0 ? (
-                    s.cells.map((c, idx) => (
-                      <rect key={idx} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
+                    s.cells.map((c) => (
+                      <rect key={`${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
                     ))
                   ) : (
                     // small empty placeholder grid
                     <g stroke={`rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`} fill="none">
-                      {Array.from({length: Math.max(1, s.width||1)}).map((_, i) => (
-                        <line key={`vx-${i}`} x1={i+GRID_LINE_OFFSET} y1={0} x2={i+GRID_LINE_OFFSET} y2={Math.max(1, s.height||1)} />
+                      {Array.from({length: Math.max(1, s.width||1)}, (_, i) => (
+                        <line key={`v-${s.id || 'unknown'}-${i}`} x1={i+GRID_LINE_OFFSET} y1={0} x2={i+GRID_LINE_OFFSET} y2={Math.max(1, s.height||1)} />
                       ))}
-                      {Array.from({length: Math.max(1, s.height||1)}).map((_, j) => (
-                        <line key={`hy-${j}`} x1={0} y1={j+GRID_LINE_OFFSET} x2={Math.max(1, s.width||1)} y2={j+GRID_LINE_OFFSET} />
+                      {Array.from({length: Math.max(1, s.height||1)}, (_, j) => (
+                        <line key={`h-${s.id || 'unknown'}-${j}`} x1={0} y1={j+GRID_LINE_OFFSET} x2={Math.max(1, s.width||1)} y2={j+GRID_LINE_OFFSET} />
                       ))}
                     </g>
                   )}
@@ -285,7 +291,7 @@ The backend will start on port 55000.`);
                   const base = getBaseUrl(backendBase);
                   const url = new URL(`/v1/shapes/${encodeURIComponent(id)}`, base);
                   const res = await fetch(url.toString(), { method: 'DELETE' });
-                  if (!res.ok) {
+                  if (res.ok === false) {
                     // restore on failure
                     logger.warn('Delete failed:', res.status);
                     let bodyText = '';
@@ -304,7 +310,7 @@ The backend will start on port 55000.`);
                   setResults(old);
                   logger.error('Delete error:', err);
                   setSnackMsg('Delete error');
-                  setSnackDetails(err && err.stack ? err.stack : String(err));
+                  setSnackDetails(err?.stack ?? String(err));
                   setSnackOpen(true);
                 } finally {
                   // nothing to clear
@@ -316,7 +322,7 @@ The backend will start on port 55000.`);
           open={snackOpen}
           autoHideDuration={6000}
           onClose={() => { setSnackOpen(false); setSnackMsg(''); setSnackUndoShape(null); }}
-          TransitionComponent={(props) => <Slide {...props} direction="up" />}
+          slots={{ transition: SlideUpTransition }}
         >
           <Alert
             onClose={() => { setSnackOpen(false); setSnackMsg(''); setSnackUndoShape(null); }}
@@ -367,7 +373,7 @@ The backend will start on port 55000.`);
         </Box>
       </DialogTitle>
       <DialogContent>
-        <Typography paragraph>
+        <Typography sx={{ mb: 2 }}>
           The shapes catalog backend server doesn't appear to be running. 
           You need to start it to access the shapes catalog.
         </Typography>

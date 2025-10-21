@@ -2,9 +2,23 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ControlsBar from './ControlsBar';
 
+// Create PropTypes outside of mock to avoid Jest scope issues
+const mockPropTypes = {
+  onOk: require('prop-types').func,
+  onCancel: require('prop-types').func,
+  colorSchemeKey: require('prop-types').string,
+  popWindowSize: require('prop-types').number,
+  popTolerance: require('prop-types').number,
+  selectedTool: require('prop-types').string,
+  cursorCell: require('prop-types').shape({
+    x: require('prop-types').number,
+    y: require('prop-types').number
+  })
+};
+
 // Mock child components
 jest.mock('./OptionsPanel', () => {
-  return function MockOptionsPanel({ onOk, onCancel, ...props }) {
+  function MockOptionsPanel({ onOk, onCancel, ...props }) {
     return (
       <div data-testid="options-panel">
         <button onClick={onOk}>Options OK</button>
@@ -14,17 +28,34 @@ jest.mock('./OptionsPanel', () => {
         <div>Tolerance: {props.popTolerance}</div>
       </div>
     );
+  }
+  
+  MockOptionsPanel.propTypes = {
+    onOk: mockPropTypes.onOk,
+    onCancel: mockPropTypes.onCancel,
+    colorSchemeKey: mockPropTypes.colorSchemeKey,
+    popWindowSize: mockPropTypes.popWindowSize,
+    popTolerance: mockPropTypes.popTolerance
   };
+  
+  return MockOptionsPanel;
 });
 
 jest.mock('./ToolStatus', () => {
-  return function MockToolStatus(props) {
+  function MockToolStatus(props) {
     return (
       <div data-testid="tool-status">
         Tool: {props.selectedTool}, Cursor: {props.cursorCell ? `${props.cursorCell.x},${props.cursorCell.y}` : 'null'}
       </div>
     );
+  }
+  
+  MockToolStatus.propTypes = {
+    selectedTool: mockPropTypes.selectedTool,
+    cursorCell: mockPropTypes.cursorCell
   };
+  
+  return MockToolStatus;
 });
 
 describe('ControlsBar', () => {

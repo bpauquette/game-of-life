@@ -70,8 +70,10 @@ export default function HelpDialog({ open, onClose }) {
       onClose={onClose}
       maxWidth="lg"
       fullWidth
-      PaperProps={{
-        sx: { minHeight: '70vh', maxHeight: '90vh' }
+      slotProps={{
+        paper: {
+          sx: { minHeight: '70vh', maxHeight: '90vh' }
+        }
       }}
     >
       <DialogTitle>
@@ -92,7 +94,7 @@ export default function HelpDialog({ open, onClose }) {
           <Typography variant="h6" gutterBottom>
             What is Conway's Game of Life?
           </Typography>
-          <Typography paragraph>
+          <Typography sx={{ mb: 2 }}>
             The Game of Life is a cellular automaton devised by mathematician John Conway in 1970. 
             It's a zero-player game where the evolution is determined by its initial state, requiring 
             no further input. You interact by creating an initial configuration and observing how it evolves.
@@ -101,9 +103,9 @@ export default function HelpDialog({ open, onClose }) {
           <Typography variant="h6" gutterBottom>
             The Rules
           </Typography>
-          <Typography paragraph>
-            The universe is an infinite two-dimensional orthogonal grid of square cells, each in one of two states: 
-            <strong> alive</strong> or <strong> dead</strong>. Every cell interacts with its eight neighbors.
+          <Typography sx={{ mb: 2 }}>
+            The universe is an infinite two-dimensional orthogonal grid of square cells, each in one of two states:{' '}
+            <strong>alive</strong> or <strong>dead</strong>. Every cell interacts with its eight neighbors.
           </Typography>
 
           <Card variant="outlined" sx={{ mb: 2 }}>
@@ -421,7 +423,7 @@ export default function HelpDialog({ open, onClose }) {
               <Typography variant="subtitle1" color="primary" gutterBottom>
                 LifeWiki - The Ultimate Reference
               </Typography>
-              <Typography paragraph>
+              <Typography sx={{ mb: 2 }}>
                 The most comprehensive resource for Conway's Game of Life patterns, rules, and discoveries.
               </Typography>
               <Link 
@@ -440,7 +442,7 @@ export default function HelpDialog({ open, onClose }) {
               <Typography variant="subtitle1" color="primary" gutterBottom>
                 Pattern Collections
               </Typography>
-              <Typography paragraph>
+              <Typography sx={{ mb: 2 }}>
                 Extensive libraries of Life patterns, from simple oscillators to complex constructions.
               </Typography>
               <Box sx={{ mb: 1 }}>
@@ -471,7 +473,7 @@ export default function HelpDialog({ open, onClose }) {
               <Typography variant="subtitle1" color="primary" gutterBottom>
                 Educational Resources
               </Typography>
-              <Typography paragraph>
+              <Typography sx={{ mb: 2 }}>
                 Learn about the mathematical foundations and computational aspects of cellular automata.
               </Typography>
               <Box sx={{ mb: 1 }}>
@@ -513,7 +515,7 @@ export default function HelpDialog({ open, onClose }) {
               <Typography variant="subtitle1" color="primary" gutterBottom>
                 John Conway's Legacy
               </Typography>
-              <Typography paragraph>
+              <Typography sx={{ mb: 2 }}>
                 Learn about the mathematician who created this fascinating cellular automaton.
               </Typography>
               <Box sx={{ mb: 1 }}>
@@ -544,7 +546,7 @@ export default function HelpDialog({ open, onClose }) {
           <Typography variant="h6" gutterBottom>
             File Formats
           </Typography>
-          <Typography paragraph>
+          <Typography sx={{ mb: 2 }}>
             Many Life patterns are shared using these standard formats:
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>

@@ -103,7 +103,7 @@ const ControlsBar = ({
           <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool"><OvalIcon fontSize="small"/></Tooltip></ToggleButton>
           <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect"><CasinoIcon fontSize="small"/></Tooltip></ToggleButton>
           {/* Palette toggle: opens the ShapePaletteDialog while selected */}
-          <ToggleButton value="shapes" aria-label="shapes" onClick={() => openPalette && openPalette()}><Tooltip title="Shapes"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
+          <ToggleButton value="shapes" aria-label="shapes" onClick={() => openPalette?.()}><Tooltip title="Shapes"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
         </ToggleButtonGroup>
 
         <Button size="small" onClick={() => { step(); draw(); }}>Step</Button>

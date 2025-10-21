@@ -113,11 +113,10 @@ describe('useShapeManager', () => {
       const propsWithoutSetter = { ...mockProps, setSelectedShape: undefined };
       const { result } = renderHook(() => useShapeManager(propsWithoutSetter));
 
-      expect(() => {
-        act(() => {
-          result.current.updateShapeState({ id: 'test' });
-        });
-      }).not.toThrow();
+      const testAction = () => {
+        result.current.updateShapeState({ id: 'test' });
+      };
+      expect(() => act(testAction)).not.toThrow();
     });
   });
 
@@ -249,11 +248,8 @@ describe('useShapeManager', () => {
       const propsWithoutSetter = { ...mockProps, setSelectedTool: undefined };
       const { result } = renderHook(() => useShapeManager(propsWithoutSetter));
 
-      expect(() => {
-        act(() => {
-          result.current.openPalette();
-        });
-      }).not.toThrow();
+      const openPaletteAction = () => result.current.openPalette();
+      expect(() => act(openPaletteAction)).not.toThrow();
 
       expect(result.current.paletteOpen).toBe(true);
     });
@@ -347,14 +343,13 @@ describe('useShapeManager', () => {
       
       const { result } = renderHook(() => useShapeManager(minimalProps));
       
-      expect(() => {
-        act(() => {
-          result.current.selectShape({ id: 'test' });
-          result.current.openPalette();
-          result.current.closePalette();
-          result.current.updateShapeState({ id: 'test' });
-        });
-      }).not.toThrow();
+      const complexActions = () => {
+        result.current.selectShape({ id: 'test' });
+        result.current.openPalette();
+        result.current.closePalette();
+        result.current.updateShapeState({ id: 'test' });
+      };
+      expect(() => act(complexActions)).not.toThrow();
     });
 
     it('should handle complex shapes in key generation', () => {
@@ -366,11 +361,8 @@ describe('useShapeManager', () => {
         metadata: { author: 'test', description: 'A test shape' }
       };
 
-      expect(() => {
-        act(() => {
-          result.current.updateRecentShapesList(complexShape);
-        });
-      }).not.toThrow();
+      const updateAction = () => result.current.updateRecentShapesList(complexShape);
+      expect(() => act(updateAction)).not.toThrow();
 
       expect(result.current.recentShapes).toContain(complexShape);
     });
@@ -382,11 +374,8 @@ describe('useShapeManager', () => {
       circularShape.self = circularShape;
 
       // Should not throw when generating key (falls back to id)
-      expect(() => {
-        act(() => {
-          result.current.updateRecentShapesList(circularShape);
-        });
-      }).not.toThrow();
+      const circularAction = () => result.current.updateRecentShapesList(circularShape);
+      expect(() => act(circularAction)).not.toThrow();
     });
   });
 
@@ -460,9 +449,9 @@ describe('useShapeManager', () => {
       const shapes = Array.from({ length: 25 }, (_, i) => createShape(`shape${i}`));
       
       act(() => {
-        shapes.forEach(shape => {
+        for (const shape of shapes) {
           result.current.updateRecentShapesList(shape);
-        });
+        }
       });
 
       // Should only keep the latest 20 shapes
@@ -480,9 +469,9 @@ describe('useShapeManager', () => {
       const initialShapes = Array.from({ length: 20 }, (_, i) => createShape(`initial${i}`));
       
       act(() => {
-        initialShapes.forEach(shape => {
+        for (const shape of initialShapes) {
           result.current.updateRecentShapesList(shape);
-        });
+        }
       });
 
       expect(result.current.recentShapes).toHaveLength(20);

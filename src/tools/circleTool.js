@@ -69,14 +69,16 @@ const computeCirclePerimeter = (cx, cy, r) => {
   let err = 0;
 
   const addOctants = (px, py) => {
-    pts.push([cx + px, cy + py]);
-    pts.push([cx + py, cy + px]);
-    pts.push([cx - py, cy + px]);
-    pts.push([cx - px, cy + py]);
-    pts.push([cx - px, cy - py]);
-    pts.push([cx - py, cy - px]);
-    pts.push([cx + py, cy - px]);
-    pts.push([cx + px, cy - py]);
+    pts.push(
+      [cx + px, cy + py],
+      [cx + py, cy + px],
+      [cx - py, cy + px],
+      [cx - px, cy + py],
+      [cx - px, cy - py],
+      [cx - py, cy - px],
+      [cx + py, cy - px],
+      [cx + px, cy - py]
+    );
   };
 
   while (x >= y) {

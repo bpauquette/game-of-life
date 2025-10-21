@@ -33,8 +33,10 @@ export default function AboutDialog({ open, onClose }) {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: { minHeight: '60vh' }
+      slotProps={{
+        paper: {
+          sx: { minHeight: '60vh' }
+        }
       }}
     >
       <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
@@ -70,7 +72,7 @@ export default function AboutDialog({ open, onClose }) {
         <Typography variant="h6" gutterBottom>
           About This Implementation
         </Typography>
-        <Typography paragraph>
+        <Typography sx={{ mb: 2 }}>
           This is a modern web-based implementation of John Conway's Game of Life, featuring 
           an infinite canvas, optimized performance through chunked state management, and 
           a comprehensive set of drawing tools for creating and exploring cellular automata patterns.
@@ -115,12 +117,12 @@ export default function AboutDialog({ open, onClose }) {
         <Typography variant="h6" gutterBottom>
           Architecture Highlights
         </Typography>
-        <Typography paragraph>
+        <Typography sx={{ mb: 2 }}>
           <strong>Performance:</strong> Uses chunked state management for efficient simulation 
           of large, sparse patterns. Canvas-based rendering with device pixel ratio handling 
           ensures crisp graphics on all displays.
         </Typography>
-        <Typography paragraph>
+        <Typography sx={{ mb: 2 }}>
           <strong>Modularity:</strong> Tool system with unified mouse event interface allows 
           easy extension with new drawing tools. Pure game logic separation enables unit testing 
           and alternative state implementations.
@@ -131,7 +133,7 @@ export default function AboutDialog({ open, onClose }) {
         <Typography variant="h6" gutterBottom>
           About Conway's Game of Life
         </Typography>
-        <Typography paragraph>
+        <Typography sx={{ mb: 2 }}>
           The Game of Life was devised by British mathematician John Horton Conway in 1970. 
           It became widely known when it was featured in Martin Gardner's "Mathematical Games" 
           column in Scientific American. Despite its simple rules, the Game of Life is 

@@ -35,8 +35,8 @@ const RecentShapesStrip = ({
   selectedShape = null
 }) => {
   const getShapeKey = (shape, index) => {
-    if (shape && shape.id) return shape.id;
-    if (shape && shape.name) return shape.name;
+    if (shape?.id) return shape.id;
+    if (shape?.name) return shape.name;
     // Generate a stable content-based key instead of using array index
     return JSON.stringify(shape);
   };
@@ -64,7 +64,7 @@ const RecentShapesStrip = ({
   };
 
   const getShapeTitle = (shape, index) => {
-    return shape?.name || shape?.meta?.name || (shape && shape.id) || `shape ${index}`;
+    return shape?.name || shape?.meta?.name || shape?.id || `shape ${index}`;
   };
 
   const isShapeSelected = (shape) => {
@@ -159,6 +159,8 @@ const RecentShapesStrip = ({
         return (
           <div 
             key={key} 
+            role="button"
+            tabIndex={0}
             style={{ 
               marginBottom: SHAPE_MARGIN_BOTTOM, 
               cursor: 'pointer',
@@ -166,16 +168,22 @@ const RecentShapesStrip = ({
               transition: 'transform 0.2s ease, box-shadow 0.2s ease'
             }} 
             onClick={() => handleShapeClick(shape)} 
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleShapeClick(shape);
+              }
+            }}
             title={title}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'scale(1.05)';
-              if (!isShapeSelected(shape, selectedShape)) {
+              if (!isShapeSelected(shape)) {
                 e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_HOVER_COLOR;
               }
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
-              if (!isShapeSelected(shape, selectedShape)) {
+              if (!isShapeSelected(shape)) {
                 e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_COLOR;
               }
             }}
@@ -186,21 +194,21 @@ const RecentShapesStrip = ({
               viewBox={`0 0 ${Math.max(1, width)} ${Math.max(1, height)}`} 
               preserveAspectRatio="xMidYMid meet" 
               style={{ 
-                background: isShapeSelected(shape, selectedShape)
+                background: isShapeSelected(shape)
                   ? `linear-gradient(${SELECTED_BACKGROUND_OVERLAY}, ${SELECTED_BACKGROUND_OVERLAY}), ${colorScheme.background || '#1a1a1a'}`
                   : colorScheme.background || '#1a1a1a',
-                border: isShapeSelected(shape, selectedShape) 
+                border: isShapeSelected(shape) 
                   ? `${SELECTED_BORDER_WIDTH} solid ${SELECTED_BORDER_COLOR}` 
                   : `1px solid ${SHAPE_BORDER_COLOR}`, 
                 borderRadius: SHAPE_BORDER_RADIUS,
-                boxShadow: isShapeSelected(shape, selectedShape) ? SELECTED_BOX_SHADOW : 'none',
+                boxShadow: isShapeSelected(shape) ? SELECTED_BOX_SHADOW : 'none',
                 transition: 'all 0.3s ease'
               }}
             >
               {renderGridBackground(width, height, key)}
               {renderShapeCells(cells, key, colorScheme)}
             </svg>
-            {isShapeSelected(shape, selectedShape) && (
+            {isShapeSelected(shape) && (
               <div
                 style={{
                   position: 'absolute',
