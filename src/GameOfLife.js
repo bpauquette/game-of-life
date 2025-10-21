@@ -420,39 +420,11 @@ const GameOfLife = () => {
   }, []);
 
   const handleWheelZoom = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas || !offsetRef?.current) return;
-
-    const prevCellSize = cellSize;
-    const newCellSize = calculateNewCellSize(prevCellSize, e.deltaY);
-    
-    if (newCellSize === prevCellSize) return; // No zoom change
-    
-    // Calculate mouse position relative to canvas center (center-based coordinate system)
-    const rect = canvas.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const mouseCanvasX = e.clientX - rect.left - centerX;
-    const mouseCanvasY = e.clientY - rect.top - centerY;
-    
-    // Calculate cell coordinate at mouse position before zoom
-    const mouseCellX = offsetRef.current.x + mouseCanvasX / prevCellSize;
-    const mouseCellY = offsetRef.current.y + mouseCanvasY / prevCellSize;
-    
-    // Update cell size
-    setCellSize(newCellSize);
-    
-    // Adjust offset so the same cell stays under the mouse cursor
-    const newMouseCanvasX = mouseCanvasX; // Mouse canvas position stays the same
-    const newMouseCanvasY = mouseCanvasY;
-    const newOffsetX = mouseCellX - newMouseCanvasX / newCellSize;
-    const newOffsetY = mouseCellY - newMouseCanvasY / newCellSize;
-    
-    offsetRef.current = { x: newOffsetX, y: newOffsetY };
-    
+    // Original simple zoom behavior - only change cell size, don't adjust offset
+    setCellSize(prev => calculateNewCellSize(prev, e.deltaY));
     if (e.cancelable) e.preventDefault();
     drawWithEnhancedOverlay();
-  }, [canvasRef, cellSize, offsetRef, setCellSize, calculateNewCellSize, drawWithEnhancedOverlay]);
+  }, [setCellSize, calculateNewCellSize, drawWithEnhancedOverlay]);
 
   // Mouse wheel: adjust cell size (zoom)
   useEffect(() => {
