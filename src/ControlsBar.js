@@ -68,7 +68,16 @@ const ControlsBar = ({
   popWindowSize,
   setPopWindowSize,
   popTolerance,
-  setPopTolerance
+  setPopTolerance,
+  // Performance props
+  showSpeedGauge,
+  setShowSpeedGauge,
+  useOptimizedRenderer,
+  setUseOptimizedRenderer,
+  maxFPS,
+  setMaxFPS,
+  maxGPS,
+  setMaxGPS
 }) => {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -225,6 +234,15 @@ const ControlsBar = ({
           setPopWindowSize={setPopWindowSize}
           popTolerance={popTolerance}
           setPopTolerance={setPopTolerance}
+          // Performance props
+          showSpeedGauge={showSpeedGauge}
+          setShowSpeedGauge={setShowSpeedGauge}
+          useOptimizedRenderer={useOptimizedRenderer}
+          setUseOptimizedRenderer={setUseOptimizedRenderer}
+          maxFPS={maxFPS}
+          setMaxFPS={setMaxFPS}
+          maxGPS={maxGPS}
+          setMaxGPS={setMaxGPS}
           onOk={handleOk}
           onCancel={handleCancel}
         />

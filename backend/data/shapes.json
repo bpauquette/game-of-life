@@ -191564,5 +191564,54 @@
       "description": "An oscillator in which two {HW volcano}es {hassle} a",
       "importedAt": "2025-10-21T19:50:56.076Z"
     }
+  },
+  {
+    "name": "twosquare",
+    "description": "Captured shape (23x12)",
+    "width": 23,
+    "height": 12,
+    "cellCount": 8,
+    "type": "captured",
+    "created": "2025-10-21T20:14:41.153Z",
+    "cells": [
+      {
+        "x": 8,
+        "y": 4
+      },
+      {
+        "x": 9,
+        "y": 4
+      },
+      {
+        "x": 9,
+        "y": 5
+      },
+      {
+        "x": 8,
+        "y": 5
+      },
+      {
+        "x": 11,
+        "y": 4
+      },
+      {
+        "x": 12,
+        "y": 4
+      },
+      {
+        "x": 12,
+        "y": 5
+      },
+      {
+        "x": 11,
+        "y": 5
+      }
+    ],
+    "meta": {
+      "capturedAt": "2025-10-21T20:14:41.153Z",
+      "source": "capture-tool",
+      "createdAt": "2025-10-21T20:14:41.214Z"
+    },
+    "id": "74bec1db-36cd-4dc9-b3c8-9bbefb50f7c6"
   }
 ]

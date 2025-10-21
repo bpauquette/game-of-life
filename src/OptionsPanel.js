@@ -21,17 +21,34 @@ const OptionsPanel = ({
   setPopWindowSize,
   popTolerance,
   setPopTolerance,
+  // Performance settings
+  showSpeedGauge,
+  setShowSpeedGauge,
+  useOptimizedRenderer,
+  setUseOptimizedRenderer,
+  maxFPS,
+  setMaxFPS,
+  maxGPS,
+  setMaxGPS,
   onOk,
   onCancel
 }) => {
   const [localScheme, setLocalScheme] = useState(colorSchemeKey);
   const [localWindow, setLocalWindow] = useState(popWindowSize);
   const [localTolerance, setLocalTolerance] = useState(popTolerance);
+  const [localShowSpeedGauge, setLocalShowSpeedGauge] = useState(showSpeedGauge);
+  const [localUseOptimizedRenderer, setLocalUseOptimizedRenderer] = useState(useOptimizedRenderer);
+  const [localMaxFPS, setLocalMaxFPS] = useState(maxFPS);
+  const [localMaxGPS, setLocalMaxGPS] = useState(maxGPS);
 
   const handleOk = () => {
     try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
     try { setPopWindowSize(Math.max(1, Number(localWindow) || 1)); } catch (err) { logger.debug('setPopWindowSize failed:', err); }
     try { setPopTolerance(Math.max(0, Number(localTolerance) || 0)); } catch (err) { logger.debug('setPopTolerance failed:', err); }
+    try { setShowSpeedGauge?.(localShowSpeedGauge); } catch (err) { logger.debug('setShowSpeedGauge failed:', err); }
+    try { setUseOptimizedRenderer?.(localUseOptimizedRenderer); } catch (err) { logger.debug('setUseOptimizedRenderer failed:', err); }
+    try { setMaxFPS?.(Math.max(1, Math.min(120, Number(localMaxFPS) || 60))); } catch (err) { logger.debug('setMaxFPS failed:', err); }
+    try { setMaxGPS?.(Math.max(1, Math.min(60, Number(localMaxGPS) || 30))); } catch (err) { logger.debug('setMaxGPS failed:', err); }
     onOk?.();
   };
 
@@ -100,6 +117,77 @@ const OptionsPanel = ({
               }}
             />
           </Stack>
+          
+          {/* Performance Settings */}
+          <div style={{ borderTop: '1px solid #ddd', paddingTop: 16, marginTop: 16 }}>
+            <h4 style={{ margin: '0 0 16px 0' }}>Performance Settings</h4>
+            
+            <Stack spacing={2}>
+              <div>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={localShowSpeedGauge}
+                    onChange={(e) => setLocalShowSpeedGauge(e.target.checked)}
+                    style={{ marginRight: 8 }}
+                  />
+                  Show Speed Gauge
+                </label>
+              </div>
+              
+              <div>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={localUseOptimizedRenderer}
+                    onChange={(e) => setLocalUseOptimizedRenderer(e.target.checked)}
+                    style={{ marginRight: 8 }}
+                  />
+                  Use Optimized Renderer (recommended)
+                </label>
+              </div>
+              
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="Max FPS"
+                  type="number"
+                  size="small"
+                  value={localMaxFPS}
+                  onChange={(e) => setLocalMaxFPS(Math.max(1, Math.min(120, Number(e.target.value) || 60)))}
+                  inputProps={{ min: 1, max: 120 }}
+                  helperText="1-120"
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title="Maximum frames per second for rendering">
+                          <InfoIcon fontSize="small" />
+                        </Tooltip>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+                
+                <TextField
+                  label="Max Gen/Sec"
+                  type="number"
+                  size="small"
+                  value={localMaxGPS}
+                  onChange={(e) => setLocalMaxGPS(Math.max(1, Math.min(60, Number(e.target.value) || 30)))}
+                  inputProps={{ min: 1, max: 60 }}
+                  helperText="1-60"
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title="Maximum generations per second for game logic">
+                          <InfoIcon fontSize="small" />
+                        </Tooltip>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+              </Stack>
+            </Stack>
+          </div>
         </Stack>
       </DialogContent>
       <DialogActions>

@@ -1,0 +1,159 @@
+.speed-gauge {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  z-index: 1000;
+  user-select: none;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.speed-gauge.minimized {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 50%;
+}
+
+.speed-gauge.minimized:hover {
+  background: rgba(0, 0, 0, 0.95);
+  transform: scale(1.1);
+}
+
+.speed-gauge.compact {
+  min-width: 140px;
+  padding: 8px;
+}
+
+.speed-gauge.expanded {
+  min-width: 180px;
+  padding: 12px;
+}
+
+.gauge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #444;
+  padding-bottom: 4px;
+}
+
+.gauge-title {
+  font-weight: bold;
+  color: #4CAF50;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gauge-controls {
+  display: flex;
+  gap: 2px;
+}
+
+.gauge-button {
+  background: none;
+  border: 1px solid #555;
+  color: #ccc;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.gauge-button:hover {
+  background: #333;
+  border-color: #777;
+  color: #fff;
+}
+
+.gauge-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1px 0;
+}
+
+.metric-row.primary {
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.metric-label {
+  color: #aaa;
+  min-width: 45px;
+}
+
+.metric-value {
+  color: #fff;
+  font-weight: bold;
+  text-align: right;
+  min-width: 35px;
+}
+
+.performance-indicator {
+  margin-top: 6px;
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.performance-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+  min-width: 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .speed-gauge {
+    font-size: 11px;
+  }
+  
+  .speed-gauge.compact {
+    min-width: 120px;
+  }
+  
+  .speed-gauge.expanded {
+    min-width: 160px;
+  }
+}
+
+/* Animation for metric updates */
+.metric-value {
+  transition: color 0.2s ease;
+}
+
+/* Pulsing effect for poor performance */
+@keyframes performance-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.speed-gauge .metric-value[style*="rgb(244, 67, 54)"] {
+  animation: performance-warning 1s infinite;
+}

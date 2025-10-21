@@ -22,6 +22,10 @@ import ShapePaletteDialog from './ShapePaletteDialog';
 import CaptureShapeDialog from './CaptureShapeDialog';
 import { useCanvasManager } from './hooks/useCanvasManager';
 import { useShapeManager } from './hooks/useShapeManager';
+import SpeedGauge from './SpeedGauge';
+import { drawSceneOptimized } from './optimizedRenderer';
+import { usePerformanceMonitor } from './optimizedEngine';
+import { computeComputedOffset } from './utils/canvasUtils';
 
 // Constants to avoid magic numbers
 const DEFAULT_POPULATION_WINDOW_SIZE = 50;
@@ -38,7 +42,7 @@ const RECENT_SHAPES_Z_INDEX = 20;
 
 
 const GameOfLife = () => {
-  const animationRef = useRef(null);
+  // Animation ref removed - now using optimized engine
   
 
   const {
@@ -70,6 +74,16 @@ const GameOfLife = () => {
   
   // generation counter
   const [generation, setGeneration] = React.useState(0);
+  
+  // Performance monitoring and speed gauge state
+  const [showSpeedGauge, setShowSpeedGauge] = useState(true);
+  const [useOptimizedRenderer, setUseOptimizedRenderer] = useState(true);
+  const [maxFPS, setMaxFPS] = useState(60);
+  const [maxGPS, setMaxGPS] = useState(30);
+  const liveCellsRef = useRef(new Map());
+  
+  // Performance monitoring
+  const { trackFrame } = usePerformanceMonitor(isRunning);
 
   // Wrapper functions to handle generation counter
   const stepWithGeneration = React.useCallback(() => {
@@ -148,8 +162,6 @@ const GameOfLife = () => {
     return copy;
   }, [colorSchemeKey]);
 
-
-
   // Canvas management hook - handles all canvas operations and mouse interactions
   const {
     canvasRef,
@@ -175,6 +187,51 @@ const GameOfLife = () => {
     logger
   });
 
+  // Enhanced drawing function with optimization support
+  const drawWithOptimizedOverlay = useCallback(() => {
+    if (!canvasRef?.current) return;
+    
+    const startTime = performance.now();
+    
+    if (useOptimizedRenderer) {
+      const ctx = canvasRef.current.getContext('2d');
+      
+      // Update live cells ref just before drawing
+      const liveCells = getLiveCells();
+      liveCellsRef.current = liveCells;
+      
+      console.log('Drawing optimized:', {
+        cellCount: liveCells.size,
+        canvasSize: { width: ctx.canvas.width, height: ctx.canvas.height },
+        cellSize,
+        offset: offsetRef.current
+      });
+      
+      drawSceneOptimized(ctx, { 
+        liveCellsRef, 
+        offsetRef, 
+        cellSizePx: cellSize 
+      });
+      
+      // Draw tool overlays on top
+      const tool = toolMap[selectedTool];
+      if (tool?.drawOverlay) {
+        try {
+          const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
+          tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset, colorScheme);
+        } catch (err) {
+          logger.warn('Tool overlay draw failed:', err);
+        }
+      }
+    } else {
+      // Fallback to original renderer
+      drawWithOverlay();
+    }
+    
+    const renderTime = performance.now() - startTime;
+    trackFrame(renderTime);
+  }, [canvasRef, useOptimizedRenderer, cellSize, drawWithOverlay, trackFrame, getLiveCells, offsetRef, toolMap, selectedTool, toolStateRef, colorScheme]);
+
   // Shape management hook - handles all shape-related functionality
   const {
     recentShapes,
@@ -189,7 +246,7 @@ const GameOfLife = () => {
     selectedTool,
     setSelectedTool,
     toolStateRef,
-    drawWithOverlay
+    drawWithOverlay: drawWithOptimizedOverlay
   });
 
   // Capture dialog state
@@ -253,13 +310,13 @@ const GameOfLife = () => {
       }
       
       // Redraw canvas to show loaded cells immediately
-      drawWithOverlay();
+      drawWithOptimizedOverlay();
       
       logger.info(`Loaded grid with ${liveCells ? liveCells.size : 0} live cells`);
     } catch (error) {
       logger.error('Failed to load grid:', error);
     }
-  }, [clearWithGeneration, setCellAlive, drawWithOverlay]);
+  }, [clearWithGeneration, setCellAlive, drawWithOptimizedOverlay]);
 
   // Helper functions for game loop
   const updatePopulationHistory = useCallback(() => {
@@ -324,21 +381,24 @@ const GameOfLife = () => {
     }
   }, [getLiveCells, createSnapshot, findSnapshotMatch, popWindowSize, popTolerance, setIsRunning, setSteadyInfo]);
 
-  // Game loop
+  // Simple game loop with optimized drawing (temporarily disable advanced engine)
   useEffect(() => {
+    if (!isRunning) return;
+    
     const loop = () => {
       if (isRunning) {
         step();
         setGeneration(prev => prev + 1);
         updatePopulationHistory();
         updateSteadyState();
-        drawWithOverlay();
-        animationRef.current = requestAnimationFrame(loop);
+        drawWithOptimizedOverlay();
+        requestAnimationFrame(loop);
       }
     };
-    if (isRunning) animationRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animationRef.current);
-  }, [isRunning, step, drawWithOverlay, updatePopulationHistory, updateSteadyState]);
+    
+    const rafId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafId);
+  }, [isRunning, step, updatePopulationHistory, updateSteadyState, drawWithOptimizedOverlay]);
 
 
 
@@ -371,7 +431,7 @@ const GameOfLife = () => {
     setCellSize(prev => calculateNewCellSize(prev, e.deltaY));
     if (e.cancelable) e.preventDefault();
     drawWithOverlay();
-  }, [setCellSize, calculateNewCellSize, drawWithOverlay]);
+  }, [setCellSize, calculateNewCellSize, drawWithOptimizedOverlay]);
 
   // Mouse wheel: adjust cell size (zoom)
   useEffect(() => {
@@ -385,7 +445,7 @@ const GameOfLife = () => {
   // shapes menu removed: no context menu handler
 
   // Initial draw
-  useEffect(() => { drawWithOverlay(); }, [drawWithOverlay]);
+  useEffect(() => { drawWithOptimizedOverlay(); }, [drawWithOptimizedOverlay]);
 
 
 
@@ -395,25 +455,25 @@ const GameOfLife = () => {
       const amount = e.shiftKey ? KEYBOARD_PAN_AMOUNT_SHIFT : KEYBOARD_PAN_AMOUNT;
       if (e.key === 'ArrowLeft') {
         offsetRef.current.x -= amount;
-        drawWithOverlay();
+        drawWithOptimizedOverlay();
         e.preventDefault();
       } else if (e.key === 'ArrowRight') {
         offsetRef.current.x += amount;
-        drawWithOverlay();
+        drawWithOptimizedOverlay();
         e.preventDefault();
       } else if (e.key === 'ArrowUp') {
         offsetRef.current.y -= amount;
-        drawWithOverlay();
+        drawWithOptimizedOverlay();
         e.preventDefault();
       } else if (e.key === 'ArrowDown') {
         offsetRef.current.y += amount;
-        drawWithOverlay();
+        drawWithOptimizedOverlay();
         e.preventDefault();
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [drawWithOverlay, offsetRef]);
+  }, [drawWithOptimizedOverlay, offsetRef]);
 
   // Panning helper removed.
 
@@ -424,7 +484,7 @@ const GameOfLife = () => {
         <RecentShapesStrip 
           recentShapes={recentShapes}
           selectShape={selectShape}
-          drawWithOverlay={drawWithOverlay}
+          drawWithOverlay={drawWithOptimizedOverlay}
           colorScheme={colorScheme}
           selectedShape={selectedShape}
         />
@@ -456,12 +516,21 @@ const GameOfLife = () => {
         setPopTolerance={setPopTolerance}
         selectShape={selectShape}
         selectedShape={selectedShape}
-        drawWithOverlay={drawWithOverlay}
+        drawWithOverlay={drawWithOptimizedOverlay}
         openPalette={openPalette}
         steadyInfo={steadyInfo}
         toolStateRef={toolStateRef}
         cursorCell={cursorCell}
         onLoadGrid={handleLoadGrid}
+        // Performance props
+        showSpeedGauge={showSpeedGauge}
+        setShowSpeedGauge={setShowSpeedGauge}
+        useOptimizedRenderer={useOptimizedRenderer}
+        setUseOptimizedRenderer={setUseOptimizedRenderer}
+        maxFPS={maxFPS}
+        setMaxFPS={setMaxFPS}
+        maxGPS={maxGPS}
+        setMaxGPS={setMaxGPS}
       />
 
       {paletteOpen && (
@@ -499,6 +568,14 @@ const GameOfLife = () => {
           isRunning={isRunning}
         />
       )}
+      
+      <SpeedGauge
+        isVisible={showSpeedGauge}
+        generation={generation}
+        liveCellsCount={getLiveCells().size || 0}
+        onToggleVisibility={setShowSpeedGauge}
+        position={{ top: 10, right: 10 }}
+      />
     </div>
   );
 };
