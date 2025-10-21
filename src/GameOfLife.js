@@ -430,7 +430,7 @@ const GameOfLife = () => {
   const handleWheelZoom = useCallback((e) => {
     setCellSize(prev => calculateNewCellSize(prev, e.deltaY));
     if (e.cancelable) e.preventDefault();
-    drawWithOverlay();
+    drawWithOptimizedOverlay();
   }, [setCellSize, calculateNewCellSize, drawWithOptimizedOverlay]);
 
   // Mouse wheel: adjust cell size (zoom)
