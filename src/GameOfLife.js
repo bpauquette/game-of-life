@@ -90,8 +90,9 @@ const GameOfLife = () => {
       
       // Load the cells from the saved grid
       if (liveCells && liveCells.size > 0) {
-        for (const key of liveCells) {
-          setCellAlive(key, true);
+        for (const [key] of liveCells.entries()) {
+          const [x, y] = key.split(',').map(Number);
+          setCellAlive(x, y, true);
         }
       }
       
