@@ -471,6 +471,32 @@ export default function HelpDialog({ open, onClose }) {
           <Card variant="outlined" sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" color="primary" gutterBottom>
+                Life Lexicon - Pattern Catalog Attribution
+              </Typography>
+              <Typography sx={{ mb: 2 }}>
+                This application includes patterns from the Life Lexicon, Release 29 (July 2018), 
+                compiled by Stephen A. Silver and updated by Dave Greene and David Bell. 
+                © Stephen Silver, 1997-2018, used under CC BY-SA 3.0 license.
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                <strong>Major Contributors:</strong> John Conway, Dean Hickerson, David Bell, Bill Gosper, 
+                Bob Wainwright, Noam Elkies, Nathan Thompson, Harold McIntosh, Dan Hoey, Alan Hensel, 
+                and the Conway's Game of Life community.
+              </Typography>
+              <Link 
+                href="http://conwaylife.com/ref/lexicon/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                variant="body2"
+              >
+                Life Lexicon Home Page
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card variant="outlined" sx={{ mb: 2 }}>
+            <CardContent>
+              <Typography variant="subtitle1" color="primary" gutterBottom>
                 Educational Resources
               </Typography>
               <Typography sx={{ mb: 2 }}>

@@ -166,6 +166,12 @@ If you prefer a manual approach, open `backend/data/shapes.json` and paste or ed
 
 If you'd like a cross-platform replacement for the shell start/stop scripts (Node-based process manager), I can add a small Node script that uses `child_process` and `detect-port` to make lifecycle control work consistently on Windows/macOS/Linux.
 
+## Attributions
+
+This project includes patterns from the **Life Lexicon** (Release 29, July 2018) by Stephen A. Silver, Dave Greene, and David Bell. The lexicon is used under the Creative Commons Attribution-ShareAlike 3.0 license (CC BY-SA 3.0).
+
+See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for complete attribution details and licensing information.
+
 ---
 
 Happy hacking! If you want, I can also:
