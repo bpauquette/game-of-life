@@ -72,8 +72,6 @@ const ControlsBar = ({
   // Performance props
   showSpeedGauge,
   setShowSpeedGauge,
-  useOptimizedRenderer,
-  setUseOptimizedRenderer,
   maxFPS,
   setMaxFPS,
   maxGPS,
@@ -237,8 +235,6 @@ const ControlsBar = ({
           // Performance props
           showSpeedGauge={showSpeedGauge}
           setShowSpeedGauge={setShowSpeedGauge}
-          useOptimizedRenderer={useOptimizedRenderer}
-          setUseOptimizedRenderer={setUseOptimizedRenderer}
           maxFPS={maxFPS}
           setMaxFPS={setMaxFPS}
           maxGPS={maxGPS}

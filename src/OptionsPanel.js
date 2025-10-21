@@ -24,8 +24,6 @@ const OptionsPanel = ({
   // Performance settings
   showSpeedGauge,
   setShowSpeedGauge,
-  useOptimizedRenderer,
-  setUseOptimizedRenderer,
   maxFPS,
   setMaxFPS,
   maxGPS,
@@ -37,7 +35,6 @@ const OptionsPanel = ({
   const [localWindow, setLocalWindow] = useState(popWindowSize);
   const [localTolerance, setLocalTolerance] = useState(popTolerance);
   const [localShowSpeedGauge, setLocalShowSpeedGauge] = useState(showSpeedGauge);
-  const [localUseOptimizedRenderer, setLocalUseOptimizedRenderer] = useState(useOptimizedRenderer);
   const [localMaxFPS, setLocalMaxFPS] = useState(maxFPS);
   const [localMaxGPS, setLocalMaxGPS] = useState(maxGPS);
 
@@ -46,7 +43,6 @@ const OptionsPanel = ({
     try { setPopWindowSize(Math.max(1, Number(localWindow) || 1)); } catch (err) { logger.debug('setPopWindowSize failed:', err); }
     try { setPopTolerance(Math.max(0, Number(localTolerance) || 0)); } catch (err) { logger.debug('setPopTolerance failed:', err); }
     try { setShowSpeedGauge?.(localShowSpeedGauge); } catch (err) { logger.debug('setShowSpeedGauge failed:', err); }
-    try { setUseOptimizedRenderer?.(localUseOptimizedRenderer); } catch (err) { logger.debug('setUseOptimizedRenderer failed:', err); }
     try { setMaxFPS?.(Math.max(1, Math.min(120, Number(localMaxFPS) || 60))); } catch (err) { logger.debug('setMaxFPS failed:', err); }
     try { setMaxGPS?.(Math.max(1, Math.min(60, Number(localMaxGPS) || 30))); } catch (err) { logger.debug('setMaxGPS failed:', err); }
     onOk?.();
@@ -135,17 +131,7 @@ const OptionsPanel = ({
                 </label>
               </div>
               
-              <div>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={localUseOptimizedRenderer}
-                    onChange={(e) => setLocalUseOptimizedRenderer(e.target.checked)}
-                    style={{ marginRight: 8 }}
-                  />
-                  Use Optimized Renderer (recommended)
-                </label>
-              </div>
+
               
               <Stack direction="row" spacing={2}>
                 <TextField
