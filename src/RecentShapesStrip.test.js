@@ -393,7 +393,7 @@ describe('RecentShapesStrip', () => {
     test('handles null shape gracefully', () => {
       const shapesWithNull = [null, mockShapes[0]];
       
-      const { container } = render(<RecentShapesStrip {...defaultProps} recentShapes={shapesWithNull} />);
+      render(<RecentShapesStrip {...defaultProps} recentShapes={shapesWithNull} />);
       
       // Should still render the valid shape
       expect(screen.getByTitle('Glider')).toBeInTheDocument();
@@ -413,7 +413,7 @@ describe('RecentShapesStrip', () => {
     test('handles shapes with no cells property', () => {
       const shapeWithNoCells = [{ name: 'No Cells' }];
       
-      const { container } = render(<RecentShapesStrip {...defaultProps} recentShapes={shapeWithNoCells} />);
+      render(<RecentShapesStrip {...defaultProps} recentShapes={shapeWithNoCells} />);
       
       expect(screen.getByTitle('No Cells')).toBeInTheDocument();
     });
@@ -430,9 +430,9 @@ describe('RecentShapesStrip', () => {
         <RecentShapesStrip {...defaultProps} recentShapes={initialShapes} />
       );
 
-      // Get initial elements
-      const shape1Initial = screen.getByTitle('Shape 1');
-      const shape2Initial = screen.getByTitle('Shape 2');
+      // Verify initial elements exist
+      expect(screen.getByTitle('Shape 1')).toBeInTheDocument();
+      expect(screen.getByTitle('Shape 2')).toBeInTheDocument();
 
       // Reverse the array (simulating new shape added to front)
       const reversedShapes = [...initialShapes].reverse();

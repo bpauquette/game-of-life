@@ -70,7 +70,7 @@ const start = async () => {
   app.post('/v1/import-rle', async (req,res)=>{
     try{
       let rleText = null;
-      if(req.is('application/json') && req.body && req.body.rle) rleText = req.body.rle;
+      if(req.is('application/json') && req.body?.rle) rleText = req.body.rle;
       else if(typeof req.body === 'string' && req.body.trim().length>0) rleText = req.body;
       if(!rleText) return res.status(400).json({error:'No RLE found in request body; send JSON {rle: "..."} or text/plain body'});
 
@@ -83,6 +83,103 @@ const start = async () => {
       res.status(201).json(shape);
     }catch(err){
       logger.error('import error:', err);
+      res.status(500).json({error: err.message});
+    }
+  });
+
+  // Grid state management endpoints
+  app.get('/v1/grids', async (req,res)=>{
+    try{
+      const grids = await db.listGrids();
+      // Return metadata only (exclude cells for list view)
+      const gridList = grids.map(g => ({
+        id: g.id,
+        name: g.name,
+        description: g.description,
+        generation: g.generation,
+        liveCells: g.liveCells ? g.liveCells.length : 0,
+        createdAt: g.createdAt,
+        updatedAt: g.updatedAt
+      }));
+      res.json(gridList);
+    }catch(err){
+      logger.error('grids list error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/v1/grids/:id', async (req,res)=>{
+    try{
+      const grid = await db.getGrid(req.params.id);
+      if(!grid) return res.status(404).json({error:'Grid not found'});
+      res.json(grid);
+    }catch(err){
+      logger.error('get grid error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/v1/grids', async (req,res)=>{
+    try{
+      const { name, description, liveCells, generation } = req.body;
+      
+      if(!name || typeof name !== 'string' || name.trim().length === 0) {
+        return res.status(400).json({error:'Grid name is required'});
+      }
+      
+      if(!Array.isArray(liveCells)) {
+        return res.status(400).json({error:'liveCells array is required'});
+      }
+
+      const grid = {
+        id: makeId(),
+        name: name.trim(),
+        description: description || '',
+        liveCells,
+        generation: generation || 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await db.saveGrid(grid);
+      res.status(201).json(grid);
+    }catch(err){
+      logger.error('save grid error:', err);
+      res.status(500).json({error: err.message});
+    }
+  });
+
+  app.put('/v1/grids/:id', async (req,res)=>{
+    try{
+      const existingGrid = await db.getGrid(req.params.id);
+      if(!existingGrid) return res.status(404).json({error:'Grid not found'});
+
+      const { name, description, liveCells, generation } = req.body;
+      
+      const updatedGrid = {
+        ...existingGrid,
+        name: name || existingGrid.name,
+        description: description ?? existingGrid.description,
+        liveCells: liveCells || existingGrid.liveCells,
+        generation: generation ?? existingGrid.generation,
+        updatedAt: new Date().toISOString()
+      };
+
+      await db.saveGrid(updatedGrid);
+      res.json(updatedGrid);
+    }catch(err){
+      logger.error('update grid error:', err);
+      res.status(500).json({error: err.message});
+    }
+  });
+
+  app.delete('/v1/grids/:id', async (req,res)=>{
+    try{
+      const ok = await db.deleteGrid(req.params.id);
+      if(!ok) return res.status(404).json({error:'Grid not found'});
+      res.status(204).end();
+    }catch(err){
+      logger.error('delete grid error:', err);
       res.status(500).json({error: err.message});
     }
   });
@@ -106,7 +203,9 @@ const start = async () => {
   app.listen(port, ()=> logger.info(`Shapes catalog backend listening on ${port}`));
 }
 
-start().catch(err=>{
-  logger.error('Failed to start server:', err);
+try {
+  await start();
+} catch (err) {
+  console.error('Failed to start server:', err);
   process.exit(1);
-});
+}

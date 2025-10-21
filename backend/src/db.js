@@ -2,37 +2,38 @@ const path = require('node:path');
 const fs = require('node:fs').promises;
 
 const DB_FILE = path.join(__dirname, '..', 'data', 'shapes.json');
+const GRIDS_DB_FILE = path.join(__dirname, '..', 'data', 'grids.json');
 
-const ensureDbFile = async () => {
-  const dir = path.dirname(DB_FILE);
+const ensureDbFile = async (dbFile = DB_FILE) => {
+  const dir = path.dirname(dbFile);
   try{
     await fs.mkdir(dir, { recursive: true });
   } catch { 
     // File may not exist yet, this is expected on first run
   }
   try{
-    await fs.access(DB_FILE);
+    await fs.access(dbFile);
   }catch{
     // create empty array file
-    await fs.writeFile(DB_FILE, '[]', 'utf8');
+    await fs.writeFile(dbFile, '[]', 'utf8');
   }
 };
 
-const readDb = async () => {
-  await ensureDbFile();
-  const txt = await fs.readFile(DB_FILE, 'utf8');
+const readDb = async (dbFile = DB_FILE) => {
+  await ensureDbFile(dbFile);
+  const txt = await fs.readFile(dbFile, 'utf8');
   try{
     return JSON.parse(txt || '[]');
   }catch{
     // if file corrupted, reset to empty
-    await fs.writeFile(DB_FILE, '[]', 'utf8');
+    await fs.writeFile(dbFile, '[]', 'utf8');
     return [];
   }
 };
 
-const writeDb = async (data) => {
-  await ensureDbFile();
-  await fs.writeFile(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+const writeDb = async (data, dbFile = DB_FILE) => {
+  await ensureDbFile(dbFile);
+  await fs.writeFile(dbFile, JSON.stringify(data, null, 2), 'utf8');
 };
 
 const listShapes = async () => {
@@ -60,4 +61,39 @@ const deleteShape = async (id) => {
   return true;
 };
 
-module.exports = { listShapes, getShape, addShape, deleteShape };
+// Grid state management functions
+const listGrids = async () => {
+  return await readDb(GRIDS_DB_FILE);
+};
+
+const getGrid = async (id) => {
+  const data = await readDb(GRIDS_DB_FILE);
+  return data.find(g => g.id === id) || null;
+};
+
+const saveGrid = async (grid) => {
+  const data = await readDb(GRIDS_DB_FILE);
+  // Remove existing grid with same ID if it exists (update)
+  const existingIndex = data.findIndex(g => g.id === grid.id);
+  if (existingIndex >= 0) {
+    data[existingIndex] = grid;
+  } else {
+    data.push(grid);
+  }
+  await writeDb(data, GRIDS_DB_FILE);
+  return grid;
+};
+
+const deleteGrid = async (id) => {
+  const data = await readDb(GRIDS_DB_FILE);
+  const idx = data.findIndex(g => g.id === id);
+  if(idx === -1) return false;
+  data.splice(idx, 1);
+  await writeDb(data, GRIDS_DB_FILE);
+  return true;
+};
+
+module.exports = { 
+  listShapes, getShape, addShape, deleteShape,
+  listGrids, getGrid, saveGrid, deleteGrid 
+};

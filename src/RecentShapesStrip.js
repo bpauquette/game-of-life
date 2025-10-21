@@ -157,23 +157,19 @@ const RecentShapesStrip = ({
         const title = getShapeTitle(shape, index);
 
         return (
-          <div 
+          <button 
             key={key} 
-            role="button"
-            tabIndex={0}
+            type="button"
             style={{ 
               marginBottom: SHAPE_MARGIN_BOTTOM, 
               cursor: 'pointer',
               position: 'relative',
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+              background: 'transparent',
+              border: 'none',
+              padding: 0
             }} 
-            onClick={() => handleShapeClick(shape)} 
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleShapeClick(shape);
-              }
-            }}
+            onClick={() => handleShapeClick(shape)}
             title={title}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'scale(1.05)';
@@ -252,7 +248,7 @@ const RecentShapesStrip = ({
             >
               {title}
             </div>
-          </div>
+          </button>
         );
       })}
     </div>

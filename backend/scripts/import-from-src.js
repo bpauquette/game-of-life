@@ -70,4 +70,9 @@ const main = async () => {
   console.log(`Imported ${added} shapes from src/shapes.js into ${dbPath}`);
 }
 
-main().catch(err=>{ console.error(err); process.exit(1); });
+try {
+  await main();
+} catch (err) {
+  console.error(err);
+  process.exit(1);
+}

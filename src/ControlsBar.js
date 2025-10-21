@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import OptionsPanel from './OptionsPanel';
 import ToolStatus from './ToolStatus';
+import SaveGridDialog from './SaveGridDialog';
+import LoadGridDialog from './LoadGridDialog';
+import useGridFileManager from './hooks/useGridFileManager';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -21,6 +24,8 @@ import CropSquareIcon from '@mui/icons-material/CropSquare';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import WidgetsIcon from '@mui/icons-material/Widgets';
 import CasinoIcon from '@mui/icons-material/Casino';
+import SaveIcon from '@mui/icons-material/Save';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import OvalIcon from './components/OvalIcon';
 import HelpDialog from './HelpDialog';
 import AboutDialog from './AboutDialog';
@@ -53,6 +58,8 @@ const ControlsBar = ({
   selectedShape,
   openPalette,
   generation,
+  // Grid management props
+  onLoadGrid,
   // Options-related props (must be forwarded to OptionsPanel)
   colorSchemes,
   colorSchemeKey,
@@ -67,6 +74,26 @@ const ControlsBar = ({
   const [aboutOpen, setAboutOpen] = useState(false);
   // paletteOpen is now controlled by parent (GameOfLife)
   const [wasRunningBeforeOptions, setWasRunningBeforeOptions] = useState(false);
+
+  // Grid file management
+  const {
+    saveGrid,
+    loadGrid,
+    deleteGrid,
+    grids,
+    loading: gridLoading,
+    error: gridError,
+    loadingGrids,
+    saveDialogOpen,
+    loadDialogOpen,
+    openSaveDialog,
+    closeSaveDialog,
+    openLoadDialog,
+    closeLoadDialog
+  } = useGridFileManager({
+    getLiveCells,
+    generation
+  });
 
   const openOptions = () => {
     setWasRunningBeforeOptions(isRunning);
@@ -86,6 +113,35 @@ const ControlsBar = ({
   const closeHelp = () => setHelpOpen(false);
   const openAbout = () => setAboutOpen(true);
   const closeAbout = () => setAboutOpen(false);
+
+  // Grid management handlers
+  const handleSaveGrid = async (name, description) => {
+    const liveCells = getLiveCells();
+    await saveGrid(name, description, liveCells, generation);
+  };
+
+  const handleLoadGrid = async (gridId) => {
+    const grid = await loadGrid(gridId);
+    if (grid && onLoadGrid) {
+      onLoadGrid(grid.liveCells);
+    }
+  };
+
+  const openSaveGrid = () => {
+    openSaveDialog();
+  };
+
+  const closeSaveGrid = () => {
+    closeSaveDialog();
+  };
+
+  const openLoadGrid = () => {
+    openLoadDialog();
+  };
+
+  const closeLoadGrid = () => {
+    closeLoadDialog();
+  };
 
   return (
     <div className="controls">
@@ -116,6 +172,27 @@ const ControlsBar = ({
           {isRunning ? 'Stop' : 'Start'}
         </Button>
         <Button size="small" onClick={() => { clear(); draw(); snapshotsRef.current = []; setSteadyInfo({ steady: false, period: STEADY_STATE_PERIOD_INITIAL, popChanging: false }); }}>Clear</Button>
+
+        <Tooltip title="Save current grid state">
+          <Button 
+            size="small" 
+            onClick={openSaveGrid}
+            startIcon={<SaveIcon fontSize="small" />}
+            disabled={getLiveCells().size === 0}
+          >
+            Save
+          </Button>
+        </Tooltip>
+        
+        <Tooltip title="Load saved grid state">
+          <Button 
+            size="small" 
+            onClick={openLoadGrid}
+            startIcon={<FolderOpenIcon fontSize="small" />}
+          >
+            Load
+          </Button>
+        </Tooltip>
 
         <IconButton size="small" onClick={() => setShowChart(true)} aria-label="chart"><BarChartIcon fontSize="small"/></IconButton>
   {/* palette opener removed; use the palette toggle in the tool group instead */}
@@ -155,6 +232,27 @@ const ControlsBar = ({
         open={aboutOpen} 
         onClose={closeAbout} 
       />
+
+      <SaveGridDialog
+        open={saveDialogOpen}
+        onClose={closeSaveGrid}
+        onSave={handleSaveGrid}
+        loading={gridLoading}
+        error={gridError}
+        liveCellsCount={getLiveCells().size}
+        generation={generation}
+      />
+
+      <LoadGridDialog
+        open={loadDialogOpen}
+        onClose={closeLoadGrid}
+        onLoad={handleLoadGrid}
+        onDelete={deleteGrid}
+        grids={grids}
+        loading={gridLoading}
+        error={gridError}
+        loadingGrids={loadingGrids}
+      />
       
     </div>
   );
@@ -181,6 +279,7 @@ ControlsBar.propTypes = {
   selectedShape: PropTypes.object,
   openPalette: PropTypes.func.isRequired,
   generation: PropTypes.number.isRequired,
+  onLoadGrid: PropTypes.func.isRequired,
   colorSchemes: PropTypes.object.isRequired,
   colorSchemeKey: PropTypes.string.isRequired,
   setColorSchemeKey: PropTypes.func.isRequired,

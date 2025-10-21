@@ -82,6 +82,25 @@ const GameOfLife = () => {
     popHistoryRef.current = [];
   }, [clear]);
 
+  // Grid loading handler
+  const handleLoadGrid = React.useCallback((liveCells) => {
+    try {
+      // Clear current state
+      clearWithGeneration();
+      
+      // Load the cells from the saved grid
+      if (liveCells && liveCells.size > 0) {
+        for (const key of liveCells) {
+          setCellAlive(key, true);
+        }
+      }
+      
+      logger.info(`Loaded grid with ${liveCells ? liveCells.size : 0} live cells`);
+    } catch (error) {
+      logger.error('Failed to load grid:', error);
+    }
+  }, [clearWithGeneration, setCellAlive]);
+
   // population stability checker moved to src/utils/populationUtils.js
 
   // Tool selection (e.g. freehand draw)
@@ -374,14 +393,14 @@ const GameOfLife = () => {
         setPopWindowSize={setPopWindowSize}
         popTolerance={popTolerance}
         setPopTolerance={setPopTolerance}
-  
-  selectShape={selectShape}
-  selectedShape={selectedShape}
+        selectShape={selectShape}
+        selectedShape={selectedShape}
         drawWithOverlay={drawWithOverlay}
         openPalette={openPalette}
         steadyInfo={steadyInfo}
         toolStateRef={toolStateRef}
         cursorCell={cursorCell}
+        onLoadGrid={handleLoadGrid}
       />
 
       {paletteOpen && (
