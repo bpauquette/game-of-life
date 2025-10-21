@@ -82,26 +82,6 @@ const GameOfLife = () => {
     popHistoryRef.current = [];
   }, [clear]);
 
-  // Grid loading handler
-  const handleLoadGrid = React.useCallback((liveCells) => {
-    try {
-      // Clear current state
-      clearWithGeneration();
-      
-      // Load the cells from the saved grid
-      if (liveCells && liveCells.size > 0) {
-        for (const [key] of liveCells.entries()) {
-          const [x, y] = key.split(',').map(Number);
-          setCellAlive(x, y, true);
-        }
-      }
-      
-      logger.info(`Loaded grid with ${liveCells ? liveCells.size : 0} live cells`);
-    } catch (error) {
-      logger.error('Failed to load grid:', error);
-    }
-  }, [clearWithGeneration, setCellAlive]);
-
   // population stability checker moved to src/utils/populationUtils.js
 
   // Tool selection (e.g. freehand draw)
@@ -200,6 +180,29 @@ const GameOfLife = () => {
     toolStateRef,
     drawWithOverlay
   });
+
+  // Grid loading handler
+  const handleLoadGrid = React.useCallback((liveCells) => {
+    try {
+      // Clear current state
+      clearWithGeneration();
+      
+      // Load the cells from the saved grid
+      if (liveCells && liveCells.size > 0) {
+        for (const [key] of liveCells.entries()) {
+          const [x, y] = key.split(',').map(Number);
+          setCellAlive(x, y, true);
+        }
+      }
+      
+      // Redraw canvas to show loaded cells immediately
+      drawWithOverlay();
+      
+      logger.info(`Loaded grid with ${liveCells ? liveCells.size : 0} live cells`);
+    } catch (error) {
+      logger.error('Failed to load grid:', error);
+    }
+  }, [clearWithGeneration, setCellAlive, drawWithOverlay]);
 
   // Helper functions for game loop
   const updatePopulationHistory = useCallback(() => {
