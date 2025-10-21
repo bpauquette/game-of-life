@@ -1,12 +1,29 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('node:path');
+const { v4: uuidv4 } = require('uuid');
 const { parseRLE } = require('./rleParser');
 const db = require('./db');
 const logger = require('./logger');
 
 const makeId = () => {
-  return `${Date.now()}-${Math.floor(Math.random()*100000)}`;
+  return uuidv4();
+};
+
+// Helper function to ensure unique names
+const ensureUniqueName = async (baseName, userId = null) => {
+  const shapes = await db.listShapes();
+  const existingNames = new Set(shapes.map(s => s.name?.toLowerCase()));
+  
+  let uniqueName = baseName;
+  let counter = 1;
+  
+  while (existingNames.has(uniqueName.toLowerCase())) {
+    uniqueName = `${baseName} (${counter})`;
+    counter++;
+  }
+  
+  return uniqueName;
 };
 
 const start = async () => {
@@ -53,12 +70,28 @@ const start = async () => {
     }
   });
 
-  // Allow adding a full shape object (used by UI undo)
+  // Allow adding a full shape object (used by UI and capture tool)
   app.post('/v1/shapes', async (req,res)=>{
     try{
       const shape = req.body;
-      if(!shape || typeof shape !== 'object' || !shape.id) return res.status(400).json({error:'shape object with id required'});
-      // add to DB
+      if(!shape || typeof shape !== 'object') return res.status(400).json({error:'shape object required'});
+      
+      // Generate UUID if no ID provided
+      if (!shape.id) {
+        shape.id = makeId();
+      }
+      
+      // Ensure unique name if provided
+      if (shape.name) {
+        shape.name = await ensureUniqueName(shape.name);
+      }
+      
+      // Add metadata
+      shape.meta = shape.meta || {};
+      shape.meta.createdAt = shape.meta.createdAt || new Date().toISOString();
+      shape.meta.source = shape.meta.source || 'user-created';
+      
+      // Add to DB
       await db.addShape(shape);
       res.status(201).json(shape);
     }catch(err){
@@ -76,8 +109,15 @@ const start = async () => {
 
       const shape = parseRLE(rleText);
       shape.id = makeId();
+      
+      // Ensure unique name if provided
+      if (shape.name) {
+        shape.name = await ensureUniqueName(shape.name);
+      }
+      
       shape.meta = shape.meta || {};
       shape.meta.importedAt = (new Date()).toISOString();
+      shape.meta.source = 'rle-import';
 
       await db.addShape(shape);
       res.status(201).json(shape);
@@ -203,6 +243,7 @@ const start = async () => {
   app.listen(port, ()=> logger.info(`Shapes catalog backend listening on ${port}`));
 }
 
+// Use top-level await instead of async IIFE
 try {
   await start();
 } catch (err) {

@@ -7,7 +7,7 @@ describe('AboutDialog', () => {
     const onClose = jest.fn();
     render(<AboutDialog open={true} onClose={onClose} />);
     
-    expect(screen.getByText('About Conway\'s Game of Life')).toBeInTheDocument();
+    expect(screen.getAllByText('About Conway\'s Game of Life')).toHaveLength(2);
     expect(screen.getByText('Game of Life')).toBeInTheDocument();
     expect(screen.getByText('Interactive Cellular Automaton Simulator')).toBeInTheDocument();
   });
@@ -16,7 +16,7 @@ describe('AboutDialog', () => {
     const onClose = jest.fn();
     render(<AboutDialog open={false} onClose={onClose} />);
     
-    expect(screen.queryByText('About Conway\'s Game of Life')).not.toBeInTheDocument();
+    expect(screen.queryAllByText('About Conway\'s Game of Life')).toHaveLength(0);
   });
 
   test('calls onClose when close button is clicked', () => {
@@ -75,6 +75,6 @@ describe('AboutDialog', () => {
     
     expect(screen.getByText(/John Horton Conway/)).toBeInTheDocument();
     expect(screen.getByText(/Mathematical Games/)).toBeInTheDocument();
-    expect(screen.getByText(/Scientific American/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Scientific American/)).toHaveLength(2);
   });
 });

@@ -214,18 +214,32 @@ export const useCanvasManager = ({
     scheduleCursorUpdate(pt);
 
     tool.onMouseDown?.(toolStateRef.current, pt.x, pt.y);
-    tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
+    
+    // Special handling for capture tool which needs getLiveCells
+    if (selectedTool === 'capture') {
+      tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive, getLiveCells);
+    } else {
+      tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
+    }
+    
     drawWithOverlay();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toolMap, selectedTool, eventToCell, scheduleCursorUpdate, setCellAlive, drawWithOverlay]);
+  }, [toolMap, selectedTool, eventToCell, scheduleCursorUpdate, setCellAlive, getLiveCells, drawWithOverlay]);
 
   const handleShapeToolMove = useCallback((e, tool, pt) => {
     if (!pt) return;
     toolStateRef.current.last = { x: pt.x, y: pt.y };
-    tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
+    
+    // Special handling for capture tool which needs getLiveCells
+    if (selectedTool === 'capture') {
+      tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive, getLiveCells);
+    } else {
+      tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
+    }
+    
     drawWithOverlay();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setCellAlive, drawWithOverlay]);
+  }, [selectedTool, setCellAlive, getLiveCells, drawWithOverlay]);
 
   const shouldToolMove = useCallback((e) => {
     return (e.buttons & 1) || toolStateRef.current.last || toolStateRef.current.start;
@@ -274,11 +288,16 @@ export const useCanvasManager = ({
 
     const pt = eventToCell(e);
     if (pt) {
-      tool.onMouseUp?.(toolStateRef.current, pt.x, pt.y, setCellAlive, placeShape);
+      // Special handling for capture tool which needs getLiveCells and tool object
+      if (selectedTool === 'capture') {
+        tool.onMouseUp?.(toolStateRef.current, pt.x, pt.y, setCellAlive, getLiveCells, tool);
+      } else {
+        tool.onMouseUp?.(toolStateRef.current, pt.x, pt.y, setCellAlive, placeShape);
+      }
       drawWithOverlay();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toolMap, selectedTool, eventToCell, setCellAlive, placeShape, drawWithOverlay]);
+  }, [toolMap, selectedTool, eventToCell, setCellAlive, placeShape, getLiveCells, drawWithOverlay]);
 
   // Initial setup and resize handling
   useEffect(() => {

@@ -11,6 +11,7 @@ import { circleTool } from './tools/circleTool';
 import { ovalTool } from './tools/ovalTool';
 import { randomRectTool } from './tools/randomRectTool';
 import { shapesTool } from './tools/shapesTool';
+import { captureTool } from './tools/captureTool';
 import logger from './utils/logger';
 import './GameOfLife.css';
 import PopulationChart from './PopulationChart';
@@ -18,6 +19,7 @@ import ControlsBar from './ControlsBar';
 import RecentShapesStrip from './RecentShapesStrip';
 // Removed unused imports: computeComputedOffset, eventToCellFromCanvas, drawLiveCells
 import ShapePaletteDialog from './ShapePaletteDialog';
+import CaptureShapeDialog from './CaptureShapeDialog';
 import { useCanvasManager } from './hooks/useCanvasManager';
 import { useShapeManager } from './hooks/useShapeManager';
 
@@ -89,16 +91,25 @@ const GameOfLife = () => {
   const [selectedTool, setSelectedTool] = React.useState('draw');
   const toolStateRef = useRef({});
 
+  // Handler for capture completion
+  const handleCaptureComplete = useCallback((captureData) => {
+    setCaptureData(captureData);
+    setCaptureDialogOpen(true);
+  }, []);
+
   const toolMap = useMemo(() => ({
     draw: drawTool,
     line: lineTool,
     rect: rectTool,
     circle: circleTool,
     oval: ovalTool,
-    randomRect: randomRectTool
-    ,
+    randomRect: randomRectTool,
+    capture: {
+      ...captureTool,
+      onCaptureComplete: handleCaptureComplete
+    },
     shapes: shapesTool
-  }), []);
+  }), [handleCaptureComplete]);
 
   // Reset tool state when switching tools to prevent overlay artifacts
   React.useEffect(() => {
@@ -180,6 +191,52 @@ const GameOfLife = () => {
     toolStateRef,
     drawWithOverlay
   });
+
+  // Capture dialog state
+  const [captureDialogOpen, setCaptureDialogOpen] = useState(false);
+  const [captureData, setCaptureData] = useState(null);
+
+  // Save captured shape to backend
+  const handleSaveCapturedShape = useCallback(async (shapeData) => {
+    try {
+      // Let backend generate UUID and handle name uniqueness
+      const shapeForBackend = {
+        ...shapeData,
+        cells: shapeData.pattern, // Backend expects 'cells' not 'pattern'
+        meta: {
+          capturedAt: new Date().toISOString(),
+          source: 'capture-tool'
+        }
+      };
+      
+      // Remove pattern field since we renamed it to cells
+      delete shapeForBackend.pattern;
+
+      const response = await fetch('http://localhost:55000/v1/shapes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(shapeForBackend),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const savedShape = await response.json();
+      logger.info('Shape saved successfully:', savedShape.name);
+      
+      // Optionally trigger a refresh of recent shapes
+      // This would require exposing a refresh function from useShapeManager
+      
+      return savedShape;
+    } catch (error) {
+      logger.error('Failed to save captured shape:', error);
+      throw error;
+    }
+  }, []);
 
   // Grid loading handler
   const handleLoadGrid = React.useCallback((liveCells) => {
@@ -414,6 +471,15 @@ const GameOfLife = () => {
           onSelectShape={selectShapeAndClosePalette}
           backendBase={process.env.REACT_APP_BACKEND_BASE || 'http://localhost:55000'}
           colorScheme={colorSchemes ? (colorSchemes[colorSchemeKey] || {}) : {}}
+        />
+      )}
+
+      {captureDialogOpen && (
+        <CaptureShapeDialog
+          open={captureDialogOpen}
+          onClose={() => setCaptureDialogOpen(false)}
+          captureData={captureData}
+          onSave={handleSaveCapturedShape}
         />
       )}
 

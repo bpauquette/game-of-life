@@ -1,20 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import ControlsBar from './ControlsBar';
-
-// Create PropTypes outside of mock to avoid Jest scope issues
-const mockPropTypes = {
-  onOk: require('prop-types').func,
-  onCancel: require('prop-types').func,
-  colorSchemeKey: require('prop-types').string,
-  popWindowSize: require('prop-types').number,
-  popTolerance: require('prop-types').number,
-  selectedTool: require('prop-types').string,
-  cursorCell: require('prop-types').shape({
-    x: require('prop-types').number,
-    y: require('prop-types').number
-  })
-};
+import PropTypes from 'prop-types';
 
 // Mock child components
 jest.mock('./OptionsPanel', () => {
@@ -30,12 +16,14 @@ jest.mock('./OptionsPanel', () => {
     );
   }
   
+  // Use require here to avoid Jest scope issues
+  const PT = require('prop-types');
   MockOptionsPanel.propTypes = {
-    onOk: mockPropTypes.onOk,
-    onCancel: mockPropTypes.onCancel,
-    colorSchemeKey: mockPropTypes.colorSchemeKey,
-    popWindowSize: mockPropTypes.popWindowSize,
-    popTolerance: mockPropTypes.popTolerance
+    onOk: PT.func,
+    onCancel: PT.func,
+    colorSchemeKey: PT.string,
+    popWindowSize: PT.number,
+    popTolerance: PT.number
   };
   
   return MockOptionsPanel;
@@ -45,18 +33,25 @@ jest.mock('./ToolStatus', () => {
   function MockToolStatus(props) {
     return (
       <div data-testid="tool-status">
-        Tool: {props.selectedTool}, Cursor: {props.cursorCell ? `${props.cursorCell.x},${props.cursorCell.y}` : 'null'}
+        Tool: {props.selectedTool}, Cursor: {props.cursorCell ? `${props.cursorCell.x},${props.cursorCell.y}` : 'None'}
       </div>
     );
   }
   
+  const PT = require('prop-types');
   MockToolStatus.propTypes = {
-    selectedTool: mockPropTypes.selectedTool,
-    cursorCell: mockPropTypes.cursorCell
+    selectedTool: PT.string,
+    cursorCell: PT.shape({
+      x: PT.number,
+      y: PT.number
+    })
   };
   
   return MockToolStatus;
 });
+
+// Import after mocks to avoid circular dependency issues
+import ControlsBar from './ControlsBar';
 
 describe('ControlsBar', () => {
   const mockShapes = [
@@ -430,7 +425,7 @@ describe('ControlsBar', () => {
       };
       render(<ControlsBar {...props} />);
       
-      expect(screen.getByText(/null/)).toBeInTheDocument();
+      expect(screen.getByText(/None/)).toBeInTheDocument();
     });
 
     it('should handle empty shapes object', () => {

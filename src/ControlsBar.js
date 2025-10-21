@@ -24,6 +24,7 @@ import CropSquareIcon from '@mui/icons-material/CropSquare';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import WidgetsIcon from '@mui/icons-material/Widgets';
 import CasinoIcon from '@mui/icons-material/Casino';
+import ColorizeIcon from '@mui/icons-material/Colorize';
 import SaveIcon from '@mui/icons-material/Save';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import OvalIcon from './components/OvalIcon';
@@ -158,6 +159,7 @@ const ControlsBar = ({
           <ToggleButton value="circle" aria-label="circle"><Tooltip title="Circle tool"><RadioButtonUncheckedIcon fontSize="small"/></Tooltip></ToggleButton>
           <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool"><OvalIcon fontSize="small"/></Tooltip></ToggleButton>
           <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect"><CasinoIcon fontSize="small"/></Tooltip></ToggleButton>
+          <ToggleButton value="capture" aria-label="capture"><Tooltip title="Capture area as shape"><ColorizeIcon fontSize="small"/></Tooltip></ToggleButton>
           {/* Palette toggle: opens the ShapePaletteDialog while selected */}
           <ToggleButton value="shapes" aria-label="shapes" onClick={() => openPalette?.()}><Tooltip title="Shapes"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
         </ToggleButtonGroup>
@@ -205,7 +207,12 @@ const ControlsBar = ({
         <Chip label={`Generation: ${generation}`} size="small" variant="outlined" />
 
         <div style={{ marginLeft: TOOL_STATUS_MARGIN_LEFT }}>
-          <ToolStatus selectedTool={selectedTool} toolStateRef={toolStateRef} cursorCell={cursorCell} />
+          <ToolStatus 
+            selectedTool={selectedTool} 
+            toolStateRef={toolStateRef} 
+            cursorCell={cursorCell} 
+            selectedShape={selectedShape}
+          />
         </div>
       </Stack>
 

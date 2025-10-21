@@ -460,8 +460,8 @@ describe('RecentShapesStrip', () => {
       // Should render all shapes
       expect(screen.getByTitle('Named Shape')).toBeInTheDocument();
       
-      // Check that all divs are rendered (one per shape)
-      const shapeDivs = container.querySelectorAll('div[title]');
+      // Check that all buttons are rendered (one per shape)
+      const shapeDivs = container.querySelectorAll('button[title]');
       expect(shapeDivs).toHaveLength(3);
     });
 
@@ -485,9 +485,9 @@ describe('RecentShapesStrip', () => {
         <RecentShapesStrip {...defaultProps} recentShapes={withNewShape} />
       );
 
-      // Get all shape divs in DOM order
-      const shapeDivs = screen.getAllByRole('generic').filter(div => 
-        div.hasAttribute('title') && div.getAttribute('title') !== ''
+      // Get all shape buttons in DOM order
+      const shapeDivs = screen.getAllByRole('button').filter(button => 
+        button.hasAttribute('title') && button.getAttribute('title') !== ''
       );
 
       // First shape in DOM should be the new one
@@ -509,7 +509,7 @@ describe('RecentShapesStrip', () => {
       );
 
       // Should only render the shapes that were passed (component doesn't enforce limit)
-      const shapeDivs = container.querySelectorAll('div[title]');
+      const shapeDivs = container.querySelectorAll('button[title]');
       expect(shapeDivs).toHaveLength(25);
     });
 
@@ -525,7 +525,7 @@ describe('RecentShapesStrip', () => {
       );
 
       // Component should render all provided shapes (deduplication is parent's responsibility)
-      const shapeDivs = container.querySelectorAll('div[title]');
+      const shapeDivs = container.querySelectorAll('button[title]');
       expect(shapeDivs).toHaveLength(3);
     });
   });
