@@ -1,12 +1,10 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import OptionsPanel from './OptionsPanel';
-import logger from './utils/logger';
+import logger from '../controller/utils/logger';
 
-// Mock logger to prevent console output during tests
-jest.mock('./utils/logger', () => ({
-  debug: jest.fn()
-}));
+// Mock logger
+jest.mock('../controller/utils/logger', () => ({
 
 describe('OptionsPanel', () => {
   const defaultProps = {

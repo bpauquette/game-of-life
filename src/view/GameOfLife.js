@@ -4,28 +4,25 @@ import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { useChunkedGameState } from './chunkedGameState';
 import { colorSchemes } from './colorSchemes';
 import isPopulationStable from './utils/populationUtils';
-import { drawTool } from './tools/drawTool';
-import { lineTool } from './tools/lineTool';
-import { rectTool } from './tools/rectTool';
-import { circleTool } from './tools/circleTool';
-import { ovalTool } from './tools/ovalTool';
-import { randomRectTool } from './tools/randomRectTool';
-import { shapesTool } from './tools/shapesTool';
-import { captureTool } from './tools/captureTool';
-import logger from './utils/logger';
+import { drawTool } from '../controller/tools/drawTool';
+import { lineTool } from '../controller/tools/lineTool';
+import { rectTool } from '../controller/tools/rectTool';
+import { circleTool } from '../controller/tools/circleTool';
+import { ovalTool } from '../controller/tools/ovalTool';
+import { randomRectTool } from '../controller/tools/randomRectTool';
+import { shapesTool } from '../controller/tools/shapesTool';
+import { captureTool } from '../controller/tools/captureTool';
+import logger from '../controller/utils/logger';
 import './GameOfLife.css';
 import PopulationChart from './PopulationChart';
 import ControlsBar from './ControlsBar';
 import RecentShapesStrip from './RecentShapesStrip';
-// Removed unused imports: computeComputedOffset, eventToCellFromCanvas, drawLiveCells
 import ShapePaletteDialog from './ShapePaletteDialog';
 import CaptureShapeDialog from './CaptureShapeDialog';
-import { useCanvasManager } from './hooks/useCanvasManager';
 import { useShapeManager } from './hooks/useShapeManager';
 import SpeedGauge from './SpeedGauge';
-import { drawScene } from './enhancedRenderer';
+import { GameRenderer, ShapePreviewOverlay, ToolOverlay } from './GameRenderer';
 import { usePerformanceMonitor } from './optimizedEngine';
-import { computeComputedOffset } from './utils/canvasUtils';
 
 // Constants to avoid magic numbers
 const DEFAULT_POPULATION_WINDOW_SIZE = 50;
@@ -161,68 +158,145 @@ const GameOfLife = () => {
     return copy;
   }, [colorSchemeKey]);
 
-  // Canvas management hook - handles all canvas operations and mouse interactions
-  const {
-    canvasRef,
-    // ready, setReady, resizeCanvas, eventToCell - unused variables removed
-    draw,
-    drawWithOverlay,
-    handleCanvasClick,
-    handleMouseDown,
-    handleMouseMove,
-    handleMouseUp
-  } = useCanvasManager({
-    getLiveCells,
-    cellSize,
-    offsetRef,
-    colorScheme,
-    selectedTool,
-    toolMap,
-    toolStateRef,
-    setCellAlive,
-    scheduleCursorUpdate,
-    selectedShape,
-    placeShape,
-    logger
-  });
+  // Canvas ref and renderer
+  const canvasRef = useRef(null);
+  const rendererRef = useRef(null);
+  
+  // Keep cellSize in a ref so draw function always gets current value
+  const cellSizeRef = useRef(cellSize);
+  cellSizeRef.current = cellSize;
+  
+  // Initialize renderer when canvas is ready
+  useEffect(() => {
+    if (canvasRef.current && !rendererRef.current) {
+      rendererRef.current = new GameRenderer(canvasRef.current, {
+        backgroundColor: colorScheme.backgroundColor || '#000000',
+        gridColor: colorScheme.gridColor || '#202020',
+        cellSaturation: colorScheme.cellSaturation || 80,
+        cellLightness: colorScheme.cellLightness || 55
+      });
+    }
+  }, [colorScheme]);
 
-  // Enhanced drawing function with optimization support
-  const drawWithEnhancedOverlay = useCallback(() => {
-    if (!canvasRef?.current) return;
+  // Main drawing function
+  const draw = useCallback(() => {
+    if (!rendererRef.current) return;
     
     const startTime = performance.now();
-    const ctx = canvasRef.current.getContext('2d');
     
-    // Update live cells ref just before drawing
+    // Update renderer viewport (get current cellSize from ref to avoid stale closure)
+    const currentCellSize = cellSizeRef.current;
+    rendererRef.current.setViewport(offsetRef.current.x, offsetRef.current.y, currentCellSize);
+    
+    // Prepare overlays
+    const overlays = [];
+    
+    // Add tool overlay
+    const tool = toolMap[selectedTool];
+    const toolState = toolStateRef.current;
+    
+    if (tool?.drawOverlay && Object.keys(toolState).length > 0) {
+      // Use ToolOverlay for all tools - this delegates to their drawOverlay method
+      overlays.push(new ToolOverlay(tool, toolState, currentCellSize));
+    }
+    
+    // Add shape preview overlay for shapes tool
+    if (selectedTool === 'shapes' && selectedShape && toolState.previewPosition) {
+      const shapeCells = selectedShape.pattern || selectedShape.cells || [];
+      overlays.push(new ShapePreviewOverlay(shapeCells, toolState.previewPosition));
+    }
+    
+    // Render everything
     const liveCells = getLiveCells();
     liveCellsRef.current = liveCells;
-    
-    // Use unified enhanced renderer with performance optimizations
-    drawScene(ctx, { 
-      liveCellsRef, 
-      offsetRef, 
-      cellSizePx: cellSize 
-    });
-    
-    // Draw tool overlays on top
-    const tool = toolMap[selectedTool];
-    if (tool?.drawOverlay) {
-      try {
-        const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
-        tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset, colorScheme);
-      } catch (err) {
-        logger.warn('Tool overlay draw failed:', err);
-      }
-    }
+    rendererRef.current.render(liveCells, overlays);
     
     const renderTime = performance.now() - startTime;
     trackFrame(renderTime);
     
-    // Also notify SpeedGauge tracker if available
+    // Notify SpeedGauge tracker if available
     if (window.speedGaugeTracker) {
       window.speedGaugeTracker(renderTime, renderTime);
     }
-  }, [canvasRef, cellSize, trackFrame, getLiveCells, offsetRef, toolMap, selectedTool, toolStateRef, colorScheme]);
+  }, [cellSizeRef, offsetRef, toolMap, selectedTool, toolStateRef, selectedShape, getLiveCells, trackFrame]);
+
+
+
+  // Mouse coordinate conversion
+  const eventToCell = useCallback((e) => {
+    if (!rendererRef.current) return null;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    return rendererRef.current.screenToCell(screenX, screenY);
+  }, []);
+
+  // Track mouse state to ensure proper tool behavior
+  const mouseStateRef = useRef({ isDown: false });
+
+  // Mouse event handlers
+  const handleMouseDown = useCallback((e) => {
+    const cellCoords = eventToCell(e);
+    if (!cellCoords) return;
+
+    mouseStateRef.current.isDown = true;
+    
+    const tool = toolMap[selectedTool];
+    if (tool?.onMouseDown) {
+      // All current tools use the old interface: onMouseDown(toolState, x, y)
+      tool.onMouseDown(toolStateRef.current, cellCoords.x, cellCoords.y);
+      draw();
+    }
+  }, [selectedTool, toolMap, toolStateRef, eventToCell, draw]);
+
+  const handleMouseMove = useCallback((e) => {
+    const cellCoords = eventToCell(e);
+    if (!cellCoords) return;
+
+    scheduleCursorUpdate(cellCoords);
+
+    // Only call tool onMouseMove if mouse is down (for drawing tools)
+    if (mouseStateRef.current.isDown) {
+      const tool = toolMap[selectedTool];
+      if (tool?.onMouseMove) {
+        // All current tools use the old interface: onMouseMove(toolState, x, y, setCellAlive)
+        tool.onMouseMove(toolStateRef.current, cellCoords.x, cellCoords.y, setCellAlive);
+        draw();
+      }
+    }
+  }, [selectedTool, toolMap, toolStateRef, setCellAlive, eventToCell, scheduleCursorUpdate, draw]);
+
+  const handleMouseUp = useCallback((e) => {
+    const cellCoords = eventToCell(e);
+    if (!cellCoords) return;
+
+    mouseStateRef.current.isDown = false;
+    
+    const tool = toolMap[selectedTool];
+    if (tool?.onMouseUp) {
+      // Most tools use interface: onMouseUp(toolState, x, y, setCellAlive)
+      // Some tools like drawTool only take (toolState)
+      if (tool.onMouseUp.length === 1) {
+        tool.onMouseUp(toolStateRef.current);
+      } else {
+        tool.onMouseUp(toolStateRef.current, cellCoords.x, cellCoords.y, setCellAlive);
+      }
+      draw();
+    }
+  }, [selectedTool, toolMap, toolStateRef, setCellAlive, eventToCell, draw]);
+
+  const handleCanvasClick = useCallback((e) => {
+    const cellCoords = eventToCell(e);
+    if (!cellCoords) return;
+
+    if (selectedTool === 'draw') {
+      setCellAlive(cellCoords.x, cellCoords.y, true);
+      draw();
+    } else if (selectedTool === 'shapes' && selectedShape) {
+      placeShape(cellCoords.x, cellCoords.y, selectedShape);
+      draw();
+    }
+  }, [selectedTool, selectedShape, setCellAlive, placeShape, eventToCell, draw]);
 
   // Shape management hook - handles all shape-related functionality
   const {
@@ -238,7 +312,7 @@ const GameOfLife = () => {
     selectedTool,
     setSelectedTool,
     toolStateRef,
-    drawWithOverlay: drawWithEnhancedOverlay
+    drawWithOverlay: draw
   });
 
   // Capture dialog state
@@ -302,13 +376,13 @@ const GameOfLife = () => {
       }
       
       // Redraw canvas to show loaded cells immediately
-      drawWithEnhancedOverlay();
+      draw();
       
       logger.info(`Loaded grid with ${liveCells ? liveCells.size : 0} live cells`);
     } catch (error) {
       logger.error('Failed to load grid:', error);
     }
-  }, [clearWithGeneration, setCellAlive, drawWithEnhancedOverlay]);
+  }, [clearWithGeneration, setCellAlive, draw]);
 
   // Helper functions for game loop
   const updatePopulationHistory = useCallback(() => {
@@ -383,14 +457,14 @@ const GameOfLife = () => {
         setGeneration(prev => prev + 1);
         updatePopulationHistory();
         updateSteadyState();
-        drawWithEnhancedOverlay();
+        draw();
         requestAnimationFrame(loop);
       }
     };
     
     const rafId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafId);
-  }, [isRunning, step, updatePopulationHistory, updateSteadyState, drawWithEnhancedOverlay]);
+  }, [isRunning, step, updatePopulationHistory, updateSteadyState, draw]);
 
 
 
@@ -423,8 +497,8 @@ const GameOfLife = () => {
     // Original simple zoom behavior - only change cell size, don't adjust offset
     setCellSize(prev => calculateNewCellSize(prev, e.deltaY));
     if (e.cancelable) e.preventDefault();
-    drawWithEnhancedOverlay();
-  }, [setCellSize, calculateNewCellSize, drawWithEnhancedOverlay]);
+    draw();
+  }, [setCellSize, calculateNewCellSize, draw]);
 
   // Mouse wheel: adjust cell size (zoom)
   useEffect(() => {
@@ -437,8 +511,56 @@ const GameOfLife = () => {
 
   // shapes menu removed: no context menu handler
 
+  // Canvas resize handling
+  useEffect(() => {
+    const resizeCanvas = () => {
+      if (!canvasRef.current || !rendererRef.current) return;
+      
+      const container = canvasRef.current.parentElement;
+      if (!container) return;
+      
+      const rect = container.getBoundingClientRect();
+      const width = rect.width || window.innerWidth;
+      const height = rect.height || window.innerHeight;
+      
+      rendererRef.current.resize(width, height);
+      draw();
+    };
+    
+    // Initial resize
+    resizeCanvas();
+    
+    // Handle window resize
+    window.addEventListener('resize', resizeCanvas);
+    return () => window.removeEventListener('resize', resizeCanvas);
+  }, [draw]);
+
+  // Global mouse up handler to ensure tools stop drawing even when mouse leaves canvas
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (mouseStateRef.current.isDown) {
+        mouseStateRef.current.isDown = false;
+        
+        // Clear tool state when mouse is released globally
+        const tool = toolMap[selectedTool];
+        if (tool?.onMouseUp) {
+          if (tool.onMouseUp.length === 1) {
+            tool.onMouseUp(toolStateRef.current);
+          } else {
+            // Don't pass coordinates for global mouse up
+            tool.onMouseUp(toolStateRef.current);
+          }
+          draw();
+        }
+      }
+    };
+    
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [selectedTool, toolMap, toolStateRef, draw]);
+
   // Initial draw
-  useEffect(() => { drawWithEnhancedOverlay(); }, [drawWithEnhancedOverlay]);
+  useEffect(() => { draw(); }, [draw]);
 
 
 
@@ -448,25 +570,25 @@ const GameOfLife = () => {
       const amount = e.shiftKey ? KEYBOARD_PAN_AMOUNT_SHIFT : KEYBOARD_PAN_AMOUNT;
       if (e.key === 'ArrowLeft') {
         offsetRef.current.x -= amount;
-        drawWithEnhancedOverlay();
+        draw();
         e.preventDefault();
       } else if (e.key === 'ArrowRight') {
         offsetRef.current.x += amount;
-        drawWithEnhancedOverlay();
+        draw();
         e.preventDefault();
       } else if (e.key === 'ArrowUp') {
         offsetRef.current.y -= amount;
-        drawWithEnhancedOverlay();
+        draw();
         e.preventDefault();
       } else if (e.key === 'ArrowDown') {
         offsetRef.current.y += amount;
-        drawWithEnhancedOverlay();
+        draw();
         e.preventDefault();
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [drawWithEnhancedOverlay, offsetRef]);
+  }, [draw, offsetRef]);
 
   // Panning helper removed.
 
@@ -477,7 +599,7 @@ const GameOfLife = () => {
         <RecentShapesStrip 
           recentShapes={recentShapes}
           selectShape={selectShape}
-          drawWithOverlay={drawWithEnhancedOverlay}
+          drawWithOverlay={draw}
           colorScheme={colorScheme}
           selectedShape={selectedShape}
         />
@@ -509,7 +631,7 @@ const GameOfLife = () => {
         setPopTolerance={setPopTolerance}
         selectShape={selectShape}
         selectedShape={selectedShape}
-        drawWithOverlay={drawWithEnhancedOverlay}
+        drawWithOverlay={draw}
         openPalette={openPalette}
         steadyInfo={steadyInfo}
         toolStateRef={toolStateRef}

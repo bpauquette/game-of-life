@@ -1,0 +1,248 @@
+// GameView.js - View layer for Conway's Game of Life
+// Handles all rendering and presentation logic
+
+import { GameRenderer } from './GameRenderer';
+
+export class GameView {
+  constructor(canvas, options = {}) {
+    this.canvas = canvas;
+    this.renderer = new GameRenderer(canvas, options);
+    
+    // View state
+    this.overlays = [];
+    this.isVisible = true;
+    
+    // Event callbacks
+    this.callbacks = {};
+  }
+
+  // Event handling setup
+  on(event, callback) {
+    if (!this.callbacks[event]) {
+      this.callbacks[event] = [];
+    }
+    this.callbacks[event].push(callback);
+  }
+
+  off(event, callback) {
+    if (this.callbacks[event]) {
+      const index = this.callbacks[event].indexOf(callback);
+      if (index > -1) {
+        this.callbacks[event].splice(index, 1);
+      }
+    }
+  }
+
+  emit(event, data) {
+    if (this.callbacks[event]) {
+      this.callbacks[event].forEach(callback => callback(data));
+    }
+  }
+
+  // Coordinate conversion (View responsibility)
+  screenToCell(screenX, screenY) {
+    return this.renderer.screenToCell(screenX, screenY);
+  }
+
+  cellToScreen(cellX, cellY) {
+    return this.renderer.cellToScreen(cellX, cellY);
+  }
+
+  // Rendering methods
+  render(liveCells, viewport) {
+    if (!this.isVisible) return;
+    
+    // Update viewport
+    this.renderer.setViewport(viewport.offsetX, viewport.offsetY, viewport.cellSize);
+    
+    // Render everything
+    this.renderer.render(liveCells, this.overlays);
+  }
+
+  clear() {
+    this.renderer.clear();
+  }
+
+  // Overlay management
+  addOverlay(overlay) {
+    this.overlays.push(overlay);
+  }
+
+  removeOverlay(overlay) {
+    const index = this.overlays.indexOf(overlay);
+    if (index > -1) {
+      this.overlays.splice(index, 1);
+    }
+  }
+
+  clearOverlays() {
+    this.overlays = [];
+  }
+
+  // Canvas management
+  resize(width, height) {
+    this.renderer.resize(width, height);
+  }
+
+  setVisible(visible) {
+    this.isVisible = visible;
+    if (!visible) {
+      this.clear();
+    }
+  }
+
+  // Mouse event handling setup
+  setupMouseEvents() {
+    const getMouseCoords = (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      const cellCoords = this.screenToCell(screenX, screenY);
+      return { screenX, screenY, cellCoords };
+    };
+
+    // Mouse down
+    this.canvas.addEventListener('mousedown', (e) => {
+      const coords = getMouseCoords(e);
+      this.emit('mouseDown', { event: e, ...coords });
+    });
+
+    // Mouse move  
+    this.canvas.addEventListener('mousemove', (e) => {
+      const coords = getMouseCoords(e);
+      this.emit('mouseMove', { event: e, ...coords });
+    });
+
+    // Mouse up
+    this.canvas.addEventListener('mouseup', (e) => {
+      const coords = getMouseCoords(e);
+      this.emit('mouseUp', { event: e, ...coords });
+    });
+
+    // Mouse click
+    this.canvas.addEventListener('click', (e) => {
+      const coords = getMouseCoords(e);
+      this.emit('click', { event: e, ...coords });
+    });
+
+    // Mouse wheel (zoom)
+    this.canvas.addEventListener('wheel', (e) => {
+      const coords = getMouseCoords(e);
+      this.emit('wheel', { event: e, deltaY: e.deltaY, ...coords });
+    }, { passive: false });
+
+    // Context menu
+    this.canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const coords = getMouseCoords(e);
+      this.emit('contextMenu', { event: e, ...coords });
+    });
+  }
+
+  // Keyboard event setup (global)
+  setupKeyboardEvents() {
+    document.addEventListener('keydown', (e) => {
+      this.emit('keyDown', { event: e, key: e.key, shiftKey: e.shiftKey });
+    });
+
+    document.addEventListener('keyup', (e) => {
+      this.emit('keyUp', { event: e, key: e.key });
+    });
+  }
+
+  // Window event setup
+  setupWindowEvents() {
+    window.addEventListener('resize', () => {
+      const container = this.canvas.parentElement;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        this.resize(rect.width, rect.height);
+        this.emit('resize', { width: rect.width, height: rect.height });
+      }
+    });
+  }
+
+  // Utility methods
+  getCanvasSize() {
+    return {
+      width: this.canvas.width,
+      height: this.canvas.height
+    };
+  }
+
+  getRenderer() {
+    return this.renderer;
+  }
+
+  // Debug information
+  getDebugInfo() {
+    return {
+      ...this.renderer.getDebugInfo(),
+      overlayCount: this.overlays.length,
+      isVisible: this.isVisible,
+      callbackCount: Object.keys(this.callbacks).reduce((total, key) => {
+        return total + (this.callbacks[key] ? this.callbacks[key].length : 0);
+      }, 0)
+    };
+  }
+
+  // Cleanup
+  destroy() {
+    // Remove event listeners
+    this.callbacks = {};
+    
+    // Clear overlays
+    this.overlays = [];
+    
+    // Clear renderer caches
+    this.renderer.clearCaches();
+  }
+}
+
+// View helper classes for specific overlays
+export class ToolOverlayView {
+  constructor(tool, toolState, cellSize, options = {}) {
+    this.tool = tool;
+    this.toolState = toolState;
+    this.cellSize = cellSize;
+    this.options = options;
+  }
+
+  draw(renderer) {
+    if (!this.tool?.drawOverlay || !this.toolState) return;
+    
+    // Create compatible offset for legacy tools
+    const centerX = renderer.viewport.width / 2;
+    const centerY = renderer.viewport.height / 2;
+    const offset = {
+      x: renderer.viewport.offsetX * renderer.viewport.cellSize - centerX,
+      y: renderer.viewport.offsetY * renderer.viewport.cellSize - centerY
+    };
+    
+    this.tool.drawOverlay(renderer.ctx, this.toolState, this.cellSize, offset);
+  }
+}
+
+export class ShapePreviewView {
+  constructor(cells, position, options = {}) {
+    this.cells = cells;
+    this.position = position;
+    this.alpha = options.alpha || 0.6;
+    this.color = options.color || '#4CAF50';
+  }
+
+  draw(renderer) {
+    if (!this.cells || !this.position) return;
+    
+    renderer.ctx.save();
+    renderer.ctx.globalAlpha = this.alpha;
+    
+    const shapeCells = this.cells.map(cell => ({
+      x: this.position.x + (cell.x || cell[0] || 0),
+      y: this.position.y + (cell.y || cell[1] || 0)
+    }));
+    
+    renderer.drawCellArray(shapeCells, this.color);
+    renderer.ctx.restore();
+  }
+}

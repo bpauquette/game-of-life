@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import SpeedGauge from './SpeedGauge';
 
 describe('SpeedGauge', () => {
@@ -43,7 +43,7 @@ describe('SpeedGauge', () => {
     
     // Click the expand button
     const expandButton = screen.getByText('+');
-    expandButton.click();
+    fireEvent.click(expandButton);
     
     // Should show additional metrics
     expect(screen.getByText('Cells:')).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe('SpeedGauge', () => {
     
     // Click expand to see cell count
     const expandButton = screen.getByText('+');
-    expandButton.click();
+    fireEvent.click(expandButton);
     
     expect(screen.getByText('1,234')).toBeInTheDocument();
   });

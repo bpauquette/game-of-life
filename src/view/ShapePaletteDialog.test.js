@@ -2,14 +2,10 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import ShapePaletteDialog from './ShapePaletteDialog';
-import logger from './utils/logger';
+import logger from '../controller/utils/logger';
 
-// Mock logger to prevent console output during tests
-jest.mock('./utils/logger', () => ({
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn()
-}));
+// Mock logger
+jest.mock('../controller/utils/logger', () => ({
 
 // Mock fetch globally
 globalThis.fetch = jest.fn();

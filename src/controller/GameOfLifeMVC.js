@@ -1,0 +1,388 @@
+// GameOfLifeMVC.js - React component using MVC architecture
+import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { createGame } from './GameMVC';
+import ControlsBar from '../view/ControlsBar';
+import PopulationChart from '../view/PopulationChart';
+import ShapePaletteDialog from '../view/ShapePaletteDialog';
+import CaptureShapeDialog from '../view/CaptureShapeDialog';
+import RecentShapesStrip from '../view/RecentShapesStrip';
+import SpeedGauge from '../view/SpeedGauge';
+import { useShapeManager } from '../view/hooks/useShapeManager';
+import { colorSchemes } from '../model/colorSchemes';
+import isPopulationStable from './utils/populationUtils';
+import logger from './utils/logger';
+import '../view/GameOfLife.css';
+
+// Constants
+const DEFAULT_POPULATION_WINDOW_SIZE = 50;
+const DEFAULT_POPULATION_TOLERANCE = 3;
+const RECENT_SHAPES_LEFT_OFFSET = 8;
+const RECENT_SHAPES_TOP_OFFSET = 80;
+const RECENT_SHAPES_Z_INDEX = 20;
+
+const GameOfLifeMVC = () => {
+  // Refs
+  const canvasRef = useRef(null);
+  const gameRef = useRef(null);
+  
+  // React state for UI components
+  const [generation, setGeneration] = useState(0);
+  const [cellCount, setCellCount] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [selectedTool, setSelectedToolState] = useState('draw');
+  const [selectedShape, setSelectedShapeState] = useState(null);
+  const [cursorCell, setCursorCell] = useState(null);
+  
+  // UI state
+  const [showChart, setShowChart] = useState(false);
+  const [showSpeedGauge, setShowSpeedGauge] = useState(true);
+  const [colorSchemeKey, setColorSchemeKey] = useState('spectrum');
+  
+  // Population stability tracking
+  const [popWindowSize, setPopWindowSize] = useState(DEFAULT_POPULATION_WINDOW_SIZE);
+  const [popTolerance, setPopTolerance] = useState(DEFAULT_POPULATION_TOLERANCE);
+  const [steadyInfo, setSteadyInfo] = useState({ steady: false, period: 0, popChanging: false });
+  const steadyDetectedRef = useRef(false);
+  
+  // Performance tracking
+  const [maxFPS, setMaxFPS] = useState(60);
+  const [maxGPS, setMaxGPS] = useState(30);
+  
+  // Capture dialog state
+  const [captureDialogOpen, setCaptureDialogOpen] = useState(false);
+  const [captureData] = useState(null);
+
+  // Color scheme
+  const colorScheme = React.useMemo(() => {
+    const base = colorSchemes[colorSchemeKey] || {};
+    const copy = { ...base };
+    if (typeof Object.freeze === 'function') {
+      Object.freeze(copy);
+    }
+    return copy;
+  }, [colorSchemeKey]);
+
+  // Stability detection
+  const updateStabilityDetection = useCallback((game) => {
+    const populationHistory = game.getPopulationHistory();
+    const liveCells = game.getLiveCells();
+    
+    // Population stability
+    const popSteady = isPopulationStable(populationHistory, popWindowSize, popTolerance);
+    
+    // Pattern period detection  
+    const period = game.detectPeriod();
+    
+    const detected = popSteady || period > 0;
+    setSteadyInfo({
+      steady: detected,
+      period: period || (popSteady ? 1 : 0),
+      popChanging: !popSteady
+    });
+
+    if (popSteady && !steadyDetectedRef.current && liveCells.size > 0) {
+      steadyDetectedRef.current = true;
+      game.setRunning(false);
+    } else if (!popSteady) {
+      steadyDetectedRef.current = false;
+    }
+  }, [popWindowSize, popTolerance]);
+
+  // Initialize game
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    
+    const game = createGame(canvasRef.current, {
+      view: {
+        backgroundColor: colorScheme.backgroundColor || '#000000',
+        gridColor: colorScheme.gridColor || '#202020',
+        cellSaturation: colorScheme.cellSaturation || 80,
+        cellLightness: colorScheme.cellLightness || 55
+      }
+    });
+    
+    gameRef.current = game;
+    
+    // Setup game event listeners
+    game.onModelChange((event, data) => {
+      switch (event) {
+        case 'gameStep':
+          setGeneration(data.generation);
+          setCellCount(data.population);
+          updateStabilityDetection(game);
+          break;
+        case 'cellChanged':
+          setCellCount(game.getCellCount());
+          break;
+        case 'gameCleared':
+          setGeneration(0);
+          setCellCount(0);
+          steadyDetectedRef.current = false;
+          setSteadyInfo({ steady: false, period: 0, popChanging: false });
+          break;
+        case 'runningStateChanged':
+          setIsRunning(data.isRunning);
+          break;
+        default:
+          // Handle other events
+          break;
+      }
+    });
+    
+    // Setup performance tracking
+    if (window.speedGaugeTracker) {
+      game.addPerformanceCallback((frameTime) => {
+        window.speedGaugeTracker(frameTime, frameTime);
+      });
+    }
+    
+    // Cursor tracking
+    let rafId = null;
+    game.view.on('mouseMove', ({ cellCoords }) => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        setCursorCell(cellCoords);
+        rafId = null;
+      });
+    });
+    
+    return () => {
+      game.destroy();
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [colorScheme, updateStabilityDetection]);
+
+  // Tool management
+  const setSelectedTool = useCallback((tool) => {
+    if (gameRef.current) {
+      gameRef.current.setSelectedTool(tool);
+      setSelectedToolState(tool);
+    }
+  }, []);
+
+  const setSelectedShape = useCallback((shape) => {
+    if (gameRef.current) {
+      gameRef.current.setSelectedShape(shape);
+      setSelectedShapeState(shape);
+    }
+  }, []);
+
+  // Game controls
+  const step = useCallback(() => {
+    if (gameRef.current) {
+      gameRef.current.step();
+    }
+  }, []);
+
+  const clear = useCallback(() => {
+    if (gameRef.current) {
+      gameRef.current.clear();
+    }
+  }, []);
+
+  const setRunningState = useCallback((running) => {
+    if (gameRef.current) {
+      gameRef.current.setRunning(running);
+    }
+  }, []);
+
+  // Shape management
+  const {
+    recentShapes,
+    paletteOpen,
+    selectShape,
+    openPalette,
+    closePalette,
+    selectShapeAndClosePalette
+  } = useShapeManager({
+    selectedShape,
+    setSelectedShape,
+    selectedTool,
+    setSelectedTool,
+    toolStateRef: { current: {} }, // MVC handles tool state internally
+    drawWithOverlay: () => {} // MVC handles rendering automatically
+  });
+
+
+
+  const handleSaveCapturedShape = useCallback(async (shapeData) => {
+    try {
+      const shapeForBackend = {
+        ...shapeData,
+        cells: shapeData.pattern,
+        meta: {
+          capturedAt: new Date().toISOString(),
+          source: 'capture-tool'
+        }
+      };
+      
+      delete shapeForBackend.pattern;
+
+      const response = await fetch('http://localhost:55000/v1/shapes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(shapeForBackend),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const savedShape = await response.json();
+      logger.info('Shape saved successfully:', savedShape.name);
+      
+      return savedShape;
+    } catch (error) {
+      logger.error('Failed to save captured shape:', error);
+      throw error;
+    }
+  }, []);
+
+  // Grid loading
+  const handleLoadGrid = useCallback((liveCells) => {
+    if (!gameRef.current) return;
+    
+    try {
+      gameRef.current.clear();
+      
+      if (liveCells && liveCells.size > 0) {
+        for (const [key] of liveCells.entries()) {
+          const [x, y] = key.split(',').map(Number);
+          gameRef.current.setCellAlive(x, y, true);
+        }
+      }
+      
+      logger.info(`Loaded grid with ${liveCells ? liveCells.size : 0} live cells`);
+    } catch (error) {
+      logger.error('Failed to load grid:', error);
+    }
+  }, []);
+
+  // Viewport helpers for legacy components
+  const getViewport = useCallback(() => {
+    return gameRef.current ? gameRef.current.getViewport() : { offsetX: 0, offsetY: 0, cellSize: 8 };
+  }, []);
+
+  const getLiveCells = useCallback(() => {
+    return gameRef.current ? gameRef.current.getLiveCells() : new Map();
+  }, []);
+
+  const setCellAlive = useCallback((x, y, alive) => {
+    if (gameRef.current) {
+      gameRef.current.setCellAlive(x, y, alive);
+    }
+  }, []);
+
+
+
+  return (
+    <div className="canvas-container">
+      {/* Left-side recent shapes strip */}
+      <div className="recent-shapes" style={{ 
+        position: 'absolute', 
+        left: RECENT_SHAPES_LEFT_OFFSET, 
+        top: RECENT_SHAPES_TOP_OFFSET, 
+        zIndex: RECENT_SHAPES_Z_INDEX 
+      }}>
+        <RecentShapesStrip 
+          recentShapes={recentShapes}
+          selectShape={selectShape}
+          drawWithOverlay={() => {}} // MVC handles rendering
+          colorScheme={colorScheme}
+          selectedShape={selectedShape}
+        />
+      </div>
+
+      <ControlsBar
+        selectedTool={selectedTool}
+        setSelectedTool={setSelectedTool}
+        colorSchemeKey={colorSchemeKey}
+        setColorSchemeKey={setColorSchemeKey}
+        colorSchemes={colorSchemes}
+        isRunning={isRunning}
+        setIsRunning={setRunningState}
+        step={step}
+        draw={() => {}} // MVC handles rendering automatically
+        clear={clear}
+        generation={generation}
+        snapshotsRef={{ current: [] }} // Not needed in MVC
+        setSteadyInfo={setSteadyInfo}
+        canvasRef={canvasRef}
+        offsetRef={{ current: getViewport() }} // Legacy compatibility
+        cellSize={getViewport().cellSize}
+        setCellAlive={setCellAlive}
+        popHistoryRef={{ current: gameRef.current?.getPopulationHistory() || [] }}
+        setShowChart={setShowChart}
+        getLiveCells={getLiveCells}
+        popWindowSize={popWindowSize}
+        setPopWindowSize={setPopWindowSize}
+        popTolerance={popTolerance}
+        setPopTolerance={setPopTolerance}
+        selectShape={selectShape}
+        selectedShape={selectedShape}
+        drawWithOverlay={() => {}} // MVC handles rendering
+        openPalette={openPalette}
+        steadyInfo={steadyInfo}
+        toolStateRef={{ current: {} }} // MVC handles tool state
+        cursorCell={cursorCell}
+        onLoadGrid={handleLoadGrid}
+        showSpeedGauge={showSpeedGauge}
+        setShowSpeedGauge={setShowSpeedGauge}
+        maxFPS={maxFPS}
+        setMaxFPS={setMaxFPS}
+        maxGPS={maxGPS}
+        setMaxGPS={setMaxGPS}
+      />
+
+      {paletteOpen && (
+        <ShapePaletteDialog
+          open={paletteOpen}
+          onClose={() => closePalette(true)}
+          onSelectShape={selectShapeAndClosePalette}
+          backendBase={process.env.REACT_APP_BACKEND_BASE || 'http://localhost:55000'}
+          colorScheme={colorSchemes ? (colorSchemes[colorSchemeKey] || {}) : {}}
+        />
+      )}
+
+      {captureDialogOpen && (
+        <CaptureShapeDialog
+          open={captureDialogOpen}
+          onClose={() => setCaptureDialogOpen(false)}
+          captureData={captureData}
+          onSave={handleSaveCapturedShape}
+        />
+      )}
+
+      <canvas
+        ref={canvasRef}
+        style={{ 
+          cursor: (selectedShape || selectedTool) ? 'crosshair' : 'default',
+          display: 'block',
+          width: '100%',
+          height: '100%'
+        }}
+      />
+
+      {showChart && (
+        <PopulationChart 
+          history={gameRef.current?.getPopulationHistory() || []} 
+          onClose={() => setShowChart(false)}
+          isRunning={isRunning}
+        />
+      )}
+      
+      <SpeedGauge
+        isVisible={showSpeedGauge}
+        generation={generation}
+        liveCellsCount={cellCount}
+        onToggleVisibility={setShowSpeedGauge}
+        position={{ top: 10, right: 10 }}
+      />
+    </div>
+  );
+};
+
+export default GameOfLifeMVC;

@@ -1,12 +1,12 @@
 
 import React from 'react';
-import GameOfLife from './GameOfLife';
+import GameOfLifeMVC from '../controller/GameOfLifeMVC';
 
 const App = () => {
 return React.createElement(
 'div',
 { style: { backgroundColor: 'black', minHeight: '100vh', padding: '16px' } },
-React.createElement(GameOfLife, null)
+React.createElement(GameOfLifeMVC, null)
 );
 }
 
