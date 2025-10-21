@@ -6,6 +6,10 @@ import logger from '../controller/utils/logger';
 
 // Mock logger
 jest.mock('../controller/utils/logger', () => ({
+  warn: jest.fn(),
+  error: jest.fn(),
+  info: jest.fn()
+}));
 
 // Mock fetch globally
 globalThis.fetch = jest.fn();

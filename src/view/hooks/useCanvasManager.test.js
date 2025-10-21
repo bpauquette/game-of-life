@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useCanvasManager } from './useCanvasManager';
 
 // Mock dependencies
-jest.mock('../utils/canvasUtils', () => ({
+jest.mock('../../controller/utils/canvasUtils', () => ({
   eventToCellFromCanvas: jest.fn(() => ({ x: 5, y: 5 })),
   computeComputedOffset: jest.fn(() => ({ x: 0, y: 0 })),
   drawLiveCells: jest.fn()
