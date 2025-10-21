@@ -217,7 +217,7 @@ const LoadGridDialog = ({
                             )}
                             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                               <Chip 
-                                label={`${formatCellCount(grid.liveCellsCount)} cells`}
+                                label={`${formatCellCount(grid.liveCells)} cells`}
                                 size="small" 
                                 variant="outlined"
                                 color="primary"
@@ -278,7 +278,7 @@ LoadGridDialog.propTypes = {
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
     description: PropTypes.string,
-    liveCellsCount: PropTypes.number.isRequired,
+    liveCells: PropTypes.number.isRequired,
     generation: PropTypes.number.isRequired,
     createdAt: PropTypes.string.isRequired
   })),
