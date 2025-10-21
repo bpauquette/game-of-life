@@ -2,7 +2,7 @@
   "name": "game-of-life-backend",
   "version": "0.1.0",
   "private": true,
-  "type": "commonjs",
+  "type": "module",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

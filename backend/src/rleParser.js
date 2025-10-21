@@ -1,7 +1,7 @@
 // Basic RLE parser for Conway Life patterns
 // Exports parseRLE(text) -> { name, width, height, cells: [{x,y}], rule, meta }
 
-const HEADER_RE = /x\s*=\s*(\-?\d+)\s*,\s*y\s*=\s*(\-?\d+)(?:\s*,\s*rule\s*=\s*([^\s,]+))?/i;
+const HEADER_RE = /x\s*=\s*(-?\d+)\s*,\s*y\s*=\s*(-?\d+)(?:\s*,\s*rule\s*=\s*([^\s,]+))?/i;
 
 const parseHeader = (lines) => {
   const meta = {comments:[]};
@@ -28,7 +28,7 @@ const parseHeader = (lines) => {
 
 const tokenizeRLE = (body) => {
   // remove whitespace other than letters/numbers/$/! and concatenate
-  const text = body.replace(/\s+/g,'');
+  const text = body.replaceAll(/\s+/g,'');
   const tokens = [];
   const re = /(\d*)([ob$!])/gi;
   let m;
@@ -42,7 +42,7 @@ const tokenizeRLE = (body) => {
 };
 
 const parseRLE = (text) => {
-  if(!text || !text.trim()) throw new Error('Empty RLE text');
+  if(!text?.trim()) throw new Error('Empty RLE text');
   const lines = text.split(/\r?\n/);
   const {meta, headerLine} = parseHeader(lines);
 
@@ -137,4 +137,4 @@ const computeBoundingBox = (cells) => {
   return { empty: false, minX, minY, maxX, maxY };
 }
 
-module.exports = { parseRLE };
+export { parseRLE };

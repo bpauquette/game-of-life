@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import PropTypes from 'prop-types';
 
 // Mock child components
 jest.mock('./OptionsPanel', () => {

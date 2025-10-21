@@ -1,10 +1,9 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('node:path');
-const { v4: uuidv4 } = require('uuid');
-const { parseRLE } = require('./rleParser');
-const db = require('./db');
-const logger = require('./logger');
+import express from 'express';
+import cors from 'cors';
+import { v4 as uuidv4 } from 'uuid';
+import { parseRLE } from './rleParser.js';
+import db from './db.js';
+import logger from './logger.js';
 
 const makeId = () => {
   return uuidv4();

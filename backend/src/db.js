@@ -1,5 +1,9 @@
-const path = require('node:path');
-const fs = require('node:fs').promises;
+import path from 'node:path';
+import { promises as fs } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const DB_FILE = path.join(__dirname, '..', 'data', 'shapes.json');
 const GRIDS_DB_FILE = path.join(__dirname, '..', 'data', 'grids.json');
@@ -93,7 +97,7 @@ const deleteGrid = async (id) => {
   return true;
 };
 
-module.exports = { 
+export default { 
   listShapes, getShape, addShape, deleteShape,
   listGrids, getGrid, saveGrid, deleteGrid 
 };
