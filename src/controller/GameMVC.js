@@ -106,6 +106,7 @@ export class GameMVC {
   }
 
   setSelectedTool(tool) {
+    console.log('MVC: Setting tool to:', tool);
     this.controller.setSelectedTool(tool);
   }
 

@@ -114,7 +114,10 @@ export class GameController {
   }
 
   setSelectedTool(toolName) {
+    console.log('Controller: setSelectedTool called with:', toolName);
+    console.log('Controller: Available tools:', Object.keys(this.toolMap));
     if (this.toolMap[toolName] && this.selectedTool !== toolName) {
+      console.log('Controller: Setting tool from', this.selectedTool, 'to', toolName);
       // Clear previous tool state
       this.toolState = {};
       this.selectedTool = toolName;

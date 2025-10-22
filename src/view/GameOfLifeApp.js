@@ -7,6 +7,7 @@ import ShapePaletteDialog from '../view/ShapePaletteDialog';
 import CaptureShapeDialog from '../view/CaptureShapeDialog';
 import RecentShapesStrip from '../view/RecentShapesStrip';
 import SpeedGauge from '../view/SpeedGauge';
+import DebugConsole from '../view/DebugConsole';
 import { useShapeManager } from '../view/hooks/useShapeManager';
 import { colorSchemes } from '../model/colorSchemes';
 import isPopulationStable from '../controller/utils/populationUtils';
@@ -90,6 +91,7 @@ const GameOfLifeApp = () => {
 
   // Initialize game
   useEffect(() => {
+    console.log('🎮 Game of Life MVC System Initializing...');
     if (!canvasRef.current) return;
     
     const game = new GameMVC(canvasRef.current, {
@@ -102,6 +104,8 @@ const GameOfLifeApp = () => {
     });
     
     gameRef.current = game;
+    console.log('✅ MVC Game System Created Successfully');
+    console.log('Available tools:', Object.keys(game.controller?.toolMap || {}));
     
     // Setup game event listeners
     game.onModelChange((event, data) => {
@@ -154,9 +158,13 @@ const GameOfLifeApp = () => {
 
   // Tool management
   const setSelectedTool = useCallback((tool) => {
+    console.log('React: Setting tool to:', tool);
     if (gameRef.current) {
       gameRef.current.setSelectedTool(tool);
       setSelectedToolState(tool);
+      console.log('React: Tool set in MVC system');
+    } else {
+      console.log('React: gameRef.current is null!');
     }
   }, []);
 
@@ -380,6 +388,11 @@ const GameOfLifeApp = () => {
         liveCellsCount={cellCount}
         onToggleVisibility={setShowSpeedGauge}
         position={{ top: 10, right: 10 }}
+      />
+      
+      <DebugConsole 
+        isVisible={true}
+        maxLines={50}
       />
     </div>
   );
