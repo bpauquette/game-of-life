@@ -27,6 +27,16 @@ export class GameRenderer {
   }
 
   /**
+   * Update renderer options without recreating the renderer
+   */
+  updateOptions(newOptions) {
+    Object.assign(this.options, newOptions);
+    // Clear color cache since colors changed
+    this.colorCache.clear();
+    console.log('🎨 Renderer options updated:', this.options);
+  }
+
+  /**
    * Setup high-DPI (retina) display support
    */
   setupHighDPI() {

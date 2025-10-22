@@ -98,6 +98,7 @@ export class GameMVC {
 
   // Controller operations
   setRunning(running) {
+    console.log('MVC: setRunning called with:', running);
     this.controller.setRunning(running);
   }
 

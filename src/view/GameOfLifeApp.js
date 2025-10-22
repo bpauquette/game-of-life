@@ -154,7 +154,23 @@ const GameOfLifeApp = () => {
       game.destroy();
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [colorScheme, updateStabilityDetection]);
+  }, []); // Remove colorScheme from dependency - don't recreate game on color change!
+
+  // Update colors when color scheme changes (without recreating game)
+  useEffect(() => {
+    if (gameRef.current && colorScheme) {
+      console.log('🎨 Updating color scheme to:', colorSchemeKey);
+      // Update renderer colors without destroying the game
+      gameRef.current.view.renderer.updateOptions({
+        backgroundColor: colorScheme.backgroundColor || '#000000',
+        gridColor: colorScheme.gridColor || '#202020',
+        cellSaturation: colorScheme.cellSaturation || 80,
+        cellLightness: colorScheme.cellLightness || 55
+      });
+      // Force re-render with new colors
+      gameRef.current.controller.requestRender();
+    }
+  }, [colorScheme, colorSchemeKey]);
 
   // Tool management
   const setSelectedTool = useCallback((tool) => {
@@ -177,20 +193,32 @@ const GameOfLifeApp = () => {
 
   // Game controls
   const step = useCallback(() => {
+    console.log('⏭️ STEP button clicked');
     if (gameRef.current) {
+      console.log('Calling gameRef.current.step()');
       gameRef.current.step();
+    } else {
+      console.error('gameRef.current is null - cannot step');
     }
   }, []);
 
   const clear = useCallback(() => {
+    console.log('🗑️ CLEAR button clicked');
     if (gameRef.current) {
+      console.log('Calling gameRef.current.clear()');
       gameRef.current.clear();
+    } else {
+      console.error('gameRef.current is null - cannot clear');
     }
   }, []);
 
   const setRunningState = useCallback((running) => {
+    console.log(`🎮 ${running ? 'START' : 'STOP'} button clicked`);
     if (gameRef.current) {
+      console.log('Calling gameRef.current.setRunning with:', running);
       gameRef.current.setRunning(running);
+    } else {
+      console.error('gameRef.current is null - cannot set running state');
     }
   }, []);
 
