@@ -8,28 +8,18 @@ export class GameRenderer {
     this.ctx = canvas.getContext('2d');
     this.options = {
       backgroundColor: '#000000',
-      gridColor: '#202020',
-      gridLineOffset: 0.5,
-      hueMultiplierX: 53,
-      hueMultiplierY: 97,
+      gridColor: '#333333',
+      cellSaturation: 70,
+      cellLightness: 50,
+      hueMultiplierX: 2.5,
+      hueMultiplierY: 1.7,
       hueMax: 360,
-      cellSaturation: 80,
-      cellLightness: 55,
+      showGrid: true,
       ...options
     };
     
-    // Rendering state
-    this.viewport = {
-      offsetX: 0,
-      offsetY: 0,
-      cellSize: 8,
-      width: canvas.width,
-      height: canvas.height
-    };
-    
-    // Performance optimizations
+    this.viewport = { width: 0, height: 0 };
     this.colorCache = new Map();
-    this.gridCache = null;
     this.maxColorCacheSize = 10000;
     
     // Setup high-DPI rendering
@@ -43,16 +33,87 @@ export class GameRenderer {
     const dpr = window.devicePixelRatio || 1;
     const rect = this.canvas.getBoundingClientRect();
     
-    this.canvas.width = rect.width * dpr;
-    this.canvas.height = rect.height * dpr;
-    this.canvas.style.width = rect.width + 'px';
-    this.canvas.style.height = rect.height + 'px';
+    let displayWidth, displayHeight;
     
+    // Use canvas bounding rect for standard browser environments
+    if (rect && rect.width > 0 && rect.height > 0) {
+      displayWidth = rect.width;
+      displayHeight = rect.height;
+    } else {
+      // Fallback to container or reasonable defaults
+      const container = this.canvas.parentElement;
+      if (container) {
+        const containerRect = container.getBoundingClientRect();
+        displayWidth = containerRect.width || 800;
+        displayHeight = containerRect.height || 600;
+      } else {
+        displayWidth = 800;
+        displayHeight = 600;
+      }
+    }
+    console.log('DPR:', dpr);
+    
+    // Ensure minimum size and handle edge cases
+    displayWidth = Math.max(displayWidth, 200);
+    displayHeight = Math.max(displayHeight, 200);
+    
+    // Set canvas internal resolution (for high-DPI)
+    this.canvas.width = displayWidth * dpr;
+    this.canvas.height = displayHeight * dpr;
+    
+    // Set canvas CSS size (what user sees)
+    this.canvas.style.width = displayWidth + 'px';
+    this.canvas.style.height = displayHeight + 'px';
+    
+    console.log('Final canvas setup:', { 
+      cssSize: { width: displayWidth, height: displayHeight },
+      canvasSize: { width: this.canvas.width, height: this.canvas.height },
+      dpr
+    });
+    
+    // Scale drawing context for high-DPI
     this.ctx.scale(dpr, dpr);
     
-    // Update viewport
-    this.viewport.width = rect.width;
-    this.viewport.height = rect.height;
+    // Update viewport dimensions
+    this.viewport.width = displayWidth;
+    this.viewport.height = displayHeight;
+  }
+
+  /**
+   * Resize canvas (call when container size changes)
+   */
+  resize(width, height) {
+    // Clear any existing scaling
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    
+    // If specific dimensions provided, force them
+    if (width !== undefined && height !== undefined) {
+      const dpr = window.devicePixelRatio || 1;
+      
+      // Ensure minimum size
+      width = Math.max(width, 200);
+      height = Math.max(height, 200);
+      
+      // Set canvas dimensions
+      this.canvas.width = width * dpr;
+      this.canvas.height = height * dpr;
+      this.canvas.style.width = width + 'px';
+      this.canvas.style.height = height + 'px';
+      
+      // Scale for high-DPI
+      this.ctx.scale(dpr, dpr);
+      
+      // Update viewport
+      this.viewport.width = width;
+      this.viewport.height = height;
+    } else {
+      // Re-setup high DPI with detected dimensions
+      this.setupHighDPI();
+    }
+    
+    // Invalidate caches
+    this.gridCache = null;
+    this.colorCache.clear();
   }
 
   /**
@@ -303,19 +364,7 @@ export class GameRenderer {
     }
   }
 
-  /**
-   * Resize the canvas and update viewport
-   */
-  resize(width, height) {
-    this.canvas.style.width = width + 'px';
-    this.canvas.style.height = height + 'px';
-    
-    this.viewport.width = width;
-    this.viewport.height = height;
-    
-    this.setupHighDPI();
-    this.gridCache = null; // Invalidate grid cache
-  }
+
 
   /**
    * Clear all caches

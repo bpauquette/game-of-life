@@ -237,6 +237,7 @@ const LoadGridDialog = ({
                             </Box>
                           </Box>
                         }
+                        secondaryTypographyProps={{ component: 'div' }}
                       />
                     </ListItemButton>
                   </ListItem>

@@ -83,12 +83,15 @@ export class GameModel {
 
   // Game evolution
   step() {
-    if (this.liveCells.size === 0) return;
+    let newLiveCells = this.liveCells;
     
-    const newLiveCells = gameStep(this.liveCells);
+    // Only evolve if there are live cells
+    if (this.liveCells.size > 0) {
+      newLiveCells = gameStep(this.liveCells);
+      this.liveCells = newLiveCells;
+    }
     
-    // Update state
-    this.liveCells = newLiveCells;
+    // Always increment generation and notify (for performance metrics)
     this.generation++;
     
     // Update population history
