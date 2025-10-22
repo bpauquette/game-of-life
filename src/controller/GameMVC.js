@@ -19,6 +19,8 @@ export class GameMVC {
     this.controller.requestRender();
   }
 
+
+
   setupDefaults() {
     // Setup default tools
     this.registerDefaultTools();
@@ -219,7 +221,3 @@ export class GameMVC {
   }
 }
 
-// Factory function for easy instantiation
-export const createGame = (canvas, options = {}) => {
-  return new GameMVC(canvas, options);
-};

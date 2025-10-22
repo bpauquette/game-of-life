@@ -1,6 +1,6 @@
-// GameOfLifeMVC.js - React component using MVC architecture
+// GameOfLifeApp.js - React UI wrapper for the MVC Game of Life system
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { createGame } from './GameMVC';
+import { GameMVC } from '../controller/GameMVC';
 import ControlsBar from '../view/ControlsBar';
 import PopulationChart from '../view/PopulationChart';
 import ShapePaletteDialog from '../view/ShapePaletteDialog';
@@ -9,8 +9,8 @@ import RecentShapesStrip from '../view/RecentShapesStrip';
 import SpeedGauge from '../view/SpeedGauge';
 import { useShapeManager } from '../view/hooks/useShapeManager';
 import { colorSchemes } from '../model/colorSchemes';
-import isPopulationStable from './utils/populationUtils';
-import logger from './utils/logger';
+import isPopulationStable from '../controller/utils/populationUtils';
+import logger from '../controller/utils/logger';
 import '../view/GameOfLife.css';
 
 // Constants
@@ -20,7 +20,7 @@ const RECENT_SHAPES_LEFT_OFFSET = 8;
 const RECENT_SHAPES_TOP_OFFSET = 80;
 const RECENT_SHAPES_Z_INDEX = 20;
 
-const GameOfLifeMVC = () => {
+const GameOfLifeApp = () => {
   // Refs
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
@@ -92,7 +92,7 @@ const GameOfLifeMVC = () => {
   useEffect(() => {
     if (!canvasRef.current) return;
     
-    const game = createGame(canvasRef.current, {
+    const game = new GameMVC(canvasRef.current, {
       view: {
         backgroundColor: colorScheme.backgroundColor || '#000000',
         gridColor: colorScheme.gridColor || '#202020',
@@ -385,4 +385,4 @@ const GameOfLifeMVC = () => {
   );
 };
 
-export default GameOfLifeMVC;
+export default GameOfLifeApp;

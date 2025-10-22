@@ -299,8 +299,20 @@ export class GameController {
     this.model.setRunning(running);
   }
 
+  startGame() {
+    this.model.setRunning(true);
+  }
+
+  stopGame() {
+    this.model.setRunning(false);
+  }
+
   toggleRunning() {
     this.model.setRunning(!this.model.getIsRunning());
+  }
+
+  isRunning() {
+    return this.model.getIsRunning();
   }
 
   handleRunningStateChange(isRunning) {
@@ -353,9 +365,21 @@ export class GameController {
 
   // Rendering
   requestRender() {
+    const renderStart = performance.now();
+    
     const liveCells = this.model.getLiveCells();
     const viewport = this.model.getViewport();
     this.view.render(liveCells, viewport);
+    
+    const renderTime = performance.now() - renderStart;
+    
+    // Track performance for SpeedGauge
+    if (window.speedGaugeTracker) {
+      window.speedGaugeTracker(renderTime, renderTime);
+    }
+    
+    // Call performance callbacks
+    this.performanceCallbacks.forEach(callback => callback(renderTime));
   }
 
   // Tool overlay management
