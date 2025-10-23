@@ -7,6 +7,7 @@ import logger from '../controller/utils/logger';
 jest.mock('../controller/utils/logger', () => ({
   warn: jest.fn(),
   error: jest.fn(),
+  debug: jest.fn(),
   info: jest.fn()
 }));
 

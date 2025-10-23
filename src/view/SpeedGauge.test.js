@@ -65,6 +65,9 @@ describe('SpeedGauge', () => {
     const expandButton = screen.getByText('+');
     fireEvent.click(expandButton);
     
-    expect(screen.getByText('1,234')).toBeInTheDocument();
+    // The formatted number may appear in multiple places (cells and peak),
+    // assert that at least one element contains the expected formatted string.
+    const matches = screen.getAllByText('1,234');
+    expect(matches.length).toBeGreaterThan(0);
   });
 });

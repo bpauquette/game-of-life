@@ -102,10 +102,22 @@ export class GameView {
 
   // Mouse event handling setup
   setupMouseEvents() {
+    // If the canvas doesn't expose DOM event APIs (common in jsdom/test
+    // environments or when a lightweight/mock canvas is provided), skip
+    // wiring DOM event listeners to avoid throwing errors. Tests can still
+    // interact with the view by calling emit() directly.
+    if (!this.canvas || typeof this.canvas.addEventListener !== 'function') {
+      return;
+    }
+
     const getMouseCoords = (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const screenX = e.clientX - rect.left;
-      const screenY = e.clientY - rect.top;
+      // Guard against missing getBoundingClientRect in mocks
+      const rect = (typeof this.canvas.getBoundingClientRect === 'function')
+        ? this.canvas.getBoundingClientRect()
+        : { left: 0, top: 0 };
+
+      const screenX = (e && typeof e.clientX === 'number') ? (e.clientX - rect.left) : 0;
+      const screenY = (e && typeof e.clientY === 'number') ? (e.clientY - rect.top) : 0;
       const cellCoords = this.screenToCell(screenX, screenY);
       return { screenX, screenY, cellCoords };
     };
@@ -116,7 +128,7 @@ export class GameView {
       this.emit('mouseDown', { event: e, ...coords });
     });
 
-    // Mouse move  
+    // Mouse move
     this.canvas.addEventListener('mousemove', (e) => {
       const coords = getMouseCoords(e);
       this.emit('mouseMove', { event: e, ...coords });

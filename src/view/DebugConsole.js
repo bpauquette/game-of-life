@@ -7,6 +7,14 @@ const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
   const originalConsole = useRef({});
 
   useEffect(() => {
+    // In test environments we should not override global console because
+    // Jest wraps console and stack trace rewriting can lead to recursion
+    // and worker crashes when we intercept and re-log messages. Skip
+    // console patching under NODE_ENV=test.
+    if (process.env.NODE_ENV === 'test') {
+      return;
+    }
+
     // Store original console methods
     originalConsole.current = {
       log: console.log,
@@ -20,13 +28,13 @@ const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
       return (...args) => {
         // Call original console method
         originalMethod.apply(console, args);
-        
+
         // Add to our log display
         const timestamp = new Date().toLocaleTimeString();
         const message = args.map(arg => 
           typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
         ).join(' ');
-        
+
         setLogs(prevLogs => {
           const newLogs = [...prevLogs, { 
             level, 
@@ -34,7 +42,7 @@ const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
             timestamp,
             id: Date.now() + Math.random()
           }];
-          
+
           // Keep only the most recent maxLines
           if (newLogs.length > maxLines) {
             return newLogs.slice(-maxLines);

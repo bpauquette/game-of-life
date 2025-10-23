@@ -231,109 +231,85 @@ describe('ControlsBar', () => {
     });
 
     it('should call setShowChart when chart button is clicked', () => {
-      render(<ControlsBar {...defaultProps} />);
-      
-      const chartButton = screen.getByRole('button', { name: /chart/i });
-      fireEvent.click(chartButton);
-      
-      expect(defaultProps.setShowChart).toHaveBeenCalledWith(true);
+  render(<ControlsBar {...defaultProps} />);
+  const chartButton = screen.getByTestId('toggle-chart');
+  fireEvent.click(chartButton);
+  expect(defaultProps.setShowChart).toHaveBeenCalledWith(true);
     });
   });
 
   describe('options dialog', () => {
     it('should open options dialog when settings button is clicked', () => {
-      render(<ControlsBar {...defaultProps} />);
-      
-      const settingsButton = screen.getByRole('button', { name: /options/i });
-      fireEvent.click(settingsButton);
-      
-      expect(screen.getByTestId('options-panel')).toBeInTheDocument();
+  render(<ControlsBar {...defaultProps} />);
+  const settingsButton = screen.getByTestId('options-icon-button');
+  fireEvent.click(settingsButton);
+  expect(screen.getByTestId('options-panel')).toBeInTheDocument();
     });
 
     it('should stop simulation when opening options if running', () => {
-      const props = { ...defaultProps, isRunning: true };
-      render(<ControlsBar {...props} />);
-      
-      const settingsButton = screen.getByRole('button', { name: /options/i });
-      fireEvent.click(settingsButton);
-      
-      expect(defaultProps.setIsRunning).toHaveBeenCalledWith(false);
+  const props = { ...defaultProps, isRunning: true };
+  render(<ControlsBar {...props} />);
+  const settingsButton = screen.getByTestId('options-icon-button');
+  fireEvent.click(settingsButton);
+  expect(defaultProps.setIsRunning).toHaveBeenCalledWith(false);
     });
 
     it('should resume simulation after options OK if was running', () => {
-      const props = { ...defaultProps, isRunning: true };
-      render(<ControlsBar {...props} />);
-      
-      const settingsButton = screen.getByRole('button', { name: /options/i });
-      fireEvent.click(settingsButton);
-      
-      const okButton = screen.getByRole('button', { name: 'Options OK' });
-      fireEvent.click(okButton);
-      
-      expect(defaultProps.setIsRunning).toHaveBeenCalledWith(true);
+  const props = { ...defaultProps, isRunning: true };
+  render(<ControlsBar {...props} />);
+  const settingsButton = screen.getByTestId('options-icon-button');
+  fireEvent.click(settingsButton);
+  const okButton = screen.getByText('Options OK');
+  fireEvent.click(okButton);
+  expect(defaultProps.setIsRunning).toHaveBeenCalledWith(true);
     });
 
     it('should resume simulation after options Cancel if was running', () => {
-      const props = { ...defaultProps, isRunning: true };
-      render(<ControlsBar {...props} />);
-      
-      const settingsButton = screen.getByRole('button', { name: /options/i });
-      fireEvent.click(settingsButton);
-      
-      const cancelButton = screen.getByRole('button', { name: 'Options Cancel' });
-      fireEvent.click(cancelButton);
-      
-      expect(defaultProps.setIsRunning).toHaveBeenCalledWith(true);
+  const props = { ...defaultProps, isRunning: true };
+  render(<ControlsBar {...props} />);
+  const settingsButton = screen.getByTestId('options-icon-button');
+  fireEvent.click(settingsButton);
+  const cancelButton = screen.getByText('Options Cancel');
+  fireEvent.click(cancelButton);
+  expect(defaultProps.setIsRunning).toHaveBeenCalledWith(true);
     });
 
     it('should not resume simulation after options if was not running', () => {
-      render(<ControlsBar {...defaultProps} />);
-      
-      const settingsButton = screen.getByRole('button', { name: /options/i });
-      fireEvent.click(settingsButton);
-      
-      // Clear previous calls
-      defaultProps.setIsRunning.mockClear();
-      
-      const okButton = screen.getByRole('button', { name: 'Options OK' });
-      fireEvent.click(okButton);
-      
-      expect(defaultProps.setIsRunning).not.toHaveBeenCalledWith(true);
+  render(<ControlsBar {...defaultProps} />);
+  const settingsButton = screen.getByTestId('options-icon-button');
+  fireEvent.click(settingsButton);
+  // Clear previous calls
+  defaultProps.setIsRunning.mockClear();
+  const okButton = screen.getByText('Options OK');
+  fireEvent.click(okButton);
+  expect(defaultProps.setIsRunning).not.toHaveBeenCalledWith(true);
     });
 
     it('should close options dialog after OK', () => {
-      render(<ControlsBar {...defaultProps} />);
-      
-      const settingsButton = screen.getByRole('button', { name: /options/i });
-      fireEvent.click(settingsButton);
-      
-      const okButton = screen.getByRole('button', { name: 'Options OK' });
-      fireEvent.click(okButton);
-      
-      expect(screen.queryByTestId('options-panel')).not.toBeInTheDocument();
+  render(<ControlsBar {...defaultProps} />);
+  const settingsButton = screen.getByTestId('options-icon-button');
+  fireEvent.click(settingsButton);
+  const okButton = screen.getByText('Options OK');
+  fireEvent.click(okButton);
+  expect(screen.queryByTestId('options-panel')).not.toBeInTheDocument();
     });
 
     it('should close options dialog after Cancel', () => {
-      render(<ControlsBar {...defaultProps} />);
-      
-      const settingsButton = screen.getByRole('button', { name: /options/i });
-      fireEvent.click(settingsButton);
-      
-      const cancelButton = screen.getByRole('button', { name: 'Options Cancel' });
-      fireEvent.click(cancelButton);
-      
-      expect(screen.queryByTestId('options-panel')).not.toBeInTheDocument();
+  render(<ControlsBar {...defaultProps} />);
+  const settingsButton = screen.getByTestId('options-icon-button');
+  fireEvent.click(settingsButton);
+  const cancelButton = screen.getByText('Options Cancel');
+  fireEvent.click(cancelButton);
+  expect(screen.queryByTestId('options-panel')).not.toBeInTheDocument();
     });
 
     it('should pass correct props to OptionsPanel', () => {
-      render(<ControlsBar {...defaultProps} />);
-      
-      const settingsButton = screen.getByRole('button', { name: /options/i });
-      fireEvent.click(settingsButton);
-      
-      expect(screen.getByText('Color Scheme: classic')).toBeInTheDocument();
-      expect(screen.getByText('Window Size: 100')).toBeInTheDocument();
-      expect(screen.getByText('Tolerance: 3')).toBeInTheDocument();
+  render(<ControlsBar {...defaultProps} />);
+  const settingsButton = screen.getByTestId('options-icon-button');
+  fireEvent.click(settingsButton);
+  expect(screen.getByText('Color Scheme: classic')).toBeInTheDocument();
+  expect(screen.getByText('Window Size: 100')).toBeInTheDocument();
+  expect(screen.getByText('Tolerance: 3')).toBeInTheDocument();
     });
   });
 

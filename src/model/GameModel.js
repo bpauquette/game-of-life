@@ -547,6 +547,23 @@ export class GameModel {
     return this.uiState.maxGPS;
   }
 
+  // Combined performance settings methods
+  getPerformanceSettings() {
+    return {
+      maxFPS: this.uiState.maxFPS,
+      maxGPS: this.uiState.maxGPS
+    };
+  }
+
+  setPerformanceSettings(settings) {
+    if (settings.maxFPS !== undefined) {
+      this.setMaxFPS(settings.maxFPS);
+    }
+    if (settings.maxGPS !== undefined) {
+      this.setMaxGPS(settings.maxGPS);
+    }
+  }
+
   // Population stability settings
   setPopulationWindowSize(size) {
     this.setUIState('popWindowSize', Math.max(5, Math.min(100, size)));

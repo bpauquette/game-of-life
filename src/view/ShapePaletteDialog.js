@@ -190,7 +190,7 @@ The backend will start on port 55000.`);
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+  <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth data-testid="shapes-palette">
       <DialogTitle>Insert shape from catalog</DialogTitle>
       <DialogContent>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>

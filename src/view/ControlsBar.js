@@ -77,6 +77,7 @@ const ControlsBar = ({
   maxGPS,
   setMaxGPS
 }) => {
+  // Options dialog open state
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -168,7 +169,7 @@ const ControlsBar = ({
           <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect"><CasinoIcon fontSize="small"/></Tooltip></ToggleButton>
           <ToggleButton value="capture" aria-label="capture"><Tooltip title="Capture area as shape"><ColorizeIcon fontSize="small"/></Tooltip></ToggleButton>
           {/* Palette toggle: opens the ShapePaletteDialog while selected */}
-          <ToggleButton value="shapes" aria-label="shapes" onClick={() => openPalette?.()}><Tooltip title="Shapes"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
+          <ToggleButton value="shapes" aria-label="shapes" onClick={() => openPalette?.()} data-testid="open-shapes-palette"><Tooltip title="Shapes"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
         </ToggleButtonGroup>
 
         <Button size="small" onClick={() => { step(); draw(); }}>Step</Button>
@@ -183,14 +184,16 @@ const ControlsBar = ({
         <Button size="small" onClick={() => { clear(); draw(); snapshotsRef.current = []; setSteadyInfo({ steady: false, period: STEADY_STATE_PERIOD_INITIAL, popChanging: false }); }}>Clear</Button>
 
         <Tooltip title="Save current grid state">
-          <Button 
-            size="small" 
-            onClick={openSaveGrid}
-            startIcon={<SaveIcon fontSize="small" />}
-            disabled={getLiveCells().size === 0}
-          >
-            Save
-          </Button>
+          <span>
+            <Button 
+              size="small" 
+              onClick={openSaveGrid}
+              startIcon={<SaveIcon fontSize="small" />}
+              disabled={getLiveCells().size === 0}
+            >
+              Save
+            </Button>
+          </span>
         </Tooltip>
         
         <Tooltip title="Load saved grid state">
@@ -208,7 +211,7 @@ const ControlsBar = ({
         
         <IconButton size="small" onClick={openHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small"/></Tooltip></IconButton>
         <IconButton size="small" onClick={openAbout} aria-label="about"><Tooltip title="About"><InfoIcon fontSize="small"/></Tooltip></IconButton>
-        <IconButton size="small" onClick={openOptions} aria-label="options"><SettingsIcon fontSize="small"/></IconButton>
+            <IconButton size="small" onClick={openOptions} aria-label="options" data-testid="options-icon-button"><SettingsIcon fontSize="small"/></IconButton>
 
   <Chip label={`Live Cells: ${getLiveCells().size}`} size="small" variant="outlined" />
         <Chip label={`Generation: ${generation}`} size="small" variant="outlined" />
@@ -223,26 +226,30 @@ const ControlsBar = ({
         </div>
       </Stack>
 
-      {optionsOpen && (
-        <OptionsPanel
-          colorSchemes={colorSchemes}
-          colorSchemeKey={colorSchemeKey}
-          setColorSchemeKey={setColorSchemeKey}
-          popWindowSize={popWindowSize}
-          setPopWindowSize={setPopWindowSize}
-          popTolerance={popTolerance}
-          setPopTolerance={setPopTolerance}
-          // Performance props
-          showSpeedGauge={showSpeedGauge}
-          setShowSpeedGauge={setShowSpeedGauge}
-          maxFPS={maxFPS}
-          setMaxFPS={setMaxFPS}
-          maxGPS={maxGPS}
-          setMaxGPS={setMaxGPS}
-          onOk={handleOk}
-          onCancel={handleCancel}
-        />
-      )}
+            <IconButton size="small" onClick={() => setShowChart(true)} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small"/></IconButton>
+        {optionsOpen && (
+          <OptionsPanel
+            colorSchemes={colorSchemes}
+            colorSchemeKey={colorSchemeKey}
+            setColorSchemeKey={setColorSchemeKey}
+            popWindowSize={popWindowSize}
+            setPopWindowSize={setPopWindowSize}
+            popTolerance={popTolerance}
+            setPopTolerance={setPopTolerance}
+            // Performance props
+            showSpeedGauge={showSpeedGauge}
+            setShowSpeedGauge={setShowSpeedGauge}
+            maxFPS={maxFPS}
+            setMaxFPS={setMaxFPS}
+            maxGPS={maxGPS}
+            setMaxGPS={setMaxGPS}
+            onOk={handleOk}
+            onCancel={handleCancel}
+            data-testid-ok="options-ok-button"
+            data-testid-cancel="options-cancel-button"
+          />
+        )}
+  )
 
       <HelpDialog 
         open={helpOpen} 

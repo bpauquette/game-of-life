@@ -20,7 +20,7 @@ SONAR_TOKEN="${SONAR_TOKEN:-sqa_default_local_token}"
 
 echo "🚀 Starting SonarQube analysis for $CURRENT_BRANCH branch..."
 
-# Run SonarQube scan (Community Edition - no branch support)
+# Run SonarQube scan (Community Edition - no branch support) with fresh analysis
 docker run --rm \
     -v "$(pwd):/usr/src" \
     --network game-of-life_default \
@@ -30,10 +30,11 @@ docker run --rm \
     -Dsonar.sources=/usr/src/src,/usr/src/backend \
     -Dsonar.tests=/usr/src/src \
     -Dsonar.test.inclusions="**/*.test.js" \
-    -Dsonar.exclusions="**/node_modules/**,**/build/**,**/public/**,**/coverage/**" \
+    -Dsonar.exclusions="**/node_modules/**,**/build/**,**/public/**,**/coverage/**,**/.scannerwork/**" \
     -Dsonar.host.url=http://sonarqube:9000 \
     -Dsonar.token="$SONAR_TOKEN" \
     -Dsonar.scm.provider=git \
+    -Dsonar.scm.forceReloadAll=true \
     -Dsonar.projectVersion="$COMMIT_HASH"
 
 echo "✅ SonarQube analysis complete for $CURRENT_BRANCH branch"

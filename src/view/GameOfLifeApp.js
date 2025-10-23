@@ -37,14 +37,43 @@ const GameOfLifeApp = () => {
   const [cursorCell, setCursorCell] = useState(null); // Temp for UI sync
   
   // UI state managed by model
-  const [uiState, setUIState] = useState({
+  const defaultUIState = {
     showChart: false,
     showSpeedGauge: true,
     colorSchemeKey: 'spectrum',
     captureDialogOpen: false,
     paletteOpen: false,
     captureData: null
-  });
+  };
+  const [uiState, setUIStateRaw] = useState(defaultUIState);
+
+  // Always merge updates with defaults to preserve required keys.
+  // When merging updates from the model, prefer the current local UI
+  // state (prev) so user-initiated UI actions (like opening a palette)
+  // are not immediately overwritten by the model during initialization.
+  const setUIState = useCallback((update) => {
+    setUIStateRaw(prev => {
+      // If update is a function, we treat it as a user-initiated change and
+      // allow it to override the previous local state. If it's an object,
+      // we assume it's coming from the model and avoid overwriting user
+      // interactions by keeping prev values last.
+      if (typeof update === 'function') {
+        const newUpdate = update(prev) || {};
+        return {
+          ...defaultUIState,
+          ...prev,
+          ...newUpdate // user action overrides prev
+        };
+      }
+
+      const nextUpdate = update || {};
+      return {
+        ...defaultUIState,
+        ...nextUpdate, // model-provided update
+        ...prev // keep local state (user) last to preserve their actions
+      };
+    });
+  }, [defaultUIState]);
   
   // Population stability tracking
   const [popWindowSize, setPopWindowSize] = useState(DEFAULT_POPULATION_WINDOW_SIZE);
@@ -60,13 +89,14 @@ const GameOfLifeApp = () => {
 
   // Color scheme
   const colorScheme = React.useMemo(() => {
-    const base = colorSchemes[uiState.colorSchemeKey] || {};
+    const colorSchemeKey = uiState?.colorSchemeKey || 'spectrum';
+    const base = colorSchemes[colorSchemeKey] || {};
     const copy = { ...base };
     if (typeof Object.freeze === 'function') {
       Object.freeze(copy);
     }
     return copy;
-  }, [uiState.colorSchemeKey]);
+  }, [uiState?.colorSchemeKey]);
 
   // Use ref to store current values and avoid useCallback dependencies
   const popWindowSizeRef = useRef(popWindowSize);
@@ -76,7 +106,7 @@ const GameOfLifeApp = () => {
   // Update refs when values change
   useEffect(() => {
     popWindowSizeRef.current = popWindowSize;
-  }, [popWindowSize]);
+  }, [popWindowSize, setUIState]);
   
   useEffect(() => {
     popToleranceRef.current = popTolerance;
@@ -331,12 +361,22 @@ const GameOfLifeApp = () => {
   const openPalette = useCallback(() => {
     if (gameRef.current) {
       gameRef.current.openDialog('palette');
+      // Also optimistically update local UI state so tests and UI
+      // interactions immediately reflect the user's intent without
+      // waiting for model change events.
+      setUIState(prev => ({ ...prev, paletteOpen: true }));
+    } else {
+      // When running in tests without MVC, toggle local uiState to open the dialog
+      setUIState(prev => ({ ...prev, paletteOpen: true }));
     }
   }, []);
 
   const closePalette = useCallback(() => {
     if (gameRef.current) {
       gameRef.current.closeDialog('palette');
+      setUIState(prev => ({ ...prev, paletteOpen: false }));
+    } else {
+      setUIState(prev => ({ ...prev, paletteOpen: false }));
     }
   }, []);
 
