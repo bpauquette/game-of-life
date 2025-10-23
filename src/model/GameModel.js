@@ -14,12 +14,59 @@ export class GameModel {
     this.viewport = {
       offsetX: 0,
       offsetY: 0,
-      cellSize: 8
+      cellSize: 20, // Default to 20 instead of 8
+      zoom: 1.0,
+      minCellSize: 1,
+      maxCellSize: 200
     };
     
     // Performance tracking
     this.populationHistory = [];
     this.maxPopulationHistory = 1000;
+    
+    // Timestamp tracking for FPS and Gen/s calculation
+    this.lastRenderTime = performance.now();
+    this.lastGenerationTime = performance.now();
+    this.renderTimestamps = [];
+    this.generationTimestamps = [];
+    this.maxTimestamps = 60; // Keep last 60 timestamps for averaging
+    
+    // Color scheme for rendering (not serialized)
+    this.colorScheme = null;
+    
+    // Tool and interaction state (not serialized)
+    this.selectedTool = 'draw'; // Default to draw tool
+    this.selectedShape = null;
+    this.cursorPosition = null;
+    this.lastCursorUpdateTime = 0;
+    this.cursorThrottleDelay = 16; // ~60fps throttling for cursor updates
+    
+    // UI state management (not serialized)
+    this.uiState = {
+      // Dialog states
+      helpOpen: false,
+      aboutOpen: false,
+      optionsOpen: false,
+      paletteOpen: false,
+      captureDialogOpen: false,
+      saveDialogOpen: false,
+      loadDialogOpen: false,
+      
+      // Chart and gauge states  
+      showChart: false,
+      showSpeedGauge: true,
+      
+      // Capture-related state
+      captureData: null,
+      
+      // Performance settings
+      maxFPS: 60,
+      maxGPS: 30,
+      
+      // Population stability settings
+      popWindowSize: 10,
+      popTolerance: 0.1
+    };
     
     // Observers for state changes
     this.observers = new Set();
@@ -94,6 +141,9 @@ export class GameModel {
     // Always increment generation and notify (for performance metrics)
     this.generation++;
     
+    // Track generation timestamp for performance metrics
+    this.trackGeneration();
+    
     // Update population history
     this.populationHistory.push(this.liveCells.size);
     if (this.populationHistory.length > this.maxPopulationHistory) {
@@ -128,14 +178,20 @@ export class GameModel {
   }
 
   // Viewport operations
-  setViewport(offsetX, offsetY, cellSize) {
+  setViewport(offsetX, offsetY, cellSize, zoom) {
     const changed = 
       this.viewport.offsetX !== offsetX ||
       this.viewport.offsetY !== offsetY ||
-      this.viewport.cellSize !== cellSize;
+      this.viewport.cellSize !== cellSize ||
+      (zoom !== undefined && this.viewport.zoom !== zoom);
       
     if (changed) {
-      this.viewport = { offsetX, offsetY, cellSize };
+      this.viewport.offsetX = offsetX;
+      this.viewport.offsetY = offsetY;
+      this.viewport.cellSize = cellSize;
+      if (zoom !== undefined) {
+        this.viewport.zoom = zoom;
+      }
       this.notifyObservers('viewportChanged', { ...this.viewport });
     }
     
@@ -144,6 +200,42 @@ export class GameModel {
 
   getViewport() {
     return { ...this.viewport };
+  }
+
+  // Individual viewport property setters
+  setOffset(offsetX, offsetY) {
+    return this.setViewport(offsetX, offsetY, this.viewport.cellSize);
+  }
+
+  setCellSize(cellSize) {
+    // Handle NaN, null, undefined, and invalid values
+    const safeCellSize = (typeof cellSize === 'number' && !isNaN(cellSize)) ? cellSize : this.viewport.cellSize;
+    const clampedSize = Math.max(this.viewport.minCellSize, Math.min(this.viewport.maxCellSize, safeCellSize));
+    return this.setViewport(this.viewport.offsetX, this.viewport.offsetY, clampedSize);
+  }
+
+  setZoom(zoom) {
+    // Handle NaN, null, undefined, and invalid values
+    const safeZoom = (typeof zoom === 'number' && !isNaN(zoom)) ? zoom : this.viewport.zoom;
+    const clampedZoom = Math.max(0.1, Math.min(10.0, safeZoom));
+    if (this.viewport.zoom !== clampedZoom) {
+      this.viewport.zoom = clampedZoom;
+      this.notifyObservers('viewportChanged', { ...this.viewport });
+      return true;
+    }
+    return false;
+  }
+
+  getOffset() {
+    return { x: this.viewport.offsetX, y: this.viewport.offsetY };
+  }
+
+  getCellSize() {
+    return this.viewport.cellSize;
+  }
+
+  getZoom() {
+    return this.viewport.zoom;
   }
 
   // Shape operations
@@ -242,5 +334,233 @@ export class GameModel {
     }
     
     return 0;
+  }
+
+  // Performance tracking methods (runtime only - not serialized)
+  trackRender() {
+    const now = performance.now();
+    this.renderTimestamps.push(now);
+    
+    // Keep only recent timestamps
+    if (this.renderTimestamps.length > this.maxTimestamps) {
+      this.renderTimestamps.shift();
+    }
+    
+    this.lastRenderTime = now;
+  }
+
+  trackGeneration() {
+    const now = performance.now();
+    this.generationTimestamps.push(now);
+    
+    // Keep only recent timestamps
+    if (this.generationTimestamps.length > this.maxTimestamps) {
+      this.generationTimestamps.shift();
+    }
+    
+    this.lastGenerationTime = now;
+  }
+
+  getFPS() {
+    if (this.renderTimestamps.length < 2) return 0;
+    
+    const now = performance.now();
+    const timestamps = this.renderTimestamps.filter(t => now - t <= 1000); // Last 1 second
+    
+    if (timestamps.length < 2) return 0;
+    
+    const timeSpan = timestamps[timestamps.length - 1] - timestamps[0];
+    if (timeSpan === 0) return 0;
+    
+    return Math.round(((timestamps.length - 1) * 1000) / timeSpan);
+  }
+
+  getGenPerSecond() {
+    if (this.generationTimestamps.length < 2) return 0;
+    
+    const now = performance.now();
+    const timestamps = this.generationTimestamps.filter(t => now - t <= 1000); // Last 1 second
+    
+    if (timestamps.length < 2) return 0;
+    
+    const timeSpan = timestamps[timestamps.length - 1] - timestamps[0];
+    if (timeSpan === 0) return 0;
+    
+    return Math.round(((timestamps.length - 1) * 1000) / timeSpan);
+  }
+
+  getPerformanceMetrics() {
+    return {
+      fps: this.getFPS(),
+      gps: this.getGenPerSecond(),
+      generation: this.generation,
+      population: this.getCellCount(),
+      lastRenderTime: this.lastRenderTime,
+      lastGenerationTime: this.lastGenerationTime
+    };
+  }
+
+  // Color scheme operations (not serialized)
+  setColorScheme(colorScheme) {
+    this.colorScheme = colorScheme;
+    this.notifyObservers('colorSchemeChanged', colorScheme);
+  }
+
+  getColorScheme() {
+    return this.colorScheme;
+  }
+
+  // Tool and interaction state operations (not serialized)
+  setSelectedTool(tool) {
+    if (this.selectedTool !== tool) {
+      this.selectedTool = tool;
+      this.notifyObservers('selectedToolChanged', tool);
+    }
+  }
+
+  getSelectedTool() {
+    return this.selectedTool;
+  }
+
+  setSelectedShape(shape) {
+    if (this.selectedShape !== shape) {
+      this.selectedShape = shape;
+      this.notifyObservers('selectedShapeChanged', shape);
+    }
+  }
+
+  getSelectedShape() {
+    return this.selectedShape;
+  }
+
+  setCursorPosition(position) {
+    // Only update if position actually changed
+    const changed = (this.cursorPosition === null && position !== null) ||
+      (this.cursorPosition !== null && position === null) ||
+      (this.cursorPosition !== null && position !== null && 
+       (this.cursorPosition.x !== position.x || this.cursorPosition.y !== position.y));
+    
+    if (!changed) {
+      return;
+    }
+    
+    const now = performance.now();
+    
+    // Throttle cursor updates to avoid excessive notifications
+    if (now - this.lastCursorUpdateTime < this.cursorThrottleDelay) {
+      return;
+    }
+    
+    this.cursorPosition = position ? { ...position } : null;
+    this.lastCursorUpdateTime = now;
+    this.notifyObservers('cursorPositionChanged', this.cursorPosition);
+  }
+
+  getCursorPosition() {
+    return this.cursorPosition;
+  }
+
+  // UI state management operations (not serialized)
+  openDialog(dialogName) {
+    if (this.uiState[dialogName + 'Open'] !== undefined) {
+      this.uiState[dialogName + 'Open'] = true;
+      this.notifyObservers('uiStateChanged', { 
+        type: 'dialogOpen', 
+        dialog: dialogName, 
+        open: true 
+      });
+    }
+  }
+
+  closeDialog(dialogName) {
+    if (this.uiState[dialogName + 'Open'] !== undefined) {
+      this.uiState[dialogName + 'Open'] = false;
+      this.notifyObservers('uiStateChanged', { 
+        type: 'dialogClose', 
+        dialog: dialogName, 
+        open: false 
+      });
+    }
+  }
+
+  isDialogOpen(dialogName) {
+    return this.uiState[dialogName + 'Open'] || false;
+  }
+
+  setUIState(key, value) {
+    if (this.uiState[key] !== value) {
+      this.uiState[key] = value;
+      this.notifyObservers('uiStateChanged', { 
+        type: 'stateChange', 
+        key, 
+        value 
+      });
+    }
+  }
+
+  getUIState(key) {
+    return this.uiState[key];
+  }
+
+  getAllUIState() {
+    return { ...this.uiState };
+  }
+
+  // Convenience methods for common UI operations
+  toggleChart() {
+    this.setUIState('showChart', !this.uiState.showChart);
+  }
+
+  toggleSpeedGauge() {
+    this.setUIState('showSpeedGauge', !this.uiState.showSpeedGauge);
+  }
+
+  setCaptureData(data) {
+    this.uiState.captureData = data;
+    if (data) {
+      this.openDialog('captureDialog');
+    }
+    this.notifyObservers('uiStateChanged', { 
+      type: 'captureDataChanged', 
+      data 
+    });
+  }
+
+  getCaptureData() {
+    return this.uiState.captureData;
+  }
+
+  // Performance settings
+  setMaxFPS(fps) {
+    this.setUIState('maxFPS', Math.max(1, Math.min(240, fps)));
+  }
+
+  getMaxFPS() {
+    return this.uiState.maxFPS;
+  }
+
+  setMaxGPS(gps) {
+    this.setUIState('maxGPS', Math.max(1, Math.min(120, gps)));
+  }
+
+  getMaxGPS() {
+    return this.uiState.maxGPS;
+  }
+
+  // Population stability settings
+  setPopulationWindowSize(size) {
+    this.setUIState('popWindowSize', Math.max(5, Math.min(100, size)));
+  }
+
+  getPopulationWindowSize() {
+    return this.uiState.popWindowSize;
+  }
+
+  setPopulationTolerance(tolerance) {
+    this.setUIState('popTolerance', Math.max(0.01, Math.min(1.0, tolerance)));
+  }
+
+  getPopulationTolerance() {
+    return this.uiState.popTolerance;
   }
 }

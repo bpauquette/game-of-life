@@ -15,12 +15,9 @@ export class GameController {
     };
 
     // Controller state
-    this.selectedTool = 'draw';
     this.toolMap = {};
     this.toolState = {};
     this.mouseState = { isDown: false };
-    this.selectedShape = null;
-    this.cursorPosition = null;
 
     // Game loop state
     this.animationId = null;
@@ -109,44 +106,52 @@ export class GameController {
   }
 
   // Tool management
-  registerTool(name, tool) {
-    this.toolMap[name] = tool;
+  registerTool(name, toolObject) {
+    if (typeof toolObject !== 'object' || !toolObject) {
+      throw new Error(`Tool '${name}' must be an object`);
+    }
+    
+    this.toolMap[name] = toolObject;
   }
 
   setSelectedTool(toolName) {
-    console.log('Controller: setSelectedTool called with:', toolName);
-    console.log('Controller: Available tools:', Object.keys(this.toolMap));
-    if (this.toolMap[toolName] && this.selectedTool !== toolName) {
-      console.log('Controller: Setting tool from', this.selectedTool, 'to', toolName);
+    const currentTool = this.model.getSelectedTool();
+    if (this.toolMap[toolName] && currentTool !== toolName) {
       // Clear previous tool state
       this.toolState = {};
-      this.selectedTool = toolName;
       this.view.clearOverlays();
       
       // Clear selected shape when switching away from shapes tool
       if (toolName !== 'shapes') {
-        this.selectedShape = null;
+        this.model.setSelectedShape(null);
       }
+      
+      // The model state is managed by GameMVC, we just handle tool logic here
     }
   }
 
   getSelectedTool() {
-    return this.selectedTool;
+    return this.model.getSelectedTool();
   }
 
   // Shape management
   setSelectedShape(shape) {
-    this.selectedShape = shape;
     if (shape) {
-      this.setSelectedTool('shapes');
+      // When selecting a shape, auto-switch to shapes tool
+      this.model.setSelectedTool('shapes');
     }
+    // The model state is managed by GameMVC
+  }
+
+  getSelectedShape() {
+    return this.model.getSelectedShape();
   }
 
   // Mouse event handlers
   handleMouseDown(cellCoords, event) {
     this.mouseState.isDown = true;
     
-    const tool = this.toolMap[this.selectedTool];
+    const tool = this.toolMap[this.model.getSelectedTool()];
     if (tool?.onMouseDown) {
       tool.onMouseDown(this.toolState, cellCoords.x, cellCoords.y);
       this.updateToolOverlay();
@@ -154,11 +159,11 @@ export class GameController {
   }
 
   handleMouseMove(cellCoords, event) {
-    this.cursorPosition = cellCoords;
+    this.model.setCursorPosition(cellCoords);
     
     // Only process tool events if mouse is down
     if (this.mouseState.isDown) {
-      const tool = this.toolMap[this.selectedTool];
+      const tool = this.toolMap[this.model.getSelectedTool()];
       if (tool?.onMouseMove) {
         tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, (x, y, alive) => {
           this.model.setCellAlive(x, y, alive);
@@ -167,7 +172,7 @@ export class GameController {
       }
     } else {
       // Update shape preview for shapes tool
-      if (this.selectedTool === 'shapes' && this.selectedShape) {
+      if (this.model.getSelectedTool() === 'shapes' && this.model.getSelectedShape()) {
         this.toolState.previewPosition = cellCoords;
         this.updateToolOverlay();
       }
@@ -180,7 +185,7 @@ export class GameController {
   }
 
   handleToolMouseUp(cellCoords = null) {
-    const tool = this.toolMap[this.selectedTool];
+    const tool = this.toolMap[this.model.getSelectedTool()];
     if (tool?.onMouseUp) {
       if (tool.onMouseUp.length === 1) {
         tool.onMouseUp(this.toolState);
@@ -194,10 +199,10 @@ export class GameController {
   }
 
   handleClick(cellCoords, event) {
-    if (this.selectedTool === 'draw') {
+    if (this.model.getSelectedTool() === 'draw') {
       this.model.setCellAlive(cellCoords.x, cellCoords.y, true);
-    } else if (this.selectedTool === 'shapes' && this.selectedShape) {
-      this.model.placeShape(cellCoords.x, cellCoords.y, this.selectedShape);
+    } else if (this.model.getSelectedTool() === 'shapes' && this.model.getSelectedShape()) {
+      this.model.placeShape(cellCoords.x, cellCoords.y, this.model.getSelectedShape());
     }
   }
 
@@ -389,7 +394,7 @@ export class GameController {
   updateToolOverlay() {
     this.view.clearOverlays();
     
-    const tool = this.toolMap[this.selectedTool];
+    const tool = this.toolMap[this.model.getSelectedTool()];
     if (tool?.drawOverlay && Object.keys(this.toolState).length > 0) {
       const viewport = this.model.getViewport();
       const { ToolOverlayView } = require('../view/GameView');
@@ -398,8 +403,9 @@ export class GameController {
     }
     
     // Shape preview overlay
-    if (this.selectedTool === 'shapes' && this.selectedShape && this.toolState.previewPosition) {
-      const cells = this.selectedShape.cells || this.selectedShape.pattern || [];
+    if (this.model.getSelectedTool() === 'shapes' && this.model.getSelectedShape() && this.toolState.previewPosition) {
+      const selectedShape = this.model.getSelectedShape();
+      const cells = selectedShape.cells || selectedShape.pattern || [];
       const { ShapePreviewView } = require('../view/GameView');
       const shapeOverlay = new ShapePreviewView(cells, this.toolState.previewPosition);
       this.view.addOverlay(shapeOverlay);
@@ -428,7 +434,7 @@ export class GameController {
 
   // State management
   getCursorPosition() {
-    return this.cursorPosition;
+    return this.model.getCursorPosition();
   }
 
   getGameStats() {
@@ -437,8 +443,8 @@ export class GameController {
       population: this.model.getCellCount(),
       isRunning: this.model.getIsRunning(),
       viewport: this.model.getViewport(),
-      selectedTool: this.selectedTool,
-      hasSelectedShape: !!this.selectedShape
+      selectedTool: this.model.getSelectedTool(),
+      hasSelectedShape: !!this.model.getSelectedShape()
     };
   }
 
@@ -446,7 +452,7 @@ export class GameController {
   exportState() {
     return {
       model: this.model.exportState(),
-      selectedTool: this.selectedTool,
+      selectedTool: this.model.getSelectedTool(),
       selectedShape: this.selectedShape
     };
   }

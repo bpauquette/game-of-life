@@ -4,9 +4,10 @@
 import { GameRenderer } from './GameRenderer';
 
 export class GameView {
-  constructor(canvas, options = {}) {
+  constructor(canvas, options = {}, model = null) {
     this.canvas = canvas;
     this.renderer = new GameRenderer(canvas, options);
+    this.model = model; // Reference to model for performance tracking
     
     // View state
     this.overlays = [];
@@ -52,11 +53,19 @@ export class GameView {
   render(liveCells, viewport) {
     if (!this.isVisible) return;
     
+    // Track render timestamp for performance metrics
+    if (this.model?.trackRender) {
+      this.model.trackRender();
+    }
+    
     // Update viewport
     this.renderer.setViewport(viewport.offsetX, viewport.offsetY, viewport.cellSize);
     
+    // Get colorScheme from model
+    const colorScheme = this.model?.getColorScheme();
+    
     // Render everything
-    this.renderer.render(liveCells, this.overlays);
+    this.renderer.render(liveCells, this.overlays, colorScheme);
   }
 
   clear() {

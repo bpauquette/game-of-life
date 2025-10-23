@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import ControlsBar from './ControlsBar';
 
 // Mock child components
 jest.mock('./OptionsPanel', () => {
@@ -48,9 +49,6 @@ jest.mock('./ToolStatus', () => {
   
   return MockToolStatus;
 });
-
-// Import after mocks to avoid circular dependency issues
-import ControlsBar from './ControlsBar';
 
 describe('ControlsBar', () => {
   const mockShapes = [

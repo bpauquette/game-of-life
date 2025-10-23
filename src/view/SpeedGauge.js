@@ -7,100 +7,44 @@ import './SpeedGauge.css';
  */
 const SpeedGauge = ({ 
   isVisible = true, 
-  generation = 0, 
-  liveCellsCount = 0,
+  gameRef = null, // Reference to the game MVC instance
   onToggleVisibility,
   position = { top: 10, right: 10 }
 }) => {
   const [metrics, setMetrics] = useState({
     fps: 0,
-    gps: 0, // generations per second
-    avgFrameTime: 0,
-    peakCells: 0,
-    renderTime: 0
+    gps: 0,
+    generation: 0,
+    population: 0,
+    peakCells: 0
   });
 
   const [isExpanded, setIsExpanded] = useState(false);
-  const frameCountRef = useRef(0);
-  const lastTimeRef = useRef(performance.now());
-  const lastGenerationRef = useRef(generation);
-  const frameTimesRef = useRef([]);
-  const renderTimesRef = useRef([]);
   const peakCellsRef = useRef(0);
 
-  // Update metrics every second
+  // Update metrics every second by getting them from the game model
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = performance.now();
-      const deltaTime = now - lastTimeRef.current;
-      
-      if (deltaTime >= 1000) { // Update every second
-        const fps = Math.round((frameCountRef.current * 1000) / deltaTime);
-        const gps = Math.round(((generation - lastGenerationRef.current) * 1000) / deltaTime);
+      if (gameRef?.current?.getPerformanceMetrics) {
+        const modelMetrics = gameRef.current.getPerformanceMetrics();
         
-        // Calculate average frame time from recent samples
-        const frameTimes = frameTimesRef.current;
-        const avgFrameTime = frameTimes.length > 0 
-          ? frameTimes.reduce((sum, time) => sum + time, 0) / frameTimes.length 
-          : 0;
-
-        // Calculate average render time
-        const renderTimes = renderTimesRef.current;
-        const avgRenderTime = renderTimes.length > 0
-          ? renderTimes.reduce((sum, time) => sum + time, 0) / renderTimes.length
-          : 0;
-
         // Track peak cell count
-        if (liveCellsCount > peakCellsRef.current) {
-          peakCellsRef.current = liveCellsCount;
+        if (modelMetrics.population > peakCellsRef.current) {
+          peakCellsRef.current = modelMetrics.population;
         }
-
+        
         setMetrics({
-          fps,
-          gps,
-          avgFrameTime: Math.round(avgFrameTime * 100) / 100,
-          peakCells: peakCellsRef.current,
-          renderTime: Math.round(avgRenderTime * 100) / 100
+          fps: modelMetrics.fps || 0,
+          gps: modelMetrics.gps || 0,
+          generation: modelMetrics.generation || 0,
+          population: modelMetrics.population || 0,
+          peakCells: peakCellsRef.current
         });
-
-        // Reset counters
-        frameCountRef.current = 0;
-        lastTimeRef.current = now;
-        lastGenerationRef.current = generation;
-        frameTimesRef.current = [];
-        renderTimesRef.current = [];
       }
-    }, 1000);
+    }, 250); // Update more frequently for better responsiveness
 
     return () => clearInterval(interval);
-  }, [generation, liveCellsCount]);
-
-  // Expose frame tracking method for external use
-  useEffect(() => {
-    const trackFrame = (frameTime, renderTime) => {
-      frameCountRef.current++;
-      
-      // Keep only recent frame times (max 60 samples)
-      frameTimesRef.current.push(frameTime);
-      if (frameTimesRef.current.length > 60) {
-        frameTimesRef.current.shift();
-      }
-      
-      if (renderTime !== undefined) {
-        renderTimesRef.current.push(renderTime);
-        if (renderTimesRef.current.length > 60) {
-          renderTimesRef.current.shift();
-        }
-      }
-    };
-
-    // Attach to window for global access
-    window.speedGaugeTracker = trackFrame;
-    
-    return () => {
-      delete window.speedGaugeTracker;
-    };
-  }, []);
+  }, [gameRef]);
 
   if (!isVisible) {
     return (
@@ -167,7 +111,7 @@ const SpeedGauge = ({
           <>
             <div className="metric-row">
               <span className="metric-label">Cells:</span>
-              <span className="metric-value">{liveCellsCount.toLocaleString()}</span>
+              <span className="metric-value">{metrics.population.toLocaleString()}</span>
             </div>
             
             <div className="metric-row">
@@ -176,18 +120,8 @@ const SpeedGauge = ({
             </div>
             
             <div className="metric-row">
-              <span className="metric-label">Frame:</span>
-              <span className="metric-value">{metrics.avgFrameTime}ms</span>
-            </div>
-            
-            <div className="metric-row">
-              <span className="metric-label">Render:</span>
-              <span className="metric-value">{metrics.renderTime}ms</span>
-            </div>
-            
-            <div className="metric-row">
               <span className="metric-label">Gen:</span>
-              <span className="metric-value">#{generation}</span>
+              <span className="metric-value">#{metrics.generation}</span>
             </div>
 
             <div className="performance-indicator">

@@ -33,7 +33,6 @@ export class GameRenderer {
     Object.assign(this.options, newOptions);
     // Clear color cache since colors changed
     this.colorCache.clear();
-    console.log('🎨 Renderer options updated:', this.options);
   }
 
   /**
@@ -61,7 +60,6 @@ export class GameRenderer {
         displayHeight = 600;
       }
     }
-    console.log('DPR:', dpr);
     
     // Ensure minimum size and handle edge cases
     displayWidth = Math.max(displayWidth, 200);
@@ -74,12 +72,6 @@ export class GameRenderer {
     // Set canvas CSS size (what user sees)
     this.canvas.style.width = displayWidth + 'px';
     this.canvas.style.height = displayHeight + 'px';
-    
-    console.log('Final canvas setup:', { 
-      cssSize: { width: displayWidth, height: displayHeight },
-      canvasSize: { width: this.canvas.width, height: this.canvas.height },
-      dpr
-    });
     
     // Scale drawing context for high-DPI
     this.ctx.scale(dpr, dpr);
@@ -182,6 +174,12 @@ export class GameRenderer {
    * Get cached cell color
    */
   getCellColor(cellX, cellY) {
+    // Use colorScheme if available
+    if (this.currentColorScheme && this.currentColorScheme.getCellColor) {
+      return this.currentColorScheme.getCellColor(cellX, cellY);
+    }
+    
+    // Fallback to cached default color calculation
     const key = `${cellX},${cellY}`;
     let color = this.colorCache.get(key);
     
@@ -361,7 +359,10 @@ export class GameRenderer {
   /**
    * Main render method - draws everything
    */
-  render(liveCells, overlays = []) {
+  render(liveCells, overlays = [], colorScheme = null) {
+    // Store colorScheme for use in getCellColor
+    this.currentColorScheme = colorScheme;
+    
     // Draw grid background
     this.drawGrid();
     

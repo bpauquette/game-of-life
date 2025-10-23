@@ -22,22 +22,30 @@ const RECENT_SHAPES_TOP_OFFSET = 80;
 const RECENT_SHAPES_Z_INDEX = 20;
 
 const GameOfLifeApp = () => {
+  // console.log('🏗️ GameOfLifeApp component rendering...'); // Temporarily disabled to reduce log spam
+  
   // Refs
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
   
   // React state for UI components
   const [generation, setGeneration] = useState(0);
-  const [cellCount, setCellCount] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  const [selectedTool, setSelectedToolState] = useState('draw');
-  const [selectedShape, setSelectedShapeState] = useState(null);
-  const [cursorCell, setCursorCell] = useState(null);
   
-  // UI state
-  const [showChart, setShowChart] = useState(false);
-  const [showSpeedGauge, setShowSpeedGauge] = useState(true);
-  const [colorSchemeKey, setColorSchemeKey] = useState('spectrum');
+  // Tool and interaction state now managed by model
+  const [selectedTool, setSelectedToolState] = useState('draw'); // Temp for UI sync
+  const [selectedShape, setSelectedShapeState] = useState(null); // Temp for UI sync  
+  const [cursorCell, setCursorCell] = useState(null); // Temp for UI sync
+  
+  // UI state managed by model
+  const [uiState, setUIState] = useState({
+    showChart: false,
+    showSpeedGauge: true,
+    colorSchemeKey: 'spectrum',
+    captureDialogOpen: false,
+    paletteOpen: false,
+    captureData: null
+  });
   
   // Population stability tracking
   const [popWindowSize, setPopWindowSize] = useState(DEFAULT_POPULATION_WINDOW_SIZE);
@@ -45,31 +53,53 @@ const GameOfLifeApp = () => {
   const [steadyInfo, setSteadyInfo] = useState({ steady: false, period: 0, popChanging: false });
   const steadyDetectedRef = useRef(false);
   
-  // Performance tracking
-  const [maxFPS, setMaxFPS] = useState(60);
-  const [maxGPS, setMaxGPS] = useState(30);
-  
-  // Capture dialog state
-  const [captureDialogOpen, setCaptureDialogOpen] = useState(false);
-  const [captureData] = useState(null);
+  // Performance tracking managed by model
+  const [performanceSettings, setPerformanceSettings] = useState({
+    maxFPS: 60,
+    maxGPS: 30
+  });
+
+  // Debug logging for state changes (temporarily disabled - functionality working)
+  // useEffect(() => { console.log('🔄 generation changed:', generation); }, [generation]);
+  // useEffect(() => { console.log('🔄 cellCount changed:', cellCount); }, [cellCount]);
+  // useEffect(() => { console.log('🔄 isRunning changed:', isRunning); }, [isRunning]);
+  // useEffect(() => { console.log('🔄 selectedTool changed:', selectedTool); }, [selectedTool]);
+  // useEffect(() => { console.log('🔄 popWindowSize changed:', popWindowSize); }, [popWindowSize]);
+  // useEffect(() => { console.log('🔄 popTolerance changed:', popTolerance); }, [popTolerance]);
+  // useEffect(() => { console.log('🔄 cursorCell changed:', cursorCell); }, [cursorCell]); // Disabled to reduce log spam
 
   // Color scheme
   const colorScheme = React.useMemo(() => {
-    const base = colorSchemes[colorSchemeKey] || {};
+    // console.log('🎨 colorScheme useMemo recalculating for key:', uiState.colorSchemeKey); // Debug logging disabled
+    const base = colorSchemes[uiState.colorSchemeKey] || {};
     const copy = { ...base };
     if (typeof Object.freeze === 'function') {
       Object.freeze(copy);
     }
     return copy;
-  }, [colorSchemeKey]);
+  }, [uiState.colorSchemeKey]);
+
+  // Use ref to store current values and avoid useCallback dependencies
+  const popWindowSizeRef = useRef(popWindowSize);
+  const popToleranceRef = useRef(popTolerance);
 
   // Stability detection
+  // Update refs when values change
+  useEffect(() => {
+    popWindowSizeRef.current = popWindowSize;
+  }, [popWindowSize]);
+  
+  useEffect(() => {
+    popToleranceRef.current = popTolerance;
+  }, [popTolerance]);
+  
   const updateStabilityDetection = useCallback((game) => {
+    // console.log('🔄 updateStabilityDetection useCallback recreated'); // Temporarily disabled
     const populationHistory = game.getPopulationHistory();
     const liveCells = game.getLiveCells();
     
-    // Population stability
-    const popSteady = isPopulationStable(populationHistory, popWindowSize, popTolerance);
+    // Population stability - use current ref values
+    const popSteady = isPopulationStable(populationHistory, popWindowSizeRef.current, popToleranceRef.current);
     
     // Pattern period detection  
     const period = game.detectPeriod();
@@ -87,40 +117,111 @@ const GameOfLifeApp = () => {
     } else if (!popSteady) {
       steadyDetectedRef.current = false;
     }
-  }, [popWindowSize, popTolerance]);
+  }, []); // No dependencies - use refs for current values
 
-  // Initialize game
+  // Initialize MVC system once canvas is available
   useEffect(() => {
-    console.log('🎮 Game of Life MVC System Initializing...');
-    if (!canvasRef.current) return;
-    
-    const game = new GameMVC(canvasRef.current, {
-      view: {
-        backgroundColor: colorScheme.backgroundColor || '#000000',
-        gridColor: colorScheme.gridColor || '#202020',
-        cellSaturation: colorScheme.cellSaturation || 80,
-        cellLightness: colorScheme.cellLightness || 55
+    if (!canvasRef.current || gameRef.current) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    try {
+      const options = { 
+        view: { showCursor: true, colorScheme } 
+      };
+      const game = new GameMVC(canvas, options);
+      gameRef.current = game;
+
+      // Setup model observers to sync React state
+      game.onModelChange((event, data) => {
+        switch (event) {
+          case 'selectedToolChanged':
+            setSelectedToolState(data);
+            break;
+          case 'selectedShapeChanged':
+            setSelectedShapeState(data);
+            break;
+          case 'cursorPositionChanged':
+            setCursorCell(data);
+            break;
+          case 'gameStep':
+            setGeneration(data.generation);
+            break;
+          case 'runningStateChanged':
+            setIsRunning(data.isRunning);
+            break;
+          case 'uiStateChanged':
+            setUIState(data);
+            break;
+          case 'performanceSettingsChanged':
+            setPerformanceSettings(data);
+            break;
+          default:
+            // Other events not handled by this component
+            break;
+        }
+      });
+
+      // Wait for all tools to load before enabling interactions
+      game.waitForTools().then(() => {
+        
+        // Initialize React state from model
+        setSelectedToolState(game.getSelectedTool());
+        setSelectedShapeState(game.getSelectedShape());
+        setCursorCell(game.getCursorPosition());
+        setGeneration(game.getGeneration());
+        setIsRunning(game.getIsRunning());
+        setUIState(game.getUIState());
+        setPerformanceSettings(game.getPerformanceSettings());
+      });
+
+    } catch (error) {
+      console.error('❌ Failed to create MVC Game System:', error);
+    }
+
+    return () => {
+      if (gameRef.current) {
+        // Note: GameMVC doesn't have a destroy method yet
+        gameRef.current = null;
       }
-    });
+    };
+  }, [colorScheme]); // Re-initialize when color scheme changes  
+  
+  // Update color scheme in model when it changes
+  useEffect(() => {
+    if (gameRef.current && colorScheme) {
+      console.log('🎨 Updating color scheme to:', uiState.colorSchemeKey);
+      // Set colorScheme in the model for rendering
+      gameRef.current.setColorScheme(colorScheme);
+      // Update renderer background/grid colors
+      gameRef.current.view.renderer.updateOptions({
+        backgroundColor: colorScheme.background || colorScheme.backgroundColor || '#000000',
+        gridColor: colorScheme.gridColor || '#202020'
+      });
+      // Force re-render with new colors
+      gameRef.current.controller.requestRender();
+    }
+  }, [colorScheme, uiState.colorSchemeKey]);
+
+  // Setup game event listeners (separate from game creation to avoid circular dependencies)
+  useEffect(() => {
+    if (!gameRef.current) return;
     
-    gameRef.current = game;
-    console.log('✅ MVC Game System Created Successfully');
-    console.log('Available tools:', Object.keys(game.controller?.toolMap || {}));
+    const game = gameRef.current;
     
     // Setup game event listeners
     game.onModelChange((event, data) => {
       switch (event) {
         case 'gameStep':
           setGeneration(data.generation);
-          setCellCount(data.population);
           updateStabilityDetection(game);
           break;
         case 'cellChanged':
-          setCellCount(game.getCellCount());
+          // No longer tracking cellCount in React state
           break;
         case 'gameCleared':
           setGeneration(0);
-          setCellCount(0);
           steadyDetectedRef.current = false;
           setSteadyInfo({ steady: false, period: 0, popChanging: false });
           break;
@@ -132,55 +233,87 @@ const GameOfLifeApp = () => {
           break;
       }
     });
-    
+
     // Setup performance tracking
     if (window.speedGaugeTracker) {
       game.addPerformanceCallback((frameTime) => {
         window.speedGaugeTracker(frameTime, frameTime);
       });
     }
-    
-    // Cursor tracking
+
+    // Cursor tracking temporarily disabled to fix infinite render loop
+    // TODO: Re-enable with proper throttling once render loop is fixed
+    /*
     let rafId = null;
+    let lastCursorUpdate = 0;
+    const CURSOR_THROTTLE_MS = 16; // ~60fps max
+    
     game.view.on('mouseMove', ({ cellCoords }) => {
-      if (rafId) return;
+      const now = Date.now();
+      if (rafId || (now - lastCursorUpdate) < CURSOR_THROTTLE_MS) return;
+      
       rafId = requestAnimationFrame(() => {
         setCursorCell(cellCoords);
+        lastCursorUpdate = Date.now();
         rafId = null;
       });
     });
-    
-    return () => {
-      game.destroy();
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, []); // Remove colorScheme from dependency - don't recreate game on color change!
+    */
 
-  // Update colors when color scheme changes (without recreating game)
-  useEffect(() => {
-    if (gameRef.current && colorScheme) {
-      console.log('🎨 Updating color scheme to:', colorSchemeKey);
-      // Update renderer colors without destroying the game
-      gameRef.current.view.renderer.updateOptions({
-        backgroundColor: colorScheme.backgroundColor || '#000000',
-        gridColor: colorScheme.gridColor || '#202020',
-        cellSaturation: colorScheme.cellSaturation || 80,
-        cellLightness: colorScheme.cellLightness || 55
-      });
-      // Force re-render with new colors
-      gameRef.current.controller.requestRender();
+    return () => {
+      // No cleanup needed when cursor tracking is disabled
+    };
+  }, [updateStabilityDetection]); // Only re-run when updateStabilityDetection changes
+
+  // UI State management functions
+  const setColorSchemeKey = useCallback((key) => {
+    if (gameRef.current) {
+      gameRef.current.setUIState({ colorSchemeKey: key });
     }
-  }, [colorScheme, colorSchemeKey]);
+  }, []);
+
+  const setShowChart = useCallback((show) => {
+    if (gameRef.current) {
+      gameRef.current.setUIState({ showChart: show });
+    }
+  }, []);
+
+  const setShowSpeedGauge = useCallback((show) => {
+    if (gameRef.current) {
+      gameRef.current.setUIState({ showSpeedGauge: show });
+    }
+  }, []);
+
+  const setMaxFPS = useCallback((maxFPS) => {
+    if (gameRef.current) {
+      gameRef.current.setPerformanceSettings({ maxFPS });
+    }
+  }, []);
+
+  const setMaxGPS = useCallback((maxGPS) => {
+    if (gameRef.current) {
+      gameRef.current.setPerformanceSettings({ maxGPS });
+    }
+  }, []);
+
+  const setCaptureDialogOpen = useCallback((open) => {
+    if (gameRef.current) {
+      gameRef.current.setUIState({ captureDialogOpen: open });
+    }
+  }, []);
+
+  // Component lifecycle tracking
+  useEffect(() => {
+    return () => {
+      // Component unmounting
+    };
+  }, []);
 
   // Tool management
   const setSelectedTool = useCallback((tool) => {
-    console.log('React: Setting tool to:', tool);
     if (gameRef.current) {
       gameRef.current.setSelectedTool(tool);
       setSelectedToolState(tool);
-      console.log('React: Tool set in MVC system');
-    } else {
-      console.log('React: gameRef.current is null!');
     }
   }, []);
 
@@ -193,42 +326,28 @@ const GameOfLifeApp = () => {
 
   // Game controls
   const step = useCallback(() => {
-    console.log('⏭️ STEP button clicked');
     if (gameRef.current) {
-      console.log('Calling gameRef.current.step()');
       gameRef.current.step();
-    } else {
-      console.error('gameRef.current is null - cannot step');
     }
   }, []);
 
   const clear = useCallback(() => {
-    console.log('🗑️ CLEAR button clicked');
     if (gameRef.current) {
-      console.log('Calling gameRef.current.clear()');
       gameRef.current.clear();
-    } else {
-      console.error('gameRef.current is null - cannot clear');
     }
   }, []);
 
   const setRunningState = useCallback((running) => {
-    console.log(`🎮 ${running ? 'START' : 'STOP'} button clicked`);
     if (gameRef.current) {
-      console.log('Calling gameRef.current.setRunning with:', running);
       gameRef.current.setRunning(running);
-    } else {
-      console.error('gameRef.current is null - cannot set running state');
+      setIsRunning(running);
     }
   }, []);
 
   // Shape management
   const {
     recentShapes,
-    paletteOpen,
     selectShape,
-    openPalette,
-    closePalette,
     selectShapeAndClosePalette
   } = useShapeManager({
     selectedShape,
@@ -238,6 +357,19 @@ const GameOfLifeApp = () => {
     toolStateRef: { current: {} }, // MVC handles tool state internally
     drawWithOverlay: () => {} // MVC handles rendering automatically
   });
+
+  // Centralized palette management through model
+  const openPalette = useCallback(() => {
+    if (gameRef.current) {
+      gameRef.current.openDialog('palette');
+    }
+  }, []);
+
+  const closePalette = useCallback(() => {
+    if (gameRef.current) {
+      gameRef.current.closeDialog('palette');
+    }
+  }, []);
 
 
 
@@ -335,7 +467,7 @@ const GameOfLifeApp = () => {
       <ControlsBar
         selectedTool={selectedTool}
         setSelectedTool={setSelectedTool}
-        colorSchemeKey={colorSchemeKey}
+        colorSchemeKey={uiState.colorSchemeKey}
         setColorSchemeKey={setColorSchemeKey}
         colorSchemes={colorSchemes}
         isRunning={isRunning}
@@ -365,29 +497,29 @@ const GameOfLifeApp = () => {
         toolStateRef={{ current: {} }} // MVC handles tool state
         cursorCell={cursorCell}
         onLoadGrid={handleLoadGrid}
-        showSpeedGauge={showSpeedGauge}
+        showSpeedGauge={uiState.showSpeedGauge}
         setShowSpeedGauge={setShowSpeedGauge}
-        maxFPS={maxFPS}
+        maxFPS={performanceSettings.maxFPS}
         setMaxFPS={setMaxFPS}
-        maxGPS={maxGPS}
+        maxGPS={performanceSettings.maxGPS}
         setMaxGPS={setMaxGPS}
       />
 
-      {paletteOpen && (
+      {uiState.paletteOpen && (
         <ShapePaletteDialog
-          open={paletteOpen}
+          open={uiState.paletteOpen}
           onClose={() => closePalette(true)}
           onSelectShape={selectShapeAndClosePalette}
           backendBase={process.env.REACT_APP_BACKEND_BASE || 'http://localhost:55000'}
-          colorScheme={colorSchemes ? (colorSchemes[colorSchemeKey] || {}) : {}}
+          colorScheme={colorSchemes ? (colorSchemes[uiState.colorSchemeKey] || {}) : {}}
         />
       )}
 
-      {captureDialogOpen && (
+      {uiState.captureDialogOpen && (
         <CaptureShapeDialog
-          open={captureDialogOpen}
+          open={uiState.captureDialogOpen}
           onClose={() => setCaptureDialogOpen(false)}
-          captureData={captureData}
+          captureData={uiState.captureData}
           onSave={handleSaveCapturedShape}
         />
       )}
@@ -402,7 +534,7 @@ const GameOfLifeApp = () => {
         }}
       />
 
-      {showChart && (
+      {uiState.showChart && (
         <PopulationChart 
           history={gameRef.current?.getPopulationHistory() || []} 
           onClose={() => setShowChart(false)}
@@ -411,9 +543,8 @@ const GameOfLifeApp = () => {
       )}
       
       <SpeedGauge
-        isVisible={showSpeedGauge}
-        generation={generation}
-        liveCellsCount={cellCount}
+        isVisible={uiState.showSpeedGauge}
+        gameRef={gameRef}
         onToggleVisibility={setShowSpeedGauge}
         position={{ top: 10, right: 10 }}
       />
@@ -425,5 +556,8 @@ const GameOfLifeApp = () => {
     </div>
   );
 };
+
+// Track component lifecycle
+GameOfLifeApp.displayName = 'GameOfLifeApp';
 
 export default GameOfLifeApp;

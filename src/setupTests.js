@@ -22,11 +22,21 @@ const mockContext = {
   drawImage: jest.fn(),
   setTransform: jest.fn(),
   translate: jest.fn(),
-  clearRect: jest.fn()
+  clearRect: jest.fn(),
+  fill: jest.fn(),
+  arc: jest.fn(),
+  closePath: jest.fn()
 };
 
 // Mock HTMLCanvasElement
-HTMLCanvasElement.prototype.getContext = jest.fn(() => mockContext);
+const mockGetContext = jest.fn((contextType) => {
+  if (contextType === '2d') {
+    return mockContext;
+  }
+  return null;
+});
+
+HTMLCanvasElement.prototype.getContext = mockGetContext;
 HTMLCanvasElement.prototype.getBoundingClientRect = jest.fn(() => ({
   width: 800,
   height: 600,
