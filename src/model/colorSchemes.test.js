@@ -1,10 +1,21 @@
+/* eslint-disable sonarjs/no-duplicate-string */
 import { colorSchemes } from './colorSchemes';
 
 describe('colorSchemes', () => {
+  const SPECTRUM_NAME = 'Spectrum Pulse';
+  const SPECTRUM_BG = '#000';
+  const NEON_NAME = 'Neon Grid';
+  const NEON_BG = '#0a0a1a';
+  const BIO_NAME = 'BioLife';
+  const BIO_BG = '#0e1a12';
+  const EMBER_NAME = 'Ember Field';
+  const EMBER_BG = '#1a0b0b';
+  const RETRO_NAME = 'Retro Vector';
+  const RETRO_BG = '#001f3f';
   describe('spectrum', () => {
     it('should have correct name and background', () => {
-      expect(colorSchemes.spectrum.name).toBe('Spectrum Pulse');
-      expect(colorSchemes.spectrum.background).toBe('#000');
+  expect(colorSchemes.spectrum.name).toBe(SPECTRUM_NAME);
+  expect(colorSchemes.spectrum.background).toBe(SPECTRUM_BG);
     });
 
     it('should generate HSL color based on position and time', () => {
@@ -39,8 +50,8 @@ describe('colorSchemes', () => {
 
   describe('neon', () => {
     it('should have correct name and background', () => {
-      expect(colorSchemes.neon.name).toBe('Neon Grid');
-      expect(colorSchemes.neon.background).toBe('#0a0a1a');
+      expect(colorSchemes.neon.name).toBe(NEON_NAME);
+      expect(colorSchemes.neon.background).toBe(NEON_BG);
     });
 
     it('should generate HSL color based on position', () => {
@@ -60,8 +71,8 @@ describe('colorSchemes', () => {
 
   describe('bio', () => {
     it('should have correct name and background', () => {
-      expect(colorSchemes.bio.name).toBe('BioLife');
-      expect(colorSchemes.bio.background).toBe('#0e1a12');
+      expect(colorSchemes.bio.name).toBe(BIO_NAME);
+      expect(colorSchemes.bio.background).toBe(BIO_BG);
     });
 
     it('should return constant green color regardless of position', () => {
@@ -73,8 +84,8 @@ describe('colorSchemes', () => {
 
   describe('ember', () => {
     it('should have correct name and background', () => {
-      expect(colorSchemes.ember.name).toBe('Ember Field');
-      expect(colorSchemes.ember.background).toBe('#1a0b0b');
+      expect(colorSchemes.ember.name).toBe(EMBER_NAME);
+      expect(colorSchemes.ember.background).toBe(EMBER_BG);
     });
 
     it('should generate HSL color based on position sum', () => {
@@ -101,8 +112,8 @@ describe('colorSchemes', () => {
 
   describe('retro', () => {
     it('should have correct name and background', () => {
-      expect(colorSchemes.retro.name).toBe('Retro Vector');
-      expect(colorSchemes.retro.background).toBe('#001f3f');
+      expect(colorSchemes.retro.name).toBe(RETRO_NAME);
+      expect(colorSchemes.retro.background).toBe(RETRO_BG);
     });
 
     it('should return constant green color regardless of position', () => {

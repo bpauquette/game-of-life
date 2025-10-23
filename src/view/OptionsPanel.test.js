@@ -1,7 +1,9 @@
+/* eslint-disable sonarjs/no-duplicate-string */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import OptionsPanel from './OptionsPanel';
 import logger from '../controller/utils/logger';
+import { TEST_TEXT } from '../test-utils/TestConstants';
 
 // Mock logger
 jest.mock('../controller/utils/logger', () => ({
@@ -12,6 +14,12 @@ jest.mock('../controller/utils/logger', () => ({
 }));
 
 describe('OptionsPanel', () => {
+  const OPTIONS_TITLE = 'Options';
+  const CANCEL_TEXT = TEST_TEXT.CANCEL_BUTTON;
+  const OK_TEXT = TEST_TEXT.OK_BUTTON;
+  const COLOR_SCHEME_LABEL = 'Color scheme';
+  const STEADY_WINDOW_LABEL = 'Steady window (generations)';
+  const POP_TOLERANCE_LABEL = 'Population tolerance';
   const defaultProps = {
     colorSchemes: {
       default: { name: 'Default' },
@@ -37,13 +45,13 @@ describe('OptionsPanel', () => {
     it('should render with default props', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByText('Options')).toBeInTheDocument();
-      expect(screen.getByLabelText('Color scheme')).toBeInTheDocument();
-      expect(screen.getByLabelText('Steady window (generations)')).toBeInTheDocument();
-      expect(screen.getByLabelText('Population tolerance')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'OK' })).toBeInTheDocument();
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByText(OPTIONS_TITLE)).toBeInTheDocument();
+  expect(screen.getByLabelText(COLOR_SCHEME_LABEL)).toBeInTheDocument();
+  expect(screen.getByLabelText(STEADY_WINDOW_LABEL)).toBeInTheDocument();
+  expect(screen.getByLabelText(POP_TOLERANCE_LABEL)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: CANCEL_TEXT })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: OK_TEXT })).toBeInTheDocument();
     });
 
     it('should display current values in form fields', () => {
@@ -166,7 +174,7 @@ describe('OptionsPanel', () => {
     it('should call onCancel when Cancel button is clicked', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+  const cancelButton = screen.getByRole('button', { name: CANCEL_TEXT });
       fireEvent.click(cancelButton);
 
       expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
@@ -216,7 +224,7 @@ describe('OptionsPanel', () => {
       const props = { ...defaultProps, onCancel: undefined };
       render(<OptionsPanel {...props} />);
 
-      const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+  const cancelButton = screen.getByRole('button', { name: CANCEL_TEXT });
       
       expect(() => {
         fireEvent.click(cancelButton);
@@ -358,7 +366,7 @@ describe('OptionsPanel', () => {
     it('should support keyboard navigation', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+  const cancelButton = screen.getByRole('button', { name: CANCEL_TEXT });
       const okButton = screen.getByRole('button', { name: 'OK' });
 
       expect(cancelButton).toBeEnabled();

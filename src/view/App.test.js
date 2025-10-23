@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import App from './App';
+import logger from '../controller/utils/logger';
 
 // Simple test that doesn't trigger full app initialization
 test('renders the app controls (renamed)', () => {
@@ -25,7 +26,7 @@ test('renders the app controls (renamed)', () => {
   } catch (error) {
     // If the component crashes due to canvas issues, just pass the test
     // This is a basic smoke test to ensure the component can be imported
-    console.log('App component crashed during render, but import succeeded:', error.message);
+  logger.info('App component crashed during render, but import succeeded:', error.message);
     // eslint-disable-next-line jest/no-conditional-expect
     expect(true).toBe(true);
   }

@@ -17,6 +17,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import GridOnIcon from '@mui/icons-material/GridOn';
 
+import { BUTTONS, STATUS } from '../utils/Constants';
+
 const SaveGridDialog = ({ 
   open, 
   onClose, 
@@ -70,7 +72,8 @@ const SaveGridDialog = ({
       onClose();
     } catch (saveError) {
       // Error handling is managed by the parent component
-      console.warn('Save failed:', saveError.message);
+  const logger = require('../controller/utils/logger').default || require('../controller/utils/logger');
+  logger.warn('Save failed:', saveError.message);
     }
   };
 
@@ -176,7 +179,7 @@ const SaveGridDialog = ({
           disabled={loading}
           startIcon={<CancelIcon />}
         >
-          Cancel
+          {BUTTONS.CANCEL}
         </Button>
         <Button 
           onClick={handleSave}
@@ -184,7 +187,7 @@ const SaveGridDialog = ({
           variant="contained"
           startIcon={loading ? <CircularProgress size={18} /> : <SaveIcon />}
         >
-          {loading ? 'Saving...' : 'Save Grid'}
+          {loading ? STATUS.SAVING : `${BUTTONS.SAVE} Grid`}
         </Button>
       </DialogActions>
     </Dialog>

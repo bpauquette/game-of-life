@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useCanvasManager } from './useCanvasManager';
+import { actFn } from '../../../test-utils/testHelpers';
 
 // Mock dependencies
 jest.mock('../../controller/utils/canvasUtils', () => ({
@@ -160,11 +161,7 @@ describe('useCanvasManager', () => {
     it('should not throw error when draw is called without canvas', () => {
       const { result } = renderHook(() => useCanvasManager(mockProps));
       
-      expect(() => {
-        act(() => {
-          result.current.draw();
-        });
-      }).not.toThrow();
+        expect(actFn(() => result.current.draw())).not.toThrow();
     });
 
     it('should call drawWithOverlay without errors', () => {
@@ -201,23 +198,11 @@ describe('useCanvasManager', () => {
         pointerId: 1
       };
 
-      expect(() => {
-        act(() => {
-          result.current.handleMouseDown(mockEvent);
-        });
-      }).not.toThrow();
+        expect(actFn(() => result.current.handleMouseDown(mockEvent))).not.toThrow();
 
-      expect(() => {
-        act(() => {
-          result.current.handleMouseMove(mockEvent);
-        });
-      }).not.toThrow();
+        expect(actFn(() => result.current.handleMouseMove(mockEvent))).not.toThrow();
 
-      expect(() => {
-        act(() => {
-          result.current.handleMouseUp(mockEvent);
-        });
-      }).not.toThrow();
+        expect(actFn(() => result.current.handleMouseUp(mockEvent))).not.toThrow();
     });
 
     it('should handle canvas click without throwing', () => {
@@ -232,11 +217,7 @@ describe('useCanvasManager', () => {
         clientY: 100
       };
 
-      expect(() => {
-        act(() => {
-          result.current.handleCanvasClick(mockEvent);
-        });
-      }).not.toThrow();
+        expect(actFn(() => result.current.handleCanvasClick(mockEvent))).not.toThrow();
     });
   });
 
@@ -248,21 +229,13 @@ describe('useCanvasManager', () => {
         result.current.canvasRef.current = mockCanvas;
       });
 
-      expect(() => {
-        act(() => {
-          result.current.resizeCanvas();
-        });
-      }).not.toThrow();
+        expect(actFn(() => result.current.resizeCanvas())).not.toThrow();
     });
 
     it('should not throw when resizing without canvas', () => {
       const { result } = renderHook(() => useCanvasManager(mockProps));
 
-      expect(() => {
-        act(() => {
-          result.current.resizeCanvas();
-        });
-      }).not.toThrow();
+        expect(actFn(() => result.current.resizeCanvas())).not.toThrow();
     });
   });
 
@@ -279,11 +252,7 @@ describe('useCanvasManager', () => {
         result.current.canvasRef.current = mockCanvas;
       });
 
-      expect(() => {
-        act(() => {
-          result.current.draw();
-        });
-      }).not.toThrow();
+        expect(actFn(() => result.current.draw())).not.toThrow();
     });
 
     it('should handle missing tool gracefully', () => {
@@ -302,11 +271,7 @@ describe('useCanvasManager', () => {
         preventDefault: jest.fn()
       };
 
-      expect(() => {
-        act(() => {
-          result.current.handleMouseDown(mockEvent);
-        });
-      }).not.toThrow();
+        expect(actFn(() => result.current.handleMouseDown(mockEvent))).not.toThrow();
     });
 
     it('should log errors when overlay drawing fails', () => {

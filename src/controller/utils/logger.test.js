@@ -11,6 +11,14 @@ const mockConsole = {
 };
 
 describe('logger', () => {
+  const MSG_TEST_ERROR = 'test error';
+  const MSG_TEST_WARN = 'test warn';
+  const MSG_TEST_INFO = 'test info';
+  const MSG_TEST_DEBUG = 'test debug';
+  const MSG_PRODUCTION_ERROR = 'production error';
+  const MSG_PRODUCTION_WARN = 'production warn';
+  const MSG_PRODUCTION_INFO = 'production info';
+  const MSG_PRODUCTION_DEBUG = 'production debug';
   const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
@@ -29,16 +37,16 @@ describe('logger', () => {
     });
 
     it('should not log anything in test environment (disabled)', () => {
-      logger.error('test error');
-      logger.warn('test warn');
-      logger.info('test info');
-      logger.debug('test debug');
+  logger.error(MSG_TEST_ERROR);
+  logger.warn(MSG_TEST_WARN);
+  logger.info(MSG_TEST_INFO);
+  logger.debug(MSG_TEST_DEBUG);
 
-      expect(mockConsole.error).not.toHaveBeenCalled();
-      expect(mockConsole.warn).not.toHaveBeenCalled();
-      expect(mockConsole.info).not.toHaveBeenCalled();
-      // eslint-disable-next-line testing-library/no-debugging-utils
-      expect(mockConsole.debug).not.toHaveBeenCalled();
+  expect(mockConsole.error).not.toHaveBeenCalled();
+  expect(mockConsole.warn).not.toHaveBeenCalled();
+  expect(mockConsole.info).not.toHaveBeenCalled();
+  // eslint-disable-next-line testing-library/no-debugging-utils
+  expect(mockConsole.debug).not.toHaveBeenCalled();
     });
   });
 
@@ -52,31 +60,31 @@ describe('logger', () => {
     it('should log error messages', () => {
       const logger = require('./logger').default;
       
-      logger.error('test error', 'arg1', 'arg2');
+  logger.error(MSG_TEST_ERROR, 'arg1', 'arg2');
       
-      expect(mockConsole.error).toHaveBeenCalledWith('test error', 'arg1', 'arg2');
+  expect(mockConsole.error).toHaveBeenCalledWith(MSG_TEST_ERROR, 'arg1', 'arg2');
     });
 
     it('should log warn messages', () => {
       const logger = require('./logger').default;
       
-      logger.warn('test warn', 'extra');
+  logger.warn(MSG_TEST_WARN, 'extra');
       
-      expect(mockConsole.warn).toHaveBeenCalledWith('test warn', 'extra');
+  expect(mockConsole.warn).toHaveBeenCalledWith(MSG_TEST_WARN, 'extra');
     });
 
     it('should log info messages', () => {
       const logger = require('./logger').default;
       
-      logger.info('test info');
+  logger.info(MSG_TEST_INFO);
       
-      expect(mockConsole.info).toHaveBeenCalledWith('test info');
+  expect(mockConsole.info).toHaveBeenCalledWith(MSG_TEST_INFO);
     });
 
     it('should log debug messages', () => {
       const logger = require('./logger').default;
       
-      logger.debug('test debug', { data: 'object' });
+  logger.debug(MSG_TEST_DEBUG, { data: 'object' });
       
       // eslint-disable-next-line testing-library/no-debugging-utils
       expect(mockConsole.debug).toHaveBeenCalledWith('test debug', { data: 'object' });
@@ -92,31 +100,31 @@ describe('logger', () => {
     it('should log error messages even in production', () => {
       const logger = require('./logger').default;
       
-      logger.error('production error');
+  logger.error(MSG_PRODUCTION_ERROR);
       
-      expect(mockConsole.error).toHaveBeenCalledWith('production error');
+  expect(mockConsole.error).toHaveBeenCalledWith(MSG_PRODUCTION_ERROR);
     });
 
     it('should not log warn messages in production', () => {
       const logger = require('./logger').default;
       
-      logger.warn('production warn');
+  logger.warn(MSG_PRODUCTION_WARN);
       
-      expect(mockConsole.warn).not.toHaveBeenCalled();
+  expect(mockConsole.warn).not.toHaveBeenCalled();
     });
 
     it('should not log info messages in production', () => {
       const logger = require('./logger').default;
       
-      logger.info('production info');
+  logger.info(MSG_PRODUCTION_INFO);
       
-      expect(mockConsole.info).not.toHaveBeenCalled();
+  expect(mockConsole.info).not.toHaveBeenCalled();
     });
 
     it('should not log debug messages in production', () => {
       const logger = require('./logger').default;
       
-      logger.debug('production debug');
+  logger.debug(MSG_PRODUCTION_DEBUG);
       
       // eslint-disable-next-line testing-library/no-debugging-utils
       expect(mockConsole.debug).not.toHaveBeenCalled();
@@ -135,9 +143,9 @@ describe('logger', () => {
       process.env.NODE_ENV = 'development';
       const logger = require('./logger').default;
       
-      logger.error('message', 1, 2, 3, { obj: true }, [1, 2, 3]);
+  logger.error('message', 1, 2, 3, { obj: true }, [1, 2, 3]);
       
-      expect(mockConsole.error).toHaveBeenCalledWith('message', 1, 2, 3, { obj: true }, [1, 2, 3]);
+  expect(mockConsole.error).toHaveBeenCalledWith('message', 1, 2, 3, { obj: true }, [1, 2, 3]);
     });
 
     it('should handle no arguments', () => {

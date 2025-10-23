@@ -1,0 +1,21 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2021": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2021,
+    "sourceType": "module"
+  },
+  "plugins": [
+    "sonarjs"
+  ],
+  "extends": [
+    "plugin:sonarjs/recommended"
+  ],
+  "rules": {
+    "sonarjs/cognitive-complexity": ["warn", 15]
+  }
+}

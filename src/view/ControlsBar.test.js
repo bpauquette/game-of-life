@@ -1,3 +1,5 @@
+/* eslint-disable sonarjs/no-identical-functions */
+/* eslint-disable sonarjs/no-duplicate-string */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ControlsBar from './ControlsBar';
@@ -51,6 +53,9 @@ jest.mock('./ToolStatus', () => {
 });
 
 describe('ControlsBar', () => {
+  const OPTIONS_OK_TEXT = 'Options OK';
+  const OPTIONS_CANCEL_TEXT = 'Options Cancel';
+  const OPTIONS_PANEL_TESTID = 'options-panel';
   const mockShapes = [
     { id: '1', name: 'Block', cells: [[0, 0], [0, 1], [1, 0], [1, 1]] },
     { id: '2', name: 'Blinker', cells: [[1, 0], [1, 1], [1, 2]] },
@@ -243,7 +248,7 @@ describe('ControlsBar', () => {
   render(<ControlsBar {...defaultProps} />);
   const settingsButton = screen.getByTestId('options-icon-button');
   fireEvent.click(settingsButton);
-  expect(screen.getByTestId('options-panel')).toBeInTheDocument();
+  expect(screen.getByTestId(OPTIONS_PANEL_TESTID)).toBeInTheDocument();
     });
 
     it('should stop simulation when opening options if running', () => {
@@ -259,7 +264,7 @@ describe('ControlsBar', () => {
   render(<ControlsBar {...props} />);
   const settingsButton = screen.getByTestId('options-icon-button');
   fireEvent.click(settingsButton);
-  const okButton = screen.getByText('Options OK');
+  const okButton = screen.getByText(OPTIONS_OK_TEXT);
   fireEvent.click(okButton);
   expect(defaultProps.setIsRunning).toHaveBeenCalledWith(true);
     });
@@ -269,7 +274,7 @@ describe('ControlsBar', () => {
   render(<ControlsBar {...props} />);
   const settingsButton = screen.getByTestId('options-icon-button');
   fireEvent.click(settingsButton);
-  const cancelButton = screen.getByText('Options Cancel');
+  const cancelButton = screen.getByText(OPTIONS_CANCEL_TEXT);
   fireEvent.click(cancelButton);
   expect(defaultProps.setIsRunning).toHaveBeenCalledWith(true);
     });
@@ -280,7 +285,7 @@ describe('ControlsBar', () => {
   fireEvent.click(settingsButton);
   // Clear previous calls
   defaultProps.setIsRunning.mockClear();
-  const okButton = screen.getByText('Options OK');
+  const okButton = screen.getByText(OPTIONS_OK_TEXT);
   fireEvent.click(okButton);
   expect(defaultProps.setIsRunning).not.toHaveBeenCalledWith(true);
     });
@@ -298,7 +303,7 @@ describe('ControlsBar', () => {
   render(<ControlsBar {...defaultProps} />);
   const settingsButton = screen.getByTestId('options-icon-button');
   fireEvent.click(settingsButton);
-  const cancelButton = screen.getByText('Options Cancel');
+  const cancelButton = screen.getByText(OPTIONS_CANCEL_TEXT);
   fireEvent.click(cancelButton);
   expect(screen.queryByTestId('options-panel')).not.toBeInTheDocument();
     });

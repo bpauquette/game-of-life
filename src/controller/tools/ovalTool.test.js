@@ -1,6 +1,9 @@
+/* eslint-disable sonarjs/no-duplicate-string */
 import { ovalTool } from './ovalTool';
 
 describe('ovalTool', () => {
+  const SAMPLE_START_X = 5;
+  const SAMPLE_START_Y = 3;
   let toolState;
   let mockSetCellAlive;
   let mockCtx;
@@ -16,10 +19,10 @@ describe('ovalTool', () => {
 
   describe('onMouseDown', () => {
     it('should initialize tool state', () => {
-      ovalTool.onMouseDown(toolState, 5, 3);
+  ovalTool.onMouseDown(toolState, SAMPLE_START_X, SAMPLE_START_Y);
 
-      expect(toolState.start).toEqual({ x: 5, y: 3 });
-      expect(toolState.last).toEqual({ x: 5, y: 3 });
+  expect(toolState.start).toEqual({ x: SAMPLE_START_X, y: SAMPLE_START_Y });
+  expect(toolState.last).toEqual({ x: SAMPLE_START_X, y: SAMPLE_START_Y });
       expect(toolState.preview).toEqual([]);
     });
 

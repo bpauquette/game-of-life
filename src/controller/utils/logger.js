@@ -27,12 +27,10 @@ const logger = {
   },
   
   warn: (message, ...args) => {
-    if (config.enabled && config.level >= LOG_LEVELS.WARN) {
-      // In production, warnings are typically suppressed or sent to monitoring
-      if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
-        console.warn(message, ...args);
-      }
+    // Only warn when logging is enabled, level allows WARN, and not in production
+    if (config.enabled && config.level >= LOG_LEVELS.WARN && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.warn(message, ...args);
     }
   },
   

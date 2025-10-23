@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import Dialog from '@mui/material/Dialog';
 import logger from '../controller/utils/logger';
+import { BUTTONS } from '../utils/Constants';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import TextField from '@mui/material/TextField';
@@ -37,10 +38,9 @@ const getBaseUrl = (backendBase) => {
   if (typeof backendBase === 'string' && backendBase.length > 0) {
     return backendBase;
   }
-  const fallbackOrigin = globalThis.window?.location?.origin 
+  return globalThis.window?.location?.origin 
     ? String(globalThis.window.location.origin) 
     : 'http://localhost';
-  return fallbackOrigin;
 }
 
 export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {} }){
@@ -266,7 +266,7 @@ The backend will start on port 55000.`);
           </div>
           <div>
             {offset + results.length < total && (
-              <Button onClick={() => { setOffset(prev => prev + limit); }} disabled={loading}>Load more</Button>
+              <Button onClick={() => { setOffset(prev => prev + limit); }} disabled={loading}>{BUTTONS.LOAD_MORE}</Button>
             )}
             <Button onClick={onClose}>Close</Button>
           </div>

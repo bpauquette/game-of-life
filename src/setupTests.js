@@ -49,10 +49,10 @@ HTMLCanvasElement.prototype.getBoundingClientRect = jest.fn(() => ({
 }));
 
 // Mock window.devicePixelRatio
-Object.defineProperty(window, 'devicePixelRatio', {
+Object.defineProperty(globalThis, 'devicePixelRatio', {
   value: 1,
   writable: true
 });
 
 // Export mockContext for tests that need it directly
-global.mockCanvasContext = mockContext;
+globalThis.mockCanvasContext = mockContext;

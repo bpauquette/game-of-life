@@ -1,3 +1,5 @@
+import logger from '../utils/logger';
+
 // Randomize cells within a dragged rectangle. Commits on mouseup.
 export const randomRectTool = {
   // Optionally accept a probability in state.prob (0..1)
@@ -25,7 +27,7 @@ export const randomRectTool = {
     
     // For large rectangles, warn and potentially limit size
     if (pts.length > 10000) {
-      console.warn(`Cancelling randomRect - too large (${pts.length} cells)`);
+      logger.warn(`Cancelling randomRect - too large (${pts.length} cells)`);
       state.start = null;
       state.last = null;
       return;

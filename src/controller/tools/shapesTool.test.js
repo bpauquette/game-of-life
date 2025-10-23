@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/no-duplicate-string */
 import { shapesTool } from './shapesTool';
 import logger from '../utils/logger';
 

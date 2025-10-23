@@ -1,4 +1,6 @@
 /* eslint-disable testing-library/no-container, testing-library/no-node-access, no-unused-vars */
+/* eslint-disable sonarjs/no-identical-functions */
+/* eslint-disable sonarjs/no-duplicate-string */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import RecentShapesStrip from './RecentShapesStrip';

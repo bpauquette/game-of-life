@@ -26,6 +26,8 @@ import GridOnIcon from '@mui/icons-material/GridOn';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import logger from '../controller/utils/logger';
+import { BUTTONS, STATUS, PLACEHOLDERS } from '../utils/Constants';
 
 const LoadGridDialog = ({ 
   open, 
@@ -61,11 +63,11 @@ const LoadGridDialog = ({
   const handleLoad = async () => {
     if (selectedGrid) {
       try {
-        await onLoad(selectedGrid.id);
-        handleClose();
-      } catch (loadError) {
-        console.warn('Load failed:', loadError.message);
-      }
+          await onLoad(selectedGrid.id);
+          handleClose();
+        } catch (loadError) {
+          logger.warn('Load failed:', loadError.message);
+        }
     }
   };
 
@@ -79,7 +81,7 @@ const LoadGridDialog = ({
     try {
       await onDelete(gridId);
     } catch (deleteError) {
-      console.warn('Delete failed:', deleteError.message);
+      logger.warn('Delete failed:', deleteError.message);
     }
   };
 
@@ -137,7 +139,7 @@ const LoadGridDialog = ({
           <TextField
             fullWidth
             variant="outlined"
-            placeholder="Search grids..."
+            placeholder={PLACEHOLDERS.SEARCH_GRIDS}
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
             sx={{ mb: 2 }}
@@ -255,7 +257,7 @@ const LoadGridDialog = ({
           disabled={loading}
           startIcon={<CancelIcon />}
         >
-          Cancel
+          {BUTTONS.CANCEL}
         </Button>
         <Button 
           onClick={handleLoad}
@@ -263,7 +265,7 @@ const LoadGridDialog = ({
           variant="contained"
           startIcon={loading ? <CircularProgress size={18} /> : <FolderOpenIcon />}
         >
-          {loading ? 'Loading...' : 'Load Grid'}
+          {loading ? STATUS.LOADING : `${BUTTONS.LOAD} Grid`}
         </Button>
       </DialogActions>
     </Dialog>

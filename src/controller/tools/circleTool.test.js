@@ -1,9 +1,12 @@
+/* eslint-disable sonarjs/no-duplicate-string */
 import { circleTool } from './circleTool';
 
 describe('circleTool', () => {
   let toolState;
   let mockSetCellAlive;
   let mockCtx;
+  const START_X = 5;
+  const START_Y = 3;
 
   beforeEach(() => {
     toolState = {};
@@ -16,10 +19,10 @@ describe('circleTool', () => {
 
   describe('onMouseDown', () => {
     it('should initialize tool state', () => {
-      circleTool.onMouseDown(toolState, 5, 3);
+  circleTool.onMouseDown(toolState, START_X, START_Y);
 
-      expect(toolState.start).toEqual({ x: 5, y: 3 });
-      expect(toolState.last).toEqual({ x: 5, y: 3 });
+  expect(toolState.start).toEqual({ x: START_X, y: START_Y });
+  expect(toolState.last).toEqual({ x: START_X, y: START_Y });
       expect(toolState.preview).toEqual([]);
     });
 

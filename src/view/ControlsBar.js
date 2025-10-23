@@ -30,6 +30,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import OvalIcon from './components/OvalIcon';
 import HelpDialog from './HelpDialog';
 import AboutDialog from './AboutDialog';
+import { BUTTONS } from '../utils/Constants';
 
 // UI Layout Constants  
 const CONTROL_SPACING = 1;
@@ -191,7 +192,7 @@ const ControlsBar = ({
               startIcon={<SaveIcon fontSize="small" />}
               disabled={getLiveCells().size === 0}
             >
-              Save
+              {BUTTONS.SAVE}
             </Button>
           </span>
         </Tooltip>
@@ -202,7 +203,7 @@ const ControlsBar = ({
             onClick={openLoadGrid}
             startIcon={<FolderOpenIcon fontSize="small" />}
           >
-            Load
+            {BUTTONS.LOAD}
           </Button>
         </Tooltip>
 

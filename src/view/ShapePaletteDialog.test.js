@@ -1,8 +1,10 @@
 /* eslint-disable testing-library/no-wait-for-multiple-assertions */
+/* eslint-disable sonarjs/no-duplicate-string */
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import ShapePaletteDialog from './ShapePaletteDialog';
 import logger from '../controller/utils/logger';
+import { TEST_TEXT } from '../test-utils/TestConstants';
 
 // Mock logger
 jest.mock('../controller/utils/logger', () => ({
@@ -321,7 +323,7 @@ describe('ShapePaletteDialog', () => {
 
       const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-      
+          fireEvent.click(deleteButtons[0]);
       expect(screen.getByText('Delete shape?')).toBeInTheDocument();
       expect(screen.getByText('Glider', { selector: 'strong' })).toBeInTheDocument();
     });
@@ -340,7 +342,7 @@ describe('ShapePaletteDialog', () => {
       const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
       
-      fireEvent.click(screen.getByText('Cancel'));
+          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
       
       await waitFor(() => {
         expect(screen.queryByText('Delete shape?')).not.toBeInTheDocument();
@@ -369,7 +371,7 @@ describe('ShapePaletteDialog', () => {
 
       const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
       
       await waitFor(() => {
         expect(fetch).toHaveBeenCalledWith(
@@ -402,7 +404,7 @@ describe('ShapePaletteDialog', () => {
 
       const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
       
       await waitFor(() => {
         expect(logger.warn).toHaveBeenCalledWith('Delete failed:', 500);
@@ -433,7 +435,7 @@ describe('ShapePaletteDialog', () => {
 
       const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
       
       await waitFor(() => {
         expect(logger.error).toHaveBeenCalledWith('Delete error:', expect.any(Error));
@@ -569,7 +571,7 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Load more')).toBeInTheDocument();
+  expect(screen.getByText(TEST_TEXT.LOAD_MORE)).toBeInTheDocument();
         expect(screen.getByText('100 shapes in catalog')).toBeInTheDocument();
       });
     });
@@ -590,10 +592,10 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Load more')).toBeInTheDocument();
+  expect(screen.getByText(TEST_TEXT.LOAD_MORE)).toBeInTheDocument();
       });
       
-      fireEvent.click(screen.getByText('Load more'));
+  fireEvent.click(screen.getByText(TEST_TEXT.LOAD_MORE));
       
       await act(async () => {
         jest.advanceTimersByTime(300);

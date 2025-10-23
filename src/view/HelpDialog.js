@@ -60,6 +60,9 @@ TabPanel.propTypes = {
 export default function HelpDialog({ open, onClose }) {
   const [tabValue, setTabValue] = useState(0);
 
+  // Extract repeated style keys to constants to satisfy sonarjs/no-duplicate-string
+  const ICON_COLOR_PRIMARY = 'primary.main';
+
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
@@ -195,49 +198,49 @@ export default function HelpDialog({ open, onClose }) {
           </Typography>
           <List>
             <ListItem>
-              <BrushIcon sx={{ mr: 2, color: 'primary.main' }} />
+              <BrushIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} />
               <ListItemText 
                 primary="Freehand Draw" 
                 secondary="Click and drag to draw living cells freely"
               />
             </ListItem>
             <ListItem>
-              <LineAxisIcon sx={{ mr: 2, color: 'primary.main' }} />
+              <LineAxisIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} />
               <ListItemText 
                 primary="Line Tool" 
                 secondary="Draw straight lines of living cells between two points"
               />
             </ListItem>
             <ListItem>
-              <CropSquareIcon sx={{ mr: 2, color: 'primary.main' }} />
+              <CropSquareIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} />
               <ListItemText 
                 primary="Rectangle Tool" 
                 secondary="Create filled rectangles of living cells"
               />
             </ListItem>
             <ListItem>
-              <RadioButtonUncheckedIcon sx={{ mr: 2, color: 'primary.main' }} />
+              <RadioButtonUncheckedIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} />
               <ListItemText 
                 primary="Circle Tool" 
                 secondary="Draw circles that fit within a bounding box"
               />
             </ListItem>
             <ListItem>
-              <OvalIcon sx={{ mr: 2, color: 'primary.main' }} />
+              <OvalIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} />
               <ListItemText 
                 primary="Oval Tool" 
                 secondary="Create elliptical patterns within a bounding box"
               />
             </ListItem>
             <ListItem>
-              <CasinoIcon sx={{ mr: 2, color: 'primary.main' }} />
+              <CasinoIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} />
               <ListItemText 
                 primary="Random Rectangle" 
                 secondary="Fill a rectangular area with randomly placed living cells"
               />
             </ListItem>
             <ListItem>
-              <WidgetsIcon sx={{ mr: 2, color: 'primary.main' }} />
+              <WidgetsIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} />
               <ListItemText 
                 primary="Shapes Library" 
                 secondary="Place pre-defined patterns like gliders, oscillators, and spaceships"

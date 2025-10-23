@@ -14,7 +14,8 @@ export const shapesTool = {
     toolState.start = { x, y };
     toolState.last = { x, y };
     toolState.dragging = true;
-    console.log('Shape tool: Starting drag at', x, y);
+  const logger = require('../utils/logger').default || require('../utils/logger');
+  logger.debug('Shape tool: Starting drag at', x, y);
   },
 
   onMouseMove(toolState, x, y) {
@@ -25,11 +26,11 @@ export const shapesTool = {
 
   onMouseUp(toolState, x, y, setCellAlive, placeShape) {
     const last = toolState.last || (x === undefined ? null : { x, y });
-    console.log('Shape tool: Placing shape at', last);
+  logger.debug('Shape tool: Placing shape at', last);
     
     if (last && placeShape) {
       placeShape(last.x, last.y);
-      console.log('Shape placed successfully');
+  logger.info('Shape placed successfully');
     }
     
     // Clear preview state but keep selectedShapeData for continued placement
@@ -45,8 +46,8 @@ export const shapesTool = {
       
       if (!sel || !last) {
         // Debug: log when preview can't be drawn
-        if (!sel) console.debug('No shape selected for preview');
-        if (!last) console.debug('No position for shape preview');
+  if (!sel) logger.debug('No shape selected for preview');
+  if (!last) logger.debug('No position for shape preview');
         return;
       }
 
@@ -59,12 +60,12 @@ export const shapesTool = {
       } else if (sel && Array.isArray(sel.pattern)) {
         cells = sel.pattern;
       } else {
-        console.warn('Unknown shape format:', sel);
+  logger.warn('Unknown shape format:', sel);
         return;
       }
 
       if (!cells.length) {
-        console.debug('Shape has no cells to preview');
+  logger.debug('Shape has no cells to preview');
         return;
       }
 

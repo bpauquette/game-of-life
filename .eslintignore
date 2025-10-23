@@ -1,0 +1,12 @@
+# Ignore non-JS assets that ESLint cannot parse
+**/*.css
+**/*.png
+**/*.jpg
+**/*.svg
+**/*.woff
+**/*.woff2
+
+# Ignore build and coverage artifacts
+coverage/
+build/
+dist/

@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/no-duplicate-string */
 import { randomRectTool } from './randomRectTool';
 
 describe('randomRectTool', () => {
@@ -5,6 +6,8 @@ describe('randomRectTool', () => {
   let mockSetCellAlive;
   let mockCtx;
   let originalMathRandom;
+  const SAMPLE_X = 5;
+  const SAMPLE_Y = 3;
 
   beforeEach(() => {
     toolState = {};
@@ -25,10 +28,10 @@ describe('randomRectTool', () => {
 
   describe('onMouseDown', () => {
     it('should initialize tool state with default probability', () => {
-      randomRectTool.onMouseDown(toolState, 5, 3);
+  randomRectTool.onMouseDown(toolState, SAMPLE_X, SAMPLE_Y);
 
-      expect(toolState.start).toEqual({ x: 5, y: 3 });
-      expect(toolState.last).toEqual({ x: 5, y: 3 });
+  expect(toolState.start).toEqual({ x: SAMPLE_X, y: SAMPLE_Y });
+  expect(toolState.last).toEqual({ x: SAMPLE_X, y: SAMPLE_Y });
       expect(toolState.preview).toEqual([]);
       expect(toolState.prob).toBe(0.5);
     });

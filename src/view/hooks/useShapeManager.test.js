@@ -1,6 +1,8 @@
 import { renderHook, act } from '@testing-library/react';
 import { useShapeManager } from './useShapeManager';
+import { actFn } from '../../../test-utils/testHelpers';
 
+/* eslint-disable sonarjs/no-identical-functions */
 const mockProps = {
   selectedShape: null,
   setSelectedShape: jest.fn(),
@@ -113,10 +115,7 @@ describe('useShapeManager', () => {
       const propsWithoutSetter = { ...mockProps, setSelectedShape: undefined };
       const { result } = renderHook(() => useShapeManager(propsWithoutSetter));
 
-      const testAction = () => {
-        result.current.updateShapeState({ id: 'test' });
-      };
-      expect(() => act(testAction)).not.toThrow();
+      expect(actFn(() => result.current.updateShapeState({ id: 'test' }))).not.toThrow();
     });
   });
 

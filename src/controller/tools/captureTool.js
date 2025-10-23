@@ -96,7 +96,8 @@ export const captureTool = {
       cellCount: capturedCells.length
     };
     
-    console.log('Capture tool generated data:', captureData);
+  const logger = require('../utils/logger').default || require('../utils/logger');
+  logger.debug('Capture tool generated data:', captureData);
     
     // Reset selection state
     toolState.start = null;
@@ -105,7 +106,7 @@ export const captureTool = {
     toolState.capturedCells = [];
     
     // Trigger capture dialog if callback is available
-    tool?.onCaptureComplete?.(captureData) || console.log('Captured shape:', captureData);
+  tool?.onCaptureComplete?.(captureData) || (require('../utils/logger').default || require('../utils/logger')).info('Captured shape:', captureData);
   },
 
   drawOverlay(ctx, toolState, cellSize, offset) {

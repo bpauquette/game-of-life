@@ -88,7 +88,8 @@ export class GameMVC {
     Promise.all(toolImports).then(() => {
       this.toolsLoaded = true;
     }).catch(error => {
-      console.error('GameMVC: ❌ Error loading tools:', error);
+  const logger = require('./utils/logger').default || require('./utils/logger');
+  logger.error('GameMVC: ❌ Error loading tools:', error);
     });
     
     this.toolLoadPromises = toolImports;

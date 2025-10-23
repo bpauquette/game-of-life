@@ -12,6 +12,7 @@ import {
   Alert,
   CircularProgress
 } from '@mui/material';
+import { BUTTONS, STATUS } from '../utils/Constants';
 
 const CaptureShapeDialog = ({ 
   open, 
@@ -46,27 +47,28 @@ const CaptureShapeDialog = ({
     const canvas = canvasRef.current;
     if (!canvas || !captureData) return;
 
-    console.log('Drawing preview with captureData:', captureData);
+  const logger = require('../controller/utils/logger').default || require('../controller/utils/logger');
+  logger.debug('Drawing preview with captureData:', captureData);
 
     const ctx = canvas.getContext('2d');
     const { cells, width, height } = captureData;
     
-    console.log('Preview cells:', cells, 'width:', width, 'height:', height);
+  logger.debug('Preview cells:', cells, 'width:', width, 'height:', height);
     
     // Set canvas size based on capture dimensions
     const cellSize = Math.min(10, Math.max(4, 200 / Math.max(width, height)));
     const canvasWidth = width * cellSize;
     const canvasHeight = height * cellSize;
     
-    console.log('Canvas setup - cellSize:', cellSize, 'canvasWidth:', canvasWidth, 'canvasHeight:', canvasHeight);
+  logger.debug('Canvas setup - cellSize:', cellSize, 'canvasWidth:', canvasWidth, 'canvasHeight:', canvasHeight);
     
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
     canvas.style.width = `${Math.min(canvasWidth, 200)}px`;
     canvas.style.height = `${Math.min(canvasHeight, 200)}px`;
 
-    console.log('Canvas DOM size:', canvas.style.width, 'x', canvas.style.height);
-    console.log('Canvas internal size:', canvas.width, 'x', canvas.height);
+  logger.debug('Canvas DOM size:', canvas.style.width, 'x', canvas.style.height);
+  logger.debug('Canvas internal size:', canvas.width, 'x', canvas.height);
 
     // Clear canvas with white background
     ctx.fillStyle = '#ffffff';
@@ -94,22 +96,22 @@ const CaptureShapeDialog = ({
     ctx.fillStyle = '#000000'; // Black for maximum visibility
     
     if (!cells || cells.length === 0) {
-      console.warn('No cells to draw in preview!');
+  logger.warn('No cells to draw in preview!');
       return;
     }
     
-    console.log('Drawing', cells.length, 'cells:', cells);
+  logger.debug('Drawing', cells.length, 'cells:', cells);
     
     for (const [index, cell] of cells.entries()) {
       if (!cell || typeof cell.x !== 'number' || typeof cell.y !== 'number') {
-        console.error('Invalid cell at index', index, ':', cell);
+  logger.error('Invalid cell at index', index, ':', cell);
         continue;
       }
       
       const x = cell.x * cellSize + 1;
       const y = cell.y * cellSize + 1;
       
-      console.log(`Drawing cell ${index} at (${cell.x}, ${cell.y}) -> screen (${x}, ${y})`);
+  logger.debug(`Drawing cell ${index} at (${cell.x}, ${cell.y}) -> screen (${x}, ${y})`);
       
       ctx.fillRect(x, y, cellSize - 2, cellSize - 2);
     }
@@ -253,7 +255,7 @@ const CaptureShapeDialog = ({
           onClick={handleCancel} 
           disabled={saving}
         >
-          Cancel
+          {BUTTONS.CANCEL}
         </Button>
         <Button
           onClick={handleSave}
@@ -261,7 +263,7 @@ const CaptureShapeDialog = ({
           disabled={saving || !name.trim()}
           startIcon={saving ? <CircularProgress size={20} /> : null}
         >
-          {saving ? 'Saving...' : 'Save Shape'}
+          {saving ? STATUS.SAVING : `${BUTTONS.SAVE} Shape`}
         </Button>
       </DialogActions>
     </Dialog>
