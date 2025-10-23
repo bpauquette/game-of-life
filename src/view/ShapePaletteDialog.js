@@ -135,8 +135,8 @@ The backend will start on port 55000.`);
   };
 
   useEffect(()=>{ if(!open){ setQ(''); setResults([]); setLoading(false); } }, [open]);
-
   useEffect(()=>{
+  let mounted = true;
   if (timerRef.current) clearTimeout(timerRef.current);
   // When the dialog opens we want to show the catalog even before a
   // search term is entered. Previously the UI required 3+ chars which made
@@ -152,8 +152,7 @@ The backend will start on port 55000.`);
         const res = await fetch(url.toString());
         if (res.ok === false) {
           logger.warn('Shape search returned non-OK status:', res.status);
-          setResults([]);
-          setTotal(0);
+          if (mounted) { setResults([]); setTotal(0); }
         } else {
           let data = { items: [], total: 0 };
           try { 
@@ -163,26 +162,28 @@ The backend will start on port 55000.`);
             // data remains as default empty structure
           }
           const items = Array.isArray(data.items) ? data.items : [];
-          setTotal(Number(data.total) || 0);
-          // append when offset > 0 (load more), otherwise replace
-          setResults(prev => (offset > 0 ? [...prev, ...items] : items));
+          if (mounted) {
+            setTotal(Number(data.total) || 0);
+            // append when offset > 0 (load more), otherwise replace
+            setResults(prev => (offset > 0 ? [...prev, ...items] : items));
+          }
         }
       } catch (e) {
         logger.error('Shape search error:', e);
         
         // Check if this is a connection error that might indicate backend is down
-        if (e.message.includes('fetch') || e.message.includes('NetworkError') || 
-            e.message.includes('ECONNREFUSED') || e.code === 'ECONNREFUSED') {
+    if (e.message.includes('fetch') || e.message.includes('NetworkError') || 
+      e.message.includes('ECONNREFUSED') || e.code === 'ECONNREFUSED') {
           // Backend might be down, offer to start it
           const isHealthy = await checkBackendHealth();
           if (!isHealthy) {
-            setLoading(false);
-            setShowBackendDialog(true);
+            if (mounted) setLoading(false);
+            if (mounted) setShowBackendDialog(true);
             return; // Don't set empty results yet
           }
         }
         
-        setResults([]);
+        if (mounted) setResults([]);
       } finally { setLoading(false); }
     }, 300);
     return ()=>{ if(timerRef.current) clearTimeout(timerRef.current); };
@@ -237,7 +238,7 @@ The backend will start on port 55000.`);
                 <svg width={PREVIEW_SVG_SIZE} height={PREVIEW_SVG_SIZE} viewBox={`0 0 ${Math.max(1, s.width||1)} ${Math.max(1, s.height||1)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: `1px solid rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`, borderRadius: PREVIEW_BORDER_RADIUS }}>
                   {Array.isArray(s.cells) && s.cells.length > 0 ? (
                     s.cells.map((c) => (
-                      <rect key={`${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
+                      <rect key={`${s.id || 'shape'}-${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
                     ))
                   ) : (
                     // small empty placeholder grid

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Simple pre-commit hook to prevent accidentally committing secrets.
+# Install by running: bash scripts/install-githook.sh
+
+set -euo pipefail
+
+echo "Running pre-commit secret scan..."
+
+# Patterns to detect (PCRE/grep -P). Add or remove patterns as needed.
+PATTERNS=(
+  "squ_[0-9a-f]{20,}"
+  "AKIA[0-9A-Z]{16}"
+  "AIza[0-9A-Za-z_-]{35}"
+  "-----BEGIN PRIVATE KEY-----"
+)
+
+# Build grep pattern
+GREP_PATTERN=$(printf "%s|" "${PATTERNS[@]}" | sed 's/|$//')
+
+# Search staged diffs for patterns
+if git diff --cached -U0 --no-color | grep -E --line-number --only-matching -P "$GREP_PATTERN" >/dev/null 2>&1; then
+  echo "\nERROR: Potential secret detected in staged changes. Commit aborted."
+  echo "Please remove the secret from your changes, stash it locally, or add it to an ignored file (like .env.local), then try again."
+  echo "If this is a false positive, adjust .githooks/pre-commit patterns accordingly."
+  echo
+  # Show matches to help the user
+  git diff --cached -U0 --no-color | grep -E --line-number --color=always -P "$GREP_PATTERN" || true
+  exit 1
+fi
+
+echo "No obvious secrets found. Proceeding..."
+exit 0

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 
 const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
   const [logs, setLogs] = useState([]);
@@ -231,3 +232,8 @@ const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
 };
 
 export default DebugConsole;
+
+DebugConsole.propTypes = {
+  isVisible: PropTypes.bool,
+  maxLines: PropTypes.number
+};

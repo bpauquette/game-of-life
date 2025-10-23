@@ -38,7 +38,11 @@ const RecentShapesStrip = ({
     if (shape?.id) return shape.id;
     if (shape?.name) return shape.name;
     // Generate a stable content-based key instead of using array index
-    return JSON.stringify(shape);
+    try {
+      return `${JSON.stringify(shape)}-${index}`;
+    } catch (e) {
+      return `shape-${index}`;
+    }
   };
 
   const getShapeCells = (shape) => {

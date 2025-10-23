@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import './SpeedGauge.css';
 
 /**
@@ -180,3 +181,12 @@ const SpeedGauge = ({
 };
 
 export default SpeedGauge;
+
+SpeedGauge.propTypes = {
+  isVisible: PropTypes.bool,
+  gameRef: PropTypes.object,
+  onToggleVisibility: PropTypes.func,
+  position: PropTypes.shape({ top: PropTypes.number, right: PropTypes.number }),
+  generation: PropTypes.number,
+  liveCellsCount: PropTypes.number
+};

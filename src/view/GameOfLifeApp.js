@@ -195,7 +195,7 @@ const GameOfLifeApp = () => {
       });
 
     } catch (error) {
-      console.error('❌ Failed to create MVC Game System:', error);
+      logger.error('❌ Failed to create MVC Game System:', error);
     }
 
     return () => {
@@ -209,7 +209,7 @@ const GameOfLifeApp = () => {
   // Update color scheme in model when it changes
   useEffect(() => {
     if (gameRef.current && colorScheme) {
-      console.log('🎨 Updating color scheme to:', uiState.colorSchemeKey);
+      logger.info('🎨 Updating color scheme to:', uiState.colorSchemeKey);
       // Set colorScheme in the model for rendering
       gameRef.current.setColorScheme(colorScheme);
       // Update renderer background/grid colors

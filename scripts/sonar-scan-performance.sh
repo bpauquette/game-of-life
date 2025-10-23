@@ -19,6 +19,9 @@ rm -rf .scannerwork
 SONAR_TOKEN="${SONAR_TOKEN:-sqa_default_local_token}"
 
 echo "🚀 Starting SonarQube analysis for $CURRENT_BRANCH branch..."
+# Generate coverage report for Sonar (Jest/CRA produces coverage/lcov.info)
+echo "🧪 Running test coverage to generate coverage/lcov.info"
+npm run test:coverage || true
 
 # Run SonarQube scan (Community Edition - no branch support) with fresh analysis
 docker run --rm \
@@ -31,6 +34,7 @@ docker run --rm \
     -Dsonar.tests=/usr/src/src \
     -Dsonar.test.inclusions="**/*.test.js" \
     -Dsonar.exclusions="**/node_modules/**,**/build/**,**/public/**,**/coverage/**,**/.scannerwork/**" \
+    -Dsonar.javascript.lcov.reportPaths=/usr/src/coverage/lcov.info \
     -Dsonar.host.url=http://sonarqube:9000 \
     -Dsonar.token="$SONAR_TOKEN" \
     -Dsonar.scm.provider=git \
