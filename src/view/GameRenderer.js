@@ -39,9 +39,8 @@ export class GameRenderer {
     this.options = {
       backgroundColor: '#000000',
       gridColor: '#333333',
-      cellSaturation: 70,
-  cellSaturation: 80,
-  cellLightness: 55,
+      cellSaturation: 80,
+      cellLightness: 55,
       hueMultiplierX: 2.5,
       hueMultiplierY: 1.7,
       hueMax: 360,

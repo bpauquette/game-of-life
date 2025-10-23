@@ -37,14 +37,14 @@ const GameOfLifeApp = () => {
   const [cursorCell, setCursorCell] = useState(null); // Temp for UI sync
   
   // UI state managed by model
-  const defaultUIState = {
+  const defaultUIState = React.useMemo(() => ({
     showChart: false,
     showSpeedGauge: true,
     colorSchemeKey: 'spectrum',
     captureDialogOpen: false,
     paletteOpen: false,
     captureData: null
-  };
+  }), []);
   const [uiState, setUIStateRaw] = useState(defaultUIState);
 
   // Always merge updates with defaults to preserve required keys.
@@ -106,7 +106,7 @@ const GameOfLifeApp = () => {
   // Update refs when values change
   useEffect(() => {
     popWindowSizeRef.current = popWindowSize;
-  }, [popWindowSize, setUIState]);
+  }, [popWindowSize]);
   
   useEffect(() => {
     popToleranceRef.current = popTolerance;
@@ -204,7 +204,7 @@ const GameOfLifeApp = () => {
         gameRef.current = null;
       }
     };
-  }, [colorScheme]); // Re-initialize when color scheme changes  
+  }, [colorScheme, setUIState]); // Re-initialize when color scheme changes  
   
   // Update color scheme in model when it changes
   useEffect(() => {
@@ -369,7 +369,7 @@ const GameOfLifeApp = () => {
       // When running in tests without MVC, toggle local uiState to open the dialog
       setUIState(prev => ({ ...prev, paletteOpen: true }));
     }
-  }, []);
+  }, [setUIState]);
 
   const closePalette = useCallback(() => {
     if (gameRef.current) {
@@ -378,7 +378,7 @@ const GameOfLifeApp = () => {
     } else {
       setUIState(prev => ({ ...prev, paletteOpen: false }));
     }
-  }, []);
+  }, [setUIState]);
 
 
 

@@ -62,3 +62,6 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
+
+# Local Sonar issues export
+sonar-issues.json
