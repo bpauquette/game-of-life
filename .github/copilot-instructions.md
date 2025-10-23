@@ -61,3 +61,4 @@ Key goals for an AI coding agent working on this repo:
 If you modify global behavior (rendering, state shape, or public API of hooks), add or update tests in `src/*.test.js` and keep changes minimal and well-scoped.
 
 If anything above is ambiguous or you need deeper context (preferred behaviors for large-world performance, intended UX for new tools, or color-scheme rules), ask the repo owner before large changes.
+\nSee also: `.github/SONAR_GUIDANCE.md` for SonarQube-specific guidance and rules (logger usage, tests, stable keys).\n
