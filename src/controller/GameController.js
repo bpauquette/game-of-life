@@ -170,12 +170,10 @@ export class GameController {
         });
         this.updateToolOverlay();
       }
-    } else {
+    } else if (this.model.getSelectedTool() === 'shapes' && this.model.getSelectedShape()) {
       // Update shape preview for shapes tool
-      if (this.model.getSelectedTool() === 'shapes' && this.model.getSelectedShape()) {
-        this.toolState.previewPosition = cellCoords;
-        this.updateToolOverlay();
-      }
+      this.toolState.previewPosition = cellCoords;
+      this.updateToolOverlay();
     }
   }
 

@@ -175,7 +175,7 @@ export class GameRenderer {
    */
   getCellColor(cellX, cellY) {
     // Use colorScheme if available
-    if (this.currentColorScheme && this.currentColorScheme.getCellColor) {
+    if (this.currentColorScheme?.getCellColor) {
       return this.currentColorScheme.getCellColor(cellX, cellY);
     }
     

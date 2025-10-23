@@ -97,7 +97,7 @@ export class GameMVC {
   // Tool management
   async waitForTools() {
     if (this.toolsLoaded) {
-      return Promise.resolve();
+      return;
     }
     return Promise.all(this.toolLoadPromises);
   }

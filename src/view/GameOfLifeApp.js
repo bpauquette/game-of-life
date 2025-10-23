@@ -22,7 +22,6 @@ const RECENT_SHAPES_TOP_OFFSET = 80;
 const RECENT_SHAPES_Z_INDEX = 20;
 
 const GameOfLifeApp = () => {
-  // console.log('🏗️ GameOfLifeApp component rendering...'); // Temporarily disabled to reduce log spam
   
   // Refs
   const canvasRef = useRef(null);
@@ -59,18 +58,8 @@ const GameOfLifeApp = () => {
     maxGPS: 30
   });
 
-  // Debug logging for state changes (temporarily disabled - functionality working)
-  // useEffect(() => { console.log('🔄 generation changed:', generation); }, [generation]);
-  // useEffect(() => { console.log('🔄 cellCount changed:', cellCount); }, [cellCount]);
-  // useEffect(() => { console.log('🔄 isRunning changed:', isRunning); }, [isRunning]);
-  // useEffect(() => { console.log('🔄 selectedTool changed:', selectedTool); }, [selectedTool]);
-  // useEffect(() => { console.log('🔄 popWindowSize changed:', popWindowSize); }, [popWindowSize]);
-  // useEffect(() => { console.log('🔄 popTolerance changed:', popTolerance); }, [popTolerance]);
-  // useEffect(() => { console.log('🔄 cursorCell changed:', cursorCell); }, [cursorCell]); // Disabled to reduce log spam
-
   // Color scheme
   const colorScheme = React.useMemo(() => {
-    // console.log('🎨 colorScheme useMemo recalculating for key:', uiState.colorSchemeKey); // Debug logging disabled
     const base = colorSchemes[uiState.colorSchemeKey] || {};
     const copy = { ...base };
     if (typeof Object.freeze === 'function') {
@@ -94,7 +83,6 @@ const GameOfLifeApp = () => {
   }, [popTolerance]);
   
   const updateStabilityDetection = useCallback((game) => {
-    // console.log('🔄 updateStabilityDetection useCallback recreated'); // Temporarily disabled
     const populationHistory = game.getPopulationHistory();
     const liveCells = game.getLiveCells();
     
@@ -241,27 +229,8 @@ const GameOfLifeApp = () => {
       });
     }
 
-    // Cursor tracking temporarily disabled to fix infinite render loop
-    // TODO: Re-enable with proper throttling once render loop is fixed
-    /*
-    let rafId = null;
-    let lastCursorUpdate = 0;
-    const CURSOR_THROTTLE_MS = 16; // ~60fps max
-    
-    game.view.on('mouseMove', ({ cellCoords }) => {
-      const now = Date.now();
-      if (rafId || (now - lastCursorUpdate) < CURSOR_THROTTLE_MS) return;
-      
-      rafId = requestAnimationFrame(() => {
-        setCursorCell(cellCoords);
-        lastCursorUpdate = Date.now();
-        rafId = null;
-      });
-    });
-    */
-
     return () => {
-      // No cleanup needed when cursor tracking is disabled
+      // No cleanup needed for this effect
     };
   }, [updateStabilityDetection]); // Only re-run when updateStabilityDetection changes
 
