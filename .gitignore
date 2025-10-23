@@ -65,3 +65,4 @@ lerna-debug.log*
 
 # Local Sonar issues export
 sonar-issues.json
+.env.local
