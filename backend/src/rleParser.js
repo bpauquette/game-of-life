@@ -1,7 +1,8 @@
 // Basic RLE parser for Conway Life patterns
 // Exports parseRLE(text) -> { name, width, height, cells: [{x,y}], rule, meta }
 
-const HEADER_RE = /x\s*=\s*(-?\d+)\s*,\s*y\s*=\s*(-?\d+)(?:\s*,\s*rule\s*=\s*([^\s,]+))?/i;
+const HEADER_XY_RE = /x\s*=\s*(-?\d+)\s*,\s*y\s*=\s*(-?\d+)/i;
+const HEADER_RULE_RE = /rule\s*=\s*([^\s,]+)/i;
 
 const parseHeader = (lines) => {
   const meta = {comments:[]};
@@ -15,12 +16,13 @@ const parseHeader = (lines) => {
       else if(key === 'C' || key === 'c') meta.comments.push(body.slice(1).trim());
       else if(key === 'R' || key === 'P') meta.position = body.slice(1).trim();
       else if(body.toLowerCase().startsWith('rule')) meta.ruleLine = body;
-    } else if(HEADER_RE.test(t) && !headerLine){
+    } else if(HEADER_XY_RE.test(t) && !headerLine){
       headerLine = t;
-      const m = HEADER_RE.exec(t);
+      const m = HEADER_XY_RE.exec(t);
       meta.width = Number.parseInt(m[1],10);
       meta.height = Number.parseInt(m[2],10);
-      if(m[3]) meta.rule = m[3];
+      const ruleMatch = HEADER_RULE_RE.exec(t);
+      if(ruleMatch) meta.rule = ruleMatch[1];
     }
   }
   return {meta, headerLine};
@@ -84,11 +86,11 @@ const getBodyText = (lines, headerLine) => {
   let inBody = false;
   for (const line of lines) {
     const t = line.trim();
-    if (!inBody && HEADER_RE.test(t)) {
+    if (!inBody && HEADER_XY_RE.test(t)) {
       inBody = true;
       continue;
     }
-    if (!t.startsWith('#') && (inBody || !HEADER_RE.test(t))) {
+    if (!t.startsWith('#') && (inBody || !HEADER_XY_RE.test(t))) {
       if (t.length > 0) bodyLines.push(t);
     }
   }

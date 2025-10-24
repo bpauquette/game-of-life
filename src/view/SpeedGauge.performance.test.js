@@ -113,7 +113,7 @@ describe('SpeedGauge Performance Metrics', () => {
     const gpsRow = gpsLabel.parentElement;
     // eslint-disable-next-line testing-library/no-node-access
     const gpsValueElement = gpsRow.querySelector(CONST_METRIC_VALUE);
-    const gpsValue = parseInt(gpsValueElement?.textContent || '0');
+    const gpsValue = Number.parseInt(gpsValueElement?.textContent || '0');
     
     expect(gpsValue).toBeGreaterThan(0);
   });
@@ -160,7 +160,7 @@ describe('SpeedGauge Performance Metrics', () => {
     const fpsRow = fpsLabel.parentElement;
     // eslint-disable-next-line testing-library/no-node-access
     const fpsValueElement = fpsRow.querySelector(CONST_METRIC_VALUE);
-    const fpsValue = parseInt(fpsValueElement?.textContent || '0');
+    const fpsValue = Number.parseInt(fpsValueElement?.textContent || '0');
     
     expect(fpsValue).toBeGreaterThan(0);
   });

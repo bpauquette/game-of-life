@@ -53,10 +53,17 @@
   "eslintConfig": {
     "extends": [
       "react-app",
-      "react-app/jest"
+      "react-app/jest",
+      "plugin:sonarjs/recommended"
+    ],
+    "plugins": [
+      "sonarjs"
     ],
     "globals": {
       "globalThis": "readonly"
+    },
+    "rules": {
+      "sonarjs/cognitive-complexity": ["warn", 15]
     }
   },
   "browserslist": {

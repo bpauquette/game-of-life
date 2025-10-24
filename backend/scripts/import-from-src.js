@@ -39,7 +39,7 @@ const main = async () => {
     if(cells.length===0){ minX=0; minY=0; maxX=0; maxY=0; }
     const width = maxX - minX + 1;
     const height = maxY - minY + 1;
-    const shape = {
+    return {
       name: name,
       width,
       height,
@@ -48,7 +48,6 @@ const main = async () => {
       meta: { comments: [], name, width, height, originalHeader: null },
       id: makeId()
     };
-    return shape;
   });
 
   // read existing DB

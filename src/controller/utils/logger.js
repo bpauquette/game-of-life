@@ -1,6 +1,7 @@
 /**
  * Simple logger utility that can be configured for different environments
  * In production, logs can be disabled or sent to proper logging services
+ * 
  */
 
 const LOG_LEVELS = {
@@ -27,12 +28,10 @@ const logger = {
   },
   
   warn: (message, ...args) => {
-    if (config.enabled && config.level >= LOG_LEVELS.WARN) {
-      // In production, warnings are typically suppressed or sent to monitoring
-      if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
-        console.warn(message, ...args);
-      }
+    // In production, warnings are typically suppressed or sent to monitoring
+    if (config.enabled && config.level >= LOG_LEVELS.WARN && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.warn(message, ...args);
     }
   },
   

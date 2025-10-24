@@ -11,6 +11,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import Box from '@mui/material/Box';
+import Tooltip from '@mui/material/Tooltip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -227,54 +228,56 @@ The backend will start on port 55000.`);
 
         <List dense>
           {results.map((s, idx) => (
-            <ListItem key={`${s.id || 'shape'}-${idx}`} disablePadding>
-              <ListItemButton onClick={async () => {
-              // fetch full shape by id before returning selection
-              try{
-                const base = getBaseUrl(backendBase);
-                const url = new URL(`/v1/shapes/${encodeURIComponent(s.id)}`, base);
-                const res = await fetch(url.toString());
-                if(res.ok){
-                  const full = await res.json();
-                  onSelectShape?.(full);
-                  onClose?.();
-                } else {
-                  // fallback: pass metadata only
+            <Tooltip key={`tt-${s.id || 'shape'}-${idx}`} title={s.description || ''} arrow placement="right" enterDelay={300}>
+              <ListItem key={`${s.id || 'shape'}-${idx}`} disablePadding>
+                <ListItemButton onClick={async () => {
+                // fetch full shape by id before returning selection
+                try{
+                  const base = getBaseUrl(backendBase);
+                  const url = new URL(`/v1/shapes/${encodeURIComponent(s.id)}`, base);
+                  const res = await fetch(url.toString());
+                  if(res.ok){
+                    const full = await res.json();
+                    onSelectShape?.(full);
+                    onClose?.();
+                  } else {
+                    // fallback: pass metadata only
+                    onSelectShape?.(s);
+                    onClose?.();
+                  }
+                }catch(err){
+                  logger.warn('Failed to fetch full shape data, using metadata only:', err);
+                  // network error - fallback to metadata
                   onSelectShape?.(s);
                   onClose?.();
                 }
-              }catch(err){
-                logger.warn('Failed to fetch full shape data, using metadata only:', err);
-                // network error - fallback to metadata
-                onSelectShape?.(s);
-                onClose?.();
-              }
-              }}>
-                <ListItemText primary={s.name || '(unnamed)'} secondary={`${s.width}×${s.height} — ${s.cellsCount||0} cells`} />
-                <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width={PREVIEW_SVG_SIZE} height={PREVIEW_SVG_SIZE} viewBox={`0 0 ${Math.max(1, s.width||1)} ${Math.max(1, s.height||1)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: `1px solid rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`, borderRadius: PREVIEW_BORDER_RADIUS }}>
-                  {Array.isArray(s.cells) && s.cells.length > 0 ? (
-                    s.cells.map((c) => (
-                      <rect key={`${s.id || 'shape'}-${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
-                    ))
-                  ) : (
-                    // small empty placeholder grid
-                    <g stroke={`rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`} fill="none">
-                      {Array.from({length: Math.max(1, s.width||1)}, (_, i) => (
-                        <line key={`v-${s.id || 'unknown'}-${i}`} x1={i+GRID_LINE_OFFSET} y1={0} x2={i+GRID_LINE_OFFSET} y2={Math.max(1, s.height||1)} />
-                      ))}
-                      {Array.from({length: Math.max(1, s.height||1)}, (_, j) => (
-                        <line key={`h-${s.id || 'unknown'}-${j}`} x1={0} y1={j+GRID_LINE_OFFSET} x2={Math.max(1, s.width||1)} y2={j+GRID_LINE_OFFSET} />
-                      ))}
-                    </g>
-                  )}
-                </svg>
-                </Box>
-                <IconButton edge="end" aria-label="delete" onClick={(e) => { e.stopPropagation(); setToDelete(s); setConfirmOpen(true); }}>
-                  <DeleteIcon />
-                </IconButton>
-              </ListItemButton>
-            </ListItem>
+                }}>
+                  <ListItemText primary={s.name || '(unnamed)'} secondary={`${s.width}×${s.height} — ${s.cellsCount||0} cells`} />
+                  <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width={PREVIEW_SVG_SIZE} height={PREVIEW_SVG_SIZE} viewBox={`0 0 ${Math.max(1, s.width||1)} ${Math.max(1, s.height||1)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: `1px solid rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`, borderRadius: PREVIEW_BORDER_RADIUS }}>
+                    {Array.isArray(s.cells) && s.cells.length > 0 ? (
+                      s.cells.map((c) => (
+                        <rect key={`${s.id || 'shape'}-${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
+                      ))
+                    ) : (
+                      // small empty placeholder grid
+                      <g stroke={`rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`} fill="none">
+                        {Array.from({length: Math.max(1, s.width||1)}, (_, i) => (
+                          <line key={`v-${s.id || 'unknown'}-${i}`} x1={i+GRID_LINE_OFFSET} y1={0} x2={i+GRID_LINE_OFFSET} y2={Math.max(1, s.height||1)} />
+                        ))}
+                        {Array.from({length: Math.max(1, s.height||1)}, (_, j) => (
+                          <line key={`h-${s.id || 'unknown'}-${j}`} x1={0} y1={j+GRID_LINE_OFFSET} x2={Math.max(1, s.width||1)} y2={j+GRID_LINE_OFFSET} />
+                        ))}
+                      </g>
+                    )}
+                  </svg>
+                  </Box>
+                  <IconButton edge="end" aria-label="delete" onClick={(e) => { e.stopPropagation(); setToDelete(s); setConfirmOpen(true); }}>
+                    <DeleteIcon />
+                  </IconButton>
+                </ListItemButton>
+              </ListItem>
+            </Tooltip>
           ))}
           {(!loading && results.length===0) && (
             <ListItem><ListItemText primary="No shapes found" /></ListItem>
