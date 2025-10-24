@@ -52,16 +52,16 @@ describe('SpeedGauge Performance Metrics', () => {
   
   beforeEach(() => {
     // Mock performance.now() for consistent timing
-    originalPerformanceNow = window.performance.now;
+    originalPerformanceNow = globalThis.performance.now;
     mockTime = 0;
-    window.performance.now = jest.fn(() => {
+    globalThis.performance.now = jest.fn(() => {
       mockTime += 16.67; // Simulate 60 FPS
       return mockTime;
     });
   });
 
   afterEach(() => {
-    window.performance.now = originalPerformanceNow;
+    globalThis.performance.now = originalPerformanceNow;
   });
 
   test('Gen/s should not be zero when game is running with live cells', async () => {
