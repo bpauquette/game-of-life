@@ -148,8 +148,8 @@ export default function HelpDialog({ open, onClose }) {
           <Typography variant="h6" gutterBottom>
             Common Patterns
           </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
+            <Box>
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="subtitle1" color="primary">Still Lifes</Typography>
@@ -158,8 +158,8 @@ export default function HelpDialog({ open, onClose }) {
                   </Typography>
                 </CardContent>
               </Card>
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Box>
+            <Box>
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="subtitle1" color="primary">Oscillators</Typography>
@@ -168,8 +168,8 @@ export default function HelpDialog({ open, onClose }) {
                   </Typography>
                 </CardContent>
               </Card>
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Box>
+            <Box>
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="subtitle1" color="primary">Spaceships</Typography>
@@ -178,8 +178,8 @@ export default function HelpDialog({ open, onClose }) {
                   </Typography>
                 </CardContent>
               </Card>
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Box>
+            <Box>
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="subtitle1" color="primary">Methuselahs</Typography>
@@ -188,8 +188,8 @@ export default function HelpDialog({ open, onClose }) {
                   </Typography>
                 </CardContent>
               </Card>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>

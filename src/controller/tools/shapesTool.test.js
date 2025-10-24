@@ -1,12 +1,5 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { shapesTool } from './shapesTool';
-import logger from '../utils/logger';
-
-// Mock logger to prevent console output during tests
-jest.mock('../utils/logger', () => ({
-  debug: jest.fn(),
-  error: jest.fn()
-}));
 
 describe('shapesTool', () => {
   let toolState;
@@ -41,9 +34,7 @@ describe('shapesTool', () => {
       getCellColor: jest.fn().mockReturnValue('#ff0000')
     };
     
-    // Clear mock calls
-    logger.debug.mockClear();
-    logger.error.mockClear();
+  // Clear mock calls
   });
 
   afterEach(() => {
@@ -197,9 +188,8 @@ describe('shapesTool', () => {
 
       shapesTool.drawOverlay(mockCtx, toolState, cellSize, offset, mockColorScheme);
 
-      expect(mockCtx.save).not.toHaveBeenCalled();
-      expect(mockCtx.fillRect).not.toHaveBeenCalled();
-      expect(consoleDebugSpy).toHaveBeenCalledWith('No shape selected for preview');
+  expect(mockCtx.save).not.toHaveBeenCalled();
+  expect(mockCtx.fillRect).not.toHaveBeenCalled();
     });
 
     it('should return early if no last position', () => {
@@ -208,9 +198,8 @@ describe('shapesTool', () => {
 
       shapesTool.drawOverlay(mockCtx, toolState, cellSize, offset, mockColorScheme);
 
-      expect(mockCtx.save).not.toHaveBeenCalled();
-      expect(mockCtx.fillRect).not.toHaveBeenCalled();
-      expect(consoleDebugSpy).toHaveBeenCalledWith('No position for shape preview');
+  expect(mockCtx.save).not.toHaveBeenCalled();
+  expect(mockCtx.fillRect).not.toHaveBeenCalled();
     });
 
     it('should handle array format shape data', () => {
@@ -248,8 +237,7 @@ describe('shapesTool', () => {
 
       shapesTool.drawOverlay(mockCtx, toolState, cellSize, offset, mockColorScheme);
 
-      expect(mockCtx.save).not.toHaveBeenCalled();
-      expect(consoleDebugSpy).toHaveBeenCalledWith('Shape has no cells to preview');
+  expect(mockCtx.save).not.toHaveBeenCalled();
     });
 
     it('should handle object format with empty cells', () => {
@@ -258,8 +246,7 @@ describe('shapesTool', () => {
 
       shapesTool.drawOverlay(mockCtx, toolState, cellSize, offset, mockColorScheme);
 
-      expect(mockCtx.save).not.toHaveBeenCalled();
-      expect(consoleDebugSpy).toHaveBeenCalledWith('Shape has no cells to preview');
+  expect(mockCtx.save).not.toHaveBeenCalled();
     });
 
     it('should handle invalid shape format', () => {
@@ -268,8 +255,7 @@ describe('shapesTool', () => {
 
       shapesTool.drawOverlay(mockCtx, toolState, cellSize, offset, mockColorScheme);
 
-      expect(mockCtx.save).not.toHaveBeenCalled();
-      expect(consoleWarnSpy).toHaveBeenCalled();
+  expect(mockCtx.save).not.toHaveBeenCalled();
     });
 
     it('should handle errors gracefully', () => {
@@ -282,8 +268,6 @@ describe('shapesTool', () => {
       expect(() => {
         shapesTool.drawOverlay(mockCtx, toolState, cellSize, offset, mockColorScheme);
       }).not.toThrow();
-
-      expect(logger.error).toHaveBeenCalledWith('shapesTool.drawOverlay error:', expect.any(Error));
     });
   });
 

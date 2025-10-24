@@ -57,10 +57,11 @@ const OptionsPanel = ({
       <DialogTitle>Options</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          <TextField
+            <TextField
             select
             label="Color scheme"
-            value={localScheme}
+            // Fallback to empty string when the current scheme is not present
+            value={Object.prototype.hasOwnProperty.call(colorSchemes, localScheme) ? localScheme : ''}
             onChange={(e) => setLocalScheme(e.target.value)}
             helperText="Choose a rendering color scheme"
             size="small"

@@ -56,3 +56,41 @@ Object.defineProperty(globalThis, 'devicePixelRatio', {
 
 // Export mockContext for tests that need it directly
 globalThis.mockCanvasContext = mockContext;
+
+// ===== Suppress noisy test console output =====
+// Filter a small set of known, non-actionable warnings to keep test logs clean.
+// If new important warnings appear, relax these filters.
+const _origWarn = console.warn;
+const _origError = console.error;
+
+beforeAll(() => {
+  // Intercept warnings
+  jest.spyOn(console, 'warn').mockImplementation((...args) => {
+    const msg = args[0] && typeof args[0] === 'string' ? args[0] : '';
+    // MUI Grid deprecation and Select out-of-range warnings are noisy and
+    // do not indicate test failures; suppress them here.
+    if (msg.includes('MUI Grid:') || msg.includes('MUI: You have provided an out-of-range value') || msg.includes('You have provided an out-of-range value')) {
+      return;
+    }
+    _origWarn(...args);
+  });
+
+  // Intercept errors (keep real errors flowing through)
+  jest.spyOn(console, 'error').mockImplementation((...args) => {
+    const msg = args[0] && typeof args[0] === 'string' ? args[0] : '';
+    // Suppress noisy React test warnings we've addressed where the remaining
+    // messages are not actionable in CI (debounce/microtask timing, duplicate keys)
+    if ((msg.includes('An update to') && msg.includes('inside a test was not wrapped in act')) ||
+        msg.includes('Encountered two children with the same key') ||
+        msg.includes('Received `true` for a non-boolean attribute')) {
+      return;
+    }
+    _origError(...args);
+  });
+});
+
+afterAll(() => {
+  // Restore originals if mocks exist
+  if (console.warn && console.warn.mockRestore) console.warn.mockRestore();
+  if (console.error && console.error.mockRestore) console.error.mockRestore();
+});

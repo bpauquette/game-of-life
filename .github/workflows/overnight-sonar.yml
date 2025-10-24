@@ -1,0 +1,55 @@
+name: Overnight Sonar & Tests
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # daily at 03:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  overnight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install sonar-scanner (optional)
+        run: |
+          # sonarscanner is optional; we try to install but ignore failures
+          set -e
+          sudo apt-get update -y || true
+          sudo apt-get install -y wget unzip || true
+          if [ ! -x "$(pwd)/sonar-scanner/bin/sonar-scanner" ]; then
+            wget -qO /tmp/sonar.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip || true
+            unzip -q /tmp/sonar.zip -d $(pwd) || true
+            mv $(pwd)/sonar-scanner-*/ sonar-scanner || true
+          fi
+
+      - name: Run overnight script (auto-push enabled)
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Enable auto-push to the branch
+          DRY_RUN: 0
+          AUTO_PR: 1
+        run: |
+          chmod +x .github/scripts/overnight-sonar-run.sh
+          # DRY_RUN=0 AUTO_PR=1 will allow the script to push fixes to the current branch
+          DRY_RUN=0 AUTO_PR=1 .github/scripts/overnight-sonar-run.sh
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: overnight-logs
+          path: tmp/overnight-logs

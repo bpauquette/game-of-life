@@ -73,14 +73,18 @@ describe('captureTool', () => {
       expect(toolState.capturedCells).toEqual([]);
     });
 
-    test('onMouseUp without callback logs to console', () => {
+    test('onMouseUp without callback resets state and does not throw', () => {
       toolState.start = { x: 0, y: 0 };
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
-      captureTool.onMouseUp(toolState, 2, 2, mockSetCellAlive, mockGetLiveCells);
-      
-      expect(consoleSpy).toHaveBeenCalledWith('Captured shape:', expect.any(Object));
-      consoleSpy.mockRestore();
+
+      expect(() => {
+        captureTool.onMouseUp(toolState, 2, 2, mockSetCellAlive, mockGetLiveCells);
+      }).not.toThrow();
+
+      // Tool state should be reset even when no callback is provided
+      expect(toolState.start).toBeNull();
+      expect(toolState.end).toBeNull();
+      expect(toolState.preview).toEqual([]);
+      expect(toolState.capturedCells).toEqual([]);
     });
   });
 

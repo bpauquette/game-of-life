@@ -83,20 +83,20 @@ export default function AboutDialog({ open, onClose }) {
             <Typography variant="subtitle1" color="primary" gutterBottom>
               Key Features
             </Typography>
-            <Grid container spacing={1}>
-              <Grid item xs={12} sm={6}>
+            <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
+              <Box>
                 <Typography variant="body2">• Infinite scrollable grid</Typography>
                 <Typography variant="body2">• Multiple drawing tools</Typography>
                 <Typography variant="body2">• Shape library integration</Typography>
                 <Typography variant="body2">• Population analysis</Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box>
                 <Typography variant="body2">• Zoom and pan navigation</Typography>
                 <Typography variant="body2">• Real-time performance metrics</Typography>
                 <Typography variant="body2">• Steady-state detection</Typography>
                 <Typography variant="body2">• Multiple color schemes</Typography>
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
           </CardContent>
         </Card>
 

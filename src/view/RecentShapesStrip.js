@@ -35,8 +35,11 @@ const RecentShapesStrip = ({
   selectedShape = null
 }) => {
   const getShapeKey = (shape, index) => {
-    if (shape?.id) return shape.id;
-    if (shape?.name) return shape.name;
+    // Always include the index to ensure uniqueness even when parent provides
+    // duplicate ids. This avoids React duplicate key warnings while keeping
+    // keys stable for the same array ordering.
+    if (shape?.id) return `${shape.id}-${index}`;
+    if (shape?.name) return `${shape.name}-${index}`;
     // Generate a stable content-based key instead of using array index
     try {
       return `${JSON.stringify(shape)}-${index}`;
@@ -73,11 +76,15 @@ const RecentShapesStrip = ({
 
   const isShapeSelected = (shape) => {
     if (!selectedShape || !shape) return false;
-    
-    // Compare by key generation (same logic as for React keys)
-    const shapeKey = getShapeKey(shape, -1);
-    const selectedKey = getShapeKey(selectedShape, -1);
-    return shapeKey === selectedKey;
+    // Prefer direct id comparison when available
+    if (shape.id && selectedShape.id) return shape.id === selectedShape.id;
+    if (shape.name && selectedShape.name) return shape.name === selectedShape.name;
+    // Fallback to content comparison for robustness
+    try {
+      return JSON.stringify(shape) === JSON.stringify(selectedShape);
+    } catch (e) {
+      return false;
+    }
   };
 
   const getCellCoordinates = (cell) => {

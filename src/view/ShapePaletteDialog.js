@@ -8,6 +8,7 @@ import DialogContent from '@mui/material/DialogContent';
 import TextField from '@mui/material/TextField';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -207,8 +208,9 @@ The backend will start on port 55000.`);
         </div>
 
         <List dense>
-          {results.map(s => (
-            <ListItem key={s.id} button onClick={async () => {
+          {results.map((s, idx) => (
+            <ListItem key={`${s.id || 'shape'}-${idx}`} disablePadding>
+              <ListItemButton onClick={async () => {
               // fetch full shape by id before returning selection
               try{
                 const base = getBaseUrl(backendBase);
@@ -229,12 +231,9 @@ The backend will start on port 55000.`);
                 onSelectShape?.(s);
                 onClose?.();
               }
-            }}>
-              <ListItemText primary={s.name || '(unnamed)'} secondary={`${s.width}×${s.height} — ${s.cellsCount||0} cells`} />
-              <IconButton edge="end" aria-label="delete" onClick={(e) => { e.stopPropagation(); setToDelete(s); setConfirmOpen(true); }}>
-                <DeleteIcon />
-              </IconButton>
-              <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              }}>
+                <ListItemText primary={s.name || '(unnamed)'} secondary={`${s.width}×${s.height} — ${s.cellsCount||0} cells`} />
+                <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width={PREVIEW_SVG_SIZE} height={PREVIEW_SVG_SIZE} viewBox={`0 0 ${Math.max(1, s.width||1)} ${Math.max(1, s.height||1)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: `1px solid rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`, borderRadius: PREVIEW_BORDER_RADIUS }}>
                   {Array.isArray(s.cells) && s.cells.length > 0 ? (
                     s.cells.map((c) => (
@@ -252,7 +251,11 @@ The backend will start on port 55000.`);
                     </g>
                   )}
                 </svg>
-              </Box>
+                </Box>
+                <IconButton edge="end" aria-label="delete" onClick={(e) => { e.stopPropagation(); setToDelete(s); setConfirmOpen(true); }}>
+                  <DeleteIcon />
+                </IconButton>
+              </ListItemButton>
             </ListItem>
           ))}
           {(!loading && results.length===0) && (
