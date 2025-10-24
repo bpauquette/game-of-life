@@ -7,7 +7,7 @@ import ShapePaletteDialog from '../view/ShapePaletteDialog';
 import CaptureShapeDialog from '../view/CaptureShapeDialog';
 import RecentShapesStrip from '../view/RecentShapesStrip';
 import SpeedGauge from '../view/SpeedGauge';
-import DebugConsole from '../view/DebugConsole';
+// DebugConsole fully removed
 import { useShapeManager } from '../view/hooks/useShapeManager';
 import { colorSchemes } from '../model/colorSchemes';
 import isPopulationStable from '../controller/utils/populationUtils';
@@ -558,10 +558,7 @@ const GameOfLifeApp = () => {
         position={{ top: 10, right: 10 }}
       />
       
-      <DebugConsole 
-        isVisible={true}
-        maxLines={50}
-      />
+  {/* DebugConsole fully removed */}
     </div>
   );
 };
