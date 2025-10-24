@@ -311,6 +311,13 @@ ControlsBar.propTypes = {
   colorSchemes: PropTypes.object.isRequired,
   colorSchemeKey: PropTypes.string.isRequired,
   setColorSchemeKey: PropTypes.func.isRequired,
+  // Performance props
+  showSpeedGauge: PropTypes.bool,
+  setShowSpeedGauge: PropTypes.func,
+  maxFPS: PropTypes.number,
+  setMaxFPS: PropTypes.func,
+  maxGPS: PropTypes.number,
+  setMaxGPS: PropTypes.func,
   popWindowSize: PropTypes.number.isRequired,
   setPopWindowSize: PropTypes.func.isRequired,
   popTolerance: PropTypes.number.isRequired,
