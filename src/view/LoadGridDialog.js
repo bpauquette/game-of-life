@@ -238,8 +238,8 @@ const LoadGridDialog = ({
                               </Box>
                             </Box>
                           </Box>
-                        }
-                        secondaryTypographyProps={{ component: 'div' }}
+                      }
+                      slotProps={{ secondary: { component: 'div' } }}
                       />
                     </ListItemButton>
                   </ListItem>
