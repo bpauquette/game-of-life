@@ -32,8 +32,8 @@ const GameOfLifeApp = () => {
   const [isRunning, setIsRunning] = useState(false);
   
   // Tool and interaction state now managed by model
-  const [selectedTool, setSelectedToolState] = useState('draw'); // Temp for UI sync
-  const [selectedShape, setSelectedShapeState] = useState(null); // Temp for UI sync  
+  const [selectedTool, setSelectedTool] = useState('draw'); // Temp for UI sync
+  const [selectedShape, setSelectedShapeLocal] = useState(null); // Temp for UI sync  
   const [cursorCell, setCursorCell] = useState(null); // Temp for UI sync
   
   // UI state managed by model
@@ -45,7 +45,7 @@ const GameOfLifeApp = () => {
     paletteOpen: false,
     captureData: null
   }), []);
-  const [uiState, setUIStateRaw] = useState(defaultUIState);
+  const [uiState, setUIStateRaw] = React.useState(defaultUIState);
 
   // Always merge updates with defaults to preserve required keys.
   // When merging updates from the model, prefer the current local UI
@@ -155,10 +155,10 @@ const GameOfLifeApp = () => {
       game.onModelChange((event, data) => {
         switch (event) {
           case 'selectedToolChanged':
-            setSelectedToolState(data);
+            setSelectedTool(data);
             break;
           case 'selectedShapeChanged':
-            setSelectedShapeState(data);
+            setSelectedShapeLocal(data);
             break;
           case 'cursorPositionChanged':
             setCursorCell(data);
@@ -185,8 +185,8 @@ const GameOfLifeApp = () => {
       game.waitForTools().then(() => {
         
         // Initialize React state from model
-        setSelectedToolState(game.getSelectedTool());
-        setSelectedShapeState(game.getSelectedShape());
+        setSelectedTool(game.getSelectedTool());
+        setSelectedShapeLocal(game.getSelectedShape());
         setCursorCell(game.getCursorPosition());
         setGeneration(game.getGeneration());
         setIsRunning(game.getIsRunning());
@@ -253,9 +253,9 @@ const GameOfLifeApp = () => {
     });
 
     // Setup performance tracking
-    if (window.speedGaugeTracker) {
+    if (globalThis.speedGaugeTracker) {
       game.addPerformanceCallback((frameTime) => {
-        window.speedGaugeTracker(frameTime, frameTime);
+        globalThis.speedGaugeTracker(frameTime, frameTime);
       });
     }
 
@@ -309,17 +309,17 @@ const GameOfLifeApp = () => {
   }, []);
 
   // Tool management
-  const setSelectedTool = useCallback((tool) => {
+  const handleSetSelectedTool = useCallback((tool) => {
     if (gameRef.current) {
       gameRef.current.setSelectedTool(tool);
-      setSelectedToolState(tool);
+      setSelectedTool(tool);
     }
   }, []);
 
   const setSelectedShape = useCallback((shape) => {
     if (gameRef.current) {
       gameRef.current.setSelectedShape(shape);
-      setSelectedShapeState(shape);
+      setSelectedShapeLocal(shape);
     }
   }, []);
 
@@ -352,7 +352,7 @@ const GameOfLifeApp = () => {
     selectedShape,
     setSelectedShape,
     selectedTool,
-    setSelectedTool,
+    handleSetSelectedTool,
     toolStateRef: { current: {} }, // MVC handles tool state internally
     drawWithOverlay: () => {} // MVC handles rendering automatically
   });
@@ -475,7 +475,7 @@ const GameOfLifeApp = () => {
 
       <ControlsBar
         selectedTool={selectedTool}
-        setSelectedTool={setSelectedTool}
+        setSelectedTool={handleSetSelectedTool}
         colorSchemeKey={uiState.colorSchemeKey}
         setColorSchemeKey={setColorSchemeKey}
         colorSchemes={colorSchemes}

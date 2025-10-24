@@ -44,12 +44,12 @@ export const shapesTool = {
       const sel = toolState.selectedShapeData;
       const last = toolState.last;
       
-      if (!sel || !last) {
-        // Debug: log when preview can't be drawn
-  if (!sel) logger.debug('No shape selected for preview');
-  if (!last) logger.debug('No position for shape preview');
-        return;
-      }
+  if (!sel || !last) {
+    // Debug: log when preview can't be drawn
+    if (!sel) logger.debug('No shape selected for preview');
+    if (!last) logger.debug('No position for shape preview');
+    return;
+  }
 
       // Normalize cells from different formats
       let cells = [];

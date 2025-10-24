@@ -36,7 +36,11 @@ export class GameView {
 
   emit(event, data) {
     if (this.callbacks[event]) {
-      this.callbacks[event].forEach(callback => callback(data));
+      for (const callback of this.callbacks[event]) {
+       
+          callback(data);
+       
+      }
     }
   }
 

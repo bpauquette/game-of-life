@@ -187,12 +187,12 @@ describe('ovalTool', () => {
       ovalTool.onMouseUp(toolState, 3, 2, mockSetCellAlive);
 
       // Verify all calls are with valid coordinates and true flag
-      mockSetCellAlive.mock.calls.forEach(call => {
+      for (const call of mockSetCellAlive.mock.calls) {
         expect(call).toHaveLength(3);
         expect(typeof call[0]).toBe('number'); // x coordinate
         expect(typeof call[1]).toBe('number'); // y coordinate
         expect(call[2]).toBe(true); // alive flag
-      });
+      }
     });
   });
 

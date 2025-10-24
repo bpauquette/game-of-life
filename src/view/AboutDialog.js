@@ -12,8 +12,7 @@ import {
   Divider,
   Card,
   CardContent,
-  Chip,
-  Grid
+  Chip
 } from '@mui/material';
 import {
   GitHub as GitHubIcon,

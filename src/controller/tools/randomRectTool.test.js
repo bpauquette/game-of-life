@@ -256,9 +256,9 @@ describe('randomRectTool', () => {
       randomRectTool.onMouseUp(toolState, 1, 1, mockSetCellAlive);
 
       // All calls should be with false
-      mockSetCellAlive.mock.calls.forEach(call => {
+      for (const call of mockSetCellAlive.mock.calls) {
         expect(call[2]).toBe(false);
-      });
+      }
     });
 
     it('should handle probability 1 (all cells alive)', () => {
@@ -270,9 +270,9 @@ describe('randomRectTool', () => {
       randomRectTool.onMouseUp(toolState, 1, 1, mockSetCellAlive);
 
       // All calls should be with true
-      mockSetCellAlive.mock.calls.forEach(call => {
+      for (const call of mockSetCellAlive.mock.calls) {
         expect(call[2]).toBe(true);
-      });
+      }
     });
 
     it('should handle single cell', () => {
@@ -307,9 +307,9 @@ describe('randomRectTool', () => {
       expect(calledCoords).toContainEqual([0, 0]);
       
       // All should be alive due to 0.5 < 0.8
-      mockSetCellAlive.mock.calls.forEach(call => {
+      for (const call of mockSetCellAlive.mock.calls) {
         expect(call[2]).toBe(true);
-      });
+      }
     });
   });
 
@@ -414,9 +414,9 @@ describe('randomRectTool', () => {
       randomRectTool.onMouseUp(toolState, 1, 1, mockSetCellAlive);
       
       // Should use the maintained probability
-      mockSetCellAlive.mock.calls.forEach(call => {
+      for (const call of mockSetCellAlive.mock.calls) {
         expect(call[2]).toBe(true); // 0.5 < 0.8
-      });
+      }
     });
   });
 

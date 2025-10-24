@@ -381,12 +381,14 @@ export class GameController {
     const renderTime = performance.now() - renderStart;
     
     // Track performance for SpeedGauge
-    if (window.speedGaugeTracker) {
-      window.speedGaugeTracker(renderTime, renderTime);
+    if (globalThis.speedGaugeTracker) {
+      globalThis.speedGaugeTracker(renderTime, renderTime);
     }
     
     // Call performance callbacks
-    this.performanceCallbacks.forEach(callback => callback(renderTime));
+    for (const callback of this.performanceCallbacks) {
+      callback(renderTime);
+    }
   }
 
   // Tool overlay management
@@ -426,9 +428,9 @@ export class GameController {
   }
 
   notifyPerformance(frameTime) {
-    this.performanceCallbacks.forEach(callback => {
+    for (const callback of this.performanceCallbacks) {
       callback(frameTime);
-    });
+    }
   }
 
   // State management

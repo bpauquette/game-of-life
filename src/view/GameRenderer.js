@@ -14,6 +14,15 @@ export class GameRenderer {
     try {
       ctx = canvas && typeof canvas.getContext === CONST_FUNCTION ? canvas.getContext('2d') : null;
     } catch (e) {
+      // Log the failure to obtain a real 2D context so test environments or
+      // unexpected browser errors are visible during debugging, then fall back
+      // to a noop context to keep rendering code safe.
+      
+        // Use console.warn if available; avoid breaking environments without console
+        if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+          console.warn('GameRenderer: failed to get 2D context, falling back to noop context.', e);
+        }
+      
       ctx = null;
     }
     const makeNoopCtx = () => ({
@@ -265,49 +274,49 @@ export class GameRenderer {
   const gridCtx = this.gridCache.getContext('2d') || this.canvas.getContext('2d') || { fillStyle: '', fillRect: () => {}, beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, stroke: () => {} };
       
   // Draw background
-  if (gridCtx) gridCtx.fillStyle = this.options.backgroundColor;
-      gridCtx.fillRect(0, 0, this.viewport.width, this.viewport.height);
+  if (gridCtx) {
+    gridCtx.fillStyle = this.options.backgroundColor;
+    gridCtx.fillRect(0, 0, this.viewport.width, this.viewport.height);
+  }
       
-      // Draw grid lines
-      if (gridCtx) {
-        gridCtx.strokeStyle = this.options.gridColor;
-        gridCtx.beginPath();
-      }
+  // Draw grid lines
+  if (gridCtx) {
+    gridCtx.strokeStyle = this.options.gridColor;
+    gridCtx.beginPath();
       
-      const centerX = this.viewport.width / 2;
-      const centerY = this.viewport.height / 2;
-      const computedOffset = {
-        x: this.viewport.offsetX * this.viewport.cellSize - centerX,
-        y: this.viewport.offsetY * this.viewport.cellSize - centerY
-      };
+    const centerX = this.viewport.width / 2;
+    const centerY = this.viewport.height / 2;
+    const computedOffset = {
+      x: this.viewport.offsetX * this.viewport.cellSize - centerX,
+      y: this.viewport.offsetY * this.viewport.cellSize - centerY
+    };
       
-      const startX = -computedOffset.x % this.viewport.cellSize;
-      const startY = -computedOffset.y % this.viewport.cellSize;
+    const startX = -computedOffset.x % this.viewport.cellSize;
+    const startY = -computedOffset.y % this.viewport.cellSize;
       
-      // Vertical lines
-      for (let x = startX; x < this.viewport.width; x += this.viewport.cellSize) {
-        gridCtx.moveTo(Math.floor(x) + this.options.gridLineOffset, 0);
-        gridCtx.lineTo(Math.floor(x) + this.options.gridLineOffset, this.viewport.height);
-      }
+    // Vertical lines
+    for (let x = startX; x < this.viewport.width; x += this.viewport.cellSize) {
+      gridCtx.moveTo(Math.floor(x) + this.options.gridLineOffset, 0);
+      gridCtx.lineTo(Math.floor(x) + this.options.gridLineOffset, this.viewport.height);
+    }
       
-      // Horizontal lines
-      for (let y = startY; y < this.viewport.height; y += this.viewport.cellSize) {
-        gridCtx.moveTo(0, Math.floor(y) + this.options.gridLineOffset);
-        gridCtx.lineTo(this.viewport.width, Math.floor(y) + this.options.gridLineOffset);
-      }
+    // Horizontal lines
+    for (let y = startY; y < this.viewport.height; y += this.viewport.cellSize) {
+      gridCtx.moveTo(0, Math.floor(y) + this.options.gridLineOffset);
+      gridCtx.lineTo(this.viewport.width, Math.floor(y) + this.options.gridLineOffset);
+    }
       
-      gridCtx.stroke();
+    gridCtx.stroke();
+  }
     }
     
     // Draw cached grid (guard against missing ctx.drawImage in mocked envs)
     if (this.ctx && typeof this.ctx.drawImage === CONST_FUNCTION) {
       this.ctx.drawImage(this.gridCache, 0, 0);
-    } else {
+    } else if (this.ctx && typeof this.ctx.fillRect === CONST_FUNCTION) {
       // Fall back to copying pixels via a safe no-op or by drawing a filled rect
-      if (this.ctx && typeof this.ctx.fillRect === CONST_FUNCTION) {
-        this.ctx.fillStyle = this.options.backgroundColor;
-        this.ctx.fillRect(0, 0, this.viewport.width, this.viewport.height);
-      }
+      this.ctx.fillStyle = this.options.backgroundColor;
+      this.ctx.fillRect(0, 0, this.viewport.width, this.viewport.height);
     }
   }
 

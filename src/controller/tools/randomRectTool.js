@@ -50,7 +50,7 @@ export const randomRectTool = {
   },
 
   drawOverlay(ctx, state, cellSize, offset) {
-    if (!state || !state.preview || state.preview.length === 0) return;
+    if (!(state?.preview?.length)) return;
 
     // semi-transparent white fill similar to other tools
     ctx.fillStyle = 'rgba(255,255,255,0.08)';

@@ -15,7 +15,51 @@ const isTest = process.env.NODE_ENV === 'test';
 
 const noop = () => {};
 
-let logger;
+let logger = isTest
+  ? {
+      error: noop,
+      warn: noop,
+      info: noop,
+      debug: noop
+    }
+  : (() => {
+      // Configuration - can be set via environment variables or build-time constants
+      const config = {
+        level: process.env.NODE_ENV === 'production' ? LOG_LEVELS.ERROR : LOG_LEVELS.DEBUG,
+        enabled: true
+      };
+
+      return {
+        error: (message, ...args) => {
+          if (config.enabled && config.level >= LOG_LEVELS.ERROR) {
+            // In production, this could send to error tracking service
+            // eslint-disable-next-line no-console
+            console.error(message, ...args);
+          }
+        },
+
+        warn: (message, ...args) => {
+          if (config.enabled && config.level >= LOG_LEVELS.WARN && process.env.NODE_ENV !== 'production') {
+            // eslint-disable-next-line no-console
+            console.warn(message, ...args);
+          }
+        },
+
+        info: (message, ...args) => {
+          if (config.enabled && config.level >= LOG_LEVELS.INFO) {
+            // eslint-disable-next-line no-console
+            console.info(message, ...args);
+          }
+        },
+
+        debug: (message, ...args) => {
+          if (config.enabled && config.level >= LOG_LEVELS.DEBUG) {
+            // eslint-disable-next-line no-console
+            console.debug(message, ...args);
+          }
+        }
+      };
+    })();
 
 if (isTest) {
   // Minimal, safe no-op logger for tests

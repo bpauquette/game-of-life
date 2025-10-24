@@ -1,6 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 
+const formatLogMessage = (args) => {
+  return args.map(arg =>
+    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+  ).join(' ');
+};
+
+const appendLog = (prevLogs, { level, message, timestamp }, maxLines) => {
+  const newLogs = [
+    ...prevLogs,
+    {
+      level,
+      message,
+      timestamp,
+      id: Date.now() + Math.random()
+    }
+  ];
+  // Keep only the most recent maxLines
+  if (newLogs.length > maxLines) {
+    return newLogs.slice(-maxLines);
+  }
+  return newLogs;
+};
+
+const createLogger = (level, originalMethod, setLogs, maxLines) => {
+  return (...args) => {
+    // Call original console method
+    originalMethod.apply(console, args);
+
+    // Add to our log display
+    const timestamp = new Date().toLocaleTimeString();
+    const message = formatLogMessage(args);
+
+    setLogs(prevLogs => appendLog(prevLogs, { level, message, timestamp }, maxLines));
+  };
+};
+
 const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
   const [logs, setLogs] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -24,40 +60,11 @@ const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
       info: console.info
     };
 
-    // Create logging function
-    const createLogger = (level, originalMethod) => {
-      return (...args) => {
-        // Call original console method
-        originalMethod.apply(console, args);
-
-        // Add to our log display
-        const timestamp = new Date().toLocaleTimeString();
-        const message = args.map(arg => 
-          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-        ).join(' ');
-
-        setLogs(prevLogs => {
-          const newLogs = [...prevLogs, { 
-            level, 
-            message, 
-            timestamp,
-            id: Date.now() + Math.random()
-          }];
-
-          // Keep only the most recent maxLines
-          if (newLogs.length > maxLines) {
-            return newLogs.slice(-maxLines);
-          }
-          return newLogs;
-        });
-      };
-    };
-
     // Override console methods
-    console.log = createLogger('log', originalConsole.current.log);
-    console.warn = createLogger('warn', originalConsole.current.warn);
-    console.error = createLogger('error', originalConsole.current.error);
-    console.info = createLogger('info', originalConsole.current.info);
+    console.log = createLogger('log', originalConsole.current.log, setLogs, maxLines);
+    console.warn = createLogger('warn', originalConsole.current.warn, setLogs, maxLines);
+    console.error = createLogger('error', originalConsole.current.error, setLogs, maxLines);
+    console.info = createLogger('info', originalConsole.current.info, setLogs, maxLines);
 
     // Cleanup function
     return () => {
@@ -125,16 +132,23 @@ const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
       fontSize: '12px'
     }}>
       {/* Header */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '4px 8px',
-        backgroundColor: '#2d2d2d',
-        borderBottom: '1px solid #444',
-        cursor: 'pointer'
-      }} onClick={() => setIsExpanded(!isExpanded)}>
-        <div style={{ color: '#ffffff' }}>
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          width: '100%',
+          padding: '4px 8px',
+          backgroundColor: '#2d2d2d',
+          border: 'none',
+          borderBottom: '1px solid #444',
+          cursor: 'pointer'
+        }}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div style={{ color: '#ffffff', display: 'flex', alignItems: 'center' }}>
           <span>🔧 Debug Console</span>
           <span style={{ marginLeft: '8px', color: '#888' }}>
             ({logs.length} logs)
@@ -142,6 +156,7 @@ const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
         </div>
         <div style={{ display: 'flex', gap: '4px' }}>
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               clearLogs();
@@ -159,6 +174,7 @@ const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
             Clear
           </button>
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               exportLogs();
@@ -183,7 +199,7 @@ const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
             {isExpanded ? '▼' : '▲'}
           </span>
         </div>
-      </div>
+      </button>
 
       {/* Console Content */}
       {isExpanded && (
@@ -218,12 +234,12 @@ const DebugConsole = ({ isVisible = true, maxLines = 100 }) => {
           overflow: 'hidden'
         }}>
           <div style={{
-            color: getLogColor(logs[logs.length - 1]?.level),
+            color: getLogColor(logs.at(-1)?.level),
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis'
           }}>
-            {logs[logs.length - 1]?.message}
+            {logs.at(-1)?.message}
           </div>
         </div>
       )}
