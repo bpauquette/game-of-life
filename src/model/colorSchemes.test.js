@@ -136,13 +136,13 @@ describe('colorSchemes', () => {
   });
 
   it('should have consistent structure across all schemes', () => {
-    Object.entries(colorSchemes).forEach(([key, scheme]) => {
+    for (const [key, scheme] of Object.entries(colorSchemes)) {
       expect(scheme).toHaveProperty('name');
       expect(scheme).toHaveProperty('background');
       expect(scheme).toHaveProperty('getCellColor');
       expect(typeof scheme.name).toBe('string');
       expect(typeof scheme.background).toBe('string');
       expect(typeof scheme.getCellColor).toBe('function');
-    });
+    }
   });
 });
