@@ -18,7 +18,7 @@ export class GameModel {
       offsetX: 0,
       offsetY: 0,
       cellSize: 20, // Default to 20 instead of 8
-      zoom: 1.0,
+      zoom: 1,
       minCellSize: 1,
       maxCellSize: 200
     };
@@ -85,13 +85,13 @@ export class GameModel {
   }
 
   notifyObservers(event, data) {
-    this.observers.forEach(observer => {
+    for (const observer of this.observers) {
       if (typeof observer === 'function') {
         observer(event, data);
       } else if (observer[event]) {
         observer[event](data);
       }
-    });
+    }
   }
 
   // Game state operations
@@ -212,15 +212,15 @@ export class GameModel {
 
   setCellSize(cellSize) {
     // Handle NaN, null, undefined, and invalid values
-    const safeCellSize = (typeof cellSize === 'number' && !isNaN(cellSize)) ? cellSize : this.viewport.cellSize;
+    const safeCellSize = (typeof cellSize === 'number' && !Number.isNaN(cellSize)) ? cellSize : this.viewport.cellSize;
     const clampedSize = Math.max(this.viewport.minCellSize, Math.min(this.viewport.maxCellSize, safeCellSize));
     return this.setViewport(this.viewport.offsetX, this.viewport.offsetY, clampedSize);
   }
 
   setZoom(zoom) {
     // Handle NaN, null, undefined, and invalid values
-    const safeZoom = (typeof zoom === 'number' && !isNaN(zoom)) ? zoom : this.viewport.zoom;
-    const clampedZoom = Math.max(0.1, Math.min(10.0, safeZoom));
+    const safeZoom = (typeof zoom === 'number' && !Number.isNaN(zoom)) ? zoom : this.viewport.zoom;
+    const clampedZoom = Math.max(0.1, Math.min(10, safeZoom));
     if (this.viewport.zoom !== clampedZoom) {
       this.viewport.zoom = clampedZoom;
       this.notifyObservers('viewportChanged', { ...this.viewport });
@@ -249,8 +249,26 @@ export class GameModel {
     let cellsPlaced = 0;
     
     for (const cell of cells) {
-      const cellX = x + (cell.x !== undefined ? cell.x : cell[0] || 0);
-      const cellY = y + (cell.y !== undefined ? cell.y : cell[1] || 0);
+      const hasX = cell && Object.hasOwn(cell, 'x');
+      const hasY = cell && Object.hasOwn(cell, 'y');
+      let offsetX;
+      if (hasX) {
+        offsetX = cell.x;
+      } else if (Array.isArray(cell)) {
+        offsetX = cell[0] ?? 0;
+      } else {
+        offsetX = 0;
+      }
+      let offsetY;
+      if (hasY) {
+        offsetY = cell.y;
+      } else if (Array.isArray(cell)) {
+        offsetY = cell[1] ?? 0;
+      } else {
+        offsetY = 0;
+      }
+      const cellX = x + offsetX;
+      const cellY = y + offsetY;
       this.setCellAlive(cellX, cellY, true);
       cellsPlaced++;
     }
@@ -327,7 +345,7 @@ export class GameModel {
     for (let period = 1; period <= maxPeriod; period++) {
       let matches = 0;
       for (let i = 0; i < maxPeriod; i++) {
-        if (recent[recent.length - 1 - i] === recent[recent.length - 1 - i - period]) {
+        if (recent.at(-1 - i) === recent.at(-1 - i - period)) {
           matches++;
         }
       }
@@ -372,7 +390,7 @@ export class GameModel {
     
     if (timestamps.length < 2) return 0;
     
-    const timeSpan = timestamps[timestamps.length - 1] - timestamps[0];
+    const timeSpan = timestamps.at(-1) - timestamps[0];
     if (timeSpan === 0) return 0;
     
     return Math.round(((timestamps.length - 1) * 1000) / timeSpan);
@@ -386,7 +404,7 @@ export class GameModel {
     
     if (timestamps.length < 2) return 0;
     
-    const timeSpan = timestamps[timestamps.length - 1] - timestamps[0];
+    const timeSpan = timestamps.at(-1) - timestamps[0];
     if (timeSpan === 0) return 0;
     
     return Math.round(((timestamps.length - 1) * 1000) / timeSpan);
@@ -577,7 +595,7 @@ export class GameModel {
   }
 
   setPopulationTolerance(tolerance) {
-    this.setUIState('popTolerance', Math.max(0.01, Math.min(1.0, tolerance)));
+    this.setUIState('popTolerance', Math.max(0.01, Math.min(1, tolerance)));
   }
 
   getPopulationTolerance() {
