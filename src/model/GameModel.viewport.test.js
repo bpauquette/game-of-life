@@ -1,17 +1,17 @@
 // GameModel.viewport.test.js - Tests for enhanced viewport management in GameModel
-import { GameModel } from './GameModel';
+import { GameModel } from "./GameModel";
 
-describe('GameModel Viewport Management', () => {
+describe("GameModel Viewport Management", () => {
   let model;
 
   beforeEach(() => {
     model = new GameModel();
   });
 
-  describe('viewport initialization', () => {
-    test('should initialize with default viewport values', () => {
+  describe("viewport initialization", () => {
+    test("should initialize with default viewport values", () => {
       const viewport = model.getViewport();
-      
+
       expect(viewport.offsetX).toBe(0);
       expect(viewport.offsetY).toBe(0);
       expect(viewport.cellSize).toBe(20);
@@ -20,7 +20,7 @@ describe('GameModel Viewport Management', () => {
       expect(viewport.maxCellSize).toBe(200);
     });
 
-    test('should return defensive copy of viewport', () => {
+    test("should return defensive copy of viewport", () => {
       const viewport1 = model.getViewport();
       const viewport2 = model.getViewport();
 
@@ -33,8 +33,8 @@ describe('GameModel Viewport Management', () => {
     });
   });
 
-  describe('complete viewport operations', () => {
-    test('should set viewport with all parameters', () => {
+  describe("complete viewport operations", () => {
+    test("should set viewport with all parameters", () => {
       const changed = model.setViewport(10, 20, 15, 2.0);
 
       expect(changed).toBe(true);
@@ -44,27 +44,27 @@ describe('GameModel Viewport Management', () => {
         cellSize: 15,
         zoom: 2.0,
         minCellSize: 1,
-        maxCellSize: 200
+        maxCellSize: 200,
       });
     });
 
-    test('should notify observers when viewport changes', () => {
+    test("should notify observers when viewport changes", () => {
       const observer = jest.fn();
       model.addObserver(observer);
 
       model.setViewport(5, 10, 25);
 
-      expect(observer).toHaveBeenCalledWith('viewportChanged', {
+      expect(observer).toHaveBeenCalledWith("viewportChanged", {
         offsetX: 5,
         offsetY: 10,
         cellSize: 25,
         zoom: 1.0,
         minCellSize: 1,
-        maxCellSize: 200
+        maxCellSize: 200,
       });
     });
 
-    test('should not notify observers when viewport unchanged', () => {
+    test("should not notify observers when viewport unchanged", () => {
       model.setViewport(5, 10, 25);
 
       const observer = jest.fn();
@@ -76,7 +76,7 @@ describe('GameModel Viewport Management', () => {
       expect(observer).not.toHaveBeenCalled();
     });
 
-    test('should handle partial viewport updates', () => {
+    test("should handle partial viewport updates", () => {
       model.setViewport(5, 10, 15);
 
       const changed = model.setViewport(5, 10, 20); // Only cellSize changed
@@ -88,8 +88,8 @@ describe('GameModel Viewport Management', () => {
     });
   });
 
-  describe('individual offset operations', () => {
-    test('should set and get offset', () => {
+  describe("individual offset operations", () => {
+    test("should set and get offset", () => {
       const changed = model.setOffset(15, 25);
 
       expect(changed).toBe(true);
@@ -98,7 +98,7 @@ describe('GameModel Viewport Management', () => {
       expect(model.getViewport().offsetY).toBe(25);
     });
 
-    test('should preserve other viewport properties when setting offset', () => {
+    test("should preserve other viewport properties when setting offset", () => {
       model.setViewport(0, 0, 30, 1.5);
 
       model.setOffset(10, 20);
@@ -110,7 +110,7 @@ describe('GameModel Viewport Management', () => {
       expect(viewport.zoom).toBe(1.5); // Preserved
     });
 
-    test('should handle negative offsets', () => {
+    test("should handle negative offsets", () => {
       model.setOffset(-10, -20);
 
       const offset = model.getOffset();
@@ -118,7 +118,7 @@ describe('GameModel Viewport Management', () => {
       expect(offset.y).toBe(-20);
     });
 
-    test('should handle fractional offsets', () => {
+    test("should handle fractional offsets", () => {
       model.setOffset(10.5, 20.75);
 
       const offset = model.getOffset();
@@ -127,8 +127,8 @@ describe('GameModel Viewport Management', () => {
     });
   });
 
-  describe('cell size operations', () => {
-    test('should set and get cell size', () => {
+  describe("cell size operations", () => {
+    test("should set and get cell size", () => {
       const changed = model.setCellSize(35);
 
       expect(changed).toBe(true);
@@ -136,7 +136,7 @@ describe('GameModel Viewport Management', () => {
       expect(model.getViewport().cellSize).toBe(35);
     });
 
-    test('should clamp cell size to valid range', () => {
+    test("should clamp cell size to valid range", () => {
       // Test minimum clamping
       model.setCellSize(0.5);
       expect(model.getCellSize()).toBe(1); // Clamped to min
@@ -146,7 +146,7 @@ describe('GameModel Viewport Management', () => {
       expect(model.getCellSize()).toBe(200); // Clamped to max
     });
 
-    test('should preserve other viewport properties when setting cell size', () => {
+    test("should preserve other viewport properties when setting cell size", () => {
       model.setViewport(10, 20, 15, 2.0);
 
       model.setCellSize(40);
@@ -158,18 +158,21 @@ describe('GameModel Viewport Management', () => {
       expect(viewport.zoom).toBe(2.0); // Preserved
     });
 
-    test('should notify observers when cell size changes', () => {
+    test("should notify observers when cell size changes", () => {
       const observer = jest.fn();
       model.addObserver(observer);
 
       model.setCellSize(50);
 
-      expect(observer).toHaveBeenCalledWith('viewportChanged', expect.objectContaining({
-        cellSize: 50
-      }));
+      expect(observer).toHaveBeenCalledWith(
+        "viewportChanged",
+        expect.objectContaining({
+          cellSize: 50,
+        }),
+      );
     });
 
-    test('should not change state when setting same cell size', () => {
+    test("should not change state when setting same cell size", () => {
       model.setCellSize(25);
 
       const observer = jest.fn();
@@ -182,8 +185,8 @@ describe('GameModel Viewport Management', () => {
     });
   });
 
-  describe('zoom operations', () => {
-    test('should set and get zoom', () => {
+  describe("zoom operations", () => {
+    test("should set and get zoom", () => {
       const changed = model.setZoom(1.5);
 
       expect(changed).toBe(true);
@@ -191,7 +194,7 @@ describe('GameModel Viewport Management', () => {
       expect(model.getViewport().zoom).toBe(1.5);
     });
 
-    test('should clamp zoom to valid range', () => {
+    test("should clamp zoom to valid range", () => {
       // Test minimum clamping
       model.setZoom(0.05);
       expect(model.getZoom()).toBe(0.1); // Clamped to min
@@ -201,18 +204,21 @@ describe('GameModel Viewport Management', () => {
       expect(model.getZoom()).toBe(10.0); // Clamped to max
     });
 
-    test('should notify observers when zoom changes', () => {
+    test("should notify observers when zoom changes", () => {
       const observer = jest.fn();
       model.addObserver(observer);
 
       model.setZoom(2.5);
 
-      expect(observer).toHaveBeenCalledWith('viewportChanged', expect.objectContaining({
-        zoom: 2.5
-      }));
+      expect(observer).toHaveBeenCalledWith(
+        "viewportChanged",
+        expect.objectContaining({
+          zoom: 2.5,
+        }),
+      );
     });
 
-    test('should not change state when setting same zoom', () => {
+    test("should not change state when setting same zoom", () => {
       model.setZoom(1.25);
 
       const observer = jest.fn();
@@ -224,26 +230,26 @@ describe('GameModel Viewport Management', () => {
       expect(observer).not.toHaveBeenCalled();
     });
 
-    test('should preserve other viewport properties when setting zoom', () => {
+    test("should preserve other viewport properties when setting zoom", () => {
       model.setViewport(15, 25, 30, 1.0);
 
       model.setZoom(3.0);
 
       const viewport = model.getViewport();
       expect(viewport.offsetX).toBe(15); // Preserved
-      expect(viewport.offsetY).toBe(25); // Preserved  
+      expect(viewport.offsetY).toBe(25); // Preserved
       expect(viewport.cellSize).toBe(30); // Preserved
       expect(viewport.zoom).toBe(3.0);
     });
 
-    test('should handle fractional zoom values', () => {
+    test("should handle fractional zoom values", () => {
       model.setZoom(1.23456);
       expect(model.getZoom()).toBe(1.23456);
     });
   });
 
-  describe('viewport state integration', () => {
-    test('should work alongside game state operations', () => {
+  describe("viewport state integration", () => {
+    test("should work alongside game state operations", () => {
       // Set up game state
       model.setCellAlive(5, 5, true);
       model.setRunning(true);
@@ -260,11 +266,11 @@ describe('GameModel Viewport Management', () => {
         cellSize: 30,
         zoom: 2.0,
         minCellSize: 1,
-        maxCellSize: 200
+        maxCellSize: 200,
       });
     });
 
-    test('should maintain viewport state during game operations', () => {
+    test("should maintain viewport state during game operations", () => {
       model.setViewport(15, 25, 35, 1.8);
 
       // Perform game operations
@@ -280,7 +286,7 @@ describe('GameModel Viewport Management', () => {
       expect(viewport.zoom).toBe(1.8);
     });
 
-    test('should exclude viewport from serialization correctly', () => {
+    test("should exclude viewport from serialization correctly", () => {
       model.setViewport(100, 200, 50, 3.0);
       model.setCellAlive(1, 1, true);
 
@@ -293,11 +299,11 @@ describe('GameModel Viewport Management', () => {
         cellSize: 50,
         zoom: 3.0,
         minCellSize: 1,
-        maxCellSize: 200
+        maxCellSize: 200,
       });
     });
 
-    test('should support multiple viewport observers', () => {
+    test("should support multiple viewport observers", () => {
       const observer1 = jest.fn();
       const observer2 = jest.fn();
 
@@ -306,11 +312,17 @@ describe('GameModel Viewport Management', () => {
 
       model.setOffset(50, 75);
 
-      expect(observer1).toHaveBeenCalledWith('viewportChanged', expect.any(Object));
-      expect(observer2).toHaveBeenCalledWith('viewportChanged', expect.any(Object));
+      expect(observer1).toHaveBeenCalledWith(
+        "viewportChanged",
+        expect.any(Object),
+      );
+      expect(observer2).toHaveBeenCalledWith(
+        "viewportChanged",
+        expect.any(Object),
+      );
     });
 
-    test('should handle rapid viewport changes correctly', () => {
+    test("should handle rapid viewport changes correctly", () => {
       const observer = jest.fn();
       model.addObserver(observer);
 
@@ -322,15 +334,15 @@ describe('GameModel Viewport Management', () => {
     });
   });
 
-  describe('edge cases and error handling', () => {
-    test('should handle extreme viewport values gracefully', () => {
+  describe("edge cases and error handling", () => {
+    test("should handle extreme viewport values gracefully", () => {
       // Very large offsets
       model.setOffset(Number.MAX_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
       expect(model.getOffset().x).toBe(Number.MAX_SAFE_INTEGER);
       expect(model.getOffset().y).toBe(Number.MIN_SAFE_INTEGER);
     });
 
-    test('should handle NaN and infinite values', () => {
+    test("should handle NaN and infinite values", () => {
       // Should not crash with invalid values
       expect(() => {
         model.setCellSize(NaN);
@@ -341,7 +353,7 @@ describe('GameModel Viewport Management', () => {
       }).not.toThrow();
     });
 
-    test('should maintain consistent state after invalid operations', () => {
+    test("should maintain consistent state after invalid operations", () => {
       // Attempt invalid operations
       model.setCellSize(NaN);
       model.setZoom(-Infinity);

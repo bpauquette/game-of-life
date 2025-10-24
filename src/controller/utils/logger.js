@@ -8,10 +8,10 @@ const LOG_LEVELS = {
   ERROR: 0,
   WARN: 1,
   INFO: 2,
-  DEBUG: 3
+  DEBUG: 3,
 };
 
-const isTest = process.env.NODE_ENV === 'test';
+const isTest = process.env.NODE_ENV === "test";
 
 const noop = () => {};
 
@@ -23,13 +23,16 @@ if (isTest) {
     error: noop,
     warn: noop,
     info: noop,
-    debug: noop
+    debug: noop,
   };
 } else {
   // Configuration - can be set via environment variables or build-time constants
   const config = {
-    level: process.env.NODE_ENV === 'production' ? LOG_LEVELS.ERROR : LOG_LEVELS.DEBUG,
-    enabled: true
+    level:
+      process.env.NODE_ENV === "production"
+        ? LOG_LEVELS.ERROR
+        : LOG_LEVELS.DEBUG,
+    enabled: true,
   };
 
   logger = {
@@ -42,7 +45,11 @@ if (isTest) {
     },
 
     warn: (message, ...args) => {
-      if (config.enabled && config.level >= LOG_LEVELS.WARN && process.env.NODE_ENV !== 'production') {
+      if (
+        config.enabled &&
+        config.level >= LOG_LEVELS.WARN &&
+        process.env.NODE_ENV !== "production"
+      ) {
         // eslint-disable-next-line no-console
         console.warn(message, ...args);
       }
@@ -60,7 +67,7 @@ if (isTest) {
         // eslint-disable-next-line no-console
         console.debug(message, ...args);
       }
-    }
+    },
   };
 }
 

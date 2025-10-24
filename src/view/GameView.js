@@ -1,18 +1,18 @@
 // GameView.js - View layer for Conway's Game of Life
 // Handles all rendering and presentation logic
 
-import { GameRenderer } from './GameRenderer';
+import { GameRenderer } from "./GameRenderer";
 
 export class GameView {
   constructor(canvas, options = {}, model = null) {
     this.canvas = canvas;
     this.renderer = new GameRenderer(canvas, options);
     this.model = model; // Reference to model for performance tracking
-    
+
     // View state
     this.overlays = [];
     this.isVisible = true;
-    
+
     // Event callbacks
     this.callbacks = {};
   }
@@ -36,7 +36,7 @@ export class GameView {
 
   emit(event, data) {
     if (this.callbacks[event]) {
-      this.callbacks[event].forEach(callback => callback(data));
+      this.callbacks[event].forEach((callback) => callback(data));
     }
   }
 
@@ -52,18 +52,22 @@ export class GameView {
   // Rendering methods
   render(liveCells, viewport) {
     if (!this.isVisible) return;
-    
+
     // Track render timestamp for performance metrics
     if (this.model?.trackRender) {
       this.model.trackRender();
     }
-    
+
     // Update viewport
-    this.renderer.setViewport(viewport.offsetX, viewport.offsetY, viewport.cellSize);
-    
+    this.renderer.setViewport(
+      viewport.offsetX,
+      viewport.offsetY,
+      viewport.cellSize,
+    );
+
     // Get colorScheme from model
     const colorScheme = this.model?.getColorScheme();
-    
+
     // Render everything
     this.renderer.render(liveCells, this.overlays, colorScheme);
   }
@@ -106,79 +110,86 @@ export class GameView {
     // environments or when a lightweight/mock canvas is provided), skip
     // wiring DOM event listeners to avoid throwing errors. Tests can still
     // interact with the view by calling emit() directly.
-    if (!this.canvas || typeof this.canvas.addEventListener !== 'function') {
+    if (!this.canvas || typeof this.canvas.addEventListener !== "function") {
       return;
     }
 
     const getMouseCoords = (e) => {
       // Guard against missing getBoundingClientRect in mocks
-      const rect = (typeof this.canvas.getBoundingClientRect === 'function')
-        ? this.canvas.getBoundingClientRect()
-        : { left: 0, top: 0 };
+      const rect =
+        typeof this.canvas.getBoundingClientRect === "function"
+          ? this.canvas.getBoundingClientRect()
+          : { left: 0, top: 0 };
 
-      const screenX = (e && typeof e.clientX === 'number') ? (e.clientX - rect.left) : 0;
-      const screenY = (e && typeof e.clientY === 'number') ? (e.clientY - rect.top) : 0;
+      const screenX =
+        e && typeof e.clientX === "number" ? e.clientX - rect.left : 0;
+      const screenY =
+        e && typeof e.clientY === "number" ? e.clientY - rect.top : 0;
       const cellCoords = this.screenToCell(screenX, screenY);
       return { screenX, screenY, cellCoords };
     };
 
     // Mouse down
-    this.canvas.addEventListener('mousedown', (e) => {
+    this.canvas.addEventListener("mousedown", (e) => {
       const coords = getMouseCoords(e);
-      this.emit('mouseDown', { event: e, ...coords });
+      this.emit("mouseDown", { event: e, ...coords });
     });
 
     // Mouse move
-    this.canvas.addEventListener('mousemove', (e) => {
+    this.canvas.addEventListener("mousemove", (e) => {
       const coords = getMouseCoords(e);
-      this.emit('mouseMove', { event: e, ...coords });
+      this.emit("mouseMove", { event: e, ...coords });
     });
 
     // Mouse up
-    this.canvas.addEventListener('mouseup', (e) => {
+    this.canvas.addEventListener("mouseup", (e) => {
       const coords = getMouseCoords(e);
-      this.emit('mouseUp', { event: e, ...coords });
+      this.emit("mouseUp", { event: e, ...coords });
     });
 
     // Mouse click
-    this.canvas.addEventListener('click', (e) => {
+    this.canvas.addEventListener("click", (e) => {
       const coords = getMouseCoords(e);
-      this.emit('click', { event: e, ...coords });
+      this.emit("click", { event: e, ...coords });
     });
 
     // Mouse wheel (zoom)
-    this.canvas.addEventListener('wheel', (e) => {
-      const coords = getMouseCoords(e);
-      this.emit('wheel', { event: e, deltaY: e.deltaY, ...coords });
-    }, { passive: false });
+    this.canvas.addEventListener(
+      "wheel",
+      (e) => {
+        const coords = getMouseCoords(e);
+        this.emit("wheel", { event: e, deltaY: e.deltaY, ...coords });
+      },
+      { passive: false },
+    );
 
     // Context menu
-    this.canvas.addEventListener('contextmenu', (e) => {
+    this.canvas.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       const coords = getMouseCoords(e);
-      this.emit('contextMenu', { event: e, ...coords });
+      this.emit("contextMenu", { event: e, ...coords });
     });
   }
 
   // Keyboard event setup (global)
   setupKeyboardEvents() {
-    document.addEventListener('keydown', (e) => {
-      this.emit('keyDown', { event: e, key: e.key, shiftKey: e.shiftKey });
+    document.addEventListener("keydown", (e) => {
+      this.emit("keyDown", { event: e, key: e.key, shiftKey: e.shiftKey });
     });
 
-    document.addEventListener('keyup', (e) => {
-      this.emit('keyUp', { event: e, key: e.key });
+    document.addEventListener("keyup", (e) => {
+      this.emit("keyUp", { event: e, key: e.key });
     });
   }
 
   // Window event setup
   setupWindowEvents() {
-    window.addEventListener('resize', () => {
+    window.addEventListener("resize", () => {
       const container = this.canvas.parentElement;
       if (container) {
         const rect = container.getBoundingClientRect();
         this.resize(rect.width, rect.height);
-        this.emit('resize', { width: rect.width, height: rect.height });
+        this.emit("resize", { width: rect.width, height: rect.height });
       }
     });
   }
@@ -187,7 +198,7 @@ export class GameView {
   getCanvasSize() {
     return {
       width: this.canvas.width,
-      height: this.canvas.height
+      height: this.canvas.height,
     };
   }
 
@@ -203,7 +214,7 @@ export class GameView {
       isVisible: this.isVisible,
       callbackCount: Object.keys(this.callbacks).reduce((total, key) => {
         return total + (this.callbacks[key] ? this.callbacks[key].length : 0);
-      }, 0)
+      }, 0),
     };
   }
 
@@ -211,10 +222,10 @@ export class GameView {
   destroy() {
     // Remove event listeners
     this.callbacks = {};
-    
+
     // Clear overlays
     this.overlays = [];
-    
+
     // Clear renderer caches
     this.renderer.clearCaches();
   }
@@ -231,15 +242,15 @@ export class ToolOverlayView {
 
   draw(renderer) {
     if (!this.tool?.drawOverlay || !this.toolState) return;
-    
+
     // Create compatible offset for legacy tools
     const centerX = renderer.viewport.width / 2;
     const centerY = renderer.viewport.height / 2;
     const offset = {
       x: renderer.viewport.offsetX * renderer.viewport.cellSize - centerX,
-      y: renderer.viewport.offsetY * renderer.viewport.cellSize - centerY
+      y: renderer.viewport.offsetY * renderer.viewport.cellSize - centerY,
     };
-    
+
     this.tool.drawOverlay(renderer.ctx, this.toolState, this.cellSize, offset);
   }
 }
@@ -249,20 +260,20 @@ export class ShapePreviewView {
     this.cells = cells;
     this.position = position;
     this.alpha = options.alpha || 0.6;
-    this.color = options.color || '#4CAF50';
+    this.color = options.color || "#4CAF50";
   }
 
   draw(renderer) {
     if (!this.cells || !this.position) return;
-    
+
     renderer.ctx.save();
     renderer.ctx.globalAlpha = this.alpha;
-    
-    const shapeCells = this.cells.map(cell => ({
+
+    const shapeCells = this.cells.map((cell) => ({
       x: this.position.x + (cell.x || cell[0] || 0),
-      y: this.position.y + (cell.y || cell[1] || 0)
+      y: this.position.y + (cell.y || cell[1] || 0),
     }));
-    
+
     renderer.drawCellArray(shapeCells, this.color);
     renderer.ctx.restore();
   }

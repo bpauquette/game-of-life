@@ -31,18 +31,19 @@ export const lineTool = {
 
   drawOverlay(ctx, state, cellSize, offset) {
     if (!state.preview || state.preview.length === 0) return;
-    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.strokeStyle = "rgba(255,255,255,0.6)";
     ctx.lineWidth = Math.max(1, Math.min(4, cellSize / 6));
     ctx.beginPath();
     let idx = 0;
     for (const [x, y] of state.preview) {
       const cx = x * cellSize - offset.x + cellSize / 2;
       const cy = y * cellSize - offset.y + cellSize / 2;
-      if (idx === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+      if (idx === 0) ctx.moveTo(cx, cy);
+      else ctx.lineTo(cx, cy);
       idx++;
     }
     ctx.stroke();
-  }
+  },
 };
 
 const computeLine = (x0, y0, x1, y1) => {
@@ -69,4 +70,4 @@ const computeLine = (x0, y0, x1, y1) => {
     }
   }
   return pts;
-}
+};

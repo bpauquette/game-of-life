@@ -1,7 +1,7 @@
 // optimizedEngine.js
 // High-performance game engine with configurable FPS throttling and performance monitoring
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from "react";
 
 /**
  * Performance-optimized game engine with configurable frame rate limiting
@@ -9,10 +9,10 @@ import { useEffect, useRef, useCallback } from 'react';
  */
 export function useOptimizedEngine(isRunning, gameStep, draw, options = {}) {
   const {
-    maxFPS = 60,           // Maximum rendering FPS
-    maxGPS = 30,           // Maximum generations per second (game logic updates)
-    adaptiveThrottling = true,  // Automatically adjust rates based on performance
-    performanceTarget = 16.67   // Target frame time in ms (60 FPS = 16.67ms)
+    maxFPS = 60, // Maximum rendering FPS
+    maxGPS = 30, // Maximum generations per second (game logic updates)
+    adaptiveThrottling = true, // Automatically adjust rates based on performance
+    performanceTarget = 16.67, // Target frame time in ms (60 FPS = 16.67ms)
   } = options;
 
   const rafRef = useRef(null);
@@ -20,23 +20,25 @@ export function useOptimizedEngine(isRunning, gameStep, draw, options = {}) {
   const frameTimeHistory = useRef([]);
   const currentFPS = useRef(maxFPS);
   const currentGPS = useRef(maxGPS);
-  
+
   // Performance monitoring
   const performanceMetrics = useRef({
     avgFrameTime: 0,
     droppedFrames: 0,
     gameUpdates: 0,
-    renderUpdates: 0
+    renderUpdates: 0,
   });
 
   // Calculate optimal throttling based on performance
   const updateThrottling = useCallback(() => {
     if (!adaptiveThrottling) return;
-    
-    const avgFrameTime = frameTimeHistory.current.length > 0
-      ? frameTimeHistory.current.reduce((a, b) => a + b, 0) / frameTimeHistory.current.length
-      : performanceTarget;
-    
+
+    const avgFrameTime =
+      frameTimeHistory.current.length > 0
+        ? frameTimeHistory.current.reduce((a, b) => a + b, 0) /
+          frameTimeHistory.current.length
+        : performanceTarget;
+
     // Adjust FPS based on performance
     if (avgFrameTime > performanceTarget * 1.5) {
       // Performance is poor, reduce rates
@@ -50,40 +52,43 @@ export function useOptimizedEngine(isRunning, gameStep, draw, options = {}) {
   }, [adaptiveThrottling, maxFPS, maxGPS, performanceTarget]);
 
   // High-precision throttled game loop
-  const createThrottledLoop = useCallback((callback, targetFPS) => {
-    const targetInterval = 1000 / targetFPS;
-    let lastTime = performance.now();
-    
-    return function throttledCallback() {
-      const now = performance.now();
-      const elapsed = now - lastTime;
-      
-      if (elapsed >= targetInterval) {
-        const frameStart = performance.now();
-        callback();
-        const frameTime = performance.now() - frameStart;
-        
-        // Track frame time for adaptive throttling
-        frameTimeHistory.current.push(frameTime);
-        if (frameTimeHistory.current.length > 60) {
-          frameTimeHistory.current.shift();
+  const createThrottledLoop = useCallback(
+    (callback, targetFPS) => {
+      const targetInterval = 1000 / targetFPS;
+      let lastTime = performance.now();
+
+      return function throttledCallback() {
+        const now = performance.now();
+        const elapsed = now - lastTime;
+
+        if (elapsed >= targetInterval) {
+          const frameStart = performance.now();
+          callback();
+          const frameTime = performance.now() - frameStart;
+
+          // Track frame time for adaptive throttling
+          frameTimeHistory.current.push(frameTime);
+          if (frameTimeHistory.current.length > 60) {
+            frameTimeHistory.current.shift();
+          }
+
+          lastTime = now;
+
+          // Track performance metrics
+          performanceMetrics.current.avgFrameTime = frameTime;
+          if (frameTime > performanceTarget * 2) {
+            performanceMetrics.current.droppedFrames++;
+          }
+
+          // Update throttling every 2 seconds
+          if (Math.floor(now / 2000) !== Math.floor((now - elapsed) / 2000)) {
+            updateThrottling();
+          }
         }
-        
-        lastTime = now;
-        
-        // Track performance metrics
-        performanceMetrics.current.avgFrameTime = frameTime;
-        if (frameTime > performanceTarget * 2) {
-          performanceMetrics.current.droppedFrames++;
-        }
-        
-        // Update throttling every 2 seconds
-        if (Math.floor(now / 2000) !== Math.floor((now - elapsed) / 2000)) {
-          updateThrottling();
-        }
-      }
-    };
-  }, [performanceTarget, updateThrottling]);
+      };
+    },
+    [performanceTarget, updateThrottling],
+  );
 
   // Separate game logic and rendering loops
   useEffect(() => {
@@ -96,7 +101,7 @@ export function useOptimizedEngine(isRunning, gameStep, draw, options = {}) {
     const gameLoop = () => {
       const now = performance.now();
       const gameInterval = 1000 / currentGPS.current;
-      
+
       if (now - lastGameTime.current >= gameInterval) {
         gameStep();
         lastGameTime.current = now;
@@ -128,11 +133,15 @@ export function useOptimizedEngine(isRunning, gameStep, draw, options = {}) {
 
   // Return performance controls and metrics
   return {
-    setMaxFPS: (fps) => { currentFPS.current = Math.min(fps, maxFPS); },
-    setMaxGPS: (gps) => { currentGPS.current = Math.min(gps, maxGPS); },
+    setMaxFPS: (fps) => {
+      currentFPS.current = Math.min(fps, maxFPS);
+    },
+    setMaxGPS: (gps) => {
+      currentGPS.current = Math.min(gps, maxGPS);
+    },
     getCurrentFPS: () => currentFPS.current,
     getCurrentGPS: () => currentGPS.current,
-    getPerformanceMetrics: () => ({ ...performanceMetrics.current })
+    getPerformanceMetrics: () => ({ ...performanceMetrics.current }),
   };
 }
 
@@ -142,7 +151,7 @@ export function useOptimizedEngine(isRunning, gameStep, draw, options = {}) {
 export function createFrameRateLimiter(targetFPS) {
   const targetInterval = 1000 / targetFPS;
   let lastTime = 0;
-  
+
   return (callback) => {
     return (...args) => {
       const now = performance.now();
@@ -163,7 +172,7 @@ export function usePerformanceMonitor(isRunning) {
     startTime: performance.now(),
     lastUpdateTime: performance.now(),
     fps: 0,
-    averageFrameTime: 0
+    averageFrameTime: 0,
   });
 
   useEffect(() => {
@@ -172,10 +181,10 @@ export function usePerformanceMonitor(isRunning) {
     const interval = setInterval(() => {
       const now = performance.now();
       const elapsed = now - metricsRef.current.lastUpdateTime;
-      
+
       if (elapsed >= 1000) {
         metricsRef.current.fps = Math.round(
-          (metricsRef.current.frameCount * 1000) / elapsed
+          (metricsRef.current.frameCount * 1000) / elapsed,
         );
         metricsRef.current.frameCount = 0;
         metricsRef.current.lastUpdateTime = now;
@@ -192,14 +201,14 @@ export function usePerformanceMonitor(isRunning) {
       history.push(frameTime);
       if (history.length > 60) history.shift();
       metricsRef.current.frameTimeHistory = history;
-      metricsRef.current.averageFrameTime = 
+      metricsRef.current.averageFrameTime =
         history.reduce((sum, time) => sum + time, 0) / history.length;
     }
   }, []);
 
   return {
     metrics: metricsRef.current,
-    trackFrame
+    trackFrame,
   };
 }
 
@@ -255,9 +264,9 @@ export class GameLogicWorker {
       };
     `;
 
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const blob = new Blob([workerCode], { type: "application/javascript" });
     this.worker = new Worker(URL.createObjectURL(blob));
-    
+
     this.worker.onmessage = (e) => {
       const { id, data } = e.data;
       const callback = this.callbacks.get(id);
@@ -270,15 +279,15 @@ export class GameLogicWorker {
 
   async step(liveCells) {
     if (!this.worker) await this.initialize();
-    
+
     return new Promise((resolve) => {
       const id = this.messageId++;
       this.callbacks.set(id, resolve);
-      
+
       this.worker.postMessage({
         id,
-        type: 'step',
-        data: { liveCells: Array.from(liveCells.keys()) }
+        type: "step",
+        data: { liveCells: Array.from(liveCells.keys()) },
       });
     });
   }

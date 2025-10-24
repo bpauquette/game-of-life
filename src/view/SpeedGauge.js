@@ -1,25 +1,25 @@
-import React, { useState, useRef, useEffect } from 'react';
-import PropTypes from 'prop-types';
-import './SpeedGauge.css';
+import React, { useState, useRef, useEffect } from "react";
+import PropTypes from "prop-types";
+import "./SpeedGauge.css";
 
 /**
  * Performance monitoring component that displays FPS, generation rate,
  * cell count, and other performance metrics in a compact gauge format.
  */
-const SpeedGauge = ({ 
-  isVisible = true, 
+const SpeedGauge = ({
+  isVisible = true,
   gameRef = null, // Reference to the game MVC instance
   onToggleVisibility,
   position = { top: 10, right: 10 },
   generation = 0,
-  liveCellsCount = 0
+  liveCellsCount = 0,
 }) => {
   const [metrics, setMetrics] = useState({
     fps: 0,
     gps: 0,
     generation: 0,
     population: 0,
-    peakCells: 0
+    peakCells: 0,
   });
 
   // Initialize metrics synchronously from gameRef if available so tests
@@ -28,13 +28,16 @@ const SpeedGauge = ({
   useEffect(() => {
     if (gameRef?.current?.getPerformanceMetrics) {
       const modelMetrics = gameRef.current.getPerformanceMetrics();
-      peakCellsRef.current = Math.max(peakCellsRef.current, modelMetrics.population || 0);
+      peakCellsRef.current = Math.max(
+        peakCellsRef.current,
+        modelMetrics.population || 0,
+      );
       setMetrics({
         fps: modelMetrics.fps || 0,
         gps: modelMetrics.gps || 0,
         generation: modelMetrics.generation || 0,
         population: modelMetrics.population || 0,
-        peakCells: peakCellsRef.current
+        peakCells: peakCellsRef.current,
       });
       return;
     }
@@ -48,7 +51,7 @@ const SpeedGauge = ({
       gps: 0,
       generation: generation || 0,
       population: liveCellsCount || 0,
-      peakCells: peakCellsRef.current
+      peakCells: peakCellsRef.current,
     });
     // run when gameRef or the seed props change
   }, [gameRef, generation, liveCellsCount]);
@@ -61,18 +64,18 @@ const SpeedGauge = ({
     const interval = setInterval(() => {
       if (gameRef?.current?.getPerformanceMetrics) {
         const modelMetrics = gameRef.current.getPerformanceMetrics();
-        
+
         // Track peak cell count
         if (modelMetrics.population > peakCellsRef.current) {
           peakCellsRef.current = modelMetrics.population;
         }
-        
+
         setMetrics({
           fps: modelMetrics.fps || 0,
           gps: modelMetrics.gps || 0,
           generation: modelMetrics.generation || 0,
           population: modelMetrics.population || 0,
-          peakCells: peakCellsRef.current
+          peakCells: peakCellsRef.current,
         });
       }
     }, 250); // Update more frequently for better responsiveness
@@ -82,7 +85,7 @@ const SpeedGauge = ({
 
   if (!isVisible) {
     return (
-      <div 
+      <div
         className="speed-gauge minimized"
         style={{ top: position.top, right: position.right }}
         onClick={() => onToggleVisibility?.(true)}
@@ -93,28 +96,28 @@ const SpeedGauge = ({
   }
 
   const getPerformanceColor = (fps) => {
-    if (fps >= 55) return '#4CAF50'; // Green - excellent
-    if (fps >= 30) return '#FFC107'; // Yellow - good
-    if (fps >= 15) return '#FF9800'; // Orange - poor
-    return '#F44336'; // Red - bad
+    if (fps >= 55) return "#4CAF50"; // Green - excellent
+    if (fps >= 30) return "#FFC107"; // Yellow - good
+    if (fps >= 15) return "#FF9800"; // Orange - poor
+    return "#F44336"; // Red - bad
   };
 
   return (
-    <div 
-      className={`speed-gauge ${isExpanded ? 'expanded' : 'compact'}`}
+    <div
+      className={`speed-gauge ${isExpanded ? "expanded" : "compact"}`}
       style={{ top: position.top, right: position.right }}
     >
       <div className="gauge-header">
         <span className="gauge-title">Performance</span>
         <div className="gauge-controls">
-          <button 
+          <button
             className="gauge-button"
             onClick={() => setIsExpanded(!isExpanded)}
-            title={isExpanded ? 'Collapse' : 'Expand'}
+            title={isExpanded ? "Collapse" : "Expand"}
           >
-            {isExpanded ? '−' : '+'}
+            {isExpanded ? "−" : "+"}
           </button>
-          <button 
+          <button
             className="gauge-button"
             onClick={() => onToggleVisibility?.(false)}
             title="Hide"
@@ -128,14 +131,14 @@ const SpeedGauge = ({
         {/* Always visible metrics */}
         <div className="metric-row primary">
           <span className="metric-label">FPS:</span>
-          <span 
+          <span
             className="metric-value"
             style={{ color: getPerformanceColor(metrics.fps) }}
           >
             {metrics.fps}
           </span>
         </div>
-        
+
         <div className="metric-row primary">
           <span className="metric-label">Gen/s:</span>
           <span className="metric-value">{metrics.gps}</span>
@@ -146,30 +149,34 @@ const SpeedGauge = ({
             <div className="metric-row">
               <span className="metric-label">Cells:</span>
               {/* Render formatted population as a single text node to keep tests simple */}
-              <span className="metric-value">{String(metrics.population.toLocaleString())}</span>
+              <span className="metric-value">
+                {String(metrics.population.toLocaleString())}
+              </span>
             </div>
-            
+
             <div className="metric-row">
               <span className="metric-label">Peak:</span>
-              <span className="metric-value">{metrics.peakCells.toLocaleString()}</span>
+              <span className="metric-value">
+                {metrics.peakCells.toLocaleString()}
+              </span>
             </div>
-            
-                <div className="metric-row">
-                  <span className="metric-label">Gen:</span>
-                  <span className="metric-value">#{metrics.generation}</span>
-                </div>
 
-                <div className="metric-row">
-                  <span className="metric-label">Frame:</span>
-                  <span className="metric-value">{metrics.fps}</span>
-                </div>
+            <div className="metric-row">
+              <span className="metric-label">Gen:</span>
+              <span className="metric-value">#{metrics.generation}</span>
+            </div>
+
+            <div className="metric-row">
+              <span className="metric-label">Frame:</span>
+              <span className="metric-value">{metrics.fps}</span>
+            </div>
 
             <div className="performance-indicator">
-              <div 
+              <div
                 className="performance-bar"
-                style={{ 
+                style={{
                   width: `${Math.min(100, (metrics.fps / 60) * 100)}%`,
-                  backgroundColor: getPerformanceColor(metrics.fps)
+                  backgroundColor: getPerformanceColor(metrics.fps),
                 }}
               />
             </div>
@@ -188,5 +195,5 @@ SpeedGauge.propTypes = {
   onToggleVisibility: PropTypes.func,
   position: PropTypes.shape({ top: PropTypes.number, right: PropTypes.number }),
   generation: PropTypes.number,
-  liveCellsCount: PropTypes.number
+  liveCellsCount: PropTypes.number,
 };

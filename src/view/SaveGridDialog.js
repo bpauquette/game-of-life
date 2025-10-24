@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
+import React, { useState } from "react";
+import PropTypes from "prop-types";
 import {
   Dialog,
   DialogTitle,
@@ -11,38 +11,38 @@ import {
   Typography,
   CircularProgress,
   Alert,
-  Chip
-} from '@mui/material';
-import SaveIcon from '@mui/icons-material/Save';
-import CancelIcon from '@mui/icons-material/Cancel';
-import GridOnIcon from '@mui/icons-material/GridOn';
+  Chip,
+} from "@mui/material";
+import SaveIcon from "@mui/icons-material/Save";
+import CancelIcon from "@mui/icons-material/Cancel";
+import GridOnIcon from "@mui/icons-material/GridOn";
 
-import { BUTTONS, STATUS } from '../utils/Constants';
+import { BUTTONS, STATUS } from "../utils/Constants";
 
-const SaveGridDialog = ({ 
-  open, 
-  onClose, 
-  onSave, 
+const SaveGridDialog = ({
+  open,
+  onClose,
+  onSave,
   loading = false,
   error = null,
   liveCellsCount = 0,
-  generation = 0
+  generation = 0,
 }) => {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [nameError, setNameError] = useState('');
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [nameError, setNameError] = useState("");
 
   const handleNameChange = (event) => {
     const value = event.target.value;
     setName(value);
-    
+
     // Validate name
     if (value.trim().length === 0) {
-      setNameError('Name is required');
+      setNameError("Name is required");
     } else if (value.length > 100) {
-      setNameError('Name must be 100 characters or less');
+      setNameError("Name must be 100 characters or less");
     } else {
-      setNameError('');
+      setNameError("");
     }
   };
 
@@ -52,41 +52,43 @@ const SaveGridDialog = ({
 
   const handleSave = async () => {
     const trimmedName = name.trim();
-    
+
     if (trimmedName.length === 0) {
-      setNameError('Name is required');
+      setNameError("Name is required");
       return;
     }
-    
+
     if (trimmedName.length > 100) {
-      setNameError('Name must be 100 characters or less');
+      setNameError("Name must be 100 characters or less");
       return;
     }
 
     try {
       await onSave(trimmedName, description.trim());
       // Reset form on successful save
-      setName('');
-      setDescription('');
-      setNameError('');
+      setName("");
+      setDescription("");
+      setNameError("");
       onClose();
     } catch (saveError) {
       // Error handling is managed by the parent component
-  const logger = require('../controller/utils/logger').default || require('../controller/utils/logger');
-  logger.warn('Save failed:', saveError.message);
+      const logger =
+        require("../controller/utils/logger").default ||
+        require("../controller/utils/logger");
+      logger.warn("Save failed:", saveError.message);
     }
   };
 
   const handleCancel = () => {
     // Reset form when canceling
-    setName('');
-    setDescription('');
-    setNameError('');
+    setName("");
+    setDescription("");
+    setNameError("");
     onClose();
   };
 
   const handleKeyDown = (event) => {
-    if (event.key === 'Enter' && !event.shiftKey && !nameError && name.trim()) {
+    if (event.key === "Enter" && !event.shiftKey && !nameError && name.trim()) {
       event.preventDefault();
       handleSave();
     }
@@ -102,15 +104,17 @@ const SaveGridDialog = ({
       fullWidth
       slotProps={{
         paper: {
-          sx: { minHeight: '300px' }
-        }
+          sx: { minHeight: "300px" },
+        },
       }}
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1 }}>
+      <DialogTitle
+        sx={{ display: "flex", alignItems: "center", gap: 1, pb: 1 }}
+      >
         <GridOnIcon color="primary" />
         Save Grid State
       </DialogTitle>
-      
+
       <DialogContent>
         <Box sx={{ mb: 2 }}>
           <Typography variant="body2" color="text.secondary">
@@ -124,16 +128,16 @@ const SaveGridDialog = ({
           </Alert>
         )}
 
-        <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Chip 
-            label={`${liveCellsCount} live cells`} 
-            variant="outlined" 
+        <Box sx={{ mb: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Chip
+            label={`${liveCellsCount} live cells`}
+            variant="outlined"
             size="small"
             color="primary"
           />
-          <Chip 
-            label={`Generation ${generation}`} 
-            variant="outlined" 
+          <Chip
+            label={`Generation ${generation}`}
+            variant="outlined"
             size="small"
             color="secondary"
           />
@@ -150,7 +154,7 @@ const SaveGridDialog = ({
           onChange={handleNameChange}
           onKeyDown={handleKeyDown}
           error={!!nameError}
-          helperText={nameError || 'Enter a name for this grid state'}
+          helperText={nameError || "Enter a name for this grid state"}
           disabled={loading}
           sx={{ mb: 2 }}
           slotProps={{ htmlInput: { maxLength: 100 } }}
@@ -174,14 +178,14 @@ const SaveGridDialog = ({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button 
+        <Button
           onClick={handleCancel}
           disabled={loading}
           startIcon={<CancelIcon />}
         >
           {BUTTONS.CANCEL}
         </Button>
-        <Button 
+        <Button
           onClick={handleSave}
           disabled={!isValid || loading}
           variant="contained"
@@ -201,7 +205,7 @@ SaveGridDialog.propTypes = {
   loading: PropTypes.bool,
   error: PropTypes.string,
   liveCellsCount: PropTypes.number,
-  generation: PropTypes.number
+  generation: PropTypes.number,
 };
 
 export default SaveGridDialog;

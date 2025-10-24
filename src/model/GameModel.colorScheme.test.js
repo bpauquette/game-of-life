@@ -1,48 +1,51 @@
 // GameModel.colorScheme.test.js
 // Tests for colorScheme functionality in GameModel
 
-import { GameModel } from './GameModel';
-import { colorSchemes } from './colorSchemes';
+import { GameModel } from "./GameModel";
+import { colorSchemes } from "./colorSchemes";
 
-describe('GameModel ColorScheme', () => {
+describe("GameModel ColorScheme", () => {
   let model;
 
   beforeEach(() => {
     model = new GameModel();
   });
 
-  test('should initialize with null colorScheme', () => {
+  test("should initialize with null colorScheme", () => {
     expect(model.getColorScheme()).toBeNull();
   });
 
-  test('should set and get colorScheme', () => {
+  test("should set and get colorScheme", () => {
     const testColorScheme = colorSchemes.spectrum;
     model.setColorScheme(testColorScheme);
     expect(model.getColorScheme()).toBe(testColorScheme);
   });
 
-  test('should notify observers when colorScheme changes', () => {
+  test("should notify observers when colorScheme changes", () => {
     const observer = jest.fn();
     model.addObserver(observer);
 
     const testColorScheme = colorSchemes.neon;
     model.setColorScheme(testColorScheme);
 
-    expect(observer).toHaveBeenCalledWith('colorSchemeChanged', testColorScheme);
+    expect(observer).toHaveBeenCalledWith(
+      "colorSchemeChanged",
+      testColorScheme,
+    );
   });
 
-  test('should not include colorScheme in exportState', () => {
+  test("should not include colorScheme in exportState", () => {
     const testColorScheme = colorSchemes.bio;
     model.setColorScheme(testColorScheme);
 
     const state = model.exportState();
-    expect(state).not.toHaveProperty('colorScheme');
+    expect(state).not.toHaveProperty("colorScheme");
   });
 
-  test('should preserve colorScheme through state import/export', () => {
+  test("should preserve colorScheme through state import/export", () => {
     const testColorScheme = colorSchemes.ember;
     model.setColorScheme(testColorScheme);
-    
+
     // Add some cells and export state
     model.setCellAlive(1, 1, true);
     model.setCellAlive(2, 2, true);
@@ -54,7 +57,7 @@ describe('GameModel ColorScheme', () => {
 
     // Original model should still have colorScheme
     expect(model.getColorScheme()).toBe(testColorScheme);
-    
+
     // New model should not have colorScheme (it's not serialized)
     expect(newModel.getColorScheme()).toBeNull();
 

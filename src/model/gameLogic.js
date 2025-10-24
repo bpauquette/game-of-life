@@ -18,16 +18,23 @@ export const getNeighbors = (x, y) => {
 export const step = (liveCellsMap) => {
   const neighborCounts = new Map();
   for (const key of liveCellsMap.keys()) {
-    const [x, y] = key.split(',').map(Number);
+    const [x, y] = key.split(",").map(Number);
     for (const [nx, ny] of getNeighbors(x, y)) {
       const nKey = `${nx},${ny}`;
-      neighborCounts.set(nKey, (neighborCounts.get(nKey) || DEFAULT_NEIGHBOR_COUNT) + 1);
+      neighborCounts.set(
+        nKey,
+        (neighborCounts.get(nKey) || DEFAULT_NEIGHBOR_COUNT) + 1,
+      );
     }
   }
 
   const newMap = new Map();
   for (const [key, count] of neighborCounts.entries()) {
-    if (count === BIRTH_NEIGHBOR_COUNT || (count === SURVIVAL_NEIGHBOR_COUNT && liveCellsMap.has(key))) newMap.set(key, true);
+    if (
+      count === BIRTH_NEIGHBOR_COUNT ||
+      (count === SURVIVAL_NEIGHBOR_COUNT && liveCellsMap.has(key))
+    )
+      newMap.set(key, true);
   }
 
   return newMap;

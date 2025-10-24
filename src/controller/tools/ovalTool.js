@@ -27,13 +27,18 @@ export const ovalTool = {
 
   drawOverlay(ctx, state, cellSize, offset) {
     if (!state.preview || state.preview.length === 0) return;
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
     for (const p of state.preview) {
       const x = p[0];
       const y = p[1];
-      ctx.fillRect(x * cellSize - offset.x, y * cellSize - offset.y, cellSize, cellSize);
+      ctx.fillRect(
+        x * cellSize - offset.x,
+        y * cellSize - offset.y,
+        cellSize,
+        cellSize,
+      );
     }
-  }
+  },
 };
 
 const computeEllipsePerimeter = (x0, y0, x1, y1) => {
@@ -49,7 +54,7 @@ const computeEllipsePerimeter = (x0, y0, x1, y1) => {
 
   // Iterate angle steps and compute integer points on ellipse perimeter
   // Choose step based on perimeter approximation to ensure continuity
-  const steps = Math.max(8, Math.ceil(2 * Math.PI * Math.max(rx, ry))); 
+  const steps = Math.max(8, Math.ceil(2 * Math.PI * Math.max(rx, ry)));
   for (let i = 0; i < steps; i++) {
     const theta = (i / steps) * 2 * Math.PI;
     const fx = Math.round(cx + rx * Math.cos(theta));
@@ -70,4 +75,4 @@ const computeEllipsePerimeter = (x0, y0, x1, y1) => {
     }
   }
   return unique;
-}
+};

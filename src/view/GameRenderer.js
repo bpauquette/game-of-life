@@ -10,14 +10,17 @@ export class GameRenderer {
     // used methods to avoid runtime errors during rendering.
     let ctx = null;
     try {
-      ctx = canvas && typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
+      ctx =
+        canvas && typeof canvas.getContext === "function"
+          ? canvas.getContext("2d")
+          : null;
     } catch (e) {
       ctx = null;
     }
     const makeNoopCtx = () => ({
       // Properties
-      fillStyle: '#000',
-      strokeStyle: '#000',
+      fillStyle: "#000",
+      strokeStyle: "#000",
       globalAlpha: 1,
       lineWidth: 1,
       // Methods (no-ops)
@@ -33,25 +36,25 @@ export class GameRenderer {
       restore: () => {},
       fillText: () => {},
       strokeRect: () => {},
-      clearRect: () => {}
+      clearRect: () => {},
     });
     this.ctx = ctx || makeNoopCtx();
     this.options = {
-      backgroundColor: '#000000',
-      gridColor: '#333333',
+      backgroundColor: "#000000",
+      gridColor: "#333333",
       cellSaturation: 80,
       cellLightness: 55,
       hueMultiplierX: 2.5,
       hueMultiplierY: 1.7,
       hueMax: 360,
       showGrid: true,
-      ...options
+      ...options,
     };
-    
+
     this.viewport = { width: 0, height: 0 };
     this.colorCache = new Map();
     this.maxColorCacheSize = 10000;
-    
+
     // Setup high-DPI rendering
     this.setupHighDPI();
   }
@@ -71,9 +74,9 @@ export class GameRenderer {
   setupHighDPI() {
     const dpr = window.devicePixelRatio || 1;
     const rect = this.canvas.getBoundingClientRect();
-    
+
     let displayWidth, displayHeight;
-    
+
     // Use canvas bounding rect for standard browser environments
     if (rect && rect.width > 0 && rect.height > 0) {
       displayWidth = rect.width;
@@ -90,30 +93,32 @@ export class GameRenderer {
         displayHeight = 600;
       }
     }
-    
+
     // Ensure minimum size and handle edge cases
     displayWidth = Math.max(displayWidth, 200);
     displayHeight = Math.max(displayHeight, 200);
-    
+
     // Set canvas internal resolution (for high-DPI)
     this.canvas.width = displayWidth * dpr;
     this.canvas.height = displayHeight * dpr;
-    
+
     // Set canvas CSS size (what user sees)
-    this.canvas.style.width = displayWidth + 'px';
-    this.canvas.style.height = displayHeight + 'px';
-    
+    this.canvas.style.width = displayWidth + "px";
+    this.canvas.style.height = displayHeight + "px";
+
     // Scale drawing context for high-DPI (guard if ctx missing)
-    if (this.ctx && typeof this.ctx.scale === 'function') {
+    if (this.ctx && typeof this.ctx.scale === "function") {
       this.ctx.scale(dpr, dpr);
     } else if (!this.ctx) {
       // create a minimal mock-like context to avoid tests failing when DOM is mocked
-      this.ctx = this.canvas.getContext ? this.canvas.getContext('2d') : { scale: () => {} };
-      if (this.ctx && typeof this.ctx.scale === 'function') {
+      this.ctx = this.canvas.getContext
+        ? this.canvas.getContext("2d")
+        : { scale: () => {} };
+      if (this.ctx && typeof this.ctx.scale === "function") {
         this.ctx.scale(dpr, dpr);
       }
     }
-    
+
     // Update viewport dimensions
     this.viewport.width = displayWidth;
     this.viewport.height = displayHeight;
@@ -124,29 +129,29 @@ export class GameRenderer {
    */
   resize(width, height) {
     // Clear any existing scaling (guard if ctx missing)
-    if (this.ctx && typeof this.ctx.setTransform === 'function') {
+    if (this.ctx && typeof this.ctx.setTransform === "function") {
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
-    
+
     // If specific dimensions provided, force them
     if (width !== undefined && height !== undefined) {
       const dpr = window.devicePixelRatio || 1;
-      
+
       // Ensure minimum size
       width = Math.max(width, 200);
       height = Math.max(height, 200);
-      
+
       // Set canvas dimensions
       this.canvas.width = width * dpr;
       this.canvas.height = height * dpr;
-      this.canvas.style.width = width + 'px';
-      this.canvas.style.height = height + 'px';
-      
+      this.canvas.style.width = width + "px";
+      this.canvas.style.height = height + "px";
+
       // Scale for high-DPI (guard)
-      if (this.ctx && typeof this.ctx.scale === 'function') {
+      if (this.ctx && typeof this.ctx.scale === "function") {
         this.ctx.scale(dpr, dpr);
       }
-      
+
       // Update viewport
       this.viewport.width = width;
       this.viewport.height = height;
@@ -154,7 +159,7 @@ export class GameRenderer {
       // Re-setup high DPI with detected dimensions
       this.setupHighDPI();
     }
-    
+
     // Invalidate caches
     this.gridCache = null;
     this.colorCache.clear();
@@ -164,20 +169,20 @@ export class GameRenderer {
    * Set viewport parameters (offset and cell size)
    */
   setViewport(offsetX, offsetY, cellSize) {
-    const changed = 
+    const changed =
       this.viewport.offsetX !== offsetX ||
       this.viewport.offsetY !== offsetY ||
       this.viewport.cellSize !== cellSize;
-      
+
     if (changed) {
       this.viewport.offsetX = offsetX;
       this.viewport.offsetY = offsetY;
       this.viewport.cellSize = cellSize;
-      
+
       // Invalidate grid cache when viewport changes
       this.gridCache = null;
     }
-    
+
     return changed;
   }
 
@@ -187,10 +192,14 @@ export class GameRenderer {
   screenToCell(screenX, screenY) {
     const centerX = this.viewport.width / 2;
     const centerY = this.viewport.height / 2;
-    
-    const cellX = Math.floor(this.viewport.offsetX + (screenX - centerX) / this.viewport.cellSize);
-    const cellY = Math.floor(this.viewport.offsetY + (screenY - centerY) / this.viewport.cellSize);
-    
+
+    const cellX = Math.floor(
+      this.viewport.offsetX + (screenX - centerX) / this.viewport.cellSize,
+    );
+    const cellY = Math.floor(
+      this.viewport.offsetY + (screenY - centerY) / this.viewport.cellSize,
+    );
+
     return { x: cellX, y: cellY };
   }
 
@@ -200,15 +209,15 @@ export class GameRenderer {
   cellToScreen(cellX, cellY) {
     const centerX = this.viewport.width / 2;
     const centerY = this.viewport.height / 2;
-    
+
     const computedOffset = {
       x: this.viewport.offsetX * this.viewport.cellSize - centerX,
-      y: this.viewport.offsetY * this.viewport.cellSize - centerY
+      y: this.viewport.offsetY * this.viewport.cellSize - centerY,
     };
-    
+
     return {
       x: cellX * this.viewport.cellSize - computedOffset.x,
-      y: cellY * this.viewport.cellSize - computedOffset.y
+      y: cellY * this.viewport.cellSize - computedOffset.y,
     };
   }
 
@@ -220,15 +229,18 @@ export class GameRenderer {
     if (this.currentColorScheme?.getCellColor) {
       return this.currentColorScheme.getCellColor(cellX, cellY);
     }
-    
+
     // Fallback to cached default color calculation
     const key = `${cellX},${cellY}`;
     let color = this.colorCache.get(key);
-    
+
     if (!color) {
-      const hue = (cellX * this.options.hueMultiplierX + cellY * this.options.hueMultiplierY) % this.options.hueMax;
+      const hue =
+        (cellX * this.options.hueMultiplierX +
+          cellY * this.options.hueMultiplierY) %
+        this.options.hueMax;
       color = `hsl(${hue}, ${this.options.cellSaturation}%, ${this.options.cellLightness}%)`;
-      
+
       // Prevent memory leaks
       if (this.colorCache.size >= this.maxColorCacheSize) {
         const entries = Array.from(this.colorCache.entries());
@@ -236,10 +248,10 @@ export class GameRenderer {
           this.colorCache.delete(entries[i][0]);
         }
       }
-      
+
       this.colorCache.set(key, color);
     }
-    
+
     return color;
   }
 
@@ -257,52 +269,74 @@ export class GameRenderer {
   drawGrid() {
     if (!this.gridCache) {
       // Create grid cache canvas
-      this.gridCache = document.createElement('canvas');
+      this.gridCache = document.createElement("canvas");
       this.gridCache.width = this.viewport.width;
       this.gridCache.height = this.viewport.height;
-  const gridCtx = this.gridCache.getContext('2d') || this.canvas.getContext('2d') || { fillStyle: '', fillRect: () => {}, beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, stroke: () => {} };
-      
-  // Draw background
-  if (gridCtx) gridCtx.fillStyle = this.options.backgroundColor;
+      const gridCtx = this.gridCache.getContext("2d") ||
+        this.canvas.getContext("2d") || {
+          fillStyle: "",
+          fillRect: () => {},
+          beginPath: () => {},
+          moveTo: () => {},
+          lineTo: () => {},
+          stroke: () => {},
+        };
+
+      // Draw background
+      if (gridCtx) gridCtx.fillStyle = this.options.backgroundColor;
       gridCtx.fillRect(0, 0, this.viewport.width, this.viewport.height);
-      
+
       // Draw grid lines
       if (gridCtx) {
         gridCtx.strokeStyle = this.options.gridColor;
         gridCtx.beginPath();
       }
-      
+
       const centerX = this.viewport.width / 2;
       const centerY = this.viewport.height / 2;
       const computedOffset = {
         x: this.viewport.offsetX * this.viewport.cellSize - centerX,
-        y: this.viewport.offsetY * this.viewport.cellSize - centerY
+        y: this.viewport.offsetY * this.viewport.cellSize - centerY,
       };
-      
+
       const startX = -computedOffset.x % this.viewport.cellSize;
       const startY = -computedOffset.y % this.viewport.cellSize;
-      
+
       // Vertical lines
-      for (let x = startX; x < this.viewport.width; x += this.viewport.cellSize) {
+      for (
+        let x = startX;
+        x < this.viewport.width;
+        x += this.viewport.cellSize
+      ) {
         gridCtx.moveTo(Math.floor(x) + this.options.gridLineOffset, 0);
-        gridCtx.lineTo(Math.floor(x) + this.options.gridLineOffset, this.viewport.height);
+        gridCtx.lineTo(
+          Math.floor(x) + this.options.gridLineOffset,
+          this.viewport.height,
+        );
       }
-      
+
       // Horizontal lines
-      for (let y = startY; y < this.viewport.height; y += this.viewport.cellSize) {
+      for (
+        let y = startY;
+        y < this.viewport.height;
+        y += this.viewport.cellSize
+      ) {
         gridCtx.moveTo(0, Math.floor(y) + this.options.gridLineOffset);
-        gridCtx.lineTo(this.viewport.width, Math.floor(y) + this.options.gridLineOffset);
+        gridCtx.lineTo(
+          this.viewport.width,
+          Math.floor(y) + this.options.gridLineOffset,
+        );
       }
-      
+
       gridCtx.stroke();
     }
-    
+
     // Draw cached grid (guard against missing ctx.drawImage in mocked envs)
-    if (this.ctx && typeof this.ctx.drawImage === 'function') {
+    if (this.ctx && typeof this.ctx.drawImage === "function") {
       this.ctx.drawImage(this.gridCache, 0, 0);
     } else {
       // Fall back to copying pixels via a safe no-op or by drawing a filled rect
-      if (this.ctx && typeof this.ctx.fillRect === 'function') {
+      if (this.ctx && typeof this.ctx.fillRect === "function") {
         this.ctx.fillStyle = this.options.backgroundColor;
         this.ctx.fillRect(0, 0, this.viewport.width, this.viewport.height);
       }
@@ -314,23 +348,25 @@ export class GameRenderer {
    */
   drawCells(liveCells) {
     for (const [key] of liveCells.entries()) {
-      const [cellX, cellY] = key.split(',').map(Number);
+      const [cellX, cellY] = key.split(",").map(Number);
       const screenPos = this.cellToScreen(cellX, cellY);
-      
+
       // Viewport culling
-      if (screenPos.x + this.viewport.cellSize < 0 || 
-          screenPos.x >= this.viewport.width ||
-          screenPos.y + this.viewport.cellSize < 0 || 
-          screenPos.y >= this.viewport.height) {
+      if (
+        screenPos.x + this.viewport.cellSize < 0 ||
+        screenPos.x >= this.viewport.width ||
+        screenPos.y + this.viewport.cellSize < 0 ||
+        screenPos.y >= this.viewport.height
+      ) {
         continue;
       }
-      
+
       this.ctx.fillStyle = this.getCellColor(cellX, cellY);
       this.ctx.fillRect(
-        Math.floor(screenPos.x), 
-        Math.floor(screenPos.y), 
-        Math.ceil(this.viewport.cellSize), 
-        Math.ceil(this.viewport.cellSize)
+        Math.floor(screenPos.x),
+        Math.floor(screenPos.y),
+        Math.ceil(this.viewport.cellSize),
+        Math.ceil(this.viewport.cellSize),
       );
     }
   }
@@ -338,34 +374,41 @@ export class GameRenderer {
   /**
    * Draw a single cell at screen coordinates
    */
-  drawCellAt(screenX, screenY, color = '#ffffff') {
+  drawCellAt(screenX, screenY, color = "#ffffff") {
     this.ctx.fillStyle = color;
-    this.ctx.fillRect(screenX, screenY, this.viewport.cellSize, this.viewport.cellSize);
+    this.ctx.fillRect(
+      screenX,
+      screenY,
+      this.viewport.cellSize,
+      this.viewport.cellSize,
+    );
   }
 
   /**
    * Draw cells from an array of {x, y} coordinates
    */
-  drawCellArray(cells, color = '#ffffff') {
+  drawCellArray(cells, color = "#ffffff") {
     if (!cells || cells.length === 0) return;
-    
+
     this.ctx.fillStyle = color;
     for (const cell of cells) {
       const screenPos = this.cellToScreen(cell.x, cell.y);
-      
+
       // Viewport culling
-      if (screenPos.x + this.viewport.cellSize < 0 || 
-          screenPos.x >= this.viewport.width ||
-          screenPos.y + this.viewport.cellSize < 0 || 
-          screenPos.y >= this.viewport.height) {
+      if (
+        screenPos.x + this.viewport.cellSize < 0 ||
+        screenPos.x >= this.viewport.width ||
+        screenPos.y + this.viewport.cellSize < 0 ||
+        screenPos.y >= this.viewport.height
+      ) {
         continue;
       }
-      
+
       this.ctx.fillRect(
-        Math.floor(screenPos.x), 
-        Math.floor(screenPos.y), 
-        Math.ceil(this.viewport.cellSize), 
-        Math.ceil(this.viewport.cellSize)
+        Math.floor(screenPos.x),
+        Math.floor(screenPos.y),
+        Math.ceil(this.viewport.cellSize),
+        Math.ceil(this.viewport.cellSize),
       );
     }
   }
@@ -373,16 +416,16 @@ export class GameRenderer {
   /**
    * Draw a line between two cell coordinates
    */
-  drawLine(startCell, endCell, color = '#ffffff', lineWidth = 1) {
+  drawLine(startCell, endCell, color = "#ffffff", lineWidth = 1) {
     const startPos = this.cellToScreen(startCell.x, startCell.y);
     const endPos = this.cellToScreen(endCell.x, endCell.y);
-    
+
     // Adjust to center of cells
     const startCenterX = startPos.x + this.viewport.cellSize / 2;
     const startCenterY = startPos.y + this.viewport.cellSize / 2;
     const endCenterX = endPos.x + this.viewport.cellSize / 2;
     const endCenterY = endPos.y + this.viewport.cellSize / 2;
-    
+
     this.ctx.strokeStyle = color;
     this.ctx.lineWidth = lineWidth;
     this.ctx.beginPath();
@@ -394,17 +437,20 @@ export class GameRenderer {
   /**
    * Draw a rectangle outline
    */
-  drawRect(topLeftCell, bottomRightCell, color = '#ffffff', lineWidth = 1) {
+  drawRect(topLeftCell, bottomRightCell, color = "#ffffff", lineWidth = 1) {
     const topLeft = this.cellToScreen(topLeftCell.x, topLeftCell.y);
-    const bottomRight = this.cellToScreen(bottomRightCell.x + 1, bottomRightCell.y + 1);
-    
+    const bottomRight = this.cellToScreen(
+      bottomRightCell.x + 1,
+      bottomRightCell.y + 1,
+    );
+
     this.ctx.strokeStyle = color;
     this.ctx.lineWidth = lineWidth;
     this.ctx.strokeRect(
-      topLeft.x, 
-      topLeft.y, 
-      bottomRight.x - topLeft.x, 
-      bottomRight.y - topLeft.y
+      topLeft.x,
+      topLeft.y,
+      bottomRight.x - topLeft.x,
+      bottomRight.y - topLeft.y,
     );
   }
 
@@ -414,20 +460,18 @@ export class GameRenderer {
   render(liveCells, overlays = [], colorScheme = null) {
     // Store colorScheme for use in getCellColor
     this.currentColorScheme = colorScheme;
-    
+
     // Draw grid background
     this.drawGrid();
-    
+
     // Draw live cells
     this.drawCells(liveCells);
-    
+
     // Draw overlays (tools, previews, etc.)
     for (const overlay of overlays) {
       overlay.draw(this);
     }
   }
-
-
 
   /**
    * Clear all caches
@@ -445,7 +489,7 @@ export class GameRenderer {
       viewport: { ...this.viewport },
       colorCacheSize: this.colorCache.size,
       hasGridCache: !!this.gridCache,
-      devicePixelRatio: window.devicePixelRatio || 1
+      devicePixelRatio: window.devicePixelRatio || 1,
     };
   }
 }
@@ -473,22 +517,22 @@ export class ShapePreviewOverlay extends RenderOverlay {
     this.cells = cells;
     this.position = position;
     this.alpha = options.alpha || 0.6;
-    this.color = options.color || '#4CAF50';
+    this.color = options.color || "#4CAF50";
   }
 
   draw(renderer) {
     if (!this.cells || !this.position) return;
-    
+
     renderer.ctx.save();
     renderer.ctx.globalAlpha = this.alpha;
-    
-    const shapeCells = this.cells.map(cell => ({
+
+    const shapeCells = this.cells.map((cell) => ({
       x: this.position.x + (cell.x || cell[0] || 0),
-      y: this.position.y + (cell.y || cell[1] || 0)
+      y: this.position.y + (cell.y || cell[1] || 0),
     }));
-    
+
     renderer.drawCellArray(shapeCells, this.color);
-    
+
     renderer.ctx.restore();
   }
 }
@@ -501,41 +545,43 @@ export class LinePreviewOverlay extends RenderOverlay {
     super(options);
     this.startCell = startCell;
     this.endCell = endCell;
-    this.color = options.color || 'rgba(255,255,255,0.6)';
-    this.lineWidth = options.lineWidth || Math.max(1, Math.min(4, (options.cellSize || 8) / 6));
+    this.color = options.color || "rgba(255,255,255,0.6)";
+    this.lineWidth =
+      options.lineWidth ||
+      Math.max(1, Math.min(4, (options.cellSize || 8) / 6));
   }
 
   draw(renderer) {
     if (!this.startCell || !this.endCell) return;
-    
+
     renderer.drawLine(this.startCell, this.endCell, this.color, this.lineWidth);
   }
 }
 
 /**
- * Rectangle preview overlay  
+ * Rectangle preview overlay
  */
 export class RectPreviewOverlay extends RenderOverlay {
   constructor(startCell, endCell, options = {}) {
     super(options);
     this.startCell = startCell;
     this.endCell = endCell;
-    this.color = options.color || 'rgba(255,255,255,0.6)';
+    this.color = options.color || "rgba(255,255,255,0.6)";
     this.lineWidth = options.lineWidth || 2;
   }
 
   draw(renderer) {
     if (!this.startCell || !this.endCell) return;
-    
+
     const topLeft = {
       x: Math.min(this.startCell.x, this.endCell.x),
-      y: Math.min(this.startCell.y, this.endCell.y)
+      y: Math.min(this.startCell.y, this.endCell.y),
     };
     const bottomRight = {
       x: Math.max(this.startCell.x, this.endCell.x),
-      y: Math.max(this.startCell.y, this.endCell.y)
+      y: Math.max(this.startCell.y, this.endCell.y),
     };
-    
+
     renderer.drawRect(topLeft, bottomRight, this.color, this.lineWidth);
   }
 }
@@ -553,15 +599,15 @@ export class ToolOverlay extends RenderOverlay {
 
   draw(renderer) {
     if (!this.tool?.drawOverlay || !this.toolState) return;
-    
+
     // Create a compatible offset object for legacy tools
     const centerX = renderer.viewport.width / 2;
     const centerY = renderer.viewport.height / 2;
     const offset = {
       x: renderer.viewport.offsetX * renderer.viewport.cellSize - centerX,
-      y: renderer.viewport.offsetY * renderer.viewport.cellSize - centerY
+      y: renderer.viewport.offsetY * renderer.viewport.cellSize - centerY,
     };
-    
+
     // Call the tool's drawOverlay method with legacy parameters
     this.tool.drawOverlay(renderer.ctx, this.toolState, this.cellSize, offset);
   }

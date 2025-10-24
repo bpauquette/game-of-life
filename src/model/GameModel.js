@@ -1,7 +1,7 @@
 // GameModel.js - Model layer for Conway's Game of Life
 // Handles all game state, rules, and data operations
 
-import { step as gameStep } from './gameLogic';
+import { step as gameStep } from "./gameLogic";
 
 export class GameModel {
   constructor() {
@@ -9,7 +9,7 @@ export class GameModel {
     this.liveCells = new Map();
     this.generation = 0;
     this.isRunning = false;
-    
+
     // Viewport state
     this.viewport = {
       offsetX: 0,
@@ -17,30 +17,30 @@ export class GameModel {
       cellSize: 20, // Default to 20 instead of 8
       zoom: 1.0,
       minCellSize: 1,
-      maxCellSize: 200
+      maxCellSize: 200,
     };
-    
+
     // Performance tracking
     this.populationHistory = [];
     this.maxPopulationHistory = 1000;
-    
+
     // Timestamp tracking for FPS and Gen/s calculation
     this.lastRenderTime = performance.now();
     this.lastGenerationTime = performance.now();
     this.renderTimestamps = [];
     this.generationTimestamps = [];
     this.maxTimestamps = 60; // Keep last 60 timestamps for averaging
-    
+
     // Color scheme for rendering (not serialized)
     this.colorScheme = null;
-    
+
     // Tool and interaction state (not serialized)
-    this.selectedTool = 'draw'; // Default to draw tool
+    this.selectedTool = "draw"; // Default to draw tool
     this.selectedShape = null;
     this.cursorPosition = null;
     this.lastCursorUpdateTime = 0;
     this.cursorThrottleDelay = 16; // ~60fps throttling for cursor updates
-    
+
     // UI state management (not serialized)
     this.uiState = {
       // Dialog states
@@ -51,23 +51,23 @@ export class GameModel {
       captureDialogOpen: false,
       saveDialogOpen: false,
       loadDialogOpen: false,
-      
-      // Chart and gauge states  
+
+      // Chart and gauge states
       showChart: false,
       showSpeedGauge: true,
-      
+
       // Capture-related state
       captureData: null,
-      
+
       // Performance settings
       maxFPS: 60,
       maxGPS: 30,
-      
+
       // Population stability settings
       popWindowSize: 10,
-      popTolerance: 0.1
+      popTolerance: 0.1,
     };
-    
+
     // Observers for state changes
     this.observers = new Set();
   }
@@ -82,8 +82,8 @@ export class GameModel {
   }
 
   notifyObservers(event, data) {
-    this.observers.forEach(observer => {
-      if (typeof observer === 'function') {
+    this.observers.forEach((observer) => {
+      if (typeof observer === "function") {
         observer(event, data);
       } else if (observer[event]) {
         observer[event](data);
@@ -95,13 +95,13 @@ export class GameModel {
   setCellAlive(x, y, alive) {
     const key = `${x},${y}`;
     const wasAlive = this.liveCells.has(key);
-    
+
     if (alive && !wasAlive) {
       this.liveCells.set(key, true);
-      this.notifyObservers('cellChanged', { x, y, alive: true });
+      this.notifyObservers("cellChanged", { x, y, alive: true });
     } else if (!alive && wasAlive) {
       this.liveCells.delete(key);
-      this.notifyObservers('cellChanged', { x, y, alive: false });
+      this.notifyObservers("cellChanged", { x, y, alive: false });
     }
   }
 
@@ -122,38 +122,38 @@ export class GameModel {
     this.liveCells.clear();
     this.generation = 0;
     this.populationHistory = [];
-    
+
     if (hadCells) {
-      this.notifyObservers('gameCleared');
+      this.notifyObservers("gameCleared");
     }
   }
 
   // Game evolution
   step() {
     let newLiveCells = this.liveCells;
-    
+
     // Only evolve if there are live cells
     if (this.liveCells.size > 0) {
       newLiveCells = gameStep(this.liveCells);
       this.liveCells = newLiveCells;
     }
-    
+
     // Always increment generation and notify (for performance metrics)
     this.generation++;
-    
+
     // Track generation timestamp for performance metrics
     this.trackGeneration();
-    
+
     // Update population history
     this.populationHistory.push(this.liveCells.size);
     if (this.populationHistory.length > this.maxPopulationHistory) {
       this.populationHistory.shift();
     }
-    
-    this.notifyObservers('gameStep', {
+
+    this.notifyObservers("gameStep", {
       generation: this.generation,
       population: this.liveCells.size,
-      liveCells: this.liveCells
+      liveCells: this.liveCells,
     });
   }
 
@@ -161,7 +161,7 @@ export class GameModel {
   setRunning(running) {
     if (this.isRunning !== running) {
       this.isRunning = running;
-      this.notifyObservers('runningStateChanged', { isRunning: running });
+      this.notifyObservers("runningStateChanged", { isRunning: running });
     }
   }
 
@@ -179,12 +179,12 @@ export class GameModel {
 
   // Viewport operations
   setViewport(offsetX, offsetY, cellSize, zoom) {
-    const changed = 
+    const changed =
       this.viewport.offsetX !== offsetX ||
       this.viewport.offsetY !== offsetY ||
       this.viewport.cellSize !== cellSize ||
       (zoom !== undefined && this.viewport.zoom !== zoom);
-      
+
     if (changed) {
       this.viewport.offsetX = offsetX;
       this.viewport.offsetY = offsetY;
@@ -192,9 +192,9 @@ export class GameModel {
       if (zoom !== undefined) {
         this.viewport.zoom = zoom;
       }
-      this.notifyObservers('viewportChanged', { ...this.viewport });
+      this.notifyObservers("viewportChanged", { ...this.viewport });
     }
-    
+
     return changed;
   }
 
@@ -209,18 +209,29 @@ export class GameModel {
 
   setCellSize(cellSize) {
     // Handle NaN, null, undefined, and invalid values
-    const safeCellSize = (typeof cellSize === 'number' && !isNaN(cellSize)) ? cellSize : this.viewport.cellSize;
-    const clampedSize = Math.max(this.viewport.minCellSize, Math.min(this.viewport.maxCellSize, safeCellSize));
-    return this.setViewport(this.viewport.offsetX, this.viewport.offsetY, clampedSize);
+    const safeCellSize =
+      typeof cellSize === "number" && !isNaN(cellSize)
+        ? cellSize
+        : this.viewport.cellSize;
+    const clampedSize = Math.max(
+      this.viewport.minCellSize,
+      Math.min(this.viewport.maxCellSize, safeCellSize),
+    );
+    return this.setViewport(
+      this.viewport.offsetX,
+      this.viewport.offsetY,
+      clampedSize,
+    );
   }
 
   setZoom(zoom) {
     // Handle NaN, null, undefined, and invalid values
-    const safeZoom = (typeof zoom === 'number' && !isNaN(zoom)) ? zoom : this.viewport.zoom;
+    const safeZoom =
+      typeof zoom === "number" && !isNaN(zoom) ? zoom : this.viewport.zoom;
     const clampedZoom = Math.max(0.1, Math.min(10.0, safeZoom));
     if (this.viewport.zoom !== clampedZoom) {
       this.viewport.zoom = clampedZoom;
-      this.notifyObservers('viewportChanged', { ...this.viewport });
+      this.notifyObservers("viewportChanged", { ...this.viewport });
       return true;
     }
     return false;
@@ -241,19 +252,19 @@ export class GameModel {
   // Shape operations
   placeShape(x, y, shape) {
     if (!shape || (!shape.cells && !shape.pattern)) return;
-    
+
     const cells = shape.cells || shape.pattern || [];
     let cellsPlaced = 0;
-    
+
     for (const cell of cells) {
       const cellX = x + (cell.x !== undefined ? cell.x : cell[0] || 0);
       const cellY = y + (cell.y !== undefined ? cell.y : cell[1] || 0);
       this.setCellAlive(cellX, cellY, true);
       cellsPlaced++;
     }
-    
+
     if (cellsPlaced > 0) {
-      this.notifyObservers('shapePlace', { x, y, shape, cellsPlaced });
+      this.notifyObservers("shapePlace", { x, y, shape, cellsPlaced });
     }
   }
 
@@ -262,77 +273,83 @@ export class GameModel {
     if (this.liveCells.size === 0) {
       return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
     }
-    
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    
+
+    let minX = Infinity,
+      maxX = -Infinity;
+    let minY = Infinity,
+      maxY = -Infinity;
+
     for (const key of this.liveCells.keys()) {
-      const [x, y] = key.split(',').map(Number);
+      const [x, y] = key.split(",").map(Number);
       minX = Math.min(minX, x);
       maxX = Math.max(maxX, x);
       minY = Math.min(minY, y);
       maxY = Math.max(maxY, y);
     }
-    
+
     return { minX, maxX, minY, maxY };
   }
 
   // Export/import state
   exportState() {
     return {
-      liveCells: Array.from(this.liveCells.keys()).map(key => {
-        const [x, y] = key.split(',').map(Number);
+      liveCells: Array.from(this.liveCells.keys()).map((key) => {
+        const [x, y] = key.split(",").map(Number);
         return { x, y };
       }),
       generation: this.generation,
       viewport: { ...this.viewport },
-      populationHistory: [...this.populationHistory]
+      populationHistory: [...this.populationHistory],
     };
   }
 
   importState(state) {
     this.clear();
-    
+
     if (state.liveCells) {
       for (const cell of state.liveCells) {
         this.setCellAlive(cell.x, cell.y, true);
       }
     }
-    
+
     this.generation = state.generation || 0;
     this.viewport = state.viewport || { offsetX: 0, offsetY: 0, cellSize: 8 };
     this.populationHistory = state.populationHistory || [];
-    
-    this.notifyObservers('stateImported', state);
+
+    this.notifyObservers("stateImported", state);
   }
 
   // Pattern analysis
   isStable(windowSize = 50, tolerance = 3) {
     if (this.populationHistory.length < windowSize) return false;
-    
+
     const recent = this.populationHistory.slice(-windowSize);
     const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
-    
-    return recent.every(pop => Math.abs(pop - avg) <= tolerance);
+
+    return recent.every((pop) => Math.abs(pop - avg) <= tolerance);
   }
 
   detectPeriod(maxPeriod = 30) {
     if (this.populationHistory.length < maxPeriod * 2) return 0;
-    
+
     const recent = this.populationHistory.slice(-maxPeriod * 2);
-    
+
     for (let period = 1; period <= maxPeriod; period++) {
       let matches = 0;
       for (let i = 0; i < maxPeriod; i++) {
-        if (recent[recent.length - 1 - i] === recent[recent.length - 1 - i - period]) {
+        if (
+          recent[recent.length - 1 - i] ===
+          recent[recent.length - 1 - i - period]
+        ) {
           matches++;
         }
       }
-      if (matches >= maxPeriod * 0.9) { // 90% match
+      if (matches >= maxPeriod * 0.9) {
+        // 90% match
         return period;
       }
     }
-    
+
     return 0;
   }
 
@@ -340,52 +357,52 @@ export class GameModel {
   trackRender() {
     const now = performance.now();
     this.renderTimestamps.push(now);
-    
+
     // Keep only recent timestamps
     if (this.renderTimestamps.length > this.maxTimestamps) {
       this.renderTimestamps.shift();
     }
-    
+
     this.lastRenderTime = now;
   }
 
   trackGeneration() {
     const now = performance.now();
     this.generationTimestamps.push(now);
-    
+
     // Keep only recent timestamps
     if (this.generationTimestamps.length > this.maxTimestamps) {
       this.generationTimestamps.shift();
     }
-    
+
     this.lastGenerationTime = now;
   }
 
   getFPS() {
     if (this.renderTimestamps.length < 2) return 0;
-    
+
     const now = performance.now();
-    const timestamps = this.renderTimestamps.filter(t => now - t <= 1000); // Last 1 second
-    
+    const timestamps = this.renderTimestamps.filter((t) => now - t <= 1000); // Last 1 second
+
     if (timestamps.length < 2) return 0;
-    
+
     const timeSpan = timestamps[timestamps.length - 1] - timestamps[0];
     if (timeSpan === 0) return 0;
-    
+
     return Math.round(((timestamps.length - 1) * 1000) / timeSpan);
   }
 
   getGenPerSecond() {
     if (this.generationTimestamps.length < 2) return 0;
-    
+
     const now = performance.now();
-    const timestamps = this.generationTimestamps.filter(t => now - t <= 1000); // Last 1 second
-    
+    const timestamps = this.generationTimestamps.filter((t) => now - t <= 1000); // Last 1 second
+
     if (timestamps.length < 2) return 0;
-    
+
     const timeSpan = timestamps[timestamps.length - 1] - timestamps[0];
     if (timeSpan === 0) return 0;
-    
+
     return Math.round(((timestamps.length - 1) * 1000) / timeSpan);
   }
 
@@ -396,14 +413,14 @@ export class GameModel {
       generation: this.generation,
       population: this.getCellCount(),
       lastRenderTime: this.lastRenderTime,
-      lastGenerationTime: this.lastGenerationTime
+      lastGenerationTime: this.lastGenerationTime,
     };
   }
 
   // Color scheme operations (not serialized)
   setColorScheme(colorScheme) {
     this.colorScheme = colorScheme;
-    this.notifyObservers('colorSchemeChanged', colorScheme);
+    this.notifyObservers("colorSchemeChanged", colorScheme);
   }
 
   getColorScheme() {
@@ -414,7 +431,7 @@ export class GameModel {
   setSelectedTool(tool) {
     if (this.selectedTool !== tool) {
       this.selectedTool = tool;
-      this.notifyObservers('selectedToolChanged', tool);
+      this.notifyObservers("selectedToolChanged", tool);
     }
   }
 
@@ -425,7 +442,7 @@ export class GameModel {
   setSelectedShape(shape) {
     if (this.selectedShape !== shape) {
       this.selectedShape = shape;
-      this.notifyObservers('selectedShapeChanged', shape);
+      this.notifyObservers("selectedShapeChanged", shape);
     }
   }
 
@@ -435,25 +452,28 @@ export class GameModel {
 
   setCursorPosition(position) {
     // Only update if position actually changed
-    const changed = (this.cursorPosition === null && position !== null) ||
+    const changed =
+      (this.cursorPosition === null && position !== null) ||
       (this.cursorPosition !== null && position === null) ||
-      (this.cursorPosition !== null && position !== null && 
-       (this.cursorPosition.x !== position.x || this.cursorPosition.y !== position.y));
-    
+      (this.cursorPosition !== null &&
+        position !== null &&
+        (this.cursorPosition.x !== position.x ||
+          this.cursorPosition.y !== position.y));
+
     if (!changed) {
       return;
     }
-    
+
     const now = performance.now();
-    
+
     // Throttle cursor updates to avoid excessive notifications
     if (now - this.lastCursorUpdateTime < this.cursorThrottleDelay) {
       return;
     }
-    
+
     this.cursorPosition = position ? { ...position } : null;
     this.lastCursorUpdateTime = now;
-    this.notifyObservers('cursorPositionChanged', this.cursorPosition);
+    this.notifyObservers("cursorPositionChanged", this.cursorPosition);
   }
 
   getCursorPosition() {
@@ -462,38 +482,38 @@ export class GameModel {
 
   // UI state management operations (not serialized)
   openDialog(dialogName) {
-    if (this.uiState[dialogName + 'Open'] !== undefined) {
-      this.uiState[dialogName + 'Open'] = true;
-      this.notifyObservers('uiStateChanged', { 
-        type: 'dialogOpen', 
-        dialog: dialogName, 
-        open: true 
+    if (this.uiState[dialogName + "Open"] !== undefined) {
+      this.uiState[dialogName + "Open"] = true;
+      this.notifyObservers("uiStateChanged", {
+        type: "dialogOpen",
+        dialog: dialogName,
+        open: true,
       });
     }
   }
 
   closeDialog(dialogName) {
-    if (this.uiState[dialogName + 'Open'] !== undefined) {
-      this.uiState[dialogName + 'Open'] = false;
-      this.notifyObservers('uiStateChanged', { 
-        type: 'dialogClose', 
-        dialog: dialogName, 
-        open: false 
+    if (this.uiState[dialogName + "Open"] !== undefined) {
+      this.uiState[dialogName + "Open"] = false;
+      this.notifyObservers("uiStateChanged", {
+        type: "dialogClose",
+        dialog: dialogName,
+        open: false,
       });
     }
   }
 
   isDialogOpen(dialogName) {
-    return this.uiState[dialogName + 'Open'] || false;
+    return this.uiState[dialogName + "Open"] || false;
   }
 
   setUIState(key, value) {
     if (this.uiState[key] !== value) {
       this.uiState[key] = value;
-      this.notifyObservers('uiStateChanged', { 
-        type: 'stateChange', 
-        key, 
-        value 
+      this.notifyObservers("uiStateChanged", {
+        type: "stateChange",
+        key,
+        value,
       });
     }
   }
@@ -508,21 +528,21 @@ export class GameModel {
 
   // Convenience methods for common UI operations
   toggleChart() {
-    this.setUIState('showChart', !this.uiState.showChart);
+    this.setUIState("showChart", !this.uiState.showChart);
   }
 
   toggleSpeedGauge() {
-    this.setUIState('showSpeedGauge', !this.uiState.showSpeedGauge);
+    this.setUIState("showSpeedGauge", !this.uiState.showSpeedGauge);
   }
 
   setCaptureData(data) {
     this.uiState.captureData = data;
     if (data) {
-      this.openDialog('captureDialog');
+      this.openDialog("captureDialog");
     }
-    this.notifyObservers('uiStateChanged', { 
-      type: 'captureDataChanged', 
-      data 
+    this.notifyObservers("uiStateChanged", {
+      type: "captureDataChanged",
+      data,
     });
   }
 
@@ -532,7 +552,7 @@ export class GameModel {
 
   // Performance settings
   setMaxFPS(fps) {
-    this.setUIState('maxFPS', Math.max(1, Math.min(240, fps)));
+    this.setUIState("maxFPS", Math.max(1, Math.min(240, fps)));
   }
 
   getMaxFPS() {
@@ -540,7 +560,7 @@ export class GameModel {
   }
 
   setMaxGPS(gps) {
-    this.setUIState('maxGPS', Math.max(1, Math.min(120, gps)));
+    this.setUIState("maxGPS", Math.max(1, Math.min(120, gps)));
   }
 
   getMaxGPS() {
@@ -551,7 +571,7 @@ export class GameModel {
   getPerformanceSettings() {
     return {
       maxFPS: this.uiState.maxFPS,
-      maxGPS: this.uiState.maxGPS
+      maxGPS: this.uiState.maxGPS,
     };
   }
 
@@ -566,7 +586,7 @@ export class GameModel {
 
   // Population stability settings
   setPopulationWindowSize(size) {
-    this.setUIState('popWindowSize', Math.max(5, Math.min(100, size)));
+    this.setUIState("popWindowSize", Math.max(5, Math.min(100, size)));
   }
 
   getPopulationWindowSize() {
@@ -574,7 +594,7 @@ export class GameModel {
   }
 
   setPopulationTolerance(tolerance) {
-    this.setUIState('popTolerance', Math.max(0.01, Math.min(1.0, tolerance)));
+    this.setUIState("popTolerance", Math.max(0.01, Math.min(1.0, tolerance)));
   }
 
   getPopulationTolerance() {

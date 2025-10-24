@@ -1,16 +1,20 @@
 // GameMVC.js - Main orchestrator for MVC pattern
 // Creates and coordinates Model, View, and Controller
 
-import { GameModel } from '../model/GameModel';
-import { GameView } from '../view/GameView';
-import { GameController } from './GameController';
+import { GameModel } from "../model/GameModel";
+import { GameView } from "../view/GameView";
+import { GameController } from "./GameController";
 
 export class GameMVC {
   constructor(canvas, options = {}) {
     // Create MVC components
     this.model = new GameModel();
     this.view = new GameView(canvas, options.view, this.model);
-    this.controller = new GameController(this.model, this.view, options.controller);
+    this.controller = new GameController(
+      this.model,
+      this.view,
+      options.controller,
+    );
 
     // Track tool loading
     this.toolsLoaded = false;
@@ -23,14 +27,14 @@ export class GameMVC {
   setupDefaults() {
     // Setup default tools
     this.registerDefaultTools();
-    
+
     // Setup initial viewport
     const container = this.view.canvas.parentElement;
     if (container) {
       const rect = container.getBoundingClientRect();
       this.view.resize(rect.width || 800, rect.height || 600);
     }
-    
+
     // Setup all event listeners
     this.view.setupMouseEvents();
     this.view.setupKeyboardEvents();
@@ -40,58 +44,61 @@ export class GameMVC {
   registerDefaultTools() {
     // Create promises for each tool import
     const toolImports = [
-      import('./tools/drawTool').then(({ drawTool }) => {
-        this.controller.registerTool('draw', drawTool);
+      import("./tools/drawTool").then(({ drawTool }) => {
+        this.controller.registerTool("draw", drawTool);
       }),
-      
-      import('./tools/lineTool').then(({ lineTool }) => {
-        this.controller.registerTool('line', lineTool);
+
+      import("./tools/lineTool").then(({ lineTool }) => {
+        this.controller.registerTool("line", lineTool);
       }),
-      
-      import('./tools/rectTool').then(({ rectTool }) => {
-        this.controller.registerTool('rect', rectTool);
+
+      import("./tools/rectTool").then(({ rectTool }) => {
+        this.controller.registerTool("rect", rectTool);
       }),
-      
-      import('./tools/circleTool').then(({ circleTool }) => {
-        this.controller.registerTool('circle', circleTool);
+
+      import("./tools/circleTool").then(({ circleTool }) => {
+        this.controller.registerTool("circle", circleTool);
       }),
-      
-      import('./tools/ovalTool').then(({ ovalTool }) => {
-        this.controller.registerTool('oval', ovalTool);
+
+      import("./tools/ovalTool").then(({ ovalTool }) => {
+        this.controller.registerTool("oval", ovalTool);
       }),
-      
-      import('./tools/randomRectTool').then(({ randomRectTool }) => {
-        this.controller.registerTool('randomRect', randomRectTool);
+
+      import("./tools/randomRectTool").then(({ randomRectTool }) => {
+        this.controller.registerTool("randomRect", randomRectTool);
       }),
-      
-      import('./tools/shapesTool').then(({ shapesTool }) => {
-        this.controller.registerTool('shapes', shapesTool);
+
+      import("./tools/shapesTool").then(({ shapesTool }) => {
+        this.controller.registerTool("shapes", shapesTool);
       }),
-      
-      import('./tools/captureTool').then(({ captureTool }) => {
+
+      import("./tools/captureTool").then(({ captureTool }) => {
         // Add callback to trigger capture dialog
         const enhancedCaptureTool = {
           ...captureTool,
           onCaptureComplete: (captureData) => {
             // Set capture data and open dialog through model
-            this.model.setUIState({ 
+            this.model.setUIState({
               captureData: captureData,
-              captureDialogOpen: true 
+              captureDialogOpen: true,
             });
-          }
+          },
         };
-        this.controller.registerTool('capture', enhancedCaptureTool);
-      })
+        this.controller.registerTool("capture", enhancedCaptureTool);
+      }),
     ];
 
     // Wait for all tools to load
-    Promise.all(toolImports).then(() => {
-      this.toolsLoaded = true;
-    }).catch(error => {
-  const logger = require('./utils/logger').default || require('./utils/logger');
-  logger.error('GameMVC: ❌ Error loading tools:', error);
-    });
-    
+    Promise.all(toolImports)
+      .then(() => {
+        this.toolsLoaded = true;
+      })
+      .catch((error) => {
+        const logger =
+          require("./utils/logger").default || require("./utils/logger");
+        logger.error("GameMVC: ❌ Error loading tools:", error);
+      });
+
     this.toolLoadPromises = toolImports;
   }
 
@@ -371,7 +378,7 @@ export class GameMVC {
         generation: this.model.getGeneration(),
         isRunning: this.model.getIsRunning(),
         viewport: this.model.getViewport(),
-        observerCount: this.model.observers.size
+        observerCount: this.model.observers.size,
       },
       view: this.view.getDebugInfo(),
       controller: {
@@ -380,8 +387,8 @@ export class GameMVC {
         cursorPosition: this.model.getCursorPosition(),
         toolCount: Object.keys(this.controller.toolMap).length,
         performanceCallbackCount: this.controller.performanceCallbacks.length,
-        animationRunning: !!this.controller.animationId
-      }
+        animationRunning: !!this.controller.animationId,
+      },
     };
   }
 
@@ -390,4 +397,3 @@ export class GameMVC {
     this.controller.destroy();
   }
 }
-

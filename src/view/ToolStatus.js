@@ -1,7 +1,7 @@
-import React from 'react';
-import PropTypes from 'prop-types';
+import React from "react";
+import PropTypes from "prop-types";
 
-const fmt = (p) => (p ? `${p.x},${p.y}` : '—');
+const fmt = (p) => (p ? `${p.x},${p.y}` : "—");
 
 // Helper function to build shape description
 const buildShapeDescription = (shapeInfo, cellCount, dimensions) => {
@@ -15,17 +15,19 @@ const buildShapeDescription = (shapeInfo, cellCount, dimensions) => {
 // Helper function to get shape tool status
 const getShapeToolStatus = (selectedShape, end) => {
   if (!selectedShape) {
-    return 'No shape selected - Open Shape Palette to choose a pattern';
+    return "No shape selected - Open Shape Palette to choose a pattern";
   }
-  
-  const shapeInfo = selectedShape.name || 'Unnamed Shape';
-  const cellCount = selectedShape.cells?.length || selectedShape.pattern?.length || 0;
-  const dimensions = selectedShape.width && selectedShape.height 
-    ? `${selectedShape.width}×${selectedShape.height}` 
-    : '';
-  
+
+  const shapeInfo = selectedShape.name || "Unnamed Shape";
+  const cellCount =
+    selectedShape.cells?.length || selectedShape.pattern?.length || 0;
+  const dimensions =
+    selectedShape.width && selectedShape.height
+      ? `${selectedShape.width}×${selectedShape.height}`
+      : "";
+
   const shapeDesc = buildShapeDescription(shapeInfo, cellCount, dimensions);
-  
+
   if (end) {
     return `Placing ${shapeDesc} at ${fmt(end)}`;
   }
@@ -39,12 +41,12 @@ const getCaptureToolStatus = (start, end, dx, dy) => {
     const height = Math.abs(dy) + 1;
     return `Selecting area: ${fmt(start)} to ${fmt(end)} (${width}×${height})`;
   }
-  return 'Drag to select area for capture';
+  return "Drag to select area for capture";
 };
 
 // Helper function to get line tool status
 const getLineToolStatus = (start, end, dx, dy) => {
-  const deltaText = dx == null ? '—' : `${dx},${dy}`;
+  const deltaText = dx == null ? "—" : `${dx},${dy}`;
   return (
     <>
       Start: {fmt(start)}&nbsp;&nbsp; End: {fmt(end)}&nbsp;&nbsp; Δ: {deltaText}
@@ -54,38 +56,52 @@ const getLineToolStatus = (start, end, dx, dy) => {
 
 // Helper function to get default tool status
 const getDefaultToolStatus = (end) => (
-  <>Cursor: {end ? `${end.x},${end.y}` : '—'}</>
+  <>Cursor: {end ? `${end.x},${end.y}` : "—"}</>
 );
 
-export default function ToolStatus({ selectedTool, toolStateRef, cursorCell, selectedShape }) {
+export default function ToolStatus({
+  selectedTool,
+  toolStateRef,
+  cursorCell,
+  selectedShape,
+}) {
   const ts = toolStateRef?.current || {};
   const start = ts.start || ts.lastStart || null;
   const end = ts.last || cursorCell || null;
 
-  const dx = (start && end) ? (end.x - start.x) : null;
-  const dy = (start && end) ? (end.y - start.y) : null;
+  const dx = start && end ? end.x - start.x : null;
+  const dy = start && end ? end.y - start.y : null;
 
   // Determine status content based on selected tool
   let statusContent;
-  if (selectedTool === 'line') {
+  if (selectedTool === "line") {
     statusContent = getLineToolStatus(start, end, dx, dy);
-  } else if (selectedTool === 'shapes') {
+  } else if (selectedTool === "shapes") {
     statusContent = getShapeToolStatus(selectedShape, end);
-  } else if (selectedTool === 'capture') {
+  } else if (selectedTool === "capture") {
     statusContent = getCaptureToolStatus(start, end, dx, dy);
   } else {
     statusContent = getDefaultToolStatus(end);
   }
 
   return (
-    <div className="tool-status" style={{ 
-      fontFamily: 'monospace', 
-      fontSize: 12,
-      padding: '4px 8px',
-      backgroundColor: selectedTool === 'shapes' && !selectedShape ? '#fff3cd' : 'transparent',
-      border: selectedTool === 'shapes' && !selectedShape ? '1px solid #ffeaa7' : 'none',
-      borderRadius: '4px'
-    }}>
+    <div
+      className="tool-status"
+      style={{
+        fontFamily: "monospace",
+        fontSize: 12,
+        padding: "4px 8px",
+        backgroundColor:
+          selectedTool === "shapes" && !selectedShape
+            ? "#fff3cd"
+            : "transparent",
+        border:
+          selectedTool === "shapes" && !selectedShape
+            ? "1px solid #ffeaa7"
+            : "none",
+        borderRadius: "4px",
+      }}
+    >
       {statusContent}
     </div>
   );
@@ -95,5 +111,5 @@ ToolStatus.propTypes = {
   selectedTool: PropTypes.string.isRequired,
   toolStateRef: PropTypes.object.isRequired,
   cursorCell: PropTypes.object,
-  selectedShape: PropTypes.object
+  selectedShape: PropTypes.object,
 };

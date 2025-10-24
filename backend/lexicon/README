@@ -3,10 +3,10 @@ Life Lexicon, a lexicon of terms used in Conway's Game of Life.
 
 The files herein are:
 
-  README        (this file)
-  lexicon.txt   (the ASCII version of the Lexicon)
-  lifelex.el    (a Life Lexicon mode for GNU Emacs)
-  emacs.txt     (some notes explaining how to use lifelex.el)
+README (this file)
+lexicon.txt (the ASCII version of the Lexicon)
+lifelex.el (a Life Lexicon mode for GNU Emacs)
+emacs.txt (some notes explaining how to use lifelex.el)
 
 Stephen Silver
 Dave Greene

@@ -37,8 +37,9 @@
   }
 }
 
-
-html, body, #root {
+html,
+body,
+#root {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -53,4 +54,3 @@ html, body, #root {
   justify-content: center;
   align-items: center;
 }
-

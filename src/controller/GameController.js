@@ -11,7 +11,7 @@ export class GameController {
       zoomFactor: 1.12,
       keyboardPanAmount: 1,
       keyboardPanAmountShift: 10,
-      ...options
+      ...options,
     };
 
     // Controller state
@@ -40,16 +40,16 @@ export class GameController {
   setupModelObservers() {
     this.model.addObserver((event, data) => {
       switch (event) {
-        case 'gameStep':
-        case 'cellChanged':
-        case 'gameCleared':
-        case 'shapePlace':
+        case "gameStep":
+        case "cellChanged":
+        case "gameCleared":
+        case "shapePlace":
           this.requestRender();
           break;
-        case 'runningStateChanged':
+        case "runningStateChanged":
           this.handleRunningStateChange(data.isRunning);
           break;
-        case 'viewportChanged':
+        case "viewportChanged":
           this.requestRender();
           break;
         default:
@@ -61,35 +61,35 @@ export class GameController {
 
   // View event handling
   setupViewEvents() {
-    this.view.on('mouseDown', ({ cellCoords, event }) => {
+    this.view.on("mouseDown", ({ cellCoords, event }) => {
       if (!cellCoords) return;
       this.handleMouseDown(cellCoords, event);
     });
 
-    this.view.on('mouseMove', ({ cellCoords, event }) => {
+    this.view.on("mouseMove", ({ cellCoords, event }) => {
       if (!cellCoords) return;
       this.handleMouseMove(cellCoords, event);
     });
 
-    this.view.on('mouseUp', ({ cellCoords, event }) => {
+    this.view.on("mouseUp", ({ cellCoords, event }) => {
       if (!cellCoords) return;
       this.handleMouseUp(cellCoords, event);
     });
 
-    this.view.on('click', ({ cellCoords, event }) => {
+    this.view.on("click", ({ cellCoords, event }) => {
       if (!cellCoords) return;
       this.handleClick(cellCoords, event);
     });
 
-    this.view.on('wheel', ({ cellCoords, deltaY, event }) => {
+    this.view.on("wheel", ({ cellCoords, deltaY, event }) => {
       this.handleWheel(deltaY, event);
     });
 
-    this.view.on('keyDown', ({ key, shiftKey, event }) => {
+    this.view.on("keyDown", ({ key, shiftKey, event }) => {
       this.handleKeyDown(key, shiftKey, event);
     });
 
-    this.view.on('resize', ({ width, height }) => {
+    this.view.on("resize", ({ width, height }) => {
       this.requestRender();
     });
   }
@@ -97,7 +97,7 @@ export class GameController {
   // Global event handling
   setupGlobalEvents() {
     // Global mouse up to handle mouse leaving canvas
-    document.addEventListener('mouseup', () => {
+    document.addEventListener("mouseup", () => {
       if (this.mouseState.isDown) {
         this.mouseState.isDown = false;
         this.handleToolMouseUp();
@@ -107,10 +107,10 @@ export class GameController {
 
   // Tool management
   registerTool(name, toolObject) {
-    if (typeof toolObject !== 'object' || !toolObject) {
+    if (typeof toolObject !== "object" || !toolObject) {
       throw new Error(`Tool '${name}' must be an object`);
     }
-    
+
     this.toolMap[name] = toolObject;
   }
 
@@ -120,12 +120,12 @@ export class GameController {
       // Clear previous tool state
       this.toolState = {};
       this.view.clearOverlays();
-      
+
       // Clear selected shape when switching away from shapes tool
-      if (toolName !== 'shapes') {
+      if (toolName !== "shapes") {
         this.model.setSelectedShape(null);
       }
-      
+
       // The model state is managed by GameMVC, we just handle tool logic here
     }
   }
@@ -138,7 +138,7 @@ export class GameController {
   setSelectedShape(shape) {
     if (shape) {
       // When selecting a shape, auto-switch to shapes tool
-      this.model.setSelectedTool('shapes');
+      this.model.setSelectedTool("shapes");
     }
     // The model state is managed by GameMVC
   }
@@ -150,7 +150,7 @@ export class GameController {
   // Mouse event handlers
   handleMouseDown(cellCoords, event) {
     this.mouseState.isDown = true;
-    
+
     const tool = this.toolMap[this.model.getSelectedTool()];
     if (tool?.onMouseDown) {
       tool.onMouseDown(this.toolState, cellCoords.x, cellCoords.y);
@@ -160,17 +160,25 @@ export class GameController {
 
   handleMouseMove(cellCoords, event) {
     this.model.setCursorPosition(cellCoords);
-    
+
     // Only process tool events if mouse is down
     if (this.mouseState.isDown) {
       const tool = this.toolMap[this.model.getSelectedTool()];
       if (tool?.onMouseMove) {
-        tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, (x, y, alive) => {
-          this.model.setCellAlive(x, y, alive);
-        });
+        tool.onMouseMove(
+          this.toolState,
+          cellCoords.x,
+          cellCoords.y,
+          (x, y, alive) => {
+            this.model.setCellAlive(x, y, alive);
+          },
+        );
         this.updateToolOverlay();
       }
-    } else if (this.model.getSelectedTool() === 'shapes' && this.model.getSelectedShape()) {
+    } else if (
+      this.model.getSelectedTool() === "shapes" &&
+      this.model.getSelectedShape()
+    ) {
       // Update shape preview for shapes tool
       this.toolState.previewPosition = cellCoords;
       this.updateToolOverlay();
@@ -188,19 +196,31 @@ export class GameController {
       if (tool.onMouseUp.length === 1) {
         tool.onMouseUp(this.toolState);
       } else if (cellCoords) {
-        tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, (x, y, alive) => {
-          this.model.setCellAlive(x, y, alive);
-        });
+        tool.onMouseUp(
+          this.toolState,
+          cellCoords.x,
+          cellCoords.y,
+          (x, y, alive) => {
+            this.model.setCellAlive(x, y, alive);
+          },
+        );
       }
       this.updateToolOverlay();
     }
   }
 
   handleClick(cellCoords, event) {
-    if (this.model.getSelectedTool() === 'draw') {
+    if (this.model.getSelectedTool() === "draw") {
       this.model.setCellAlive(cellCoords.x, cellCoords.y, true);
-    } else if (this.model.getSelectedTool() === 'shapes' && this.model.getSelectedShape()) {
-      this.model.placeShape(cellCoords.x, cellCoords.y, this.model.getSelectedShape());
+    } else if (
+      this.model.getSelectedTool() === "shapes" &&
+      this.model.getSelectedShape()
+    ) {
+      this.model.placeShape(
+        cellCoords.x,
+        cellCoords.y,
+        this.model.getSelectedShape(),
+      );
     }
   }
 
@@ -208,11 +228,11 @@ export class GameController {
   handleWheel(deltaY, event) {
     const viewport = this.model.getViewport();
     const newCellSize = this.calculateNewCellSize(viewport.cellSize, deltaY);
-    
+
     if (newCellSize !== viewport.cellSize) {
       this.model.setViewport(viewport.offsetX, viewport.offsetY, newCellSize);
     }
-    
+
     if (event.cancelable) {
       event.preventDefault();
     }
@@ -222,58 +242,61 @@ export class GameController {
     const dpr = window.devicePixelRatio || 1;
     const minCellSize = 1 / dpr;
     const maxCellSize = 200;
-    const factor = zoomDirection < 0 ? this.options.zoomFactor : 1 / this.options.zoomFactor;
+    const factor =
+      zoomDirection < 0 ? this.options.zoomFactor : 1 / this.options.zoomFactor;
 
     const prevDevice = currentSize * dpr;
     let newDevice = prevDevice * factor;
     const maxDevice = maxCellSize * dpr;
-    
+
     newDevice = Math.max(1, Math.min(maxDevice, newDevice));
     let snappedDevice;
-    
+
     if (newDevice > prevDevice) {
       snappedDevice = Math.ceil(newDevice);
     } else {
       snappedDevice = Math.floor(newDevice);
     }
-    
+
     snappedDevice = Math.max(1, Math.min(Math.round(maxDevice), snappedDevice));
     const snappedSize = Math.max(minCellSize, snappedDevice / dpr);
-    
+
     return snappedSize === currentSize ? currentSize : snappedSize;
   }
 
   // Keyboard handlers
   handleKeyDown(key, shiftKey, event) {
     const viewport = this.model.getViewport();
-    const amount = shiftKey ? this.options.keyboardPanAmountShift : this.options.keyboardPanAmount;
-    
+    const amount = shiftKey
+      ? this.options.keyboardPanAmountShift
+      : this.options.keyboardPanAmount;
+
     let newOffsetX = viewport.offsetX;
     let newOffsetY = viewport.offsetY;
     let handled = false;
 
     switch (key) {
-      case 'ArrowLeft':
+      case "ArrowLeft":
         newOffsetX -= amount;
         handled = true;
         break;
-      case 'ArrowRight':
+      case "ArrowRight":
         newOffsetX += amount;
         handled = true;
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         newOffsetY -= amount;
         handled = true;
         break;
-      case 'ArrowDown':
+      case "ArrowDown":
         newOffsetY += amount;
         handled = true;
         break;
-      case ' ': // Spacebar - toggle play/pause
+      case " ": // Spacebar - toggle play/pause
         this.toggleRunning();
         handled = true;
         break;
-      case 'c': // Clear
+      case "c": // Clear
         if (event.ctrlKey) {
           this.model.clear();
           handled = true;
@@ -332,7 +355,7 @@ export class GameController {
   // Game loop
   startGameLoop() {
     if (this.animationId) return; // Already running
-    
+
     const loop = (timestamp) => {
       if (!this.model.getIsRunning()) {
         this.animationId = null;
@@ -342,13 +365,13 @@ export class GameController {
       // Throttle to desired speed
       if (timestamp - this.lastFrameTime >= this.frameInterval) {
         const frameStart = performance.now();
-        
+
         this.model.step();
         this.requestRender();
-        
+
         const frameTime = performance.now() - frameStart;
         this.notifyPerformance(frameTime);
-        
+
         this.lastFrameTime = timestamp;
       }
 
@@ -372,43 +395,54 @@ export class GameController {
   // Rendering
   requestRender() {
     const renderStart = performance.now();
-    
+
     const liveCells = this.model.getLiveCells();
     const viewport = this.model.getViewport();
     this.view.render(liveCells, viewport);
-    
+
     const renderTime = performance.now() - renderStart;
-    
+
     // Track performance for SpeedGauge
     if (window.speedGaugeTracker) {
       window.speedGaugeTracker(renderTime, renderTime);
     }
-    
+
     // Call performance callbacks
-    this.performanceCallbacks.forEach(callback => callback(renderTime));
+    this.performanceCallbacks.forEach((callback) => callback(renderTime));
   }
 
   // Tool overlay management
   updateToolOverlay() {
     this.view.clearOverlays();
-    
+
     const tool = this.toolMap[this.model.getSelectedTool()];
     if (tool?.drawOverlay && Object.keys(this.toolState).length > 0) {
       const viewport = this.model.getViewport();
-      const { ToolOverlayView } = require('../view/GameView');
-      const toolOverlay = new ToolOverlayView(tool, this.toolState, viewport.cellSize);
+      const { ToolOverlayView } = require("../view/GameView");
+      const toolOverlay = new ToolOverlayView(
+        tool,
+        this.toolState,
+        viewport.cellSize,
+      );
       this.view.addOverlay(toolOverlay);
     }
-    
+
     // Shape preview overlay
-    if (this.model.getSelectedTool() === 'shapes' && this.model.getSelectedShape() && this.toolState.previewPosition) {
+    if (
+      this.model.getSelectedTool() === "shapes" &&
+      this.model.getSelectedShape() &&
+      this.toolState.previewPosition
+    ) {
       const selectedShape = this.model.getSelectedShape();
       const cells = selectedShape.cells || selectedShape.pattern || [];
-      const { ShapePreviewView } = require('../view/GameView');
-      const shapeOverlay = new ShapePreviewView(cells, this.toolState.previewPosition);
+      const { ShapePreviewView } = require("../view/GameView");
+      const shapeOverlay = new ShapePreviewView(
+        cells,
+        this.toolState.previewPosition,
+      );
       this.view.addOverlay(shapeOverlay);
     }
-    
+
     this.requestRender();
   }
 
@@ -425,7 +459,7 @@ export class GameController {
   }
 
   notifyPerformance(frameTime) {
-    this.performanceCallbacks.forEach(callback => {
+    this.performanceCallbacks.forEach((callback) => {
       callback(frameTime);
     });
   }
@@ -442,7 +476,7 @@ export class GameController {
       isRunning: this.model.getIsRunning(),
       viewport: this.model.getViewport(),
       selectedTool: this.model.getSelectedTool(),
-      hasSelectedShape: !!this.model.getSelectedShape()
+      hasSelectedShape: !!this.model.getSelectedShape(),
     };
   }
 
@@ -451,7 +485,7 @@ export class GameController {
     return {
       model: this.model.exportState(),
       selectedTool: this.model.getSelectedTool(),
-      selectedShape: this.selectedShape
+      selectedShape: this.selectedShape,
     };
   }
 
@@ -476,4 +510,3 @@ export class GameController {
     this.performanceCallbacks = [];
   }
 }
-

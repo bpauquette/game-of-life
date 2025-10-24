@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import PropTypes from 'prop-types';
-import Tooltip from '@mui/material/Tooltip';
-import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import React, { useState, useMemo } from "react";
+import PropTypes from "prop-types";
+import Tooltip from "@mui/material/Tooltip";
+import LightbulbIcon from "@mui/icons-material/Lightbulb";
 
 // Chart dimensions and styling constants
 const CHART_WIDTH = 640;
@@ -40,11 +40,17 @@ const Y_AXIS_TEXT_OFFSET_Y = 4;
 // - history: array of integers (population count per generation)
 // - onClose: function to close the modal
 // - isRunning: boolean indicating if simulation is running
-export default function PopulationChart({ history = [], onClose, isRunning = false }) {
+export default function PopulationChart({
+  history = [],
+  onClose,
+  isRunning = false,
+}) {
   const [hoverIdx, setHoverIdx] = useState(null);
 
   const max = useMemo(() => Math.max(1, ...history), [history]);
-  const w = CHART_WIDTH, h = CHART_HEIGHT, pad = CHART_PADDING;
+  const w = CHART_WIDTH,
+    h = CHART_HEIGHT,
+    pad = CHART_PADDING;
 
   // Show empty state when no data
   const isEmpty = history.length === 0;
@@ -56,33 +62,92 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
     return [x, y];
   });
 
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
+  const path = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p[0]} ${p[1]}`)
+    .join(" ");
 
   // ticks for Y axis
   const yTicks = Y_TICK_COUNT;
-  const xTicks = Math.min(MAX_X_TICKS, Math.max(MIN_X_TICKS, Math.floor(history.length / X_TICK_INTERVAL_DIVISOR)));
+  const xTicks = Math.min(
+    MAX_X_TICKS,
+    Math.max(MIN_X_TICKS, Math.floor(history.length / X_TICK_INTERVAL_DIVISOR)),
+  );
 
   return (
     // place modal in upper-right quadrant
-    <div style={{ position: 'fixed', top: MODAL_POSITION_TOP, right: MODAL_POSITION_RIGHT, width: w + CHART_CONTAINER_PADDING, zIndex: MODAL_Z_INDEX }}>
-      <div style={{ background: '#111', color: '#fff', padding: MODAL_PADDING, borderRadius: MODAL_BORDER_RADIUS, boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+    <div
+      style={{
+        position: "fixed",
+        top: MODAL_POSITION_TOP,
+        right: MODAL_POSITION_RIGHT,
+        width: w + CHART_CONTAINER_PADDING,
+        zIndex: MODAL_Z_INDEX,
+      }}
+    >
+      <div
+        style={{
+          background: "#111",
+          color: "#fff",
+          padding: MODAL_PADDING,
+          borderRadius: MODAL_BORDER_RADIUS,
+          boxShadow: "0 4px 24px rgba(0,0,0,0.6)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
           <strong>Population Over Time</strong>
-          <button onClick={onClose} style={{ marginLeft: 12 }}>Close</button>
+          <button onClick={onClose} style={{ marginLeft: 12 }}>
+            Close
+          </button>
         </div>
-        <svg width={w} height={h} style={{ background: '#020202', display: 'block' }}>
+        <svg
+          width={w}
+          height={h}
+          style={{ background: "#020202", display: "block" }}
+        >
           <rect x={0} y={0} width={w} height={h} fill="#020202" />
           {/* Y axis and ticks */}
-          <line x1={pad} x2={pad} y1={pad} y2={h - pad} stroke="rgba(255,255,255,0.2)" />
-          <line x1={pad} x2={w - pad} y1={h - pad} y2={h - pad} stroke="rgba(255,255,255,0.2)" />
+          <line
+            x1={pad}
+            x2={pad}
+            y1={pad}
+            y2={h - pad}
+            stroke="rgba(255,255,255,0.2)"
+          />
+          <line
+            x1={pad}
+            x2={w - pad}
+            y1={h - pad}
+            y2={h - pad}
+            stroke="rgba(255,255,255,0.2)"
+          />
           {Array.from({ length: yTicks + 1 }, (_, i) => {
             const t = i / yTicks;
             const y = pad + t * (h - pad * 2);
             const val = Math.round((1 - t) * max);
             return (
               <g key={`ytick-${val}-${y.toFixed(1)}`}>
-                <line x1={pad - Y_AXIS_LABEL_OFFSET} x2={pad} y1={y} y2={y} stroke="rgba(255,255,255,0.2)" />
-                <text x={Y_AXIS_LABEL_OFFSET} y={y + Y_AXIS_TEXT_OFFSET_Y} fontSize={CHART_FONT_SIZE} fill="#bbb">{val}</text>
+                <line
+                  x1={pad - Y_AXIS_LABEL_OFFSET}
+                  x2={pad}
+                  y1={y}
+                  y2={y}
+                  stroke="rgba(255,255,255,0.2)"
+                />
+                <text
+                  x={Y_AXIS_LABEL_OFFSET}
+                  y={y + Y_AXIS_TEXT_OFFSET_Y}
+                  fontSize={CHART_FONT_SIZE}
+                  fill="#bbb"
+                >
+                  {val}
+                </text>
               </g>
             );
           })}
@@ -94,8 +159,21 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
             const gen = Math.round(t * Math.max(0, history.length - 1));
             return (
               <g key={`xtick-${gen}-${x.toFixed(1)}`}>
-                <line x1={x} x2={x} y1={h - pad} y2={h - pad + TICK_LENGTH} stroke="rgba(255,255,255,0.2)" />
-                <text x={x - AXIS_LABEL_OFFSET_X} y={h - AXIS_LABEL_OFFSET_Y} fontSize={AXIS_LABEL_FONT_SIZE} fill="#bbb">{gen}</text>
+                <line
+                  x1={x}
+                  x2={x}
+                  y1={h - pad}
+                  y2={h - pad + TICK_LENGTH}
+                  stroke="rgba(255,255,255,0.2)"
+                />
+                <text
+                  x={x - AXIS_LABEL_OFFSET_X}
+                  y={h - AXIS_LABEL_OFFSET_Y}
+                  fontSize={AXIS_LABEL_FONT_SIZE}
+                  fill="#bbb"
+                >
+                  {gen}
+                </text>
               </g>
             );
           })}
@@ -103,69 +181,106 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
           <path d={path} fill="none" stroke="#7bd" strokeWidth={STROKE_WIDTH} />
           {/* grid lines */}
           {[0, 0.25, 0.5, 0.75, 1].map((t) => (
-            <line key={t} x1={pad} x2={w - pad} y1={pad + t * (h - pad * 2)} y2={pad + t * (h - pad * 2)} stroke="rgba(255,255,255,0.04)" />
+            <line
+              key={t}
+              x1={pad}
+              x2={w - pad}
+              y1={pad + t * (h - pad * 2)}
+              y2={pad + t * (h - pad * 2)}
+              stroke="rgba(255,255,255,0.04)"
+            />
           ))}
-          
+
           {/* Empty state overlay */}
           {isEmpty && (
             <g>
               <rect x={0} y={0} width={w} height={h} fill="rgba(0,0,0,0.3)" />
-              <text 
-                x={w/2} 
-                y={h/2 - 10} 
-                fontSize={16} 
-                fill="#888" 
+              <text
+                x={w / 2}
+                y={h / 2 - 10}
+                fontSize={16}
+                fill="#888"
                 textAnchor="middle"
                 fontStyle="italic"
               >
                 No data to display
               </text>
-              <text 
-                x={w/2} 
-                y={h/2 + 15} 
-                fontSize={12} 
-                fill="#666" 
+              <text
+                x={w / 2}
+                y={h / 2 + 15}
+                fontSize={12}
+                fill="#666"
                 textAnchor="middle"
               >
                 Start the simulation to see population changes
               </text>
             </g>
           )}
-          
+
           {/* points & hover */}
-          {!isEmpty && points.map((p, i) => (
-            <g key={`point-${i}-${p[0]}-${p[1]}`} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
-              <circle cx={p[0]} cy={p[1]} r={hoverIdx === i ? POINT_RADIUS_HOVERED : POINT_RADIUS_NORMAL} fill={hoverIdx === i ? '#fff' : '#7bd'} />
-              {hoverIdx === i && (
-                <g>
-                  <rect x={p[0] + TOOLTIP_OFFSET_X} y={p[1] - TOOLTIP_OFFSET_Y} rx={TOOLTIP_BORDER_RADIUS} ry={TOOLTIP_BORDER_RADIUS} width={TOOLTIP_WIDTH} height={TOOLTIP_HEIGHT} fill="#000" opacity={0.8} />
-                  <text x={p[0] + TOOLTIP_TEXT_OFFSET_X} y={p[1] - TOOLTIP_TEXT_OFFSET_Y} fontSize={CHART_FONT_SIZE} fill="#fff">{history[i]}</text>
-                </g>
-              )}
-            </g>
-          ))}
+          {!isEmpty &&
+            points.map((p, i) => (
+              <g
+                key={`point-${i}-${p[0]}-${p[1]}`}
+                onMouseEnter={() => setHoverIdx(i)}
+                onMouseLeave={() => setHoverIdx(null)}
+              >
+                <circle
+                  cx={p[0]}
+                  cy={p[1]}
+                  r={
+                    hoverIdx === i ? POINT_RADIUS_HOVERED : POINT_RADIUS_NORMAL
+                  }
+                  fill={hoverIdx === i ? "#fff" : "#7bd"}
+                />
+                {hoverIdx === i && (
+                  <g>
+                    <rect
+                      x={p[0] + TOOLTIP_OFFSET_X}
+                      y={p[1] - TOOLTIP_OFFSET_Y}
+                      rx={TOOLTIP_BORDER_RADIUS}
+                      ry={TOOLTIP_BORDER_RADIUS}
+                      width={TOOLTIP_WIDTH}
+                      height={TOOLTIP_HEIGHT}
+                      fill="#000"
+                      opacity={0.8}
+                    />
+                    <text
+                      x={p[0] + TOOLTIP_TEXT_OFFSET_X}
+                      y={p[1] - TOOLTIP_TEXT_OFFSET_Y}
+                      fontSize={CHART_FONT_SIZE}
+                      fill="#fff"
+                    >
+                      {history[i]}
+                    </text>
+                  </g>
+                )}
+              </g>
+            ))}
         </svg>
-        <div style={{ 
-          marginTop: 8, 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          fontSize: 12, 
-          opacity: 0.8 
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Tooltip title={isRunning ? 'Running' : 'Stopped'}>
-              <LightbulbIcon 
-                style={{ 
-                  color: isRunning ? '#FFC107' : 'rgba(255,255,255,0.35)',
-                  fontSize: 18
-                }} 
+        <div
+          style={{
+            marginTop: 8,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: 12,
+            opacity: 0.8,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Tooltip title={isRunning ? "Running" : "Stopped"}>
+              <LightbulbIcon
+                style={{
+                  color: isRunning ? "#FFC107" : "rgba(255,255,255,0.35)",
+                  fontSize: 18,
+                }}
               />
             </Tooltip>
-            <span>{isRunning ? 'Running' : 'Stopped'}</span>
+            <span>{isRunning ? "Running" : "Stopped"}</span>
           </div>
           <span>
-            {isEmpty ? 'No data recorded' : `Generations: ${history.length}`}
+            {isEmpty ? "No data recorded" : `Generations: ${history.length}`}
           </span>
         </div>
       </div>
@@ -176,10 +291,10 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
 PopulationChart.propTypes = {
   history: PropTypes.array,
   onClose: PropTypes.func.isRequired,
-  isRunning: PropTypes.bool
+  isRunning: PropTypes.bool,
 };
 
 PopulationChart.defaultProps = {
   history: [],
-  isRunning: false
+  isRunning: false,
 };
