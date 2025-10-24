@@ -1,6 +1,13 @@
 // GameModel.toolInteraction.test.js - Tests for tool and interaction state in GameModel
 import { GameModel } from './GameModel';
 
+const CONST_LINE = 'line';
+const CONST_RECT = 'rect';
+const CONST_SELECTEDTOOLCHANGED = 'selectedToolChanged';
+const CONST_CIRCLE = 'circle';
+const CONST_GLIDER = 'glider';
+const CONST_TEST = 'test';
+
 describe('GameModel Tool and Interaction State', () => {
   let model;
 
@@ -14,17 +21,17 @@ describe('GameModel Tool and Interaction State', () => {
     });
 
     test('should set and get selected tool', () => {
-      model.setSelectedTool('line');
-      expect(model.getSelectedTool()).toBe('line');
+      model.setSelectedTool(CONST_LINE);
+      expect(model.getSelectedTool()).toBe(CONST_LINE);
     });
 
     test('should notify observers on tool change', () => {
       const observer = jest.fn();
       model.addObserver(observer);
 
-      model.setSelectedTool('rect');
+      model.setSelectedTool(CONST_RECT);
 
-      expect(observer).toHaveBeenCalledWith('selectedToolChanged', 'rect');
+      expect(observer).toHaveBeenCalledWith(CONST_SELECTEDTOOLCHANGED, CONST_RECT);
     });
 
     test('should not notify observers when setting same tool', () => {
@@ -45,14 +52,14 @@ describe('GameModel Tool and Interaction State', () => {
       const observer = jest.fn();
       model.addObserver(observer);
 
-      model.setSelectedTool('line');
-      model.setSelectedTool('rect');
-      model.setSelectedTool('circle');
+      model.setSelectedTool(CONST_LINE);
+      model.setSelectedTool(CONST_RECT);
+      model.setSelectedTool(CONST_CIRCLE);
 
       expect(observer).toHaveBeenCalledTimes(3);
-      expect(observer).toHaveBeenNthCalledWith(1, 'selectedToolChanged', 'line');
-      expect(observer).toHaveBeenNthCalledWith(2, 'selectedToolChanged', 'rect');
-      expect(observer).toHaveBeenNthCalledWith(3, 'selectedToolChanged', 'circle');
+      expect(observer).toHaveBeenNthCalledWith(1, CONST_SELECTEDTOOLCHANGED, CONST_LINE);
+      expect(observer).toHaveBeenNthCalledWith(2, CONST_SELECTEDTOOLCHANGED, CONST_RECT);
+      expect(observer).toHaveBeenNthCalledWith(3, CONST_SELECTEDTOOLCHANGED, CONST_CIRCLE);
     });
   });
 
@@ -62,7 +69,7 @@ describe('GameModel Tool and Interaction State', () => {
     });
 
     test('should set and get selected shape', () => {
-      const testShape = { name: 'glider', cells: [[0,0], [1,0], [2,0]] };
+      const testShape = { name: CONST_GLIDER, cells: [[0,0], [1,0], [2,0]] };
       model.setSelectedShape(testShape);
       expect(model.getSelectedShape()).toBe(testShape);
     });
@@ -78,7 +85,7 @@ describe('GameModel Tool and Interaction State', () => {
     });
 
     test('should not notify observers when setting same shape', () => {
-      const testShape = { name: 'test' };
+      const testShape = { name: CONST_TEST };
       model.setSelectedShape(testShape);
 
       const observer = jest.fn();
@@ -90,7 +97,7 @@ describe('GameModel Tool and Interaction State', () => {
     });
 
     test('should clear selected shape', () => {
-      const testShape = { name: 'test' };
+      const testShape = { name: CONST_TEST };
       model.setSelectedShape(testShape);
       expect(model.getSelectedShape()).toBe(testShape);
 
@@ -102,8 +109,8 @@ describe('GameModel Tool and Interaction State', () => {
       const observer = jest.fn();
       model.addObserver(observer);
 
-      const shape1 = { name: 'test' };
-      const shape2 = { name: 'test' }; // Different object, same content
+      const shape1 = { name: CONST_TEST };
+      const shape2 = { name: CONST_TEST }; // Different object, same content
 
       model.setSelectedShape(shape1);
       model.setSelectedShape(shape2);
@@ -204,8 +211,8 @@ describe('GameModel Tool and Interaction State', () => {
   describe('state serialization exclusion', () => {
     test('should exclude tool and interaction state from export', () => {
       // Set up tool and interaction state
-      model.setSelectedTool('line');
-      model.setSelectedShape({ name: 'test', cells: [[0,0]] });
+      model.setSelectedTool(CONST_LINE);
+      model.setSelectedShape({ name: CONST_TEST, cells: [[0,0]] });
       model.setCursorPosition({ x: 10, y: 20 });
 
       // Add some game state for comparison
@@ -233,10 +240,10 @@ describe('GameModel Tool and Interaction State', () => {
       model.addObserver(observer1);
       model.addObserver(observer2);
 
-      model.setSelectedTool('rect');
+      model.setSelectedTool(CONST_RECT);
 
-      expect(observer1).toHaveBeenCalledWith('selectedToolChanged', 'rect');
-      expect(observer2).toHaveBeenCalledWith('selectedToolChanged', 'rect');
+      expect(observer1).toHaveBeenCalledWith(CONST_SELECTEDTOOLCHANGED, CONST_RECT);
+      expect(observer2).toHaveBeenCalledWith(CONST_SELECTEDTOOLCHANGED, CONST_RECT);
     });
 
     test('should handle observer removal', () => {
@@ -244,7 +251,7 @@ describe('GameModel Tool and Interaction State', () => {
       model.addObserver(observer);
       model.removeObserver(observer);
 
-      model.setSelectedTool('circle');
+      model.setSelectedTool(CONST_CIRCLE);
 
       expect(observer).not.toHaveBeenCalled();
     });
@@ -255,7 +262,7 @@ describe('GameModel Tool and Interaction State', () => {
 
       model.setSelectedTool('oval');
 
-      expect(functionObserver).toHaveBeenCalledWith('selectedToolChanged', 'oval');
+      expect(functionObserver).toHaveBeenCalledWith(CONST_SELECTEDTOOLCHANGED, 'oval');
     });
 
     test('should handle object-style observers', () => {
@@ -265,7 +272,7 @@ describe('GameModel Tool and Interaction State', () => {
       };
       model.addObserver(objectObserver);
 
-      const testShape = { name: 'test' };
+      const testShape = { name: CONST_TEST };
       model.setSelectedTool('randomRect');
       model.setSelectedShape(testShape);
 
@@ -282,20 +289,20 @@ describe('GameModel Tool and Interaction State', () => {
 
       // Set up tool state
       model.setSelectedTool('shapes');
-      model.setSelectedShape({ name: 'glider' });
+      model.setSelectedShape({ name: CONST_GLIDER });
       model.setCursorPosition({ x: 10, y: 15 });
 
       // Verify all state is maintained
       expect(model.isCellAlive(5, 5)).toBe(true);
       expect(model.getIsRunning()).toBe(true);
       expect(model.getSelectedTool()).toBe('shapes');
-      expect(model.getSelectedShape()).toEqual({ name: 'glider' });
+      expect(model.getSelectedShape()).toEqual({ name: CONST_GLIDER });
       expect(model.getCursorPosition()).toEqual({ x: 10, y: 15 });
     });
 
     test('should maintain tool state during game operations', () => {
-      model.setSelectedTool('line');
-      model.setSelectedShape({ name: 'test' });
+      model.setSelectedTool(CONST_LINE);
+      model.setSelectedShape({ name: CONST_TEST });
       model.setCursorPosition({ x: 1, y: 2 });
 
       // Perform game operations
@@ -304,8 +311,8 @@ describe('GameModel Tool and Interaction State', () => {
       model.clear();
 
       // Tool state should be preserved
-      expect(model.getSelectedTool()).toBe('line');
-      expect(model.getSelectedShape()).toEqual({ name: 'test' });
+      expect(model.getSelectedTool()).toBe(CONST_LINE);
+      expect(model.getSelectedShape()).toEqual({ name: CONST_TEST });
       expect(model.getCursorPosition()).toEqual({ x: 1, y: 2 });
     });
   });

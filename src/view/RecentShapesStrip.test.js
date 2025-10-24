@@ -5,6 +5,16 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import RecentShapesStrip from './RecentShapesStrip';
 
+const CONST_GLIDER = 'Glider';
+const CONST_BLOCK = 'Block';
+const CONST_TITLE = 'title';
+const CONST_RECT_FILL_NOT_FILL_TRANSPARENT = 'rect[fill]:not([fill="transparent"])';
+const CONST_VIEWBOX = 'viewBox';
+const CONST_SHAPE1 = 'shape1';
+const CONST_SHAPE_1 = 'Shape 1';
+const CONST_SHAPE_2 = 'Shape 2';
+const CONST_BUTTON_TITLE = 'button[title]';
+
 describe('RecentShapesStrip', () => {
   const defaultProps = {
     recentShapes: [],
@@ -16,7 +26,7 @@ describe('RecentShapesStrip', () => {
   const mockShapes = [
     {
       id: 'glider',
-      name: 'Glider',
+      name: CONST_GLIDER,
       cells: [
         { x: 1, y: 0 },
         { x: 2, y: 1 },
@@ -27,7 +37,7 @@ describe('RecentShapesStrip', () => {
     },
     {
       id: 'block',
-      name: 'Block',
+      name: CONST_BLOCK,
       cells: [
         { x: 0, y: 0 },
         { x: 1, y: 0 },
@@ -52,8 +62,8 @@ describe('RecentShapesStrip', () => {
       render(<RecentShapesStrip {...defaultProps} recentShapes={mockShapes} />);
       
       // Check that shapes are rendered (they should have titles)
-      expect(screen.getByTitle('Glider')).toBeInTheDocument();
-      expect(screen.getByTitle('Block')).toBeInTheDocument();
+      expect(screen.getByTitle(CONST_GLIDER)).toBeInTheDocument();
+      expect(screen.getByTitle(CONST_BLOCK)).toBeInTheDocument();
     });
 
     test('renders correct number of SVG elements', () => {
@@ -74,8 +84,8 @@ describe('RecentShapesStrip', () => {
       render(<RecentShapesStrip {...defaultProps} recentShapes={mockShapes} />);
       
       // Labels should be present as text content (in addition to title attributes)
-      expect(screen.getByText('Glider')).toBeInTheDocument();
-      expect(screen.getByText('Block')).toBeInTheDocument();
+      expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
+      expect(screen.getByText(CONST_BLOCK)).toBeInTheDocument();
     });
   });
 
@@ -84,8 +94,8 @@ describe('RecentShapesStrip', () => {
       render(<RecentShapesStrip {...defaultProps} recentShapes={mockShapes} />);
       
       // The div with title contains the SVG
-      const shapeDiv = screen.getByTitle('Glider');
-      expect(shapeDiv).toHaveAttribute('title', 'Glider');
+      const shapeDiv = screen.getByTitle(CONST_GLIDER);
+      expect(shapeDiv).toHaveAttribute(CONST_TITLE, CONST_GLIDER);
     });
 
     test('uses index when no id available', () => {
@@ -106,7 +116,7 @@ describe('RecentShapesStrip', () => {
       const { container } = render(<RecentShapesStrip {...defaultProps} recentShapes={shapeWithObjectCells} />);
       
       // Check that a cell rect is rendered
-      const cellRects = container.querySelectorAll('rect[fill]:not([fill="transparent"])');
+      const cellRects = container.querySelectorAll(CONST_RECT_FILL_NOT_FILL_TRANSPARENT);
       expect(cellRects).toHaveLength(1);
     });
 
@@ -118,7 +128,7 @@ describe('RecentShapesStrip', () => {
       const { container } = render(<RecentShapesStrip {...defaultProps} recentShapes={shapeWithArrayCells} />);
       
       // Check that cell rects are rendered
-      const cellRects = container.querySelectorAll('rect[fill]:not([fill="transparent"])');
+      const cellRects = container.querySelectorAll(CONST_RECT_FILL_NOT_FILL_TRANSPARENT);
       expect(cellRects).toHaveLength(2);
     });
 
@@ -127,7 +137,7 @@ describe('RecentShapesStrip', () => {
       
       const { container } = render(<RecentShapesStrip {...defaultProps} recentShapes={shapesAsArrays} />);
       
-      const cellRects = container.querySelectorAll('rect[fill]:not([fill="transparent"])');
+      const cellRects = container.querySelectorAll(CONST_RECT_FILL_NOT_FILL_TRANSPARENT);
       expect(cellRects).toHaveLength(2);
     });
 
@@ -143,7 +153,7 @@ describe('RecentShapesStrip', () => {
       
       // Should render default-sized grid
       const svg = container.querySelector('svg');
-      expect(svg).toHaveAttribute('viewBox', '0 0 8 8');
+      expect(svg).toHaveAttribute(CONST_VIEWBOX, '0 0 8 8');
     });
   });
 
@@ -159,7 +169,7 @@ describe('RecentShapesStrip', () => {
       const { container } = render(<RecentShapesStrip {...defaultProps} recentShapes={shapeWith3x3} />);
       
       const svg = container.querySelector('svg');
-      expect(svg).toHaveAttribute('viewBox', '0 0 3 3');
+      expect(svg).toHaveAttribute(CONST_VIEWBOX, '0 0 3 3');
     });
 
     test('calculates correct dimensions for array cells', () => {
@@ -170,7 +180,7 @@ describe('RecentShapesStrip', () => {
       const { container } = render(<RecentShapesStrip {...defaultProps} recentShapes={shapeWith4x2} />);
       
       const svg = container.querySelector('svg');
-      expect(svg).toHaveAttribute('viewBox', '0 0 4 2');
+      expect(svg).toHaveAttribute(CONST_VIEWBOX, '0 0 4 2');
     });
 
     test('handles missing coordinates gracefully', () => {
@@ -181,7 +191,7 @@ describe('RecentShapesStrip', () => {
       const { container } = render(<RecentShapesStrip {...defaultProps} recentShapes={shapeWithMissingCoords} />);
       
       const svg = container.querySelector('svg');
-      expect(svg).toHaveAttribute('viewBox', '0 0 2 2');
+      expect(svg).toHaveAttribute(CONST_VIEWBOX, '0 0 2 2');
     });
   });
 
@@ -189,8 +199,8 @@ describe('RecentShapesStrip', () => {
     test('uses shape name as title', () => {
       render(<RecentShapesStrip {...defaultProps} recentShapes={mockShapes} />);
       
-      expect(screen.getByTitle('Glider')).toBeInTheDocument();
-      expect(screen.getByTitle('Block')).toBeInTheDocument();
+      expect(screen.getByTitle(CONST_GLIDER)).toBeInTheDocument();
+      expect(screen.getByTitle(CONST_BLOCK)).toBeInTheDocument();
     });
 
     test('uses meta.name when shape.name not available', () => {
@@ -238,7 +248,7 @@ describe('RecentShapesStrip', () => {
         />
       );
       
-      fireEvent.click(screen.getByTitle('Glider'));
+      fireEvent.click(screen.getByTitle(CONST_GLIDER));
       
       expect(selectShape).toHaveBeenCalledWith(mockShapes[0]);
       expect(drawWithOverlay).toHaveBeenCalled();
@@ -257,7 +267,7 @@ describe('RecentShapesStrip', () => {
         />
       );
       
-      fireEvent.click(screen.getByTitle('Block'));
+      fireEvent.click(screen.getByTitle(CONST_BLOCK));
       
       expect(selectShape).toHaveBeenCalledWith(mockShapes[1]);
       expect(drawWithOverlay).toHaveBeenCalled();
@@ -268,14 +278,14 @@ describe('RecentShapesStrip', () => {
     test('applies correct cursor style', () => {
       render(<RecentShapesStrip {...defaultProps} recentShapes={mockShapes} />);
       
-      const shapeElement = screen.getByTitle('Glider');
+      const shapeElement = screen.getByTitle(CONST_GLIDER);
       expect(shapeElement).toHaveStyle('cursor: pointer');
     });
 
     test('applies margin bottom to shapes', () => {
       render(<RecentShapesStrip {...defaultProps} recentShapes={mockShapes} />);
       
-      const shapeElement = screen.getByTitle('Glider');
+      const shapeElement = screen.getByTitle(CONST_GLIDER);
       expect(shapeElement).toHaveStyle('margin-bottom: 12px');
     });
 
@@ -398,7 +408,7 @@ describe('RecentShapesStrip', () => {
       render(<RecentShapesStrip {...defaultProps} recentShapes={shapesWithNull} />);
       
       // Should still render the valid shape
-      expect(screen.getByTitle('Glider')).toBeInTheDocument();
+      expect(screen.getByTitle(CONST_GLIDER)).toBeInTheDocument();
     });
 
     test('handles undefined recentShapes', () => {
@@ -424,8 +434,8 @@ describe('RecentShapesStrip', () => {
   describe('Shape Positioning and Stability', () => {
     test('shapes maintain stable keys when array order changes', () => {
       const initialShapes = [
-        { id: 'shape1', name: 'Shape 1', cells: [{ x: 0, y: 0 }] },
-        { id: 'shape2', name: 'Shape 2', cells: [{ x: 1, y: 1 }] }
+        { id: CONST_SHAPE1, name: CONST_SHAPE_1, cells: [{ x: 0, y: 0 }] },
+        { id: 'shape2', name: CONST_SHAPE_2, cells: [{ x: 1, y: 1 }] }
       ];
 
       const { rerender } = render(
@@ -433,8 +443,8 @@ describe('RecentShapesStrip', () => {
       );
 
       // Verify initial elements exist
-      expect(screen.getByTitle('Shape 1')).toBeInTheDocument();
-      expect(screen.getByTitle('Shape 2')).toBeInTheDocument();
+      expect(screen.getByTitle(CONST_SHAPE_1)).toBeInTheDocument();
+      expect(screen.getByTitle(CONST_SHAPE_2)).toBeInTheDocument();
 
       // Reverse the array (simulating new shape added to front)
       const reversedShapes = [...initialShapes].reverse();
@@ -444,8 +454,8 @@ describe('RecentShapesStrip', () => {
       );
 
       // Shapes should still be present with same titles
-      expect(screen.getByTitle('Shape 1')).toBeInTheDocument();
-      expect(screen.getByTitle('Shape 2')).toBeInTheDocument();
+      expect(screen.getByTitle(CONST_SHAPE_1)).toBeInTheDocument();
+      expect(screen.getByTitle(CONST_SHAPE_2)).toBeInTheDocument();
     });
 
     test('generates stable keys for shapes without IDs using content hash', () => {
@@ -463,7 +473,7 @@ describe('RecentShapesStrip', () => {
       expect(screen.getByTitle('Named Shape')).toBeInTheDocument();
       
       // Check that all buttons are rendered (one per shape)
-      const shapeDivs = container.querySelectorAll('button[title]');
+      const shapeDivs = container.querySelectorAll(CONST_BUTTON_TITLE);
       expect(shapeDivs).toHaveLength(3);
     });
 
@@ -489,13 +499,13 @@ describe('RecentShapesStrip', () => {
 
       // Get all shape buttons in DOM order
       const shapeDivs = screen.getAllByRole('button').filter(button => 
-        button.hasAttribute('title') && button.getAttribute('title') !== ''
+        button.hasAttribute(CONST_TITLE) && button.getAttribute(CONST_TITLE) !== ''
       );
 
       // First shape in DOM should be the new one
-      expect(shapeDivs[0]).toHaveAttribute('title', 'New Shape');
-      expect(shapeDivs[1]).toHaveAttribute('title', 'Old Shape 1');
-      expect(shapeDivs[2]).toHaveAttribute('title', 'Old Shape 2');
+      expect(shapeDivs[0]).toHaveAttribute(CONST_TITLE, 'New Shape');
+      expect(shapeDivs[1]).toHaveAttribute(CONST_TITLE, 'Old Shape 1');
+      expect(shapeDivs[2]).toHaveAttribute(CONST_TITLE, 'Old Shape 2');
     });
 
     test('handles maximum number of shapes correctly', () => {
@@ -511,15 +521,15 @@ describe('RecentShapesStrip', () => {
       );
 
       // Should only render the shapes that were passed (component doesn't enforce limit)
-      const shapeDivs = container.querySelectorAll('button[title]');
+      const shapeDivs = container.querySelectorAll(CONST_BUTTON_TITLE);
       expect(shapeDivs).toHaveLength(25);
     });
 
     test('duplicate shapes are handled by parent logic, component renders all provided', () => {
       const shapesWithDuplicates = [
-        { id: 'shape1', name: 'Shape 1', cells: [{ x: 0, y: 0 }] },
-        { id: 'shape1', name: 'Shape 1', cells: [{ x: 0, y: 0 }] }, // Duplicate ID
-        { id: 'shape2', name: 'Shape 2', cells: [{ x: 1, y: 1 }] }
+        { id: CONST_SHAPE1, name: CONST_SHAPE_1, cells: [{ x: 0, y: 0 }] },
+        { id: CONST_SHAPE1, name: CONST_SHAPE_1, cells: [{ x: 0, y: 0 }] }, // Duplicate ID
+        { id: 'shape2', name: CONST_SHAPE_2, cells: [{ x: 1, y: 1 }] }
       ];
 
       const { container } = render(
@@ -527,7 +537,7 @@ describe('RecentShapesStrip', () => {
       );
 
       // Component should render all provided shapes (deduplication is parent's responsibility)
-      const shapeDivs = container.querySelectorAll('button[title]');
+      const shapeDivs = container.querySelectorAll(CONST_BUTTON_TITLE);
       expect(shapeDivs).toHaveLength(3);
     });
   });

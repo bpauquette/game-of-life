@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { eventToCellFromCanvas, computeComputedOffset, drawLiveCells } from '../../controller/utils/canvasUtils';
 
+const CONST_CAPTURE = 'capture';
+
 const DEFAULT_WINDOW_WIDTH = 800;
 const DEFAULT_WINDOW_HEIGHT = 600;
 const SHAPE_PREVIEW_ALPHA = 0.6;
@@ -216,7 +218,7 @@ export const useCanvasManager = ({
     tool.onMouseDown?.(toolStateRef.current, pt.x, pt.y);
     
     // Special handling for capture tool which needs getLiveCells
-    if (selectedTool === 'capture') {
+    if (selectedTool === CONST_CAPTURE) {
       tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive, getLiveCells);
     } else {
       tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
@@ -231,7 +233,7 @@ export const useCanvasManager = ({
     toolStateRef.current.last = { x: pt.x, y: pt.y };
     
     // Special handling for capture tool which needs getLiveCells
-    if (selectedTool === 'capture') {
+    if (selectedTool === CONST_CAPTURE) {
       tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive, getLiveCells);
     } else {
       tool.onMouseMove?.(toolStateRef.current, pt.x, pt.y, setCellAlive);
@@ -289,7 +291,7 @@ export const useCanvasManager = ({
     const pt = eventToCell(e);
     if (pt) {
       // Special handling for capture tool which needs getLiveCells and tool object
-      if (selectedTool === 'capture') {
+      if (selectedTool === CONST_CAPTURE) {
         tool.onMouseUp?.(toolStateRef.current, pt.x, pt.y, setCellAlive, getLiveCells, tool);
       } else {
         tool.onMouseUp?.(toolStateRef.current, pt.x, pt.y, setCellAlive, placeShape);

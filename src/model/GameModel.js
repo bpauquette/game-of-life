@@ -3,6 +3,9 @@
 
 import { step as gameStep } from './gameLogic';
 
+const CONST_OPEN = 'Open';
+const CONST_UISTATECHANGED = 'uiStateChanged';
+
 export class GameModel {
   constructor() {
     // Game state
@@ -462,9 +465,9 @@ export class GameModel {
 
   // UI state management operations (not serialized)
   openDialog(dialogName) {
-    if (this.uiState[dialogName + 'Open'] !== undefined) {
-      this.uiState[dialogName + 'Open'] = true;
-      this.notifyObservers('uiStateChanged', { 
+    if (this.uiState[dialogName + CONST_OPEN] !== undefined) {
+      this.uiState[dialogName + CONST_OPEN] = true;
+      this.notifyObservers(CONST_UISTATECHANGED, { 
         type: 'dialogOpen', 
         dialog: dialogName, 
         open: true 
@@ -473,9 +476,9 @@ export class GameModel {
   }
 
   closeDialog(dialogName) {
-    if (this.uiState[dialogName + 'Open'] !== undefined) {
-      this.uiState[dialogName + 'Open'] = false;
-      this.notifyObservers('uiStateChanged', { 
+    if (this.uiState[dialogName + CONST_OPEN] !== undefined) {
+      this.uiState[dialogName + CONST_OPEN] = false;
+      this.notifyObservers(CONST_UISTATECHANGED, { 
         type: 'dialogClose', 
         dialog: dialogName, 
         open: false 
@@ -484,13 +487,13 @@ export class GameModel {
   }
 
   isDialogOpen(dialogName) {
-    return this.uiState[dialogName + 'Open'] || false;
+    return this.uiState[dialogName + CONST_OPEN] || false;
   }
 
   setUIState(key, value) {
     if (this.uiState[key] !== value) {
       this.uiState[key] = value;
-      this.notifyObservers('uiStateChanged', { 
+      this.notifyObservers(CONST_UISTATECHANGED, { 
         type: 'stateChange', 
         key, 
         value 
@@ -520,7 +523,7 @@ export class GameModel {
     if (data) {
       this.openDialog('captureDialog');
     }
-    this.notifyObservers('uiStateChanged', { 
+    this.notifyObservers(CONST_UISTATECHANGED, { 
       type: 'captureDataChanged', 
       data 
     });

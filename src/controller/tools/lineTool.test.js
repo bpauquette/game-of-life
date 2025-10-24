@@ -1,5 +1,7 @@
 import { lineTool } from './lineTool';
 
+const CONST_FUNCTION = 'function';
+
 describe('lineTool', () => {
   let toolState;
   let mockSetCellAlive;
@@ -278,10 +280,10 @@ describe('lineTool', () => {
 
   describe('tool integration', () => {
     it('should have all required methods', () => {
-      expect(typeof lineTool.onMouseDown).toBe('function');
-      expect(typeof lineTool.onMouseMove).toBe('function');
-      expect(typeof lineTool.onMouseUp).toBe('function');
-      expect(typeof lineTool.drawOverlay).toBe('function');
+      expect(typeof lineTool.onMouseDown).toBe(CONST_FUNCTION);
+      expect(typeof lineTool.onMouseMove).toBe(CONST_FUNCTION);
+      expect(typeof lineTool.onMouseUp).toBe(CONST_FUNCTION);
+      expect(typeof lineTool.drawOverlay).toBe(CONST_FUNCTION);
     });
 
     it('should handle complete line drawing sequence', () => {

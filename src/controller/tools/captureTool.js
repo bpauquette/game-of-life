@@ -1,3 +1,4 @@
+const CONST_UTILS_LOGGER = '../utils/logger';
 // Rectangular area capture tool for shapes catalog
 // Uses eyedropper metaphor for sampling/capturing patterns from the grid
 
@@ -96,7 +97,7 @@ export const captureTool = {
       cellCount: capturedCells.length
     };
     
-  const logger = require('../utils/logger').default || require('../utils/logger');
+  const logger = require(CONST_UTILS_LOGGER).default || require(CONST_UTILS_LOGGER);
   logger.debug('Capture tool generated data:', captureData);
     
     // Reset selection state
@@ -106,7 +107,7 @@ export const captureTool = {
     toolState.capturedCells = [];
     
     // Trigger capture dialog if callback is available
-  tool?.onCaptureComplete?.(captureData) || (require('../utils/logger').default || require('../utils/logger')).info('Captured shape:', captureData);
+  tool?.onCaptureComplete?.(captureData) || (require(CONST_UTILS_LOGGER).default || require(CONST_UTILS_LOGGER)).info('Captured shape:', captureData);
   },
 
   drawOverlay(ctx, toolState, cellSize, offset) {

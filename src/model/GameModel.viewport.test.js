@@ -1,6 +1,8 @@
 // GameModel.viewport.test.js - Tests for enhanced viewport management in GameModel
 import { GameModel } from './GameModel';
 
+const CONST_VIEWPORTCHANGED = 'viewportChanged';
+
 describe('GameModel Viewport Management', () => {
   let model;
 
@@ -54,7 +56,7 @@ describe('GameModel Viewport Management', () => {
 
       model.setViewport(5, 10, 25);
 
-      expect(observer).toHaveBeenCalledWith('viewportChanged', {
+      expect(observer).toHaveBeenCalledWith(CONST_VIEWPORTCHANGED, {
         offsetX: 5,
         offsetY: 10,
         cellSize: 25,
@@ -164,7 +166,7 @@ describe('GameModel Viewport Management', () => {
 
       model.setCellSize(50);
 
-      expect(observer).toHaveBeenCalledWith('viewportChanged', expect.objectContaining({
+      expect(observer).toHaveBeenCalledWith(CONST_VIEWPORTCHANGED, expect.objectContaining({
         cellSize: 50
       }));
     });
@@ -207,7 +209,7 @@ describe('GameModel Viewport Management', () => {
 
       model.setZoom(2.5);
 
-      expect(observer).toHaveBeenCalledWith('viewportChanged', expect.objectContaining({
+      expect(observer).toHaveBeenCalledWith(CONST_VIEWPORTCHANGED, expect.objectContaining({
         zoom: 2.5
       }));
     });
@@ -306,8 +308,8 @@ describe('GameModel Viewport Management', () => {
 
       model.setOffset(50, 75);
 
-      expect(observer1).toHaveBeenCalledWith('viewportChanged', expect.any(Object));
-      expect(observer2).toHaveBeenCalledWith('viewportChanged', expect.any(Object));
+      expect(observer1).toHaveBeenCalledWith(CONST_VIEWPORTCHANGED, expect.any(Object));
+      expect(observer2).toHaveBeenCalledWith(CONST_VIEWPORTCHANGED, expect.any(Object));
     });
 
     test('should handle rapid viewport changes correctly', () => {

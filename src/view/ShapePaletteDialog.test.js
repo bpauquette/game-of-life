@@ -5,6 +5,18 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import ShapePaletteDialog from './ShapePaletteDialog';
 import { TEST_TEXT } from '../test-utils/TestConstants';
 
+const CONST_GLIDER = 'Glider';
+const CONST_BLOCK = 'Block';
+const CONST_SEARCH_SHAPES = 'Search shapes';
+const CONST_V1_SHAPES = '/v1/shapes';
+const CONST_NETWORK_ERROR = 'Network error';
+const CONST_NO_SHAPES_FOUND = 'No shapes found';
+const CONST_DELETE = 'delete';
+const CONST_BUTTON = 'button';
+const CONST_DELETED_SUCCESSFULLY = 'Deleted successfully';
+const CONST_DELETE_1 = 'Delete';
+const CONST_UNDO = 'UNDO';
+
 // Note: logger import removed from tests to avoid coupling to logging
 
 // Mock fetch globally
@@ -29,7 +41,7 @@ describe('ShapePaletteDialog', () => {
   const mockShapes = [
     {
       id: 'shape-1',
-      name: 'Glider',
+      name: CONST_GLIDER,
       width: 3,
       height: 3,
       cellsCount: 5,
@@ -43,7 +55,7 @@ describe('ShapePaletteDialog', () => {
     },
     {
       id: 'shape-2',
-      name: 'Block',
+      name: CONST_BLOCK,
       width: 2,
       height: 2,
       cellsCount: 4,
@@ -82,7 +94,7 @@ describe('ShapePaletteDialog', () => {
       render(<ShapePaletteDialog {...defaultProps} />);
       
       expect(screen.getByText('Insert shape from catalog')).toBeInTheDocument();
-      expect(screen.getByLabelText('Search shapes')).toBeInTheDocument();
+      expect(screen.getByLabelText(CONST_SEARCH_SHAPES)).toBeInTheDocument();
       expect(screen.getByText('Close')).toBeInTheDocument();
     });
 
@@ -121,14 +133,14 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/v1/shapes'));
-        expect(screen.getByText('Glider')).toBeInTheDocument();
-        expect(screen.getByText('Block')).toBeInTheDocument();
+        expect(fetch).toHaveBeenCalledWith(expect.stringContaining(CONST_V1_SHAPES));
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
+        expect(screen.getByText(CONST_BLOCK)).toBeInTheDocument();
       });
     });
 
     test('handles fetch error gracefully', async () => {
-      fetch.mockRejectedValue(new Error('Network error'));
+      fetch.mockRejectedValue(new Error(CONST_NETWORK_ERROR));
       
       render(<ShapePaletteDialog {...defaultProps} />);
       
@@ -139,7 +151,7 @@ describe('ShapePaletteDialog', () => {
       
       await waitFor(() => {
   // error handling verified by UI state; do not assert on logger calls
-        expect(screen.getByText('No shapes found')).toBeInTheDocument();
+        expect(screen.getByText(CONST_NO_SHAPES_FOUND)).toBeInTheDocument();
       });
     });
 
@@ -158,7 +170,7 @@ describe('ShapePaletteDialog', () => {
       
       await waitFor(() => {
   // warning logged internally; verify UI state instead
-        expect(screen.getByText('No shapes found')).toBeInTheDocument();
+        expect(screen.getByText(CONST_NO_SHAPES_FOUND)).toBeInTheDocument();
       });
     });
 
@@ -176,7 +188,7 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('No shapes found')).toBeInTheDocument();
+        expect(screen.getByText(CONST_NO_SHAPES_FOUND)).toBeInTheDocument();
       });
     });
   });
@@ -185,7 +197,7 @@ describe('ShapePaletteDialog', () => {
     test('searches shapes when typing in search field', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
       
-      const searchInput = screen.getByLabelText('Search shapes');
+      const searchInput = screen.getByLabelText(CONST_SEARCH_SHAPES);
       
       fireEvent.change(searchInput, { target: { value: 'glider' } });
       
@@ -202,7 +214,7 @@ describe('ShapePaletteDialog', () => {
     test('debounces search input', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
       
-      const searchInput = screen.getByLabelText('Search shapes');
+      const searchInput = screen.getByLabelText(CONST_SEARCH_SHAPES);
       
       // Clear initial calls
       fetch.mockClear();
@@ -221,7 +233,7 @@ describe('ShapePaletteDialog', () => {
     test('clears search and results when dialog closes', async () => {
       const { rerender } = render(<ShapePaletteDialog {...defaultProps} />);
       
-      const searchInput = screen.getByLabelText('Search shapes');
+      const searchInput = screen.getByLabelText(CONST_SEARCH_SHAPES);
       fireEvent.change(searchInput, { target: { value: 'test search' } });
       
       // Close dialog
@@ -230,7 +242,7 @@ describe('ShapePaletteDialog', () => {
       // Reopen dialog
       rerender(<ShapePaletteDialog {...defaultProps} open={true} />);
       
-      expect(screen.getByLabelText('Search shapes')).toHaveValue('');
+      expect(screen.getByLabelText(CONST_SEARCH_SHAPES)).toHaveValue('');
     });
   });
 
@@ -244,7 +256,7 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
 
       // Mock fetch for individual shape
@@ -253,7 +265,7 @@ describe('ShapePaletteDialog', () => {
         json: async () => mockShapes[0]
       });
       
-      fireEvent.click(screen.getByText('Glider'));
+      fireEvent.click(screen.getByText(CONST_GLIDER));
       
       await waitFor(() => {
         expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/v1/shapes/shape-1'));
@@ -270,7 +282,7 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
 
       // Mock failed fetch for individual shape
@@ -279,7 +291,7 @@ describe('ShapePaletteDialog', () => {
         status: 404
       });
       
-      fireEvent.click(screen.getByText('Glider'));
+      fireEvent.click(screen.getByText(CONST_GLIDER));
       
       await waitFor(() => {
         expect(defaultProps.onSelectShape).toHaveBeenCalledWith(mockShapes[0]);
@@ -295,13 +307,13 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
 
       // Mock network error for individual shape
-      fetch.mockRejectedValueOnce(new Error('Network error'));
+      fetch.mockRejectedValueOnce(new Error(CONST_NETWORK_ERROR));
       
-      fireEvent.click(screen.getByText('Glider'));
+      fireEvent.click(screen.getByText(CONST_GLIDER));
       
       await waitFor(() => {
         expect(defaultProps.onSelectShape).toHaveBeenCalledWith(mockShapes[0]);
@@ -319,14 +331,14 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText('delete');
+      const deleteButtons = screen.getAllByLabelText(CONST_DELETE);
       fireEvent.click(deleteButtons[0]);
           fireEvent.click(deleteButtons[0]);
       expect(screen.getByText('Delete shape?')).toBeInTheDocument();
-      expect(screen.getByText('Glider', { selector: 'strong' })).toBeInTheDocument();
+      expect(screen.getByText(CONST_GLIDER, { selector: 'strong' })).toBeInTheDocument();
     });
 
     test('cancels delete operation', async () => {
@@ -337,18 +349,18 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText('delete');
+      const deleteButtons = screen.getAllByLabelText(CONST_DELETE);
       fireEvent.click(deleteButtons[0]);
       
-          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
+          fireEvent.click(screen.getByRole(CONST_BUTTON, { name: TEST_TEXT.DELETE_BUTTON }));
       
       await waitFor(() => {
         expect(screen.queryByText('Delete shape?')).not.toBeInTheDocument();
       });
-        const shapePresent = !!screen.queryByText('Glider') || !!screen.queryByText('Block');
+        const shapePresent = !!screen.queryByText(CONST_GLIDER) || !!screen.queryByText(CONST_BLOCK);
         expect(shapePresent).toBe(true); // After cancelling delete, at least one shape should still be present
     });
 
@@ -358,7 +370,7 @@ describe('ShapePaletteDialog', () => {
         json: async () => ({ items: mockShapes, total: 2 })
       }).mockResolvedValueOnce({
         ok: true,
-        text: async () => 'Deleted successfully'
+        text: async () => CONST_DELETED_SUCCESSFULLY
       });
       
       render(<ShapePaletteDialog {...defaultProps} />);
@@ -368,12 +380,12 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText('delete');
+      const deleteButtons = screen.getAllByLabelText(CONST_DELETE);
       fireEvent.click(deleteButtons[0]);
-          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
+          fireEvent.click(screen.getByRole(CONST_BUTTON, { name: TEST_TEXT.DELETE_BUTTON }));
       
       await waitFor(() => {
         expect(fetch).toHaveBeenCalledWith(
@@ -401,12 +413,12 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText('delete');
+      const deleteButtons = screen.getAllByLabelText(CONST_DELETE);
       fireEvent.click(deleteButtons[0]);
-          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
+          fireEvent.click(screen.getByRole(CONST_BUTTON, { name: TEST_TEXT.DELETE_BUTTON }));
       
       await waitFor(() => {
   // warning logged internally; verify UI state instead
@@ -423,7 +435,7 @@ describe('ShapePaletteDialog', () => {
       fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ items: mockShapes, total: 2 })
-      }).mockRejectedValueOnce(new Error('Network error'));
+      }).mockRejectedValueOnce(new Error(CONST_NETWORK_ERROR));
       
       render(<ShapePaletteDialog {...defaultProps} />);
       
@@ -432,17 +444,17 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText('delete');
+      const deleteButtons = screen.getAllByLabelText(CONST_DELETE);
       fireEvent.click(deleteButtons[0]);
-          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
+          fireEvent.click(screen.getByRole(CONST_BUTTON, { name: TEST_TEXT.DELETE_BUTTON }));
       
       await waitFor(() => {
   // error logged internally; verify UI state instead
   expect(screen.getByText('Delete error')).toBeInTheDocument();
-        expect(screen.getByText('Glider')).toBeInTheDocument(); // Shape restored
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument(); // Shape restored
       });
     });
   });
@@ -454,7 +466,7 @@ describe('ShapePaletteDialog', () => {
         json: async () => ({ items: mockShapes, total: 2 })
       }).mockResolvedValueOnce({
         ok: true,
-        text: async () => 'Deleted successfully'
+        text: async () => CONST_DELETED_SUCCESSFULLY
       });
       
       render(<ShapePaletteDialog {...defaultProps} />);
@@ -464,15 +476,15 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText('delete');
+      const deleteButtons = screen.getAllByLabelText(CONST_DELETE);
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      fireEvent.click(screen.getByRole(CONST_BUTTON, { name: CONST_DELETE_1 }));
       
       await waitFor(() => {
-        expect(screen.getByText('UNDO')).toBeInTheDocument();
+        expect(screen.getByText(CONST_UNDO)).toBeInTheDocument();
       });
     });
 
@@ -482,7 +494,7 @@ describe('ShapePaletteDialog', () => {
         json: async () => ({ items: mockShapes, total: 2 })
       }).mockResolvedValueOnce({
         ok: true,
-        text: async () => 'Deleted successfully'
+        text: async () => CONST_DELETED_SUCCESSFULLY
       }).mockResolvedValueOnce({
         ok: true,
         json: async () => mockShapes[0]
@@ -495,22 +507,22 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText('delete');
+      const deleteButtons = screen.getAllByLabelText(CONST_DELETE);
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      fireEvent.click(screen.getByRole(CONST_BUTTON, { name: CONST_DELETE_1 }));
       
       await waitFor(() => {
-        expect(screen.getByText('UNDO')).toBeInTheDocument();
+        expect(screen.getByText(CONST_UNDO)).toBeInTheDocument();
       });
       
-      fireEvent.click(screen.getByText('UNDO'));
+      fireEvent.click(screen.getByText(CONST_UNDO));
       
       await waitFor(() => {
         expect(fetch).toHaveBeenCalledWith(
-          expect.stringContaining('/v1/shapes'),
+          expect.stringContaining(CONST_V1_SHAPES),
           expect.objectContaining({ 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -527,7 +539,7 @@ describe('ShapePaletteDialog', () => {
         json: async () => ({ items: mockShapes, total: 2 })
       }).mockResolvedValueOnce({
         ok: true,
-        text: async () => 'Deleted successfully'
+        text: async () => CONST_DELETED_SUCCESSFULLY
       }).mockResolvedValueOnce({
         ok: false,
         status: 500
@@ -540,18 +552,18 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText('delete');
+      const deleteButtons = screen.getAllByLabelText(CONST_DELETE);
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      fireEvent.click(screen.getByRole(CONST_BUTTON, { name: CONST_DELETE_1 }));
       
       await waitFor(() => {
-        expect(screen.getByText('UNDO')).toBeInTheDocument();
+        expect(screen.getByText(CONST_UNDO)).toBeInTheDocument();
       });
       
-      fireEvent.click(screen.getByText('UNDO'));
+      fireEvent.click(screen.getByText(CONST_UNDO));
       
       await waitFor(() => {
         expect(screen.getByText('Restore failed')).toBeInTheDocument();
@@ -635,8 +647,8 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
-        expect(screen.getByText('Block')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
+        expect(screen.getByText(CONST_BLOCK)).toBeInTheDocument();
         // SVG previews should be rendered (we can't easily test SVG content, but shapes are shown)
       });
     });
@@ -680,7 +692,7 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText(CONST_GLIDER)).toBeInTheDocument();
       });
     });
   });
@@ -728,7 +740,7 @@ describe('ShapePaletteDialog', () => {
       });
       
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/v1/shapes'));
+        expect(fetch).toHaveBeenCalledWith(expect.stringContaining(CONST_V1_SHAPES));
       });
     });
   });

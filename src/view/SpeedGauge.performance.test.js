@@ -4,6 +4,8 @@ import { render, screen, act } from '@testing-library/react';
 import SpeedGauge from './SpeedGauge';
 import { GameMVC } from '../controller/GameMVC';
 
+const CONST_METRIC_VALUE = '.metric-value';
+
 // Mock canvas for testing
 const mockCanvas = {
   getContext: jest.fn(() => ({
@@ -110,7 +112,7 @@ describe('SpeedGauge Performance Metrics', () => {
     // eslint-disable-next-line testing-library/no-node-access
     const gpsRow = gpsLabel.parentElement;
     // eslint-disable-next-line testing-library/no-node-access
-    const gpsValueElement = gpsRow.querySelector('.metric-value');
+    const gpsValueElement = gpsRow.querySelector(CONST_METRIC_VALUE);
     const gpsValue = parseInt(gpsValueElement?.textContent || '0');
     
     expect(gpsValue).toBeGreaterThan(0);
@@ -157,7 +159,7 @@ describe('SpeedGauge Performance Metrics', () => {
     // eslint-disable-next-line testing-library/no-node-access
     const fpsRow = fpsLabel.parentElement;
     // eslint-disable-next-line testing-library/no-node-access
-    const fpsValueElement = fpsRow.querySelector('.metric-value');
+    const fpsValueElement = fpsRow.querySelector(CONST_METRIC_VALUE);
     const fpsValue = parseInt(fpsValueElement?.textContent || '0');
     
     expect(fpsValue).toBeGreaterThan(0);
@@ -181,7 +183,7 @@ describe('SpeedGauge Performance Metrics', () => {
     });
 
     // Both should be zero when no game activity
-    const metricValues = screen.getAllByText('0', { selector: '.metric-value' });
+    const metricValues = screen.getAllByText('0', { selector: CONST_METRIC_VALUE });
     expect(metricValues.length).toBeGreaterThanOrEqual(2); // At least FPS and Gen/s should be 0
   });
 });

@@ -1,6 +1,10 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { colorSchemes } from './colorSchemes';
 
+const CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND = 'should have correct name and background';
+const CONST_4AFF6C = '#4aff6c';
+const CONST_39FF14 = '#39ff14';
+
 describe('colorSchemes', () => {
   const SPECTRUM_NAME = 'Spectrum Pulse';
   const SPECTRUM_BG = '#000';
@@ -13,7 +17,7 @@ describe('colorSchemes', () => {
   const RETRO_NAME = 'Retro Vector';
   const RETRO_BG = '#001f3f';
   describe('spectrum', () => {
-    it('should have correct name and background', () => {
+    it(CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND, () => {
   expect(colorSchemes.spectrum.name).toBe(SPECTRUM_NAME);
   expect(colorSchemes.spectrum.background).toBe(SPECTRUM_BG);
     });
@@ -49,7 +53,7 @@ describe('colorSchemes', () => {
   });
 
   describe('neon', () => {
-    it('should have correct name and background', () => {
+    it(CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND, () => {
       expect(colorSchemes.neon.name).toBe(NEON_NAME);
       expect(colorSchemes.neon.background).toBe(NEON_BG);
     });
@@ -70,20 +74,20 @@ describe('colorSchemes', () => {
   });
 
   describe('bio', () => {
-    it('should have correct name and background', () => {
+    it(CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND, () => {
       expect(colorSchemes.bio.name).toBe(BIO_NAME);
       expect(colorSchemes.bio.background).toBe(BIO_BG);
     });
 
     it('should return constant green color regardless of position', () => {
-      expect(colorSchemes.bio.getCellColor(0, 0)).toBe('#4aff6c');
-      expect(colorSchemes.bio.getCellColor(10, 5)).toBe('#4aff6c');
-      expect(colorSchemes.bio.getCellColor(-5, 20)).toBe('#4aff6c');
+      expect(colorSchemes.bio.getCellColor(0, 0)).toBe(CONST_4AFF6C);
+      expect(colorSchemes.bio.getCellColor(10, 5)).toBe(CONST_4AFF6C);
+      expect(colorSchemes.bio.getCellColor(-5, 20)).toBe(CONST_4AFF6C);
     });
   });
 
   describe('ember', () => {
-    it('should have correct name and background', () => {
+    it(CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND, () => {
       expect(colorSchemes.ember.name).toBe(EMBER_NAME);
       expect(colorSchemes.ember.background).toBe(EMBER_BG);
     });
@@ -111,15 +115,15 @@ describe('colorSchemes', () => {
   });
 
   describe('retro', () => {
-    it('should have correct name and background', () => {
+    it(CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND, () => {
       expect(colorSchemes.retro.name).toBe(RETRO_NAME);
       expect(colorSchemes.retro.background).toBe(RETRO_BG);
     });
 
     it('should return constant green color regardless of position', () => {
-      expect(colorSchemes.retro.getCellColor(0, 0)).toBe('#39ff14');
-      expect(colorSchemes.retro.getCellColor(100, -50)).toBe('#39ff14');
-      expect(colorSchemes.retro.getCellColor(999, 999)).toBe('#39ff14');
+      expect(colorSchemes.retro.getCellColor(0, 0)).toBe(CONST_39FF14);
+      expect(colorSchemes.retro.getCellColor(100, -50)).toBe(CONST_39FF14);
+      expect(colorSchemes.retro.getCellColor(999, 999)).toBe(CONST_39FF14);
     });
   });
 

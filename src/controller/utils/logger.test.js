@@ -1,6 +1,10 @@
 /* eslint-disable testing-library/no-debugging-utils */
 import logger from './logger';
 
+const CONST_DEVELOPMENT = 'development';
+const CONST_LOGGER = './logger';
+const CONST_FUNCTION = 'function';
+
 // Mock console methods
 const originalConsole = globalThis.console;
 const mockConsole = {
@@ -52,13 +56,13 @@ describe('logger', () => {
 
   describe('in development environment', () => {
     beforeEach(() => {
-      process.env.NODE_ENV = 'development';
+      process.env.NODE_ENV = CONST_DEVELOPMENT;
       // Need to reimport to get updated config
       jest.resetModules();
     });
 
     it('should log error messages', () => {
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
   logger.error(MSG_TEST_ERROR, 'arg1', 'arg2');
       
@@ -66,7 +70,7 @@ describe('logger', () => {
     });
 
     it('should log warn messages', () => {
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
   logger.warn(MSG_TEST_WARN, 'extra');
       
@@ -74,7 +78,7 @@ describe('logger', () => {
     });
 
     it('should log info messages', () => {
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
   logger.info(MSG_TEST_INFO);
       
@@ -82,7 +86,7 @@ describe('logger', () => {
     });
 
     it('should log debug messages', () => {
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
   logger.debug(MSG_TEST_DEBUG, { data: 'object' });
       
@@ -98,7 +102,7 @@ describe('logger', () => {
     });
 
     it('should log error messages even in production', () => {
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
   logger.error(MSG_PRODUCTION_ERROR);
       
@@ -106,7 +110,7 @@ describe('logger', () => {
     });
 
     it('should not log warn messages in production', () => {
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
   logger.warn(MSG_PRODUCTION_WARN);
       
@@ -114,7 +118,7 @@ describe('logger', () => {
     });
 
     it('should not log info messages in production', () => {
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
   logger.info(MSG_PRODUCTION_INFO);
       
@@ -122,7 +126,7 @@ describe('logger', () => {
     });
 
     it('should not log debug messages in production', () => {
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
   logger.debug(MSG_PRODUCTION_DEBUG);
       
@@ -133,15 +137,15 @@ describe('logger', () => {
 
   describe('logger methods', () => {
     it('should have all required logging methods', () => {
-      expect(typeof logger.error).toBe('function');
-      expect(typeof logger.warn).toBe('function');
-      expect(typeof logger.info).toBe('function');
-      expect(typeof logger.debug).toBe('function');
+      expect(typeof logger.error).toBe(CONST_FUNCTION);
+      expect(typeof logger.warn).toBe(CONST_FUNCTION);
+      expect(typeof logger.info).toBe(CONST_FUNCTION);
+      expect(typeof logger.debug).toBe(CONST_FUNCTION);
     });
 
     it('should handle multiple arguments', () => {
-      process.env.NODE_ENV = 'development';
-      const logger = require('./logger').default;
+      process.env.NODE_ENV = CONST_DEVELOPMENT;
+      const logger = require(CONST_LOGGER).default;
       
   logger.error('message', 1, 2, 3, { obj: true }, [1, 2, 3]);
       
@@ -149,9 +153,9 @@ describe('logger', () => {
     });
 
     it('should handle no arguments', () => {
-      process.env.NODE_ENV = 'development';
+      process.env.NODE_ENV = CONST_DEVELOPMENT;
       jest.resetModules();
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
       logger.info();
       
@@ -159,9 +163,9 @@ describe('logger', () => {
     });
 
     it('should handle empty string messages', () => {
-      process.env.NODE_ENV = 'development';
+      process.env.NODE_ENV = CONST_DEVELOPMENT;
       jest.resetModules();
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
       logger.debug('');
       
@@ -172,14 +176,14 @@ describe('logger', () => {
 
   describe('log level hierarchy', () => {
     beforeEach(() => {
-      process.env.NODE_ENV = 'development';
+      process.env.NODE_ENV = CONST_DEVELOPMENT;
       jest.resetModules();
     });
 
     it('should respect log level configuration', () => {
       // This tests that the configuration is working as expected
       // In development, all levels should be enabled (DEBUG level)
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
       logger.error('error');
       logger.warn('warn');
@@ -198,7 +202,7 @@ describe('logger', () => {
     it('should be disabled in test environment by default', () => {
       process.env.NODE_ENV = 'test';
       jest.resetModules();
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
       logger.error('should not appear');
       
@@ -206,9 +210,9 @@ describe('logger', () => {
     });
 
     it('should be enabled in non-test environments', () => {
-      process.env.NODE_ENV = 'development';
+      process.env.NODE_ENV = CONST_DEVELOPMENT;
       jest.resetModules();
-      const logger = require('./logger').default;
+      const logger = require(CONST_LOGGER).default;
       
       logger.error('should appear');
       

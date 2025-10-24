@@ -1,3 +1,4 @@
+const CONST_SHAPES = 'shapes';
 // GameController.js - Controller layer for Conway's Game of Life
 // Handles user interactions, game loop, and coordination between Model and View
 
@@ -122,7 +123,7 @@ export class GameController {
       this.view.clearOverlays();
       
       // Clear selected shape when switching away from shapes tool
-      if (toolName !== 'shapes') {
+      if (toolName !== CONST_SHAPES) {
         this.model.setSelectedShape(null);
       }
       
@@ -138,7 +139,7 @@ export class GameController {
   setSelectedShape(shape) {
     if (shape) {
       // When selecting a shape, auto-switch to shapes tool
-      this.model.setSelectedTool('shapes');
+      this.model.setSelectedTool(CONST_SHAPES);
     }
     // The model state is managed by GameMVC
   }
@@ -170,7 +171,7 @@ export class GameController {
         });
         this.updateToolOverlay();
       }
-    } else if (this.model.getSelectedTool() === 'shapes' && this.model.getSelectedShape()) {
+    } else if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape()) {
       // Update shape preview for shapes tool
       this.toolState.previewPosition = cellCoords;
       this.updateToolOverlay();
@@ -199,7 +200,7 @@ export class GameController {
   handleClick(cellCoords, event) {
     if (this.model.getSelectedTool() === 'draw') {
       this.model.setCellAlive(cellCoords.x, cellCoords.y, true);
-    } else if (this.model.getSelectedTool() === 'shapes' && this.model.getSelectedShape()) {
+    } else if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape()) {
       this.model.placeShape(cellCoords.x, cellCoords.y, this.model.getSelectedShape());
     }
   }
@@ -401,7 +402,7 @@ export class GameController {
     }
     
     // Shape preview overlay
-    if (this.model.getSelectedTool() === 'shapes' && this.model.getSelectedShape() && this.toolState.previewPosition) {
+    if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape() && this.toolState.previewPosition) {
       const selectedShape = this.model.getSelectedShape();
       const cells = selectedShape.cells || selectedShape.pattern || [];
       const { ShapePreviewView } = require('../view/GameView');

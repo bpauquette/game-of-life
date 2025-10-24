@@ -1,6 +1,9 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { circleTool } from './circleTool';
 
+const CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES = 'should handle negative coordinates';
+const CONST_FUNCTION = 'function';
+
 describe('circleTool', () => {
   let toolState;
   let mockSetCellAlive;
@@ -26,7 +29,7 @@ describe('circleTool', () => {
       expect(toolState.preview).toEqual([]);
     });
 
-    it('should handle negative coordinates', () => {
+    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
       circleTool.onMouseDown(toolState, -2, -1);
 
       expect(toolState.start).toEqual({ x: -2, y: -1 });
@@ -144,7 +147,7 @@ describe('circleTool', () => {
       expect(toolState.preview.length).toBeGreaterThan(0);
     });
 
-    it('should handle negative coordinates', () => {
+    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
       toolState.start = { x: -1, y: -1 };
 
       circleTool.onMouseMove(toolState, 1, 1);
@@ -203,7 +206,7 @@ describe('circleTool', () => {
       expect(mockSetCellAlive.mock.calls.length).toBeGreaterThan(4);
     });
 
-    it('should handle negative coordinates', () => {
+    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
       toolState.start = { x: -2, y: -2 };
 
       circleTool.onMouseUp(toolState, -1, -2, mockSetCellAlive); // radius = 1
@@ -277,10 +280,10 @@ describe('circleTool', () => {
 
   describe('tool integration', () => {
     it('should have all required methods', () => {
-      expect(typeof circleTool.onMouseDown).toBe('function');
-      expect(typeof circleTool.onMouseMove).toBe('function');
-      expect(typeof circleTool.onMouseUp).toBe('function');
-      expect(typeof circleTool.drawOverlay).toBe('function');
+      expect(typeof circleTool.onMouseDown).toBe(CONST_FUNCTION);
+      expect(typeof circleTool.onMouseMove).toBe(CONST_FUNCTION);
+      expect(typeof circleTool.onMouseUp).toBe(CONST_FUNCTION);
+      expect(typeof circleTool.drawOverlay).toBe(CONST_FUNCTION);
     });
 
     it('should handle complete circle drawing sequence', () => {

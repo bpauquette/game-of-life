@@ -4,20 +4,28 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import OptionsPanel from './OptionsPanel';
 import { TEST_TEXT } from '../test-utils/TestConstants';
 
+const CONST_COLOR_SCHEME = 'Color scheme';
+const CONST_STEADY_WINDOW_GENERATIONS = 'Steady window (generations)';
+const CONST_POPULATION_TOLERANCE = 'Population tolerance';
+const CONST_DARK_THEME = 'Dark Theme';
+const CONST_NEON = 'Neon';
+const CONST_DIALOG = 'dialog';
+const CONST_BUTTON = 'button';
+
 // Note: logger import removed for tests to avoid coupling to logging
 
 describe('OptionsPanel', () => {
   const OPTIONS_TITLE = 'Options';
   const CANCEL_TEXT = TEST_TEXT.CANCEL_BUTTON;
   const OK_TEXT = TEST_TEXT.OK_BUTTON;
-  const COLOR_SCHEME_LABEL = 'Color scheme';
-  const STEADY_WINDOW_LABEL = 'Steady window (generations)';
-  const POP_TOLERANCE_LABEL = 'Population tolerance';
+  const COLOR_SCHEME_LABEL = CONST_COLOR_SCHEME;
+  const STEADY_WINDOW_LABEL = CONST_STEADY_WINDOW_GENERATIONS;
+  const POP_TOLERANCE_LABEL = CONST_POPULATION_TOLERANCE;
   const defaultProps = {
     colorSchemes: {
       default: { name: 'Default' },
-      dark: { name: 'Dark Theme' },
-      neon: { name: 'Neon' }
+      dark: { name: CONST_DARK_THEME },
+      neon: { name: CONST_NEON }
     },
     colorSchemeKey: 'default',
     setColorSchemeKey: jest.fn(),
@@ -38,13 +46,13 @@ describe('OptionsPanel', () => {
     it('should render with default props', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByRole(CONST_DIALOG)).toBeInTheDocument();
   expect(screen.getByText(OPTIONS_TITLE)).toBeInTheDocument();
   expect(screen.getByLabelText(COLOR_SCHEME_LABEL)).toBeInTheDocument();
   expect(screen.getByLabelText(STEADY_WINDOW_LABEL)).toBeInTheDocument();
   expect(screen.getByLabelText(POP_TOLERANCE_LABEL)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: CANCEL_TEXT })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: OK_TEXT })).toBeInTheDocument();
+  expect(screen.getByRole(CONST_BUTTON, { name: CANCEL_TEXT })).toBeInTheDocument();
+  expect(screen.getByRole(CONST_BUTTON, { name: OK_TEXT })).toBeInTheDocument();
     });
 
     it('should display current values in form fields', () => {
@@ -57,12 +65,12 @@ describe('OptionsPanel', () => {
     it('should render all color scheme options', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const colorSchemeSelect = screen.getByLabelText('Color scheme');
+      const colorSchemeSelect = screen.getByLabelText(CONST_COLOR_SCHEME);
       fireEvent.mouseDown(colorSchemeSelect);
 
       expect(screen.getAllByText('Default')).toHaveLength(2); // One in select, one in menu
-      expect(screen.getByText('Dark Theme')).toBeInTheDocument();
-      expect(screen.getByText('Neon')).toBeInTheDocument();
+      expect(screen.getByText(CONST_DARK_THEME)).toBeInTheDocument();
+      expect(screen.getByText(CONST_NEON)).toBeInTheDocument();
     });
 
     it('should show helper texts and tooltips', () => {
@@ -76,10 +84,10 @@ describe('OptionsPanel', () => {
     it('should update local scheme when selection changes', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const colorSchemeSelect = screen.getByLabelText('Color scheme');
+      const colorSchemeSelect = screen.getByLabelText(CONST_COLOR_SCHEME);
       fireEvent.mouseDown(colorSchemeSelect);
       
-      const darkOption = screen.getByText('Dark Theme');
+      const darkOption = screen.getByText(CONST_DARK_THEME);
       fireEvent.click(darkOption);
 
       // Verify the selection changed locally (not yet committed)
@@ -99,7 +107,7 @@ describe('OptionsPanel', () => {
     it('should update steady window value', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const windowInput = screen.getByLabelText('Steady window (generations)');
+      const windowInput = screen.getByLabelText(CONST_STEADY_WINDOW_GENERATIONS);
       
       fireEvent.change(windowInput, { target: { value: '15' } });
 
@@ -110,7 +118,7 @@ describe('OptionsPanel', () => {
     it('should update population tolerance value', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const toleranceInput = screen.getByLabelText('Population tolerance');
+      const toleranceInput = screen.getByLabelText(CONST_POPULATION_TOLERANCE);
       
       fireEvent.change(toleranceInput, { target: { value: '8' } });
 
@@ -121,7 +129,7 @@ describe('OptionsPanel', () => {
     it('should enforce minimum value of 1 for window size', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const windowInput = screen.getByLabelText('Steady window (generations)');
+      const windowInput = screen.getByLabelText(CONST_STEADY_WINDOW_GENERATIONS);
       
       fireEvent.change(windowInput, { target: { value: '0' } });
 
@@ -132,7 +140,7 @@ describe('OptionsPanel', () => {
     it('should enforce minimum value of 0 for tolerance', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const toleranceInput = screen.getByLabelText('Population tolerance');
+      const toleranceInput = screen.getByLabelText(CONST_POPULATION_TOLERANCE);
       
       fireEvent.change(toleranceInput, { target: { value: '-5' } });
 
@@ -143,7 +151,7 @@ describe('OptionsPanel', () => {
     it('should handle invalid numeric input for window size', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const windowInput = screen.getByLabelText('Steady window (generations)');
+      const windowInput = screen.getByLabelText(CONST_STEADY_WINDOW_GENERATIONS);
       
       fireEvent.change(windowInput, { target: { value: 'invalid' } });
 
@@ -154,7 +162,7 @@ describe('OptionsPanel', () => {
     it('should handle invalid numeric input for tolerance', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const toleranceInput = screen.getByLabelText('Population tolerance');
+      const toleranceInput = screen.getByLabelText(CONST_POPULATION_TOLERANCE);
       
       fireEvent.change(toleranceInput, { target: { value: 'abc' } });
 
@@ -167,7 +175,7 @@ describe('OptionsPanel', () => {
     it('should call onCancel when Cancel button is clicked', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-  const cancelButton = screen.getByRole('button', { name: CANCEL_TEXT });
+  const cancelButton = screen.getByRole(CONST_BUTTON, { name: CANCEL_TEXT });
       fireEvent.click(cancelButton);
 
       expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
@@ -176,7 +184,7 @@ describe('OptionsPanel', () => {
     it('should call onCancel when dialog is closed', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const dialog = screen.getByRole('dialog');
+      const dialog = screen.getByRole(CONST_DIALOG);
       fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
 
       // Note: This might not trigger in jsdom, but the prop is passed correctly
@@ -187,14 +195,14 @@ describe('OptionsPanel', () => {
       render(<OptionsPanel {...defaultProps} />);
 
       // Make some changes
-      const windowInput = screen.getByLabelText('Steady window (generations)');
+      const windowInput = screen.getByLabelText(CONST_STEADY_WINDOW_GENERATIONS);
       fireEvent.change(windowInput, { target: { value: '20' } });
 
-      const toleranceInput = screen.getByLabelText('Population tolerance');
+      const toleranceInput = screen.getByLabelText(CONST_POPULATION_TOLERANCE);
       fireEvent.change(toleranceInput, { target: { value: '3' } });
 
       // Click OK to commit changes
-      const okButton = screen.getByRole('button', { name: 'OK' });
+      const okButton = screen.getByRole(CONST_BUTTON, { name: 'OK' });
       fireEvent.click(okButton);
 
       expect(defaultProps.setPopWindowSize).toHaveBeenCalledWith(20);
@@ -206,7 +214,7 @@ describe('OptionsPanel', () => {
       const props = { ...defaultProps, onOk: undefined };
       render(<OptionsPanel {...props} />);
 
-      const okButton = screen.getByRole('button', { name: 'OK' });
+      const okButton = screen.getByRole(CONST_BUTTON, { name: 'OK' });
       
       expect(() => {
         fireEvent.click(okButton);
@@ -217,7 +225,7 @@ describe('OptionsPanel', () => {
       const props = { ...defaultProps, onCancel: undefined };
       render(<OptionsPanel {...props} />);
 
-  const cancelButton = screen.getByRole('button', { name: CANCEL_TEXT });
+  const cancelButton = screen.getByRole(CONST_BUTTON, { name: CANCEL_TEXT });
       
       expect(() => {
         fireEvent.click(cancelButton);
@@ -236,11 +244,11 @@ describe('OptionsPanel', () => {
       render(<OptionsPanel {...props} />);
 
       // Make a change and click OK
-      const colorSchemeSelect = screen.getByLabelText('Color scheme');
+      const colorSchemeSelect = screen.getByLabelText(CONST_COLOR_SCHEME);
       fireEvent.mouseDown(colorSchemeSelect);
-      fireEvent.click(screen.getByText('Dark Theme'));
+      fireEvent.click(screen.getByText(CONST_DARK_THEME));
 
-      const okButton = screen.getByRole('button', { name: 'OK' });
+      const okButton = screen.getByRole(CONST_BUTTON, { name: 'OK' });
       fireEvent.click(okButton);
 
   expect(props.onOk).toHaveBeenCalledTimes(1); // Should still call onOk
@@ -256,10 +264,10 @@ describe('OptionsPanel', () => {
       render(<OptionsPanel {...props} />);
 
       // Make a change and click OK
-      const windowInput = screen.getByLabelText('Steady window (generations)');
+      const windowInput = screen.getByLabelText(CONST_STEADY_WINDOW_GENERATIONS);
       fireEvent.change(windowInput, { target: { value: '15' } });
 
-      const okButton = screen.getByRole('button', { name: 'OK' });
+      const okButton = screen.getByRole(CONST_BUTTON, { name: 'OK' });
       fireEvent.click(okButton);
 
   expect(props.onOk).toHaveBeenCalledTimes(1); // Should still call onOk
@@ -275,10 +283,10 @@ describe('OptionsPanel', () => {
       render(<OptionsPanel {...props} />);
 
       // Make a change and click OK
-      const toleranceInput = screen.getByLabelText('Population tolerance');
+      const toleranceInput = screen.getByLabelText(CONST_POPULATION_TOLERANCE);
       fireEvent.change(toleranceInput, { target: { value: '7' } });
 
-      const okButton = screen.getByRole('button', { name: 'OK' });
+      const okButton = screen.getByRole(CONST_BUTTON, { name: 'OK' });
       fireEvent.click(okButton);
 
   expect(props.onOk).toHaveBeenCalledTimes(1); // Should still call onOk
@@ -290,7 +298,7 @@ describe('OptionsPanel', () => {
       const props = { ...defaultProps, colorSchemes: {} };
       render(<OptionsPanel {...props} />);
 
-      const colorSchemeSelect = screen.getByLabelText('Color scheme');
+      const colorSchemeSelect = screen.getByLabelText(CONST_COLOR_SCHEME);
       fireEvent.mouseDown(colorSchemeSelect);
 
       // Should not crash, just show no options
@@ -300,10 +308,10 @@ describe('OptionsPanel', () => {
     it('should handle very large numeric values', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const windowInput = screen.getByLabelText('Steady window (generations)');
+      const windowInput = screen.getByLabelText(CONST_STEADY_WINDOW_GENERATIONS);
       fireEvent.change(windowInput, { target: { value: '999999' } });
 
-      const okButton = screen.getByRole('button', { name: 'OK' });
+      const okButton = screen.getByRole(CONST_BUTTON, { name: 'OK' });
       fireEvent.click(okButton);
 
       expect(defaultProps.setPopWindowSize).toHaveBeenCalledWith(999999);
@@ -312,13 +320,13 @@ describe('OptionsPanel', () => {
     it('should reset to defaults when values are empty', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      const windowInput = screen.getByLabelText('Steady window (generations)');
+      const windowInput = screen.getByLabelText(CONST_STEADY_WINDOW_GENERATIONS);
       fireEvent.change(windowInput, { target: { value: '' } });
 
-      const toleranceInput = screen.getByLabelText('Population tolerance');
+      const toleranceInput = screen.getByLabelText(CONST_POPULATION_TOLERANCE);
       fireEvent.change(toleranceInput, { target: { value: '' } });
 
-      const okButton = screen.getByRole('button', { name: 'OK' });
+      const okButton = screen.getByRole(CONST_BUTTON, { name: 'OK' });
       fireEvent.click(okButton);
 
       expect(defaultProps.setPopWindowSize).toHaveBeenCalledWith(1); // Default minimum
@@ -329,17 +337,17 @@ describe('OptionsPanel', () => {
       render(<OptionsPanel {...defaultProps} />);
 
       // Just test that multiple operations don't crash
-      const colorSchemeSelect = screen.getByLabelText('Color scheme');
+      const colorSchemeSelect = screen.getByLabelText(CONST_COLOR_SCHEME);
       
       // Switch schemes multiple times
       fireEvent.mouseDown(colorSchemeSelect);
-      fireEvent.click(screen.getByText('Dark Theme'));
+      fireEvent.click(screen.getByText(CONST_DARK_THEME));
       
       fireEvent.mouseDown(colorSchemeSelect);
-      fireEvent.click(screen.getByText('Neon'));
+      fireEvent.click(screen.getByText(CONST_NEON));
 
       // Should not crash and component should still be functional
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByRole(CONST_DIALOG)).toBeInTheDocument();
     });
   });
 
@@ -347,17 +355,17 @@ describe('OptionsPanel', () => {
     it('should have proper ARIA labels and roles', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-      expect(screen.getByRole('dialog')).toHaveAttribute('aria-labelledby');
-      expect(screen.getByLabelText('Color scheme')).toBeInTheDocument();
-      expect(screen.getByLabelText('Steady window (generations)')).toBeInTheDocument();
-      expect(screen.getByLabelText('Population tolerance')).toBeInTheDocument();
+      expect(screen.getByRole(CONST_DIALOG)).toHaveAttribute('aria-labelledby');
+      expect(screen.getByLabelText(CONST_COLOR_SCHEME)).toBeInTheDocument();
+      expect(screen.getByLabelText(CONST_STEADY_WINDOW_GENERATIONS)).toBeInTheDocument();
+      expect(screen.getByLabelText(CONST_POPULATION_TOLERANCE)).toBeInTheDocument();
     });
 
     it('should support keyboard navigation', () => {
       render(<OptionsPanel {...defaultProps} />);
 
-  const cancelButton = screen.getByRole('button', { name: CANCEL_TEXT });
-      const okButton = screen.getByRole('button', { name: 'OK' });
+  const cancelButton = screen.getByRole(CONST_BUTTON, { name: CANCEL_TEXT });
+      const okButton = screen.getByRole(CONST_BUTTON, { name: 'OK' });
 
       expect(cancelButton).toBeEnabled();
       expect(okButton).toBeEnabled();

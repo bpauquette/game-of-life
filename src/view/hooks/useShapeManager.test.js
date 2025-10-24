@@ -2,6 +2,13 @@ import { renderHook, act } from '@testing-library/react';
 import { useShapeManager } from './useShapeManager';
 import { actFn } from '../../../test-utils/testHelpers';
 
+const CONST_GLIDER = 'glider';
+const CONST_TEST = 'test';
+const CONST_LINE = 'line';
+const CONST_SHAPE1 = 'shape1';
+const CONST_SHAPE2 = 'shape2';
+const CONST_SHAPE3 = 'shape3';
+
 /* eslint-disable sonarjs/no-identical-functions */
 const mockProps = {
   selectedShape: null,
@@ -46,18 +53,18 @@ describe('useShapeManager', () => {
   describe('generateShapeKey', () => {
     it('should return string id for shapes with id property', () => {
       const { result } = renderHook(() => useShapeManager(mockProps));
-      const shape = { id: 'glider', name: 'Glider' };
+      const shape = { id: CONST_GLIDER, name: 'Glider' };
       
       const key = result.current.generateShapeKey(shape);
-      expect(key).toBe('glider');
+      expect(key).toBe(CONST_GLIDER);
     });
 
     it('should return string shapes as-is', () => {
       const { result } = renderHook(() => useShapeManager(mockProps));
-      const shape = 'glider';
+      const shape = CONST_GLIDER;
       
       const key = result.current.generateShapeKey(shape);
-      expect(key).toBe('glider');
+      expect(key).toBe(CONST_GLIDER);
     });
 
     it('should return JSON string for object shapes without id', () => {
@@ -79,7 +86,7 @@ describe('useShapeManager', () => {
   describe('updateShapeState', () => {
     it('should call setSelectedShape with normalized shape', () => {
       const { result } = renderHook(() => useShapeManager(mockProps));
-      const shape = { id: 'glider', cells: [[0, 0]] };
+      const shape = { id: CONST_GLIDER, cells: [[0, 0]] };
 
       act(() => {
         result.current.updateShapeState(shape);
@@ -115,14 +122,14 @@ describe('useShapeManager', () => {
       const propsWithoutSetter = { ...mockProps, setSelectedShape: undefined };
       const { result } = renderHook(() => useShapeManager(propsWithoutSetter));
 
-      expect(actFn(() => result.current.updateShapeState({ id: 'test' }))).not.toThrow();
+      expect(actFn(() => result.current.updateShapeState({ id: CONST_TEST }))).not.toThrow();
     });
   });
 
   describe('updateRecentShapesList', () => {
     it('should add new shape to beginning of list', () => {
       const { result } = renderHook(() => useShapeManager(mockProps));
-      const shape1 = { id: 'glider' };
+      const shape1 = { id: CONST_GLIDER };
       const shape2 = { id: 'block' };
 
       act(() => {
@@ -140,7 +147,7 @@ describe('useShapeManager', () => {
 
     it('should remove duplicate shapes and move to front', () => {
       const { result } = renderHook(() => useShapeManager(mockProps));
-      const shape1 = { id: 'glider' };
+      const shape1 = { id: CONST_GLIDER };
       const shape2 = { id: 'block' };
 
       act(() => {
@@ -194,7 +201,7 @@ describe('useShapeManager', () => {
   describe('selectShape', () => {
     it('should update shape state, add to recent list, and trigger redraw', () => {
       const { result } = renderHook(() => useShapeManager(mockProps));
-      const shape = { id: 'glider' };
+      const shape = { id: CONST_GLIDER };
 
       act(() => {
         result.current.selectShape(shape);
@@ -256,7 +263,7 @@ describe('useShapeManager', () => {
     it('should close palette and restore previous tool by default', () => {
       const { result } = renderHook(() => useShapeManager({
         ...mockProps,
-        selectedTool: 'line'
+        selectedTool: CONST_LINE
       }));
 
       // Open palette (saves current tool)
@@ -270,13 +277,13 @@ describe('useShapeManager', () => {
       });
 
       expect(result.current.paletteOpen).toBe(false);
-      expect(mockProps.setSelectedTool).toHaveBeenLastCalledWith('line');
+      expect(mockProps.setSelectedTool).toHaveBeenLastCalledWith(CONST_LINE);
     });
 
     it('should close palette without restoring previous tool when requested', () => {
       const { result } = renderHook(() => useShapeManager({
         ...mockProps,
-        selectedTool: 'line'
+        selectedTool: CONST_LINE
       }));
 
       // Open palette
@@ -311,7 +318,7 @@ describe('useShapeManager', () => {
   describe('selectShapeAndClosePalette', () => {
     it('should select shape and close palette without restoring tool', () => {
       const { result } = renderHook(() => useShapeManager(mockProps));
-      const shape = { id: 'glider' };
+      const shape = { id: CONST_GLIDER };
 
       // Open palette first
       act(() => {
@@ -343,10 +350,10 @@ describe('useShapeManager', () => {
       const { result } = renderHook(() => useShapeManager(minimalProps));
       
       const complexActions = () => {
-        result.current.selectShape({ id: 'test' });
+        result.current.selectShape({ id: CONST_TEST });
         result.current.openPalette();
         result.current.closePalette();
-        result.current.updateShapeState({ id: 'test' });
+        result.current.updateShapeState({ id: CONST_TEST });
       };
       expect(() => act(complexActions)).not.toThrow();
     });
@@ -357,7 +364,7 @@ describe('useShapeManager', () => {
       const complexShape = {
         name: 'Complex',
         cells: [[0, 0], [1, 1], [2, 2]],
-        metadata: { author: 'test', description: 'A test shape' }
+        metadata: { author: CONST_TEST, description: 'A test shape' }
       };
 
       const updateAction = () => result.current.updateRecentShapesList(complexShape);
@@ -390,38 +397,38 @@ describe('useShapeManager', () => {
 
       // Add first shape
       act(() => {
-        result.current.updateRecentShapesList(createShape('shape1'));
+        result.current.updateRecentShapesList(createShape(CONST_SHAPE1));
       });
 
-      expect(result.current.recentShapes).toEqual([createShape('shape1')]);
+      expect(result.current.recentShapes).toEqual([createShape(CONST_SHAPE1)]);
 
       // Add second shape - should go to beginning
       act(() => {
-        result.current.updateRecentShapesList(createShape('shape2'));
+        result.current.updateRecentShapesList(createShape(CONST_SHAPE2));
       });
 
       expect(result.current.recentShapes).toEqual([
-        createShape('shape2'),
-        createShape('shape1')
+        createShape(CONST_SHAPE2),
+        createShape(CONST_SHAPE1)
       ]);
 
       // Add third shape - should go to beginning
       act(() => {
-        result.current.updateRecentShapesList(createShape('shape3'));
+        result.current.updateRecentShapesList(createShape(CONST_SHAPE3));
       });
 
       expect(result.current.recentShapes).toEqual([
-        createShape('shape3'),
-        createShape('shape2'),
-        createShape('shape1')
+        createShape(CONST_SHAPE3),
+        createShape(CONST_SHAPE2),
+        createShape(CONST_SHAPE1)
       ]);
     });
 
     it('should remove duplicates and move to front when same shape is selected again', () => {
       const { result } = renderHook(() => useShapeManager(mockProps));
-      const shape1 = createShape('shape1');
-      const shape2 = createShape('shape2');
-      const shape3 = createShape('shape3');
+      const shape1 = createShape(CONST_SHAPE1);
+      const shape2 = createShape(CONST_SHAPE2);
+      const shape3 = createShape(CONST_SHAPE3);
 
       // Add initial shapes
       act(() => {
@@ -498,7 +505,7 @@ describe('useShapeManager', () => {
     it('should handle deduplication correctly with different key generation strategies', () => {
       const { result } = renderHook(() => useShapeManager(mockProps));
 
-      const shapeWithId = { id: 'test', cells: [{ x: 0, y: 0 }] };
+      const shapeWithId = { id: CONST_TEST, cells: [{ x: 0, y: 0 }] };
       const shapeWithString = 'stringShape';
       const shapeWithObject = { cells: [{ x: 1, y: 1 }] };
 
@@ -527,8 +534,8 @@ describe('useShapeManager', () => {
 
     it('should handle selectShape with proper array management', () => {
       const { result } = renderHook(() => useShapeManager(mockProps));
-      const shape1 = createShape('shape1');
-      const shape2 = createShape('shape2');
+      const shape1 = createShape(CONST_SHAPE1);
+      const shape2 = createShape(CONST_SHAPE2);
 
       // selectShape should update both game state and recent shapes
       act(() => {
@@ -551,7 +558,7 @@ describe('useShapeManager', () => {
 
     it('should not add shape to recent list when selectShape called with null', () => {
       const { result } = renderHook(() => useShapeManager(mockProps));
-      const shape = createShape('shape1');
+      const shape = createShape(CONST_SHAPE1);
 
       // Add a shape first
       act(() => {

@@ -1,6 +1,9 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { shapesTool } from './shapesTool';
 
+const CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES = 'should handle negative coordinates';
+const CONST_FUNCTION = 'function';
+
 describe('shapesTool', () => {
   let toolState;
   let mockSetCellAlive;
@@ -51,7 +54,7 @@ describe('shapesTool', () => {
       expect(toolState.dragging).toBe(true);
     });
 
-    it('should handle negative coordinates', () => {
+    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
       shapesTool.onMouseDown(toolState, -2, -1);
 
       expect(toolState.start).toEqual({ x: -2, y: -1 });
@@ -89,7 +92,7 @@ describe('shapesTool', () => {
       expect(toolState.last).toEqual({ x: 10, y: 15 });
     });
 
-    it('should handle negative coordinates', () => {
+    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
       shapesTool.onMouseMove(toolState, -3, -7);
 
       expect(toolState.last).toEqual({ x: -3, y: -7 });
@@ -157,7 +160,7 @@ describe('shapesTool', () => {
       expect(toolState.dragging).toBe(false);
     });
 
-    it('should handle negative coordinates', () => {
+    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
       toolState.last = { x: -2, y: -3 };
 
       shapesTool.onMouseUp(toolState, 1, 2, mockSetCellAlive, mockPlaceShape);
@@ -273,10 +276,10 @@ describe('shapesTool', () => {
 
   describe('tool integration', () => {
     it('should have all required methods', () => {
-      expect(typeof shapesTool.onMouseDown).toBe('function');
-      expect(typeof shapesTool.onMouseMove).toBe('function');
-      expect(typeof shapesTool.onMouseUp).toBe('function');
-      expect(typeof shapesTool.drawOverlay).toBe('function');
+      expect(typeof shapesTool.onMouseDown).toBe(CONST_FUNCTION);
+      expect(typeof shapesTool.onMouseMove).toBe(CONST_FUNCTION);
+      expect(typeof shapesTool.onMouseUp).toBe(CONST_FUNCTION);
+      expect(typeof shapesTool.drawOverlay).toBe(CONST_FUNCTION);
     });
 
     it('should handle complete shape placement sequence', () => {

@@ -1,3 +1,5 @@
+const CONST_FUNCTION = 'function';
+const CONST_FFFFFF = '#ffffff';
 // GameRenderer.js
 // Centralized rendering service for Conway's Game of Life
 // Handles all canvas operations, coordinate transformations, and drawing
@@ -10,7 +12,7 @@ export class GameRenderer {
     // used methods to avoid runtime errors during rendering.
     let ctx = null;
     try {
-      ctx = canvas && typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
+      ctx = canvas && typeof canvas.getContext === CONST_FUNCTION ? canvas.getContext('2d') : null;
     } catch (e) {
       ctx = null;
     }
@@ -104,12 +106,12 @@ export class GameRenderer {
     this.canvas.style.height = displayHeight + 'px';
     
     // Scale drawing context for high-DPI (guard if ctx missing)
-    if (this.ctx && typeof this.ctx.scale === 'function') {
+    if (this.ctx && typeof this.ctx.scale === CONST_FUNCTION) {
       this.ctx.scale(dpr, dpr);
     } else if (!this.ctx) {
       // create a minimal mock-like context to avoid tests failing when DOM is mocked
       this.ctx = this.canvas.getContext ? this.canvas.getContext('2d') : { scale: () => {} };
-      if (this.ctx && typeof this.ctx.scale === 'function') {
+      if (this.ctx && typeof this.ctx.scale === CONST_FUNCTION) {
         this.ctx.scale(dpr, dpr);
       }
     }
@@ -124,7 +126,7 @@ export class GameRenderer {
    */
   resize(width, height) {
     // Clear any existing scaling (guard if ctx missing)
-    if (this.ctx && typeof this.ctx.setTransform === 'function') {
+    if (this.ctx && typeof this.ctx.setTransform === CONST_FUNCTION) {
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
     
@@ -143,7 +145,7 @@ export class GameRenderer {
       this.canvas.style.height = height + 'px';
       
       // Scale for high-DPI (guard)
-      if (this.ctx && typeof this.ctx.scale === 'function') {
+      if (this.ctx && typeof this.ctx.scale === CONST_FUNCTION) {
         this.ctx.scale(dpr, dpr);
       }
       
@@ -298,11 +300,11 @@ export class GameRenderer {
     }
     
     // Draw cached grid (guard against missing ctx.drawImage in mocked envs)
-    if (this.ctx && typeof this.ctx.drawImage === 'function') {
+    if (this.ctx && typeof this.ctx.drawImage === CONST_FUNCTION) {
       this.ctx.drawImage(this.gridCache, 0, 0);
     } else {
       // Fall back to copying pixels via a safe no-op or by drawing a filled rect
-      if (this.ctx && typeof this.ctx.fillRect === 'function') {
+      if (this.ctx && typeof this.ctx.fillRect === CONST_FUNCTION) {
         this.ctx.fillStyle = this.options.backgroundColor;
         this.ctx.fillRect(0, 0, this.viewport.width, this.viewport.height);
       }
@@ -338,7 +340,7 @@ export class GameRenderer {
   /**
    * Draw a single cell at screen coordinates
    */
-  drawCellAt(screenX, screenY, color = '#ffffff') {
+  drawCellAt(screenX, screenY, color = CONST_FFFFFF) {
     this.ctx.fillStyle = color;
     this.ctx.fillRect(screenX, screenY, this.viewport.cellSize, this.viewport.cellSize);
   }
@@ -346,7 +348,7 @@ export class GameRenderer {
   /**
    * Draw cells from an array of {x, y} coordinates
    */
-  drawCellArray(cells, color = '#ffffff') {
+  drawCellArray(cells, color = CONST_FFFFFF) {
     if (!cells || cells.length === 0) return;
     
     this.ctx.fillStyle = color;
@@ -373,7 +375,7 @@ export class GameRenderer {
   /**
    * Draw a line between two cell coordinates
    */
-  drawLine(startCell, endCell, color = '#ffffff', lineWidth = 1) {
+  drawLine(startCell, endCell, color = CONST_FFFFFF, lineWidth = 1) {
     const startPos = this.cellToScreen(startCell.x, startCell.y);
     const endPos = this.cellToScreen(endCell.x, endCell.y);
     
@@ -394,7 +396,7 @@ export class GameRenderer {
   /**
    * Draw a rectangle outline
    */
-  drawRect(topLeftCell, bottomRightCell, color = '#ffffff', lineWidth = 1) {
+  drawRect(topLeftCell, bottomRightCell, color = CONST_FFFFFF, lineWidth = 1) {
     const topLeft = this.cellToScreen(topLeftCell.x, topLeftCell.y);
     const bottomRight = this.cellToScreen(bottomRightCell.x + 1, bottomRightCell.y + 1);
     

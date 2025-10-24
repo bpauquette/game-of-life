@@ -1,5 +1,7 @@
 import { rectTool } from './rectTool';
 
+const CONST_FUNCTION = 'function';
+
 describe('rectTool', () => {
   let toolState;
   let mockSetCellAlive;
@@ -247,10 +249,10 @@ describe('rectTool', () => {
 
   describe('tool integration', () => {
     it('should have all required methods', () => {
-      expect(typeof rectTool.onMouseDown).toBe('function');
-      expect(typeof rectTool.onMouseMove).toBe('function');
-      expect(typeof rectTool.onMouseUp).toBe('function');
-      expect(typeof rectTool.drawOverlay).toBe('function');
+      expect(typeof rectTool.onMouseDown).toBe(CONST_FUNCTION);
+      expect(typeof rectTool.onMouseMove).toBe(CONST_FUNCTION);
+      expect(typeof rectTool.onMouseUp).toBe(CONST_FUNCTION);
+      expect(typeof rectTool.drawOverlay).toBe(CONST_FUNCTION);
     });
 
     it('should handle complete rectangle draw sequence', () => {

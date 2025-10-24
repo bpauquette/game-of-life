@@ -1,5 +1,7 @@
 import { drawTool } from './drawTool';
 
+const CONST_FUNCTION = 'function';
+
 describe('drawTool', () => {
   let toolState;
   let mockSetCellAlive;
@@ -167,10 +169,10 @@ describe('drawTool', () => {
 
   describe('tool integration', () => {
     it('should have all required methods', () => {
-      expect(typeof drawTool.onMouseDown).toBe('function');
-      expect(typeof drawTool.onMouseMove).toBe('function');
-      expect(typeof drawTool.onMouseUp).toBe('function');
-      expect(typeof drawTool.drawOverlay).toBe('function');
+      expect(typeof drawTool.onMouseDown).toBe(CONST_FUNCTION);
+      expect(typeof drawTool.onMouseMove).toBe(CONST_FUNCTION);
+      expect(typeof drawTool.onMouseUp).toBe(CONST_FUNCTION);
+      expect(typeof drawTool.drawOverlay).toBe(CONST_FUNCTION);
     });
 
     it('should handle complete draw sequence', () => {

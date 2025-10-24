@@ -1,6 +1,9 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { ovalTool } from './ovalTool';
 
+const CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES = 'should handle negative coordinates';
+const CONST_FUNCTION = 'function';
+
 describe('ovalTool', () => {
   const SAMPLE_START_X = 5;
   const SAMPLE_START_Y = 3;
@@ -26,7 +29,7 @@ describe('ovalTool', () => {
       expect(toolState.preview).toEqual([]);
     });
 
-    it('should handle negative coordinates', () => {
+    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
       ovalTool.onMouseDown(toolState, -2, -1);
 
       expect(toolState.start).toEqual({ x: -2, y: -1 });
@@ -102,7 +105,7 @@ describe('ovalTool', () => {
       expect(toolState.preview.length).toBeGreaterThan(0);
     });
 
-    it('should handle negative coordinates', () => {
+    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
       toolState.start = { x: -2, y: -2 };
 
       ovalTool.onMouseMove(toolState, 2, 2);
@@ -169,7 +172,7 @@ describe('ovalTool', () => {
       expect(toolState.preview).toEqual([]);
     });
 
-    it('should handle negative coordinates', () => {
+    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
       toolState.start = { x: -2, y: -2 };
 
       ovalTool.onMouseUp(toolState, 2, 2, mockSetCellAlive);
@@ -263,10 +266,10 @@ describe('ovalTool', () => {
 
   describe('tool integration', () => {
     it('should have all required methods', () => {
-      expect(typeof ovalTool.onMouseDown).toBe('function');
-      expect(typeof ovalTool.onMouseMove).toBe('function');
-      expect(typeof ovalTool.onMouseUp).toBe('function');
-      expect(typeof ovalTool.drawOverlay).toBe('function');
+      expect(typeof ovalTool.onMouseDown).toBe(CONST_FUNCTION);
+      expect(typeof ovalTool.onMouseMove).toBe(CONST_FUNCTION);
+      expect(typeof ovalTool.onMouseUp).toBe(CONST_FUNCTION);
+      expect(typeof ovalTool.drawOverlay).toBe(CONST_FUNCTION);
     });
 
     it('should handle complete oval drawing sequence', () => {
