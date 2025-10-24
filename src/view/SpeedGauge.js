@@ -82,13 +82,16 @@ const SpeedGauge = ({
 
   if (!isVisible) {
     return (
-      <div 
+      <button
+        type="button"
         className="speed-gauge minimized"
         style={{ top: position.top, right: position.right }}
         onClick={() => onToggleVisibility?.(true)}
+        aria-label="Show performance gauge"
+        title="Show performance gauge"
       >
         📊
-      </div>
+      </button>
     );
   }
 
