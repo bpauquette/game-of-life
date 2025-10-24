@@ -72,7 +72,7 @@
  * 5. **Still lifes**: Nearly zero rendering cost after initial draw
  */
 
-import logger from "./utils/logger";
+import logger from './utils/logger';
 
 logger.info(`
 🚀 GAME OF LIFE PERFORMANCE OPTIMIZATIONS ACTIVE
@@ -98,18 +98,18 @@ Use Settings → Options to customize performance parameters.
 
 // Export for potential use in other files
 export const PERFORMANCE_INFO = {
-  version: "1.0.0",
+  version: '1.0.0',
   optimizations: [
-    "Dirty region tracking",
-    "Color caching",
-    "FPS throttling",
-    "Adaptive performance",
-    "Performance monitoring",
+    'Dirty region tracking',
+    'Color caching', 
+    'FPS throttling',
+    'Adaptive performance',
+    'Performance monitoring'
   ],
   expectedImprovements: {
-    renderingSpeed: "5-10x faster",
-    cpuUsage: "50-80% reduction",
-    batteryLife: "Significant improvement",
-    scalability: "Better with large patterns",
-  },
+    renderingSpeed: '5-10x faster',
+    cpuUsage: '50-80% reduction',
+    batteryLife: 'Significant improvement',
+    scalability: 'Better with large patterns'
+  }
 };

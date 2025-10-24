@@ -1,3 +1,4 @@
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
@@ -67,7 +68,6 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/c
 ### Analyzing the Bundle Size
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
 ### Advanced Configuration
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
@@ -78,10 +78,9 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 
 ### `npm run build` fails to minify
 
-# This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-
+This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+=======
 # game-of-life
-
 Simple Game of Life in react
 
 ## Additional project notes
@@ -94,7 +93,6 @@ This repository contains two main pieces:
 ### Configurable backend port
 
 The backend server binds to a port chosen using the following precedence (highest to lowest):
-
 1. `GOL_BACKEND_PORT` environment variable
 2. `PORT` environment variable
 3. default `55000`
@@ -180,3 +178,4 @@ Happy hacking! If you want, I can also:
 
 - Add documentation for the Shape Palette UI and how to select/place shapes from the dialog.
 - Make the backend search behavior configurable (prefix vs substring) and wire it to the UI preference.
+

@@ -39,34 +39,6 @@ MAX_ITER=$(jq -r '.maxIterations // 5' "$CONFIG_FILE")
 
 echo "Starting Sonar autofix loop for project $SONAR_PROJECT_KEY (max iter $MAX_ITER)" | tee "$LOG_DIR/sonar-autofix.log"
 
-# Ensure fixer tooling (eslint plugin for sonarjs and prettier) is available non-interactively.
-ensure_fix_tools_installed() {
-  # If node_modules exists and required packages are present, skip install.
-  local need_install=0
-
-  # Check for eslint-plugin-sonarjs presence
-  if [ ! -d "$REPO_ROOT/node_modules/eslint-plugin-sonarjs" ] && [ ! -f "$REPO_ROOT/node_modules/eslint-plugin-sonarjs/index.js" ]; then
-    need_install=1
-    echo "Fixer helper: eslint-plugin-sonarjs not found in node_modules" | tee -a "$LOG_DIR/sonar-autofix.log"
-  fi
-
-  # Check for prettier presence
-  if [ ! -d "$REPO_ROOT/node_modules/prettier" ] && [ ! -f "$REPO_ROOT/node_modules/prettier/index.js" ]; then
-    need_install=1
-    echo "Fixer helper: prettier not found in node_modules" | tee -a "$LOG_DIR/sonar-autofix.log"
-  fi
-
-  if [ "$need_install" -eq 1 ]; then
-    echo "Installing autofix helpers (eslint-plugin-sonarjs, prettier) into node_modules (no package.json change)" | tee -a "$LOG_DIR/sonar-autofix.log"
-    # Use npm install --no-save to avoid modifying package.json in the repo. Use --no-audit --no-fund to avoid prompts.
-    (cd "$REPO_ROOT" && npm install --no-save --no-audit --no-fund eslint-plugin-sonarjs@^1.18.0 prettier@^3.0.0) 2>&1 | tee -a "$LOG_DIR/sonar-autofix.log" || true
-  else
-    echo "Autofix helpers already present; skipping install." | tee -a "$LOG_DIR/sonar-autofix.log"
-  fi
-}
-
-ensure_fix_tools_installed
-
 run_sonar_scan() {
   echo "Running sonar-scanner..." | tee -a "$LOG_DIR/sonar-autofix.log"
   # sonar-scanner must be configured in the environment; this call is best-effort.

@@ -1,15 +1,9 @@
 /* eslint-disable testing-library/no-wait-for-multiple-assertions */
 /* eslint-disable sonarjs/no-duplicate-string */
-import React from "react";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  act,
-} from "@testing-library/react";
-import ShapePaletteDialog from "./ShapePaletteDialog";
-import { TEST_TEXT } from "../test-utils/TestConstants";
+import React from 'react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import ShapePaletteDialog from './ShapePaletteDialog';
+import { TEST_TEXT } from '../test-utils/TestConstants';
 
 // Note: logger import removed from tests to avoid coupling to logging
 
@@ -19,23 +13,23 @@ globalThis.fetch = jest.fn();
 // Mock timers for debouncing
 jest.useFakeTimers();
 
-describe("ShapePaletteDialog", () => {
+describe('ShapePaletteDialog', () => {
   const defaultProps = {
     open: true,
     onClose: jest.fn(),
     onSelectShape: jest.fn(),
-    backendBase: "http://localhost:55000",
+    backendBase: 'http://localhost:55000',
     colorScheme: {
-      background: "#000",
-      cellColor: "#39ff14",
-      getCellColor: jest.fn().mockReturnValue("#4a9"),
-    },
+      background: '#000',
+      cellColor: '#39ff14',
+      getCellColor: jest.fn().mockReturnValue('#4a9')
+    }
   };
 
   const mockShapes = [
     {
-      id: "shape-1",
-      name: "Glider",
+      id: 'shape-1',
+      name: 'Glider',
       width: 3,
       height: 3,
       cellsCount: 5,
@@ -44,12 +38,12 @@ describe("ShapePaletteDialog", () => {
         { x: 2, y: 1 },
         { x: 0, y: 2 },
         { x: 1, y: 2 },
-        { x: 2, y: 2 },
-      ],
+        { x: 2, y: 2 }
+      ]
     },
     {
-      id: "shape-2",
-      name: "Block",
+      id: 'shape-2',
+      name: 'Block',
       width: 2,
       height: 2,
       cellsCount: 4,
@@ -57,19 +51,19 @@ describe("ShapePaletteDialog", () => {
         { x: 0, y: 0 },
         { x: 1, y: 0 },
         { x: 0, y: 1 },
-        { x: 1, y: 1 },
-      ],
-    },
+        { x: 1, y: 1 }
+      ]
+    }
   ];
 
   beforeEach(() => {
     fetch.mockClear();
     jest.clearAllMocks();
-
+    
     // Default successful fetch response
     fetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ items: mockShapes, total: 2 }),
+      json: async () => ({ items: mockShapes, total: 2 })
     });
   });
 
@@ -83,240 +77,232 @@ describe("ShapePaletteDialog", () => {
     jest.useRealTimers();
   });
 
-  describe("Dialog Rendering", () => {
-    test("renders dialog when open", async () => {
+  describe('Dialog Rendering', () => {
+    test('renders dialog when open', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
-      expect(screen.getByText("Insert shape from catalog")).toBeInTheDocument();
-      expect(screen.getByLabelText("Search shapes")).toBeInTheDocument();
-      expect(screen.getByText("Close")).toBeInTheDocument();
+      
+      expect(screen.getByText('Insert shape from catalog')).toBeInTheDocument();
+      expect(screen.getByLabelText('Search shapes')).toBeInTheDocument();
+      expect(screen.getByText('Close')).toBeInTheDocument();
     });
 
-    test("does not render dialog when closed", () => {
+    test('does not render dialog when closed', () => {
       render(<ShapePaletteDialog {...defaultProps} open={false} />);
-
-      expect(
-        screen.queryByText("Insert shape from catalog"),
-      ).not.toBeInTheDocument();
+      
+      expect(screen.queryByText('Insert shape from catalog')).not.toBeInTheDocument();
     });
 
-    test("renders loading spinner while loading", async () => {
+    test('renders loading spinner while loading', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       // Should show loading initially
-      expect(screen.getByRole("progressbar")).toBeInTheDocument();
-
+      expect(screen.getByRole('progressbar')).toBeInTheDocument();
+      
       // Wait for loading to complete
       await act(async () => {
         jest.advanceTimersByTime(300);
         // allow microtasks (fetch .then handlers) to run inside act
         await Promise.resolve();
       });
-
+      
       await waitFor(() => {
-        expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
       });
     });
   });
 
-  describe("Shape Loading", () => {
-    test("loads shapes on open", async () => {
+  describe('Shape Loading', () => {
+    test('loads shapes on open', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
         await Promise.resolve();
       });
-
+      
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith(
-          expect.stringContaining("/v1/shapes"),
-        );
-        expect(screen.getByText("Glider")).toBeInTheDocument();
-        expect(screen.getByText("Block")).toBeInTheDocument();
+        expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/v1/shapes'));
+        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText('Block')).toBeInTheDocument();
       });
     });
 
-    test("handles fetch error gracefully", async () => {
-      fetch.mockRejectedValue(new Error("Network error"));
-
+    test('handles fetch error gracefully', async () => {
+      fetch.mockRejectedValue(new Error('Network error'));
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
         await Promise.resolve();
       });
-
+      
       await waitFor(() => {
-        // error handling verified by UI state; do not assert on logger calls
-        expect(screen.getByText("No shapes found")).toBeInTheDocument();
+  // error handling verified by UI state; do not assert on logger calls
+        expect(screen.getByText('No shapes found')).toBeInTheDocument();
       });
     });
 
-    test("handles non-OK response", async () => {
+    test('handles non-OK response', async () => {
       fetch.mockResolvedValue({
         ok: false,
-        status: 500,
+        status: 500
       });
-
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
         await Promise.resolve();
       });
-
+      
       await waitFor(() => {
-        // warning logged internally; verify UI state instead
-        expect(screen.getByText("No shapes found")).toBeInTheDocument();
+  // warning logged internally; verify UI state instead
+        expect(screen.getByText('No shapes found')).toBeInTheDocument();
       });
     });
 
-    test("handles malformed JSON response", async () => {
+    test('handles malformed JSON response', async () => {
       fetch.mockResolvedValue({
         ok: true,
-        json: async () => {
-          throw new Error("Parse error");
-        },
+        json: async () => { throw new Error('Parse error'); }
       });
-
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
         await Promise.resolve();
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("No shapes found")).toBeInTheDocument();
+        expect(screen.getByText('No shapes found')).toBeInTheDocument();
       });
     });
   });
 
-  describe("Search Functionality", () => {
-    test("searches shapes when typing in search field", async () => {
+  describe('Search Functionality', () => {
+    test('searches shapes when typing in search field', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
-      const searchInput = screen.getByLabelText("Search shapes");
-
-      fireEvent.change(searchInput, { target: { value: "glider" } });
-
+      
+      const searchInput = screen.getByLabelText('Search shapes');
+      
+      fireEvent.change(searchInput, { target: { value: 'glider' } });
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
         await Promise.resolve();
       });
-
+      
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith(expect.stringContaining("q=glider"));
+        expect(fetch).toHaveBeenCalledWith(expect.stringContaining('q=glider'));
       });
     });
 
-    test("debounces search input", async () => {
+    test('debounces search input', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
-      const searchInput = screen.getByLabelText("Search shapes");
-
+      
+      const searchInput = screen.getByLabelText('Search shapes');
+      
       // Clear initial calls
       fetch.mockClear();
-
-      fireEvent.change(searchInput, { target: { value: "glider" } });
-
+      
+      fireEvent.change(searchInput, { target: { value: 'glider' } });
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
         await Promise.resolve();
       });
-
+      
       // Should have debounced and made the call
-      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("q=glider"));
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining('q=glider'));
     });
 
-    test("clears search and results when dialog closes", async () => {
+    test('clears search and results when dialog closes', async () => {
       const { rerender } = render(<ShapePaletteDialog {...defaultProps} />);
-
-      const searchInput = screen.getByLabelText("Search shapes");
-      fireEvent.change(searchInput, { target: { value: "test search" } });
-
+      
+      const searchInput = screen.getByLabelText('Search shapes');
+      fireEvent.change(searchInput, { target: { value: 'test search' } });
+      
       // Close dialog
       rerender(<ShapePaletteDialog {...defaultProps} open={false} />);
-
+      
       // Reopen dialog
       rerender(<ShapePaletteDialog {...defaultProps} open={true} />);
-
-      expect(screen.getByLabelText("Search shapes")).toHaveValue("");
+      
+      expect(screen.getByLabelText('Search shapes')).toHaveValue('');
     });
   });
 
-  describe("Shape Selection", () => {
-    test("selects shape when clicked", async () => {
+  describe('Shape Selection', () => {
+    test('selects shape when clicked', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
         await Promise.resolve();
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
 
       // Mock fetch for individual shape
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockShapes[0],
+        json: async () => mockShapes[0]
       });
-
-      fireEvent.click(screen.getByText("Glider"));
-
+      
+      fireEvent.click(screen.getByText('Glider'));
+      
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith(
-          expect.stringContaining("/v1/shapes/shape-1"),
-        );
+        expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/v1/shapes/shape-1'));
         expect(defaultProps.onSelectShape).toHaveBeenCalledWith(mockShapes[0]);
         expect(defaultProps.onClose).toHaveBeenCalled();
       });
     });
 
-    test("falls back to metadata when individual fetch fails", async () => {
+    test('falls back to metadata when individual fetch fails', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
 
       // Mock failed fetch for individual shape
       fetch.mockResolvedValueOnce({
         ok: false,
-        status: 404,
+        status: 404
       });
-
-      fireEvent.click(screen.getByText("Glider"));
-
+      
+      fireEvent.click(screen.getByText('Glider'));
+      
       await waitFor(() => {
         expect(defaultProps.onSelectShape).toHaveBeenCalledWith(mockShapes[0]);
         expect(defaultProps.onClose).toHaveBeenCalled();
       });
     });
 
-    test("handles network error during shape fetch", async () => {
+    test('handles network error during shape fetch', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
 
       // Mock network error for individual shape
-      fetch.mockRejectedValueOnce(new Error("Network error"));
-
-      fireEvent.click(screen.getByText("Glider"));
-
+      fetch.mockRejectedValueOnce(new Error('Network error'));
+      
+      fireEvent.click(screen.getByText('Glider'));
+      
       await waitFor(() => {
         expect(defaultProps.onSelectShape).toHaveBeenCalledWith(mockShapes[0]);
         expect(defaultProps.onClose).toHaveBeenCalled();
@@ -324,479 +310,435 @@ describe("ShapePaletteDialog", () => {
     });
   });
 
-  describe("Shape Deletion", () => {
-    test("opens delete confirmation dialog", async () => {
+  describe('Shape Deletion', () => {
+    test('opens delete confirmation dialog', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText("delete");
+      const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(deleteButtons[0]);
-      expect(screen.getByText("Delete shape?")).toBeInTheDocument();
-      expect(
-        screen.getByText("Glider", { selector: "strong" }),
-      ).toBeInTheDocument();
+          fireEvent.click(deleteButtons[0]);
+      expect(screen.getByText('Delete shape?')).toBeInTheDocument();
+      expect(screen.getByText('Glider', { selector: 'strong' })).toBeInTheDocument();
     });
 
-    test("cancels delete operation", async () => {
+    test('cancels delete operation', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText("delete");
+      const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-
-      fireEvent.click(
-        screen.getByRole("button", { name: TEST_TEXT.DELETE_BUTTON }),
-      );
-
+      
+          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
+      
       await waitFor(() => {
-        expect(screen.queryByText("Delete shape?")).not.toBeInTheDocument();
+        expect(screen.queryByText('Delete shape?')).not.toBeInTheDocument();
       });
-      const shapePresent =
-        !!screen.queryByText("Glider") || !!screen.queryByText("Block");
-      expect(shapePresent).toBe(true); // After cancelling delete, at least one shape should still be present
+        const shapePresent = !!screen.queryByText('Glider') || !!screen.queryByText('Block');
+        expect(shapePresent).toBe(true); // After cancelling delete, at least one shape should still be present
     });
 
-    test("successfully deletes shape", async () => {
-      fetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ items: mockShapes, total: 2 }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          text: async () => "Deleted successfully",
-        });
-
+    test('successfully deletes shape', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: mockShapes, total: 2 })
+      }).mockResolvedValueOnce({
+        ok: true,
+        text: async () => 'Deleted successfully'
+      });
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText("delete");
+      const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(
-        screen.getByRole("button", { name: TEST_TEXT.DELETE_BUTTON }),
-      );
-
+          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
+      
       await waitFor(() => {
         expect(fetch).toHaveBeenCalledWith(
-          expect.stringContaining("/v1/shapes/shape-1"),
-          expect.objectContaining({ method: "DELETE" }),
+          expect.stringContaining('/v1/shapes/shape-1'),
+          expect.objectContaining({ method: 'DELETE' })
         );
-        expect(screen.getByText("Shape deleted")).toBeInTheDocument();
+        expect(screen.getByText('Shape deleted')).toBeInTheDocument();
       });
     });
 
-    test("handles delete failure", async () => {
-      fetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ items: mockShapes, total: 2 }),
-        })
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 500,
-          text: async () => "Internal Server Error",
-        });
-
+    test('handles delete failure', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: mockShapes, total: 2 })
+      }).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: async () => 'Internal Server Error'
+      });
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText("delete");
+      const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(
-        screen.getByRole("button", { name: TEST_TEXT.DELETE_BUTTON }),
-      );
-
+          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
+      
       await waitFor(() => {
-        // warning logged internally; verify UI state instead
+  // warning logged internally; verify UI state instead
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Delete failed")).toBeInTheDocument();
+        expect(screen.getByText('Delete failed')).toBeInTheDocument();
       });
-
+      
       // Note: Shape restoration logic is covered by optimistic UI updates
     });
 
-    test("handles delete network error", async () => {
-      fetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ items: mockShapes, total: 2 }),
-        })
-        .mockRejectedValueOnce(new Error("Network error"));
-
+    test('handles delete network error', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: mockShapes, total: 2 })
+      }).mockRejectedValueOnce(new Error('Network error'));
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText("delete");
+      const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(
-        screen.getByRole("button", { name: TEST_TEXT.DELETE_BUTTON }),
-      );
-
+          fireEvent.click(screen.getByRole('button', { name: TEST_TEXT.DELETE_BUTTON }));
+      
       await waitFor(() => {
-        // error logged internally; verify UI state instead
-        expect(screen.getByText("Delete error")).toBeInTheDocument();
-        expect(screen.getByText("Glider")).toBeInTheDocument(); // Shape restored
+  // error logged internally; verify UI state instead
+  expect(screen.getByText('Delete error')).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument(); // Shape restored
       });
     });
   });
 
-  describe("Undo Functionality", () => {
-    test("shows undo button after successful delete", async () => {
-      fetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ items: mockShapes, total: 2 }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          text: async () => "Deleted successfully",
-        });
-
+  describe('Undo Functionality', () => {
+    test('shows undo button after successful delete', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: mockShapes, total: 2 })
+      }).mockResolvedValueOnce({
+        ok: true,
+        text: async () => 'Deleted successfully'
+      });
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText("delete");
+      const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      
       await waitFor(() => {
-        expect(screen.getByText("UNDO")).toBeInTheDocument();
+        expect(screen.getByText('UNDO')).toBeInTheDocument();
       });
     });
 
-    test("successfully restores deleted shape", async () => {
-      fetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ items: mockShapes, total: 2 }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          text: async () => "Deleted successfully",
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => mockShapes[0],
-        });
-
+    test('successfully restores deleted shape', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: mockShapes, total: 2 })
+      }).mockResolvedValueOnce({
+        ok: true,
+        text: async () => 'Deleted successfully'
+      }).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockShapes[0]
+      });
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText("delete");
+      const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      
       await waitFor(() => {
-        expect(screen.getByText("UNDO")).toBeInTheDocument();
+        expect(screen.getByText('UNDO')).toBeInTheDocument();
       });
-
-      fireEvent.click(screen.getByText("UNDO"));
-
+      
+      fireEvent.click(screen.getByText('UNDO'));
+      
       await waitFor(() => {
         expect(fetch).toHaveBeenCalledWith(
-          expect.stringContaining("/v1/shapes"),
-          expect.objectContaining({
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(mockShapes[0]),
-          }),
+          expect.stringContaining('/v1/shapes'),
+          expect.objectContaining({ 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(mockShapes[0])
+          })
         );
-        expect(screen.getByText("Restored")).toBeInTheDocument();
+        expect(screen.getByText('Restored')).toBeInTheDocument();
       });
     });
 
-    test("handles restore failure", async () => {
-      fetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ items: mockShapes, total: 2 }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          text: async () => "Deleted successfully",
-        })
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 500,
-        });
-
+    test('handles restore failure', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: mockShapes, total: 2 })
+      }).mockResolvedValueOnce({
+        ok: true,
+        text: async () => 'Deleted successfully'
+      }).mockResolvedValueOnce({
+        ok: false,
+        status: 500
+      });
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
 
-      const deleteButtons = screen.getAllByLabelText("delete");
+      const deleteButtons = screen.getAllByLabelText('delete');
       fireEvent.click(deleteButtons[0]);
-      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      
       await waitFor(() => {
-        expect(screen.getByText("UNDO")).toBeInTheDocument();
+        expect(screen.getByText('UNDO')).toBeInTheDocument();
       });
-
-      fireEvent.click(screen.getByText("UNDO"));
-
+      
+      fireEvent.click(screen.getByText('UNDO'));
+      
       await waitFor(() => {
-        expect(screen.getByText("Restore failed")).toBeInTheDocument();
+        expect(screen.getByText('Restore failed')).toBeInTheDocument();
       });
     });
   });
 
-  describe("Load More Functionality", () => {
-    test("shows load more button when there are more results", async () => {
+  describe('Load More Functionality', () => {
+    test('shows load more button when there are more results', async () => {
       fetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ items: mockShapes, total: 100 }),
+        json: async () => ({ items: mockShapes, total: 100 })
       });
-
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText(TEST_TEXT.LOAD_MORE)).toBeInTheDocument();
-        expect(screen.getByText("100 shapes in catalog")).toBeInTheDocument();
+  expect(screen.getByText(TEST_TEXT.LOAD_MORE)).toBeInTheDocument();
+        expect(screen.getByText('100 shapes in catalog')).toBeInTheDocument();
       });
     });
 
-    test("loads more results when load more button clicked", async () => {
-      fetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ items: mockShapes, total: 100 }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ items: [mockShapes[0]], total: 100 }),
-        });
-
+    test('loads more results when load more button clicked', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: mockShapes, total: 100 })
+      }).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: [mockShapes[0]], total: 100 })
+      });
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText(TEST_TEXT.LOAD_MORE)).toBeInTheDocument();
+  expect(screen.getByText(TEST_TEXT.LOAD_MORE)).toBeInTheDocument();
       });
-
-      fireEvent.click(screen.getByText(TEST_TEXT.LOAD_MORE));
-
+      
+  fireEvent.click(screen.getByText(TEST_TEXT.LOAD_MORE));
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith(
-          expect.stringContaining("offset=50"),
-        );
+        expect(fetch).toHaveBeenCalledWith(expect.stringContaining('offset=50'));
       });
     });
 
-    test("shows large catalog warning", async () => {
+    test('shows large catalog warning', async () => {
       fetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ items: mockShapes, total: 2000 }),
+        json: async () => ({ items: mockShapes, total: 2000 })
       });
-
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(
-          screen.getByText(
-            /2000 shapes in catalog — large catalog, use search or paging/,
-          ),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/2000 shapes in catalog — large catalog, use search or paging/)).toBeInTheDocument();
       });
     });
   });
 
-  describe("Preview Rendering", () => {
-    test("renders SVG preview for shapes with cells", async () => {
+  describe('Preview Rendering', () => {
+    test('renders SVG preview for shapes with cells', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
-        expect(screen.getByText("Block")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
+        expect(screen.getByText('Block')).toBeInTheDocument();
         // SVG previews should be rendered (we can't easily test SVG content, but shapes are shown)
       });
     });
 
-    test("renders empty grid for shapes without cells", async () => {
+    test('renders empty grid for shapes without cells', async () => {
       const emptyShape = {
-        id: "empty",
-        name: "Empty",
+        id: 'empty',
+        name: 'Empty',
         width: 5,
         height: 5,
         cellsCount: 0,
-        cells: [],
+        cells: []
       };
-
+      
       fetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ items: [emptyShape], total: 1 }),
+        json: async () => ({ items: [emptyShape], total: 1 })
       });
-
+      
       render(<ShapePaletteDialog {...defaultProps} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Empty")).toBeInTheDocument();
+        expect(screen.getByText('Empty')).toBeInTheDocument();
       });
     });
 
-    test("handles color scheme fallbacks", async () => {
+    test('handles color scheme fallbacks', async () => {
       const propsWithoutColorScheme = {
         ...defaultProps,
-        colorScheme: {},
+        colorScheme: {}
       };
-
+      
       render(<ShapePaletteDialog {...propsWithoutColorScheme} />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(screen.getByText("Glider")).toBeInTheDocument();
+        expect(screen.getByText('Glider')).toBeInTheDocument();
       });
     });
   });
 
-  describe("Base URL Resolution", () => {
-    test("uses provided backend base URL", async () => {
-      render(
-        <ShapePaletteDialog
-          {...defaultProps}
-          backendBase="http://custom-backend:8080"
-        />,
-      );
-
+  describe('Base URL Resolution', () => {
+    test('uses provided backend base URL', async () => {
+      render(<ShapePaletteDialog {...defaultProps} backendBase="http://custom-backend:8080" />);
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith(
-          expect.stringContaining("http://custom-backend:8080/v1/shapes"),
-        );
+        expect(fetch).toHaveBeenCalledWith(expect.stringContaining('http://custom-backend:8080/v1/shapes'));
       });
     });
 
-    test("falls back to window location origin", async () => {
+    test('falls back to window location origin', async () => {
       // Mock window.location
-      Object.defineProperty(globalThis, "window", {
+      Object.defineProperty(globalThis, 'window', {
         value: {
           location: {
-            origin: "http://localhost:3000",
-          },
+            origin: 'http://localhost:3000'
+          }
         },
-        writable: true,
+        writable: true
       });
-
+      
       render(<ShapePaletteDialog {...defaultProps} backendBase="" />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith(
-          expect.stringContaining("http://localhost:3000/v1/shapes"),
-        );
+        expect(fetch).toHaveBeenCalledWith(expect.stringContaining('http://localhost:3000/v1/shapes'));
       });
     });
 
-    test("uses fallback URL when backend base is empty", async () => {
+    test('uses fallback URL when backend base is empty', async () => {
       render(<ShapePaletteDialog {...defaultProps} backendBase="" />);
-
+      
       await act(async () => {
         jest.advanceTimersByTime(300);
       });
-
+      
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith(
-          expect.stringContaining("/v1/shapes"),
-        );
+        expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/v1/shapes'));
       });
     });
   });
 
-  describe("Dialog Actions", () => {
-    test("closes dialog when close button clicked", async () => {
+  describe('Dialog Actions', () => {
+    test('closes dialog when close button clicked', async () => {
       render(<ShapePaletteDialog {...defaultProps} />);
-
-      fireEvent.click(screen.getByText("Close"));
-
+      
+      fireEvent.click(screen.getByText('Close'));
+      
       expect(defaultProps.onClose).toHaveBeenCalled();
     });
 

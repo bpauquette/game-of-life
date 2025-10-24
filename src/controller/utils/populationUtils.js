@@ -12,7 +12,7 @@ export function isPopulationStable(history, windowSize, tolerance) {
     if (v < min) min = v;
     if (v > max) max = v;
   }
-  return max - min <= tolerance;
+  return (max - min) <= tolerance;
 }
 
 export default isPopulationStable;

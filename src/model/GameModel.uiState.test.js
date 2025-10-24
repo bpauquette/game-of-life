@@ -1,113 +1,113 @@
 // GameModel.uiState.test.js - Tests for UI state management in GameModel
-import { GameModel } from "./GameModel";
+import { GameModel } from './GameModel';
 
-describe("GameModel UI State Management", () => {
+describe('GameModel UI State Management', () => {
   let model;
 
   beforeEach(() => {
     model = new GameModel();
   });
 
-  describe("dialog state management", () => {
-    test("should initialize with all dialogs closed", () => {
-      expect(model.isDialogOpen("help")).toBe(false);
-      expect(model.isDialogOpen("about")).toBe(false);
-      expect(model.isDialogOpen("options")).toBe(false);
-      expect(model.isDialogOpen("palette")).toBe(false);
-      expect(model.isDialogOpen("captureDialog")).toBe(false);
-      expect(model.isDialogOpen("saveDialog")).toBe(false);
-      expect(model.isDialogOpen("loadDialog")).toBe(false);
+  describe('dialog state management', () => {
+    test('should initialize with all dialogs closed', () => {
+      expect(model.isDialogOpen('help')).toBe(false);
+      expect(model.isDialogOpen('about')).toBe(false);
+      expect(model.isDialogOpen('options')).toBe(false);
+      expect(model.isDialogOpen('palette')).toBe(false);
+      expect(model.isDialogOpen('captureDialog')).toBe(false);
+      expect(model.isDialogOpen('saveDialog')).toBe(false);
+      expect(model.isDialogOpen('loadDialog')).toBe(false);
     });
 
-    test("should open and close dialogs", () => {
-      model.openDialog("help");
-      expect(model.isDialogOpen("help")).toBe(true);
+    test('should open and close dialogs', () => {
+      model.openDialog('help');
+      expect(model.isDialogOpen('help')).toBe(true);
 
-      model.closeDialog("help");
-      expect(model.isDialogOpen("help")).toBe(false);
+      model.closeDialog('help');
+      expect(model.isDialogOpen('help')).toBe(false);
     });
 
-    test("should notify observers when opening dialogs", () => {
+    test('should notify observers when opening dialogs', () => {
       const observer = jest.fn();
       model.addObserver(observer);
 
-      model.openDialog("about");
+      model.openDialog('about');
 
-      expect(observer).toHaveBeenCalledWith("uiStateChanged", {
-        type: "dialogOpen",
-        dialog: "about",
-        open: true,
+      expect(observer).toHaveBeenCalledWith('uiStateChanged', {
+        type: 'dialogOpen',
+        dialog: 'about',
+        open: true
       });
     });
 
-    test("should notify observers when closing dialogs", () => {
-      model.openDialog("options");
-
+    test('should notify observers when closing dialogs', () => {
+      model.openDialog('options');
+      
       const observer = jest.fn();
       model.addObserver(observer);
 
-      model.closeDialog("options");
+      model.closeDialog('options');
 
-      expect(observer).toHaveBeenCalledWith("uiStateChanged", {
-        type: "dialogClose",
-        dialog: "options",
-        open: false,
+      expect(observer).toHaveBeenCalledWith('uiStateChanged', {
+        type: 'dialogClose',
+        dialog: 'options',
+        open: false
       });
     });
 
-    test("should handle invalid dialog names gracefully", () => {
+    test('should handle invalid dialog names gracefully', () => {
       expect(() => {
-        model.openDialog("invalidDialog");
+        model.openDialog('invalidDialog');
       }).not.toThrow();
 
-      expect(model.isDialogOpen("invalidDialog")).toBe(false);
+      expect(model.isDialogOpen('invalidDialog')).toBe(false);
     });
 
-    test("should support multiple dialogs open simultaneously", () => {
-      model.openDialog("help");
-      model.openDialog("about");
+    test('should support multiple dialogs open simultaneously', () => {
+      model.openDialog('help');
+      model.openDialog('about');
 
-      expect(model.isDialogOpen("help")).toBe(true);
-      expect(model.isDialogOpen("about")).toBe(true);
+      expect(model.isDialogOpen('help')).toBe(true);
+      expect(model.isDialogOpen('about')).toBe(true);
     });
   });
 
-  describe("UI state management", () => {
-    test("should set and get UI state values", () => {
-      model.setUIState("showChart", true);
-      expect(model.getUIState("showChart")).toBe(true);
+  describe('UI state management', () => {
+    test('should set and get UI state values', () => {
+      model.setUIState('showChart', true);
+      expect(model.getUIState('showChart')).toBe(true);
 
-      model.setUIState("maxFPS", 120);
-      expect(model.getUIState("maxFPS")).toBe(120);
+      model.setUIState('maxFPS', 120);
+      expect(model.getUIState('maxFPS')).toBe(120);
     });
 
-    test("should notify observers when UI state changes", () => {
+    test('should notify observers when UI state changes', () => {
       const observer = jest.fn();
       model.addObserver(observer);
 
-      model.setUIState("showSpeedGauge", false);
+      model.setUIState('showSpeedGauge', false);
 
-      expect(observer).toHaveBeenCalledWith("uiStateChanged", {
-        type: "stateChange",
-        key: "showSpeedGauge",
-        value: false,
+      expect(observer).toHaveBeenCalledWith('uiStateChanged', {
+        type: 'stateChange',
+        key: 'showSpeedGauge',
+        value: false
       });
     });
 
-    test("should not notify observers when setting same value", () => {
-      model.setUIState("popWindowSize", 15);
+    test('should not notify observers when setting same value', () => {
+      model.setUIState('popWindowSize', 15);
 
       const observer = jest.fn();
       model.addObserver(observer);
 
-      model.setUIState("popWindowSize", 15); // Same value
+      model.setUIState('popWindowSize', 15); // Same value
 
       expect(observer).not.toHaveBeenCalled();
     });
 
-    test("should return all UI state", () => {
-      model.setUIState("showChart", true);
-      model.setUIState("maxFPS", 90);
+    test('should return all UI state', () => {
+      model.setUIState('showChart', true);
+      model.setUIState('maxFPS', 90);
 
       const allState = model.getAllUIState();
 
@@ -116,7 +116,7 @@ describe("GameModel UI State Management", () => {
       expect(allState.showSpeedGauge).toBe(true); // Default value
     });
 
-    test("should return defensive copy of UI state", () => {
+    test('should return defensive copy of UI state', () => {
       const state1 = model.getAllUIState();
       const state2 = model.getAllUIState();
 
@@ -125,62 +125,59 @@ describe("GameModel UI State Management", () => {
 
       // Mutating returned state should not affect internal state
       state1.showChart = true;
-      expect(model.getUIState("showChart")).toBe(false);
+      expect(model.getUIState('showChart')).toBe(false);
     });
   });
 
-  describe("convenience methods", () => {
-    test("should toggle chart visibility", () => {
-      expect(model.getUIState("showChart")).toBe(false);
+  describe('convenience methods', () => {
+    test('should toggle chart visibility', () => {
+      expect(model.getUIState('showChart')).toBe(false);
 
       model.toggleChart();
-      expect(model.getUIState("showChart")).toBe(true);
+      expect(model.getUIState('showChart')).toBe(true);
 
       model.toggleChart();
-      expect(model.getUIState("showChart")).toBe(false);
+      expect(model.getUIState('showChart')).toBe(false);
     });
 
-    test("should toggle speed gauge visibility", () => {
-      expect(model.getUIState("showSpeedGauge")).toBe(true);
+    test('should toggle speed gauge visibility', () => {
+      expect(model.getUIState('showSpeedGauge')).toBe(true);
 
       model.toggleSpeedGauge();
-      expect(model.getUIState("showSpeedGauge")).toBe(false);
+      expect(model.getUIState('showSpeedGauge')).toBe(false);
 
       model.toggleSpeedGauge();
-      expect(model.getUIState("showSpeedGauge")).toBe(true);
+      expect(model.getUIState('showSpeedGauge')).toBe(true);
     });
   });
 
-  describe("capture data management", () => {
-    test("should set and get capture data", () => {
+  describe('capture data management', () => {
+    test('should set and get capture data', () => {
       const testData = {
-        cells: [
-          { x: 0, y: 0 },
-          { x: 1, y: 1 },
-        ],
+        cells: [{ x: 0, y: 0 }, { x: 1, y: 1 }],
         width: 2,
-        height: 2,
+        height: 2
       };
 
       model.setCaptureData(testData);
       expect(model.getCaptureData()).toBe(testData);
     });
 
-    test("should auto-open capture dialog when setting data", () => {
+    test('should auto-open capture dialog when setting data', () => {
       const observer = jest.fn();
       model.addObserver(observer);
 
       const testData = { cells: [], width: 1, height: 1 };
       model.setCaptureData(testData);
 
-      expect(model.isDialogOpen("captureDialog")).toBe(true);
-      expect(observer).toHaveBeenCalledWith("uiStateChanged", {
-        type: "captureDataChanged",
-        data: testData,
+      expect(model.isDialogOpen('captureDialog')).toBe(true);
+      expect(observer).toHaveBeenCalledWith('uiStateChanged', {
+        type: 'captureDataChanged',
+        data: testData
       });
     });
 
-    test("should handle null capture data", () => {
+    test('should handle null capture data', () => {
       const testData = { cells: [], width: 1, height: 1 };
       model.setCaptureData(testData);
 
@@ -189,8 +186,8 @@ describe("GameModel UI State Management", () => {
     });
   });
 
-  describe("performance settings", () => {
-    test("should set and get max FPS with clamping", () => {
+  describe('performance settings', () => {
+    test('should set and get max FPS with clamping', () => {
       model.setMaxFPS(120);
       expect(model.getMaxFPS()).toBe(120);
 
@@ -202,7 +199,7 @@ describe("GameModel UI State Management", () => {
       expect(model.getMaxFPS()).toBe(1); // Clamped to min
     });
 
-    test("should set and get max GPS with clamping", () => {
+    test('should set and get max GPS with clamping', () => {
       model.setMaxGPS(45);
       expect(model.getMaxGPS()).toBe(45);
 
@@ -215,8 +212,8 @@ describe("GameModel UI State Management", () => {
     });
   });
 
-  describe("population stability settings", () => {
-    test("should set and get population window size with clamping", () => {
+  describe('population stability settings', () => {
+    test('should set and get population window size with clamping', () => {
       model.setPopulationWindowSize(25);
       expect(model.getPopulationWindowSize()).toBe(25);
 
@@ -228,7 +225,7 @@ describe("GameModel UI State Management", () => {
       expect(model.getPopulationWindowSize()).toBe(5); // Clamped to min
     });
 
-    test("should set and get population tolerance with clamping", () => {
+    test('should set and get population tolerance with clamping', () => {
       model.setPopulationTolerance(0.25);
       expect(model.getPopulationTolerance()).toBe(0.25);
 
@@ -241,11 +238,11 @@ describe("GameModel UI State Management", () => {
     });
   });
 
-  describe("state serialization exclusion", () => {
-    test("should exclude UI state from export", () => {
+  describe('state serialization exclusion', () => {
+    test('should exclude UI state from export', () => {
       // Set up UI state
-      model.openDialog("help");
-      model.setUIState("showChart", true);
+      model.openDialog('help');
+      model.setUIState('showChart', true);
       model.setMaxFPS(90);
       model.setCaptureData({ cells: [], width: 1, height: 1 });
 
@@ -268,28 +265,28 @@ describe("GameModel UI State Management", () => {
     });
   });
 
-  describe("integration with existing functionality", () => {
-    test("should work alongside game state operations", () => {
+  describe('integration with existing functionality', () => {
+    test('should work alongside game state operations', () => {
       // Set up game state
       model.setCellAlive(5, 5, true);
       model.setRunning(true);
 
       // Set up UI state
-      model.openDialog("about");
-      model.setUIState("showChart", true);
+      model.openDialog('about');
+      model.setUIState('showChart', true);
       model.setMaxFPS(75);
 
       // Verify all state is maintained
       expect(model.isCellAlive(5, 5)).toBe(true);
       expect(model.getIsRunning()).toBe(true);
-      expect(model.isDialogOpen("about")).toBe(true);
-      expect(model.getUIState("showChart")).toBe(true);
+      expect(model.isDialogOpen('about')).toBe(true);
+      expect(model.getUIState('showChart')).toBe(true);
       expect(model.getMaxFPS()).toBe(75);
     });
 
-    test("should maintain UI state during game operations", () => {
-      model.openDialog("options");
-      model.setUIState("showSpeedGauge", false);
+    test('should maintain UI state during game operations', () => {
+      model.openDialog('options');
+      model.setUIState('showSpeedGauge', false);
       model.setMaxGPS(45);
 
       // Perform game operations
@@ -298,28 +295,22 @@ describe("GameModel UI State Management", () => {
       model.clear();
 
       // UI state should be preserved
-      expect(model.isDialogOpen("options")).toBe(true);
-      expect(model.getUIState("showSpeedGauge")).toBe(false);
+      expect(model.isDialogOpen('options')).toBe(true);
+      expect(model.getUIState('showSpeedGauge')).toBe(false);
       expect(model.getMaxGPS()).toBe(45);
     });
 
-    test("should support multiple observers for UI events", () => {
+    test('should support multiple observers for UI events', () => {
       const observer1 = jest.fn();
       const observer2 = jest.fn();
 
       model.addObserver(observer1);
       model.addObserver(observer2);
 
-      model.openDialog("palette");
+      model.openDialog('palette');
 
-      expect(observer1).toHaveBeenCalledWith(
-        "uiStateChanged",
-        expect.any(Object),
-      );
-      expect(observer2).toHaveBeenCalledWith(
-        "uiStateChanged",
-        expect.any(Object),
-      );
+      expect(observer1).toHaveBeenCalledWith('uiStateChanged', expect.any(Object));
+      expect(observer2).toHaveBeenCalledWith('uiStateChanged', expect.any(Object));
     });
   });
 });

@@ -20,26 +20,7 @@ DRY_RUN=${DRY_RUN:-1}
 AUTO_PR=${AUTO_PR:-0}
 BRANCH_PREFIX=${BRANCH_PREFIX:-automated/sonar-fixes}
 
-# Diagnostic logging: do not print secrets, just presence/export status
 echo "Overnight run starting at $TIMESTAMP" | tee "$LOG_FILE"
-echo "Diagnostic: SONAR_TOKEN set in shell? ${SONAR_TOKEN:+YES}" | tee -a "$LOG_FILE"
-if env | grep -q '^SONAR_TOKEN='; then
-  echo "Diagnostic: SONAR_TOKEN exported (visible to child processes): YES" | tee -a "$LOG_FILE"
-else
-  echo "Diagnostic: SONAR_TOKEN exported (visible to child processes): NO" | tee -a "$LOG_FILE"
-fi
-echo "Diagnostic: SONAR_HOST_URL in shell: ${SONAR_HOST_URL:-<unset>}" | tee -a "$LOG_FILE"
-if env | grep -q '^SONAR_HOST_URL='; then
-  echo "Diagnostic: SONAR_HOST_URL exported: YES" | tee -a "$LOG_FILE"
-else
-  echo "Diagnostic: SONAR_HOST_URL exported: NO" | tee -a "$LOG_FILE"
-fi
-echo "Diagnostic: SONAR_PROJECT_KEY in shell: ${SONAR_PROJECT_KEY:-<unset>}" | tee -a "$LOG_FILE"
-if env | grep -q '^SONAR_PROJECT_KEY='; then
-  echo "Diagnostic: SONAR_PROJECT_KEY exported: YES" | tee -a "$LOG_FILE"
-else
-  echo "Diagnostic: SONAR_PROJECT_KEY exported: NO" | tee -a "$LOG_FILE"
-fi
 
 echo "Node version:" | tee -a "$LOG_FILE"
 node --version 2>&1 | tee -a "$LOG_FILE" || true

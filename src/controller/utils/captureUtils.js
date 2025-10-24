@@ -14,29 +14,29 @@ export function captureCellsInArea(start, end, getLiveCells) {
   const maxX = Math.max(start.x, end.x);
   const minY = Math.min(start.y, end.y);
   const maxY = Math.max(start.y, end.y);
-
+  
   // Extract live cells within bounds
   const liveCells = getLiveCells();
   const capturedCells = [];
-
+  
   for (const [key] of liveCells.entries()) {
-    const [x, y] = key.split(",").map(Number);
+    const [x, y] = key.split(',').map(Number);
     if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
       // Normalize coordinates relative to top-left of selection
-      capturedCells.push({
-        x: x - minX,
-        y: y - minY,
+      capturedCells.push({ 
+        x: x - minX, 
+        y: y - minY 
       });
     }
   }
-
+  
   return {
     cells: capturedCells,
     width: maxX - minX + 1,
     height: maxY - minY + 1,
     cellCount: capturedCells.length,
     originalBounds: { minX, maxX, minY, maxY },
-    isEmpty: capturedCells.length === 0,
+    isEmpty: capturedCells.length === 0
   };
 }
 
@@ -47,9 +47,9 @@ export function captureCellsInArea(start, end, getLiveCells) {
  * @param {string} description - Optional description
  * @returns {Object} Shape object ready for backend submission
  */
-export function formatCaptureAsShape(captureData, name, description = "") {
+export function formatCaptureAsShape(captureData, name, description = '') {
   const { cells, width, height } = captureData;
-
+  
   return {
     name: name.trim(),
     width,
@@ -61,8 +61,8 @@ export function formatCaptureAsShape(captureData, name, description = "") {
       width,
       height,
       capturedAt: new Date().toISOString(),
-      source: "area-capture",
-    },
+      source: 'area-capture'
+    }
   };
 }
 
@@ -75,27 +75,27 @@ export function validateCapture(captureData) {
   if (!captureData || captureData.isEmpty) {
     return {
       isValid: false,
-      message: "No live cells found in the selected area",
+      message: 'No live cells found in the selected area'
     };
   }
-
+  
   if (captureData.cellCount > 1000) {
     return {
       isValid: false,
-      message: "Selection too large (max 1000 cells)",
+      message: 'Selection too large (max 1000 cells)'
     };
   }
-
+  
   if (captureData.width > 100 || captureData.height > 100) {
     return {
       isValid: false,
-      message: "Selection dimensions too large (max 100x100)",
+      message: 'Selection dimensions too large (max 100x100)'
     };
   }
-
+  
   return {
     isValid: true,
-    message: `Ready to capture ${captureData.cellCount} cells`,
+    message: `Ready to capture ${captureData.cellCount} cells`
   };
 }
 
@@ -106,19 +106,17 @@ export function validateCapture(captureData) {
  */
 export function generateCapturePreview(captureData) {
   const { cells, width, height } = captureData;
-
+  
   // Initialize empty grid
-  const grid = new Array(height)
-    .fill(null)
-    .map(() => new Array(width).fill(false));
-
+  const grid = new Array(height).fill(null).map(() => new Array(width).fill(false));
+  
   // Fill in live cells
   for (const cell of cells) {
     if (cell.x >= 0 && cell.x < width && cell.y >= 0 && cell.y < height) {
       grid[cell.y][cell.x] = true;
     }
   }
-
+  
   return grid;
 }
 
@@ -129,9 +127,9 @@ export function generateCapturePreview(captureData) {
  */
 export function getCaptureCenter(captureData) {
   const { width, height } = captureData;
-
+  
   return {
     x: Math.floor(width / 2),
-    y: Math.floor(height / 2),
+    y: Math.floor(height / 2)
   };
 }

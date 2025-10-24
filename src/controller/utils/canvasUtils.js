@@ -8,7 +8,7 @@ export function computeComputedOffset(canvas, offsetRef, cellSize) {
   const centerY = rect.height / 2;
   return {
     x: offsetRef.current.x * cellSize - centerX,
-    y: offsetRef.current.y * cellSize - centerY,
+    y: offsetRef.current.y * cellSize - centerY
   };
 }
 
@@ -17,31 +17,21 @@ export function eventToCellFromCanvas(e, canvas, offsetRef, cellSize) {
   const rect = canvas.getBoundingClientRect();
   const centerX = rect.width / 2;
   const centerY = rect.height / 2;
-  const x = Math.floor(
-    offsetRef.current.x + (e.clientX - rect.left - centerX) / cellSize,
-  );
-  const y = Math.floor(
-    offsetRef.current.y + (e.clientY - rect.top - centerY) / cellSize,
-  );
+  const x = Math.floor(offsetRef.current.x + (e.clientX - rect.left - centerX) / cellSize);
+  const y = Math.floor(offsetRef.current.y + (e.clientY - rect.top - centerY) / cellSize);
   return { x, y };
 }
 
-export function drawLiveCells(
-  ctx,
-  liveMap,
-  computedOffset,
-  cellSize,
-  colorScheme,
-) {
+export function drawLiveCells(ctx, liveMap, computedOffset, cellSize, colorScheme) {
   if (!ctx || !liveMap) return;
   for (const [key] of liveMap.entries()) {
-    const [x, y] = key.split(",").map(Number);
+    const [x, y] = key.split(',').map(Number);
     ctx.fillStyle = colorScheme.getCellColor(x, y);
     ctx.fillRect(
       x * cellSize - computedOffset.x,
       y * cellSize - computedOffset.y,
       cellSize,
-      cellSize,
+      cellSize
     );
   }
 }

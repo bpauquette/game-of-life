@@ -1,5 +1,5 @@
 // engine.js
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
 
 /**
  * Central loop: calls tick() every animation frame while isRunning is true.

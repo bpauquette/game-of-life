@@ -46,10 +46,8 @@ This application uses pattern data from the Life Lexicon to populate its shape c
 ## Other Attributions
 
 ### Conway's Game of Life
-
 - **Created by:** John Horton Conway (1970)
 - **First published in:** Martin Gardner's "Mathematical Games" column in Scientific American
 
 ### Open Source Dependencies
-
 See `package.json` and `backend/package.json` for complete lists of open source libraries used in this project.

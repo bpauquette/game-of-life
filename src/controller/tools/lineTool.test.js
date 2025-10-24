@@ -1,6 +1,6 @@
-import { lineTool } from "./lineTool";
+import { lineTool } from './lineTool';
 
-describe("lineTool", () => {
+describe('lineTool', () => {
   let toolState;
   let mockSetCellAlive;
   let mockCtx;
@@ -9,17 +9,17 @@ describe("lineTool", () => {
     toolState = {};
     mockSetCellAlive = jest.fn();
     mockCtx = {
-      strokeStyle: "",
+      strokeStyle: '',
       lineWidth: 0,
       beginPath: jest.fn(),
       moveTo: jest.fn(),
       lineTo: jest.fn(),
-      stroke: jest.fn(),
+      stroke: jest.fn()
     };
   });
 
-  describe("onMouseDown", () => {
-    it("should initialize tool state", () => {
+  describe('onMouseDown', () => {
+    it('should initialize tool state', () => {
       lineTool.onMouseDown(toolState, 5, 3);
 
       expect(toolState.start).toEqual({ x: 5, y: 3 });
@@ -27,20 +27,17 @@ describe("lineTool", () => {
       expect(toolState.preview).toEqual([]);
     });
 
-    it("should handle negative coordinates", () => {
+    it('should handle negative coordinates', () => {
       lineTool.onMouseDown(toolState, -2, -1);
 
       expect(toolState.start).toEqual({ x: -2, y: -1 });
       expect(toolState.last).toEqual({ x: -2, y: -1 });
     });
 
-    it("should reset existing state", () => {
+    it('should reset existing state', () => {
       toolState.start = { x: 10, y: 20 };
       toolState.last = { x: 15, y: 25 };
-      toolState.preview = [
-        [1, 1],
-        [2, 2],
-      ];
+      toolState.preview = [[1, 1], [2, 2]];
 
       lineTool.onMouseDown(toolState, 1, 2);
 
@@ -50,8 +47,8 @@ describe("lineTool", () => {
     });
   });
 
-  describe("onMouseMove", () => {
-    it("should return early if start is not set", () => {
+  describe('onMouseMove', () => {
+    it('should return early if start is not set', () => {
       toolState.start = null;
 
       lineTool.onMouseMove(toolState, 10, 10, mockSetCellAlive);
@@ -61,7 +58,7 @@ describe("lineTool", () => {
       expect(mockSetCellAlive).not.toHaveBeenCalled();
     });
 
-    it("should update last position and generate preview", () => {
+    it('should update last position and generate preview', () => {
       toolState.start = { x: 0, y: 0 };
 
       lineTool.onMouseMove(toolState, 3, 3, mockSetCellAlive);
@@ -72,7 +69,7 @@ describe("lineTool", () => {
       expect(toolState.preview.length).toBeGreaterThan(0);
     });
 
-    it("should generate horizontal line preview", () => {
+    it('should generate horizontal line preview', () => {
       toolState.start = { x: 0, y: 5 };
 
       lineTool.onMouseMove(toolState, 3, 5, mockSetCellAlive);
@@ -83,7 +80,7 @@ describe("lineTool", () => {
       expect(toolState.preview).toContainEqual([3, 5]);
     });
 
-    it("should generate vertical line preview", () => {
+    it('should generate vertical line preview', () => {
       toolState.start = { x: 5, y: 0 };
 
       lineTool.onMouseMove(toolState, 5, 3, mockSetCellAlive);
@@ -94,7 +91,7 @@ describe("lineTool", () => {
       expect(toolState.preview).toContainEqual([5, 3]);
     });
 
-    it("should generate diagonal line preview", () => {
+    it('should generate diagonal line preview', () => {
       toolState.start = { x: 0, y: 0 };
 
       lineTool.onMouseMove(toolState, 2, 2, mockSetCellAlive);
@@ -104,7 +101,7 @@ describe("lineTool", () => {
       expect(toolState.preview).toContainEqual([2, 2]);
     });
 
-    it("should handle single point (start and end same)", () => {
+    it('should handle single point (start and end same)', () => {
       toolState.start = { x: 5, y: 5 };
 
       lineTool.onMouseMove(toolState, 5, 5, mockSetCellAlive);
@@ -112,7 +109,7 @@ describe("lineTool", () => {
       expect(toolState.preview).toEqual([[5, 5]]);
     });
 
-    it("should generate preview for negative coordinates", () => {
+    it('should generate preview for negative coordinates', () => {
       toolState.start = { x: -1, y: -1 };
 
       lineTool.onMouseMove(toolState, 1, 1, mockSetCellAlive);
@@ -123,8 +120,8 @@ describe("lineTool", () => {
     });
   });
 
-  describe("onMouseUp", () => {
-    it("should return early if start is not set", () => {
+  describe('onMouseUp', () => {
+    it('should return early if start is not set', () => {
       toolState.start = null;
 
       lineTool.onMouseUp(toolState, 10, 10, mockSetCellAlive);
@@ -132,7 +129,7 @@ describe("lineTool", () => {
       expect(mockSetCellAlive).not.toHaveBeenCalled();
     });
 
-    it("should place cells and reset state", () => {
+    it('should place cells and reset state', () => {
       toolState.start = { x: 0, y: 0 };
 
       lineTool.onMouseUp(toolState, 2, 0, mockSetCellAlive);
@@ -148,7 +145,7 @@ describe("lineTool", () => {
       expect(toolState.preview).toEqual([]);
     });
 
-    it("should place vertical line correctly", () => {
+    it('should place vertical line correctly', () => {
       toolState.start = { x: 3, y: 1 };
 
       lineTool.onMouseUp(toolState, 3, 3, mockSetCellAlive);
@@ -159,7 +156,7 @@ describe("lineTool", () => {
       expect(mockSetCellAlive).toHaveBeenCalledTimes(3);
     });
 
-    it("should place diagonal line correctly", () => {
+    it('should place diagonal line correctly', () => {
       toolState.start = { x: 0, y: 0 };
 
       lineTool.onMouseUp(toolState, 2, 2, mockSetCellAlive);
@@ -169,7 +166,7 @@ describe("lineTool", () => {
       expect(mockSetCellAlive).toHaveBeenCalledWith(2, 2, true);
     });
 
-    it("should handle single point", () => {
+    it('should handle single point', () => {
       toolState.start = { x: 5, y: 5 };
 
       lineTool.onMouseUp(toolState, 5, 5, mockSetCellAlive);
@@ -178,7 +175,7 @@ describe("lineTool", () => {
       expect(mockSetCellAlive).toHaveBeenCalledTimes(1);
     });
 
-    it("should handle negative coordinates", () => {
+    it('should handle negative coordinates', () => {
       toolState.start = { x: -1, y: -1 };
 
       lineTool.onMouseUp(toolState, 0, 0, mockSetCellAlive);
@@ -187,7 +184,7 @@ describe("lineTool", () => {
       expect(mockSetCellAlive).toHaveBeenCalledWith(0, 0, true);
     });
 
-    it("should handle backward lines (end < start)", () => {
+    it('should handle backward lines (end < start)', () => {
       toolState.start = { x: 3, y: 3 };
 
       lineTool.onMouseUp(toolState, 0, 0, mockSetCellAlive);
@@ -199,8 +196,8 @@ describe("lineTool", () => {
     });
   });
 
-  describe("drawOverlay", () => {
-    it("should return early if no preview", () => {
+  describe('drawOverlay', () => {
+    it('should return early if no preview', () => {
       toolState.preview = null;
 
       lineTool.drawOverlay(mockCtx, toolState, 10, { x: 0, y: 0 });
@@ -208,7 +205,7 @@ describe("lineTool", () => {
       expect(mockCtx.beginPath).not.toHaveBeenCalled();
     });
 
-    it("should return early if empty preview", () => {
+    it('should return early if empty preview', () => {
       toolState.preview = [];
 
       lineTool.drawOverlay(mockCtx, toolState, 10, { x: 0, y: 0 });
@@ -216,41 +213,31 @@ describe("lineTool", () => {
       expect(mockCtx.beginPath).not.toHaveBeenCalled();
     });
 
-    it("should draw line overlay with correct styling", () => {
-      toolState.preview = [
-        [0, 0],
-        [1, 1],
-        [2, 2],
-      ];
+    it('should draw line overlay with correct styling', () => {
+      toolState.preview = [[0, 0], [1, 1], [2, 2]];
 
       lineTool.drawOverlay(mockCtx, toolState, 12, { x: 0, y: 0 });
 
-      expect(mockCtx.strokeStyle).toBe("rgba(255,255,255,0.6)");
+      expect(mockCtx.strokeStyle).toBe('rgba(255,255,255,0.6)');
       expect(mockCtx.lineWidth).toBe(2); // Math.max(1, Math.min(4, 12/6))
       expect(mockCtx.beginPath).toHaveBeenCalled();
       expect(mockCtx.stroke).toHaveBeenCalled();
     });
 
-    it("should calculate line width correctly for different cell sizes", () => {
-      toolState.preview = [
-        [0, 0],
-        [1, 1],
-      ];
+    it('should calculate line width correctly for different cell sizes', () => {
+      toolState.preview = [[0, 0], [1, 1]];
 
       // Small cell size
       lineTool.drawOverlay(mockCtx, toolState, 6, { x: 0, y: 0 });
       expect(mockCtx.lineWidth).toBe(1); // Math.max(1, Math.min(4, 6/6))
 
-      // Large cell size
+      // Large cell size  
       lineTool.drawOverlay(mockCtx, toolState, 30, { x: 0, y: 0 });
       expect(mockCtx.lineWidth).toBe(4); // Math.max(1, Math.min(4, 30/6))
     });
 
-    it("should draw line points with correct coordinates", () => {
-      toolState.preview = [
-        [1, 1],
-        [2, 2],
-      ];
+    it('should draw line points with correct coordinates', () => {
+      toolState.preview = [[1, 1], [2, 2]];
 
       lineTool.drawOverlay(mockCtx, toolState, 10, { x: 5, y: 3 });
 
@@ -260,7 +247,7 @@ describe("lineTool", () => {
       expect(mockCtx.lineTo).toHaveBeenCalledWith(20, 22);
     });
 
-    it("should handle single point preview", () => {
+    it('should handle single point preview', () => {
       toolState.preview = [[5, 5]];
 
       lineTool.drawOverlay(mockCtx, toolState, 10, { x: 0, y: 0 });
@@ -270,7 +257,7 @@ describe("lineTool", () => {
       expect(mockCtx.lineTo).not.toHaveBeenCalled();
     });
 
-    it("should apply offset correctly", () => {
+    it('should apply offset correctly', () => {
       toolState.preview = [[0, 0]];
 
       lineTool.drawOverlay(mockCtx, toolState, 20, { x: 10, y: 5 });
@@ -279,7 +266,7 @@ describe("lineTool", () => {
       expect(mockCtx.moveTo).toHaveBeenCalledWith(0, 5);
     });
 
-    it("should handle negative coordinates in preview", () => {
+    it('should handle negative coordinates in preview', () => {
       toolState.preview = [[-1, -1]];
 
       lineTool.drawOverlay(mockCtx, toolState, 10, { x: 0, y: 0 });
@@ -289,15 +276,15 @@ describe("lineTool", () => {
     });
   });
 
-  describe("tool integration", () => {
-    it("should have all required methods", () => {
-      expect(typeof lineTool.onMouseDown).toBe("function");
-      expect(typeof lineTool.onMouseMove).toBe("function");
-      expect(typeof lineTool.onMouseUp).toBe("function");
-      expect(typeof lineTool.drawOverlay).toBe("function");
+  describe('tool integration', () => {
+    it('should have all required methods', () => {
+      expect(typeof lineTool.onMouseDown).toBe('function');
+      expect(typeof lineTool.onMouseMove).toBe('function');
+      expect(typeof lineTool.onMouseUp).toBe('function');
+      expect(typeof lineTool.drawOverlay).toBe('function');
     });
 
-    it("should handle complete line drawing sequence", () => {
+    it('should handle complete line drawing sequence', () => {
       // Start drawing
       lineTool.onMouseDown(toolState, 0, 0);
       expect(toolState.start).toEqual({ x: 0, y: 0 });
@@ -314,8 +301,8 @@ describe("lineTool", () => {
     });
   });
 
-  describe("Bresenham algorithm tests", () => {
-    it("should generate correct line for steep slope", () => {
+  describe('Bresenham algorithm tests', () => {
+    it('should generate correct line for steep slope', () => {
       toolState.start = { x: 0, y: 0 };
 
       lineTool.onMouseMove(toolState, 1, 3, mockSetCellAlive);
@@ -327,7 +314,7 @@ describe("lineTool", () => {
       expect(toolState.preview).toContainEqual([1, 3]);
     });
 
-    it("should generate correct line for gentle slope", () => {
+    it('should generate correct line for gentle slope', () => {
       toolState.start = { x: 0, y: 0 };
 
       lineTool.onMouseMove(toolState, 3, 1, mockSetCellAlive);

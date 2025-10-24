@@ -1,6 +1,6 @@
 // Rectangle perimeter-only tool
 // Rectangle tool constants
-const RECT_PREVIEW_COLOR = "rgba(255,255,255,0.12)";
+const RECT_PREVIEW_COLOR = 'rgba(255,255,255,0.12)';
 const ARRAY_FIRST_ELEMENT = 0;
 const ARRAY_SECOND_ELEMENT = 1;
 const PERIMETER_BORDER_OFFSET = 1;
@@ -37,14 +37,9 @@ export const rectTool = {
     for (const p of state.preview) {
       const x = p[ARRAY_FIRST_ELEMENT];
       const y = p[ARRAY_SECOND_ELEMENT];
-      ctx.fillRect(
-        x * cellSize - offset.x,
-        y * cellSize - offset.y,
-        cellSize,
-        cellSize,
-      );
+      ctx.fillRect(x * cellSize - offset.x, y * cellSize - offset.y, cellSize, cellSize);
     }
-  },
+  }
 };
 
 const computeRectPerimeter = (x0, y0, x1, y1) => {
@@ -59,13 +54,9 @@ const computeRectPerimeter = (x0, y0, x1, y1) => {
     if (yMax !== yMin) pts.push([x, yMax]);
   }
   // Left and right edges (excluding corners already added)
-  for (
-    let y = yMin + PERIMETER_BORDER_OFFSET;
-    y <= yMax - PERIMETER_BORDER_OFFSET;
-    y++
-  ) {
+  for (let y = yMin + PERIMETER_BORDER_OFFSET; y <= yMax - PERIMETER_BORDER_OFFSET; y++) {
     pts.push([xMin, y]);
     if (xMax !== xMin) pts.push([xMax, y]);
   }
   return pts;
-};
+}

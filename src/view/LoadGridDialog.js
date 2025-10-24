@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import PropTypes from "prop-types";
+import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import {
   Dialog,
   DialogTitle,
@@ -18,40 +18,39 @@ import {
   Chip,
   Divider,
   InputAdornment,
-  TextField,
-} from "@mui/material";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import CancelIcon from "@mui/icons-material/Cancel";
-import GridOnIcon from "@mui/icons-material/GridOn";
-import DeleteIcon from "@mui/icons-material/Delete";
-import SearchIcon from "@mui/icons-material/Search";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import logger from "../controller/utils/logger";
-import { BUTTONS, STATUS, PLACEHOLDERS } from "../utils/Constants";
+  TextField
+} from '@mui/material';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import CancelIcon from '@mui/icons-material/Cancel';
+import GridOnIcon from '@mui/icons-material/GridOn';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SearchIcon from '@mui/icons-material/Search';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import logger from '../controller/utils/logger';
+import { BUTTONS, STATUS, PLACEHOLDERS } from '../utils/Constants';
 
-const LoadGridDialog = ({
-  open,
-  onClose,
+const LoadGridDialog = ({ 
+  open, 
+  onClose, 
   onLoad,
   onDelete,
   grids = [],
   loading = false,
   error = null,
-  loadingGrids = false,
+  loadingGrids = false
 }) => {
   const [selectedGrid, setSelectedGrid] = useState(null);
-  const [searchFilter, setSearchFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState('');
   const [filteredGrids, setFilteredGrids] = useState(grids);
 
   useEffect(() => {
-    if (searchFilter.trim() === "") {
+    if (searchFilter.trim() === '') {
       setFilteredGrids(grids);
     } else {
       const searchTerm = searchFilter.toLowerCase();
-      const filtered = grids.filter(
-        (grid) =>
-          grid.name.toLowerCase().includes(searchTerm) ||
-          grid.description?.toLowerCase().includes(searchTerm),
+      const filtered = grids.filter(grid => 
+        grid.name.toLowerCase().includes(searchTerm) ||
+        grid.description?.toLowerCase().includes(searchTerm)
       );
       setFilteredGrids(filtered);
     }
@@ -64,31 +63,31 @@ const LoadGridDialog = ({
   const handleLoad = async () => {
     if (selectedGrid) {
       try {
-        await onLoad(selectedGrid.id);
-        handleClose();
-      } catch (loadError) {
-        logger.warn("Load failed:", loadError.message);
-      }
+          await onLoad(selectedGrid.id);
+          handleClose();
+        } catch (loadError) {
+          logger.warn('Load failed:', loadError.message);
+        }
     }
   };
 
   const handleDelete = async (gridId, event) => {
     event.stopPropagation();
-
+    
     if (selectedGrid?.id === gridId) {
       setSelectedGrid(null);
     }
-
+    
     try {
       await onDelete(gridId);
     } catch (deleteError) {
-      logger.warn("Delete failed:", deleteError.message);
+      logger.warn('Delete failed:', deleteError.message);
     }
   };
 
   const handleClose = () => {
     setSelectedGrid(null);
-    setSearchFilter("");
+    setSearchFilter('');
     onClose();
   };
 
@@ -96,7 +95,7 @@ const LoadGridDialog = ({
     try {
       return new Date(dateString).toLocaleString();
     } catch {
-      return "Unknown date";
+      return 'Unknown date';
     }
   };
 
@@ -114,17 +113,15 @@ const LoadGridDialog = ({
       fullWidth
       slotProps={{
         paper: {
-          sx: { minHeight: "500px", maxHeight: "80vh" },
-        },
+          sx: { minHeight: '500px', maxHeight: '80vh' }
+        }
       }}
     >
-      <DialogTitle
-        sx={{ display: "flex", alignItems: "center", gap: 1, pb: 1 }}
-      >
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1 }}>
         <FolderOpenIcon color="primary" />
         Load Grid State
       </DialogTitle>
-
+      
       <DialogContent>
         <Box sx={{ mb: 2 }}>
           <Typography variant="body2" color="text.secondary">
@@ -158,43 +155,33 @@ const LoadGridDialog = ({
           />
         )}
 
-        <Box sx={{ minHeight: "300px" }}>
+        <Box sx={{ minHeight: '300px' }}>
           {loadingGrids && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "200px",
-              }}
-            >
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
               <CircularProgress />
               <Typography variant="body2" sx={{ ml: 2 }}>
                 Loading saved grids...
               </Typography>
             </Box>
           )}
-
+          
           {!loadingGrids && filteredGrids.length === 0 && (
-            <Box sx={{ textAlign: "center", py: 4 }}>
-              <GridOnIcon
-                sx={{ fontSize: 48, color: "text.disabled", mb: 2 }}
-              />
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <GridOnIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
               <Typography variant="h6" color="text.secondary">
-                {grids.length === 0
-                  ? "No saved grids"
-                  : "No grids match your search"}
+                {grids.length === 0 ? 'No saved grids' : 'No grids match your search'}
               </Typography>
               <Typography variant="body2" color="text.disabled">
-                {grids.length === 0
-                  ? "Save your first grid state to see it here"
-                  : "Try adjusting your search terms"}
+                {grids.length === 0 
+                  ? 'Save your first grid state to see it here'
+                  : 'Try adjusting your search terms'
+                }
               </Typography>
             </Box>
           )}
-
+          
           {!loadingGrids && filteredGrids.length > 0 && (
-            <List sx={{ maxHeight: "400px", overflow: "auto" }}>
+            <List sx={{ maxHeight: '400px', overflow: 'auto' }}>
               {filteredGrids.map((grid, index) => (
                 <React.Fragment key={grid.id}>
                   <ListItem disablePadding>
@@ -204,25 +191,12 @@ const LoadGridDialog = ({
                       sx={{ py: 2 }}
                     >
                       <ListItemIcon>
-                        <GridOnIcon
-                          color={
-                            selectedGrid?.id === grid.id ? "primary" : "action"
-                          }
-                        />
+                        <GridOnIcon color={selectedGrid?.id === grid.id ? 'primary' : 'action'} />
                       </ListItemIcon>
                       <ListItemText
                         primary={
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "flex-start",
-                            }}
-                          >
-                            <Typography
-                              variant="subtitle1"
-                              sx={{ fontWeight: 500 }}
-                            >
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
                               {grid.name}
                             </Typography>
                             <Button
@@ -230,7 +204,7 @@ const LoadGridDialog = ({
                               color="error"
                               startIcon={<DeleteIcon />}
                               onClick={(e) => handleDelete(grid.id, e)}
-                              sx={{ minWidth: "auto", px: 1 }}
+                              sx={{ minWidth: 'auto', px: 1 }}
                             >
                               Delete
                             </Button>
@@ -239,55 +213,33 @@ const LoadGridDialog = ({
                         secondary={
                           <Box sx={{ mt: 1 }}>
                             {grid.description && (
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ mb: 1 }}
-                              >
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                                 {grid.description}
                               </Typography>
                             )}
-                            <Box
-                              sx={{
-                                display: "flex",
-                                gap: 1,
-                                flexWrap: "wrap",
-                                alignItems: "center",
-                              }}
-                            >
-                              <Chip
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <Chip 
                                 label={`${formatCellCount(grid.liveCells)} cells`}
-                                size="small"
+                                size="small" 
                                 variant="outlined"
                                 color="primary"
                               />
-                              <Chip
+                              <Chip 
                                 label={`Gen ${grid.generation}`}
-                                size="small"
+                                size="small" 
                                 variant="outlined"
                                 color="secondary"
                               />
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 0.5,
-                                }}
-                              >
-                                <AccessTimeIcon
-                                  sx={{ fontSize: 14, color: "text.disabled" }}
-                                />
-                                <Typography
-                                  variant="caption"
-                                  color="text.disabled"
-                                >
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <AccessTimeIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+                                <Typography variant="caption" color="text.disabled">
                                   {formatDate(grid.createdAt)}
                                 </Typography>
                               </Box>
                             </Box>
                           </Box>
                         }
-                        secondaryTypographyProps={{ component: "div" }}
+                        secondaryTypographyProps={{ component: 'div' }}
                       />
                     </ListItemButton>
                   </ListItem>
@@ -300,20 +252,18 @@ const LoadGridDialog = ({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button
+        <Button 
           onClick={handleClose}
           disabled={loading}
           startIcon={<CancelIcon />}
         >
           {BUTTONS.CANCEL}
         </Button>
-        <Button
+        <Button 
           onClick={handleLoad}
           disabled={!selectedGrid || loading}
           variant="contained"
-          startIcon={
-            loading ? <CircularProgress size={18} /> : <FolderOpenIcon />
-          }
+          startIcon={loading ? <CircularProgress size={18} /> : <FolderOpenIcon />}
         >
           {loading ? STATUS.LOADING : `${BUTTONS.LOAD} Grid`}
         </Button>
@@ -327,19 +277,17 @@ LoadGridDialog.propTypes = {
   onClose: PropTypes.func.isRequired,
   onLoad: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
-  grids: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
-      description: PropTypes.string,
-      liveCells: PropTypes.number.isRequired,
-      generation: PropTypes.number.isRequired,
-      createdAt: PropTypes.string.isRequired,
-    }),
-  ),
+  grids: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    liveCells: PropTypes.number.isRequired,
+    generation: PropTypes.number.isRequired,
+    createdAt: PropTypes.string.isRequired
+  })),
   loading: PropTypes.bool,
   error: PropTypes.string,
-  loadingGrids: PropTypes.bool,
+  loadingGrids: PropTypes.bool
 };
 
 export default LoadGridDialog;

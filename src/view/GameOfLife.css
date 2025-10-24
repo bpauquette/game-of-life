@@ -1,7 +1,5 @@
 /* GameOfLife.css — makes the app fill the browser window */
-html,
-body,
-#root {
+html, body, #root {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -24,7 +22,7 @@ body,
   display: flex;
   gap: 8px;
   align-items: center;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0,0,0,0.35);
   padding: 8px;
   border-radius: 6px;
   color: white;
@@ -52,45 +50,26 @@ body,
   align-items: center;
 }
 .pan-controls button {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255,255,255,0.08);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255,255,255,0.12);
   padding: 8px 12px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 16px;
 }
-.pan-controls button:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
+.pan-controls button:hover { background: rgba(255,255,255,0.12); }
 
 /* responsive: move left/right to sides on wide screens, and reduce size on small screens */
 @media (min-width: 800px) {
-  .pan-controls {
-    top: 8px;
-  }
-  .pan-controls .pan-middle {
-    gap: 12px;
-  }
-  .pan-controls .pan-left {
-    position: absolute;
-    left: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-  }
-  .pan-controls .pan-right {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-  }
+  .pan-controls { top: 8px; }
+  .pan-controls .pan-middle { gap: 12px; }
+  .pan-controls .pan-left { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); }
+  .pan-controls .pan-right { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
 }
 
 @media (max-width: 480px) {
-  .pan-controls button {
-    padding: 6px 8px;
-    font-size: 14px;
-  }
+  .pan-controls button { padding: 6px 8px; font-size: 14px; }
 }
 
 canvas {
@@ -102,10 +81,10 @@ canvas {
 .shapes-menu {
   position: absolute;
   z-index: 30;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255,255,255,0.95);
   color: black;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(0,0,0,0.12);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
   border-radius: 6px;
   padding: 6px 0;
 }
@@ -115,5 +94,5 @@ canvas {
   white-space: nowrap;
 }
 .shapes-menu-item:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(0,0,0,0.06);
 }

@@ -1,4 +1,4 @@
-const { act } = require("@testing-library/react");
+const { act } = require('@testing-library/react');
 
 // Returns a function suitable for passing to expect(...).not.toThrow()
 // It will call the supplied callback inside React's act wrapper.

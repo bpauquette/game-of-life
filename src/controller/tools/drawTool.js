@@ -15,7 +15,7 @@ export const drawTool = {
     const dx = x - lx;
     const dy = y - ly;
     const steps = Math.max(Math.abs(dx), Math.abs(dy));
-
+    
     if (steps === 0) {
       // Same position - just draw the single cell
       setCellAlive(x, y, true);
@@ -40,5 +40,5 @@ export const drawTool = {
   drawOverlay(_ctx, _toolState, _cellSize, _offset) {
     // Intentionally left blank to avoid drawing a persistent overlay line
     // Overlay preview was removed because it caused an unwanted white line artifact.
-  },
+  }
 };

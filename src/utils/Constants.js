@@ -5,54 +5,54 @@
  */
 export const APP = {
   TITLE: "Conway's Game of Life",
-  DEFAULT_GRID_NAME: "Untitled",
+  DEFAULT_GRID_NAME: 'Untitled',
 };
 
 export const BUTTONS = {
-  SAVE: "Save",
-  LOAD: "Load",
-  LOAD_MORE: "Load more",
-  DELETE: "Delete",
-  CANCEL: "Cancel",
-  OK: "OK",
-  IMPORT: "Import",
-  EXPORT: "Export",
-  CLOSE: "Close",
+  SAVE: 'Save',
+  LOAD: 'Load',
+  LOAD_MORE: 'Load more',
+  DELETE: 'Delete',
+  CANCEL: 'Cancel',
+  OK: 'OK',
+  IMPORT: 'Import',
+  EXPORT: 'Export',
+  CLOSE: 'Close',
 };
 
 export const TOOLS = {
-  PEN: "Pen",
-  ERASER: "Eraser",
-  RECTANGLE: "Rectangle",
-  LINE: "Line",
-  RANDOM: "Random",
+  PEN: 'Pen',
+  ERASER: 'Eraser',
+  RECTANGLE: 'Rectangle',
+  LINE: 'Line',
+  RANDOM: 'Random',
 };
 
 export const CONTROLS = {
-  PLAY: "Play",
-  PAUSE: "Pause",
-  STEP: "Step",
-  CLEAR: "Clear",
-  RANDOMIZE: "Randomize",
-  SPEED: "Speed",
-  ZOOM_IN: "Zoom in",
-  ZOOM_OUT: "Zoom out",
+  PLAY: 'Play',
+  PAUSE: 'Pause',
+  STEP: 'Step',
+  CLEAR: 'Clear',
+  RANDOMIZE: 'Randomize',
+  SPEED: 'Speed',
+  ZOOM_IN: 'Zoom in',
+  ZOOM_OUT: 'Zoom out',
 };
 
 export const MESSAGES = {
-  ERROR_LOADING: "Error loading",
-  WARNING: "Warning",
-  INFO: "Info",
-  NO_SHAPES: "No shapes available",
+  ERROR_LOADING: 'Error loading',
+  WARNING: 'Warning',
+  INFO: 'Info',
+  NO_SHAPES: 'No shapes available',
 };
 
 export const STATUS = {
-  SAVING: "Saving...",
-  LOADING: "Loading...",
+  SAVING: 'Saving...',
+  LOADING: 'Loading...'
 };
 
 export const PLACEHOLDERS = {
-  SEARCH_GRIDS: "Search grids...",
+  SEARCH_GRIDS: 'Search grids...'
 };
 
 // default export for convenience
@@ -63,7 +63,7 @@ const AppConstants = {
   CONTROLS,
   MESSAGES,
   STATUS,
-  PLACEHOLDERS,
+  PLACEHOLDERS
 };
 
 export default AppConstants;
