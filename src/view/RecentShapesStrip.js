@@ -44,6 +44,12 @@ const RecentShapesStrip = ({
     try {
       return `${JSON.stringify(shape)}-${index}`;
     } catch (e) {
+      // Handle possible serialization errors (e.g. circular references) by
+      // logging the issue and falling back to a safe index-based key.
+      // This ensures we don't silently swallow errors and aids debugging.
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('Failed to stringify shape for key generation, using fallback key:', e);
+      }
       return `shape-${index}`;
     }
   };
@@ -83,6 +89,10 @@ const RecentShapesStrip = ({
     try {
       return JSON.stringify(shape) === JSON.stringify(selectedShape);
     } catch (e) {
+      // Log the error to aid debugging while safely returning a non-selected result
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('Failed to compare shapes for selection check:', e);
+      }
       return false;
     }
   };
