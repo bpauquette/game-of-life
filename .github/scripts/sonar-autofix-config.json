@@ -1,33 +1,4 @@
 {
   "maxIterations": 5,
-  "rules": {
-    "javascript:prettier": {
-      "type": "prettier",
-      "description": "Run Prettier to fix formatting issues"
-    },
-    "eslint:no-unused-vars": {
-      "type": "eslint",
-      "description": "Auto-remove unused variables where safe"
-    },
-    "eslint:quotes": {
-      "type": "eslint",
-      "description": "Normalize quotes via eslint --fix"
-    },
-    "eslint:semi": {
-      "type": "eslint",
-      "description": "Fix semicolons via eslint --fix"
-    },
-    "eslint:indent": {
-      "type": "eslint",
-      "description": "Fix indentation via eslint --fix"
-    },
-    "eslint:no-extra-semi": {
-      "type": "eslint",
-      "description": "Remove extra semicolons via eslint --fix"
-    },
-    "eslint:no-trailing-spaces": {
-      "type": "eslint",
-      "description": "Remove trailing spaces via eslint --fix"
-    }
-  }
+  "rules": {}
 }
