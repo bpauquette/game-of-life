@@ -137,13 +137,54 @@ The backend will start on port 55000.`);
 
   useEffect(()=>{ if(!open){ setQ(''); setResults([]); setLoading(false); } }, [open]);
   useEffect(()=>{
-  let mounted = true;
-  if (timerRef.current) clearTimeout(timerRef.current);
-  // When the dialog opens we want to show the catalog even before a
-  // search term is entered. Previously the UI required 3+ chars which made
-  // the catalog appear empty by default. We'll still debounce queries.
-  setLoading(true);
-    timerRef.current = setTimeout(async () => {
+    let mounted = true;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    // When the dialog opens we want to show the catalog even before a
+    // search term is entered. Previously the UI required 3+ chars which made
+    // the catalog appear empty by default. We'll still debounce queries.
+    setLoading(true);
+
+    const parseJsonSafe = async (res) => {
+      try {
+        return await res.json();
+      } catch (err) {
+        logger.warn('Failed to parse JSON response:', err?.message);
+        return { items: [], total: 0 };
+      }
+    };
+
+    const handleSuccessfulResponse = async (res) => {
+      const data = await parseJsonSafe(res);
+      const items = Array.isArray(data.items) ? data.items : [];
+      if (mounted) {
+        setTotal(Number(data.total) || 0);
+        // append when offset > 0 (load more), otherwise replace
+        setResults(prev => (offset > 0 ? [...prev, ...items] : items));
+      }
+    };
+
+    const handleNonOkResponse = (res) => {
+      logger.warn('Shape search returned non-OK status:', res.status);
+      if (mounted) { setResults([]); setTotal(0); }
+    };
+
+    const handleFetchError = async (err) => {
+      logger.error('Shape search error:', err);
+      const msg = String(err?.message || '');
+      // Detect common network/connection problems
+      if (msg.includes('fetch') || msg.includes('NetworkError') ||
+          msg.includes('ECONNREFUSED') || err?.code === 'ECONNREFUSED') {
+        const isHealthy = await checkBackendHealth();
+        if (!isHealthy) {
+          if (mounted) setLoading(false);
+          if (mounted) setShowBackendDialog(true);
+          return; // Don't set empty results yet
+        }
+      }
+      if (mounted) setResults([]);
+    };
+
+    const performFetch = async () => {
       try {
         const base = getBaseUrl(backendBase);
         const url = new URL('/v1/shapes', base);
@@ -152,42 +193,19 @@ The backend will start on port 55000.`);
         url.searchParams.set('offset', String(offset));
         const res = await fetch(url.toString());
         if (res.ok === false) {
-          logger.warn('Shape search returned non-OK status:', res.status);
-          if (mounted) { setResults([]); setTotal(0); }
+          handleNonOkResponse(res);
         } else {
-          let data = { items: [], total: 0 };
-          try { 
-            data = await res.json(); 
-          } catch (error_) { 
-            logger.warn('Failed to parse JSON response:', error_.message);
-            // data remains as default empty structure
-          }
-          const items = Array.isArray(data.items) ? data.items : [];
-          if (mounted) {
-            setTotal(Number(data.total) || 0);
-            // append when offset > 0 (load more), otherwise replace
-            setResults(prev => (offset > 0 ? [...prev, ...items] : items));
-          }
+          await handleSuccessfulResponse(res);
         }
       } catch (e) {
-        logger.error('Shape search error:', e);
-        
-        // Check if this is a connection error that might indicate backend is down
-    if (e.message.includes('fetch') || e.message.includes('NetworkError') || 
-      e.message.includes('ECONNREFUSED') || e.code === 'ECONNREFUSED') {
-          // Backend might be down, offer to start it
-          const isHealthy = await checkBackendHealth();
-          if (!isHealthy) {
-            if (mounted) setLoading(false);
-            if (mounted) setShowBackendDialog(true);
-            return; // Don't set empty results yet
-          }
-        }
-        
-        if (mounted) setResults([]);
-      } finally { setLoading(false); }
-    }, 300);
-    return ()=>{ if(timerRef.current) clearTimeout(timerRef.current); };
+        await handleFetchError(e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    timerRef.current = setTimeout(() => { performFetch(); }, 300);
+    return ()=>{ mounted = false; if(timerRef.current) clearTimeout(timerRef.current); };
   }, [q, backendBase, offset, limit, checkBackendHealth]);
 
   return (
