@@ -91,6 +91,6 @@ beforeAll(() => {
 
 afterAll(() => {
   // Restore originals if mocks exist
-  if (console.warn && console.warn.mockRestore) console.warn.mockRestore();
-  if (console.error && console.error.mockRestore) console.error.mockRestore();
+  console.warn?.mockRestore?.();
+  console.error?.mockRestore?.();
 });
