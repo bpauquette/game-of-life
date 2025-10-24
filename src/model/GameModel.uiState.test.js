@@ -238,8 +238,8 @@ describe('GameModel UI State Management', () => {
       expect(model.getPopulationTolerance()).toBe(0.25);
 
       // Test clamping
-      model.setPopulationTolerance(2.0);
-      expect(model.getPopulationTolerance()).toBe(1.0); // Clamped to max
+      model.setPopulationTolerance(2);
+      expect(model.getPopulationTolerance()).toBe(1); // Clamped to max
 
       model.setPopulationTolerance(0.001);
       expect(model.getPopulationTolerance()).toBe(0.01); // Clamped to min

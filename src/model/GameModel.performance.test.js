@@ -6,15 +6,15 @@ describe('GameModel Performance Tracking', () => {
   
   beforeEach(() => {
     // Mock performance.now() for consistent timing
-    originalPerformanceNow = window.performance.now;
+    originalPerformanceNow = globalThis.performance.now;
     mockTime = 0;
-    window.performance.now = jest.fn(() => {
+    globalThis.performance.now = jest.fn(() => {
       return mockTime;
     });
   });
 
   afterEach(() => {
-    window.performance.now = originalPerformanceNow;
+    globalThis.performance.now = originalPerformanceNow;
   });
 
   test('trackGeneration should record timestamps', () => {
