@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# SonarQube scan script for performance branch analysis
+# SonarQube scan script for main branch analysis
 set -e
 
-echo "🔍 SonarQube Scan - Performance Branch"
+echo "🔍 SonarQube Scan - Main Branch"
 echo "===================================="
 
 # Get current branch and commit
