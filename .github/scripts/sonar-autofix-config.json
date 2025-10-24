@@ -1,4 +1,245 @@
 {
   "maxIterations": 5,
-  "rules": {}
+  "rules": {
+    "Web:S1827": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "Web:S5256": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "Web:S6827": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "css:S4649": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "css:S4658": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "css:S4666": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "css:S4670": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S108": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S1082": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S1128": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S1135": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S125": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S1481": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S1854": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S1871": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S1874": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S2004": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S2486": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S2589": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S2681": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S2871": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S3358": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S3776": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S3923": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S4138": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S4624": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S5843": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6478": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6479": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6535": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6582": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6653": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6660": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6661": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6754": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6772": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6774": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6848": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S6861": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7718": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7723": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7724": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7728": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7732": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7735": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7746": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7747": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7748": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7755": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7757": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7760": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7762": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7764": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7765": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7772": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7773": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7778": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7781": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "javascript:S7785": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    },
+    "secrets:S6702": {
+      "type": "eslint",
+      "description": "Auto-fix via eslint --fix or prettier"
+    }
+  }
 }
