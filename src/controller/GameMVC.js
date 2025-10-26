@@ -74,7 +74,7 @@ export class GameMVC {
           ...captureTool,
           onCaptureComplete: (captureData) => {
             // Set capture data and open dialog through model
-            this.model.setUIState({ 
+            this.model.setUIStateModel({ 
               captureData: captureData,
               captureDialogOpen: true 
             });
@@ -140,7 +140,7 @@ export class GameMVC {
 
   setSelectedTool(tool) {
     // Update model state
-    this.model.setSelectedTool(tool);
+    this.model.setSelectedToolModel(tool);
     // Also update controller for tool logic
     this.controller.setSelectedTool(tool);
   }
@@ -151,7 +151,7 @@ export class GameMVC {
 
   setSelectedShape(shape) {
     // Update model state
-    this.model.setSelectedShape(shape);
+    this.model.setSelectedShapeModel(shape);
     // Also update controller for tool logic
     this.controller.setSelectedShape(shape);
   }
@@ -166,7 +166,7 @@ export class GameMVC {
 
   // View operations
   setViewport(offsetX, offsetY, cellSize, zoom) {
-    return this.model.setViewport(offsetX, offsetY, cellSize, zoom);
+    return this.model.setViewportModel(offsetX, offsetY, cellSize, zoom);
   }
 
   getViewport() {
@@ -179,11 +179,11 @@ export class GameMVC {
   }
 
   setCellSize(cellSize) {
-    return this.model.setCellSize(cellSize);
+    return this.model.setCellSizeModel(cellSize);
   }
 
   setZoom(zoom) {
-    return this.model.setZoom(zoom);
+    return this.model.setZoomModel(zoom);
   }
 
   getOffset() {
@@ -224,7 +224,7 @@ export class GameMVC {
   }
 
   setCursorPosition(position) {
-    this.model.setCursorPosition(position);
+    this.model.setCursorPositionModel(position);
   }
 
   getCursorPosition() {
@@ -237,7 +237,7 @@ export class GameMVC {
 
   // Color scheme operations
   setColorScheme(colorScheme) {
-    this.model.setColorScheme(colorScheme);
+    this.model.setColorSchemeModel(colorScheme);
   }
 
   getColorScheme() {
@@ -258,7 +258,7 @@ export class GameMVC {
   }
 
   setUIState(key, value) {
-    this.model.setUIState(key, value);
+    this.model.setUIStateModel(key, value);
   }
 
   getUIState(key) {
@@ -270,7 +270,7 @@ export class GameMVC {
   }
 
   setPerformanceSettings(settings) {
-    this.model.setPerformanceSettings(settings);
+    this.model.setPerformanceSettingsModel(settings);
   }
 
   getPerformanceSettings() {
@@ -286,7 +286,7 @@ export class GameMVC {
   }
 
   setCaptureData(data) {
-    this.model.setCaptureData(data);
+    this.model.setCaptureDataModel(data);
   }
 
   getCaptureData() {
@@ -295,7 +295,7 @@ export class GameMVC {
 
   // Performance settings delegation
   setMaxFPS(fps) {
-    this.model.setMaxFPS(fps);
+    this.model.setMaxFPSModel(fps);
   }
 
   getMaxFPS() {
@@ -312,7 +312,7 @@ export class GameMVC {
 
   // Population stability settings
   setPopulationWindowSize(size) {
-    this.model.setPopulationWindowSize(size);
+    this.model.setPopulationWindowSizeModel(size);
   }
 
   getPopulationWindowSize() {
@@ -320,7 +320,7 @@ export class GameMVC {
   }
 
   setPopulationTolerance(tolerance) {
-    this.model.setPopulationTolerance(tolerance);
+    this.model.setPopulationToleranceModel(tolerance);
   }
 
   getPopulationTolerance() {
