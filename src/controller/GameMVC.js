@@ -1,3 +1,11 @@
+  // Tool selection
+  getSelectedTool() {
+    return this.model.getSelectedTool();
+  }
+
+  getSelectedShape() {
+    return this.model.getSelectedShape();
+  }
 // GameMVC.js - Main orchestrator for MVC pattern
 // Creates and coordinates Model, View, and Controller
 
@@ -107,7 +115,7 @@ export class GameMVC {
 
   // Model operations
   setCellAlive(x, y, alive) {
-    return this.model.setCellAlive(x, y, alive);
+  return this.model.setCellAliveModel(x, y, alive);
   }
 
   getLiveCells() {
@@ -118,64 +126,8 @@ export class GameMVC {
     this.controller.clear();
   }
 
-  step() {
-    this.controller.step();
-  }
-
-  placeShape(x, y, shape) {
-    return this.model.placeShape(x, y, shape);
-  }
-
-  // Controller operations
-  setRunning(running) {
-    // Update model state (single source of truth)
-    this.model.setRunning(running);
-    // Also update controller for animation loop
-    this.controller.setRunning(running);
-  }
-
-  getIsRunning() {
-    return this.model.getIsRunning();
-  }
-
-  setSelectedTool(tool) {
-    // Update model state
-    this.model.setSelectedToolModel(tool);
-    // Also update controller for tool logic
-    this.controller.setSelectedTool(tool);
-  }
-
-  getSelectedTool() {
-    return this.model.getSelectedTool();
-  }
-
-  setSelectedShape(shape) {
-    // Update model state
-    this.model.setSelectedShapeModel(shape);
-    // Also update controller for tool logic
-    this.controller.setSelectedShape(shape);
-  }
-
-  getSelectedShape() {
-    return this.model.getSelectedShape();
-  }
-
-  setSpeed(fps) {
-    this.controller.setSpeed(fps);
-  }
-
-  // View operations
-  setViewport(offsetX, offsetY, cellSize, zoom) {
-    return this.model.setViewportModel(offsetX, offsetY, cellSize, zoom);
-  }
-
-  getViewport() {
-    return this.model.getViewport();
-  }
-
-  // Individual viewport operations
   setOffset(offsetX, offsetY) {
-    return this.model.setOffset(offsetX, offsetY);
+    return this.model.setOffsetModel(offsetX, offsetY);
   }
 
   setCellSize(cellSize) {
@@ -196,23 +148,6 @@ export class GameMVC {
 
   getZoom() {
     return this.model.getZoom();
-  }
-
-  screenToCell(screenX, screenY) {
-    return this.view.screenToCell(screenX, screenY);
-  }
-
-  // State operations
-  getGeneration() {
-    return this.model.getGeneration();
-  }
-
-  getCellCount() {
-    return this.model.getCellCount();
-  }
-
-  getPopulationHistory() {
-    return this.model.getPopulationHistory();
   }
 
   getBounds() {
@@ -388,6 +323,15 @@ export class GameMVC {
   // Cleanup
   destroy() {
     this.controller.destroy();
+  }
+
+  // Tool selection
+  getSelectedTool() {
+    return this.model.getSelectedTool();
+  }
+
+  getSelectedShape() {
+    return this.model.getSelectedShape();
   }
 }
 

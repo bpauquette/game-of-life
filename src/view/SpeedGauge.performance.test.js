@@ -87,16 +87,15 @@ describe('SpeedGauge Performance Metrics', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
     });
 
-    // Simulate game running with multiple generations
-    await act(async () => {
-      // Simulate multiple generation steps with renders
-      for (let i = 0; i < 10; i++) {
-        game.step(); // This will call trackGeneration()
+      await act(async () => {
+        // Simulate multiple generation steps with renders
+    for (let i = 0; i < 10; i++) {
+          game.model.step(); // This will call trackGeneration()
         
         // Simulate a render call
-        const liveCells = game.getLiveCells();
-        const viewport = game.getViewport();
-        game.view.render(liveCells, viewport); // This will call trackRender()
+          const liveCells = game.getLiveCells();
+          const viewport = game.model.getViewport();
+          game.view.render(liveCells, viewport); // This will call trackRender()
         
         // Small delay between generations/renders
         mockTime += 100; // Advance mock time
@@ -142,9 +141,9 @@ describe('SpeedGauge Performance Metrics', () => {
       
       // Simulate multiple render calls (which should track FPS)
       for (let i = 0; i < 30; i++) {
-        const liveCells = game.getLiveCells();
-        const viewport = game.getViewport();
-        game.view.render(liveCells, viewport); // This calls trackRender()
+          const liveCells = game.getLiveCells();
+          const viewport = game.model.getViewport();
+          game.view.render(liveCells, viewport); // This calls trackRender()
         
         mockTime += 16.67; // Advance mock time by ~16ms (60 FPS)
         await new Promise(resolve => setTimeout(resolve, 10));

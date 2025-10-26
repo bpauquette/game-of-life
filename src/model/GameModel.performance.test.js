@@ -101,7 +101,7 @@ describe('GameModel Performance Tracking', () => {
     const model = new GameModel();
     
     // Add some live cells
-    model.setCellAlive(5, 5, true);
+  model.setCellAliveModel(5, 5, true);
     
     // Spy on trackGeneration
     const trackSpy = jest.spyOn(model, 'trackGeneration');
@@ -116,9 +116,9 @@ describe('GameModel Performance Tracking', () => {
     const model = new GameModel();
     
     // Add live cells
-    model.setCellAlive(5, 5, true);
-    model.setCellAlive(5, 6, true);
-    model.setCellAlive(6, 5, true);
+  model.setCellAliveModel(5, 5, true);
+  model.setCellAliveModel(5, 6, true);
+  model.setCellAliveModel(6, 5, true);
     
     // Simulate game running for several steps with renders
     for (let i = 0; i < 10; i++) {

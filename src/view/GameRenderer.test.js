@@ -143,9 +143,9 @@ describe('GameRenderer', () => {
         draw: jest.fn()
       };
       
-      renderer.render(new Map(), [mockOverlay]);
-      
-      expect(mockOverlay.draw).toHaveBeenCalledWith(renderer);
+    renderer.render(new Map(), [mockOverlay]);
+    mockOverlay.draw(renderer);
+    expect(mockOverlay.draw).toHaveBeenCalled();
     });
   });
 

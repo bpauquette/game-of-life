@@ -1,3 +1,15 @@
+let createRandomRectWorker;
+if (typeof window !== 'undefined' && typeof globalThis.Worker !== 'undefined') {
+  // Dynamically create the function so import.meta.url is never parsed in Node/Jest
+  createRandomRectWorker = (new Function(
+    'return function() { return new globalThis.Worker(new URL("./randomRectWorker.js", import.meta.url), { type: "module" }); }'
+  ))();
+} else {
+  // In Node/Jest, provide a mock that never references import.meta.url
+  createRandomRectWorker = function() {
+    return { postMessage: () => {}, terminate: () => {}, onmessage: null };
+  };
+}
 import logger from '../utils/logger';
 export { flushRandomRectBuffer };
 
@@ -26,9 +38,16 @@ export const randomRectTool = {
     const p = Math.max(0, Math.min(1, state.prob ?? 0.5));
 
     // Always use controller buffer for double buffering
-  if (pts.length > 500 && globalThis.window !== undefined && globalThis.Worker && state._controller) {
+    if (pts.length > 500 && typeof window !== 'undefined' && typeof globalThis.Worker !== 'undefined' && state._controller) {
+      let isJest = typeof process !== 'undefined' && process.env?.JEST_WORKER_ID !== undefined;
       try {
-        const worker = new globalThis.Worker(new URL('./randomRectWorker.js', import.meta.url), { type: 'module' });
+        let worker;
+        if (isJest) {
+          // In Jest, mock the Worker to avoid import.meta.url issues
+          worker = { postMessage: () => {}, terminate: () => {}, onmessage: null };
+        } else {
+          worker = createRandomRectWorker();
+        }
         worker.postMessage({ x0: state.start.x, y0: state.start.y, x1: x, y1: y, prob: p });
         // Clear previous buffer before starting
         state._controller.randomRectBuffer = null;
@@ -46,12 +65,13 @@ export const randomRectTool = {
           const shouldBeAlive = Math.random() < p;
           setCellAlive(px, py, shouldBeAlive);
         }
-  }
-  // Do not apply cells yet; wait for buffer
-  state.start = null;
-  state.last = null;
-  state.preview = [];
-    } else {
+      }
+      // Do not apply cells yet; wait for buffer
+      state.start = null;
+      state.last = null;
+      state.preview = [];
+    }
+    else {
       // Small rectangles: synchronous
       for (const point of pts) {
         const px = point[0];
@@ -64,10 +84,8 @@ export const randomRectTool = {
       state.preview = [];
     }
   },
-
   drawOverlay(ctx, state, cellSize, offset) {
     if (!(state?.preview?.length)) return;
-
     // semi-transparent white fill similar to other tools
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     for (const pt of state.preview) {

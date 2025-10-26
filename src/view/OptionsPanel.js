@@ -57,22 +57,24 @@ const OptionsPanel = ({
       <DialogTitle>Options</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
+          <TextField
             select
             label="Color scheme"
             // Fallback to empty string when the current scheme is not present
-            value={Object.prototype.hasOwnProperty.call(colorSchemes, localScheme) ? localScheme : ''}
+            value={Object.hasOwn(colorSchemes, localScheme) ? localScheme : ''}
             onChange={(e) => setLocalScheme(e.target.value)}
             helperText="Choose a rendering color scheme"
             size="small"
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <Tooltip title="Choose the renderer color scheme used for cells and grid.">
-                    <InfoIcon fontSize="small" />
-                  </Tooltip>
-                </InputAdornment>
-              )
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Tooltip title="Choose the renderer color scheme used for cells and grid.">
+                      <InfoIcon fontSize="small" />
+                    </Tooltip>
+                  </InputAdornment>
+                )
+              }
             }}
           >
             {Object.entries(colorSchemes).map(([key, scheme]) => (
@@ -86,15 +88,20 @@ const OptionsPanel = ({
               type="number"
               size="small"
               value={localWindow}
-              onChange={(e) => setLocalWindow(Math.max(1, Number(e.target.value) || 1))}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Tooltip title="Number of past generations used to evaluate population stability.">
-                      <InfoIcon fontSize="small" />
-                    </Tooltip>
-                  </InputAdornment>
-                )
+              onChange={e => setLocalWindow(e.target.value)}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Tooltip title="Number of past generations used to evaluate population stability.">
+                        <InfoIcon fontSize="small" />
+                      </Tooltip>
+                    </InputAdornment>
+                  )
+                },
+                htmlInput: {
+                  min: 1
+                }
               }}
             />
             <TextField
@@ -102,79 +109,92 @@ const OptionsPanel = ({
               type="number"
               size="small"
               value={localTolerance}
-              onChange={(e) => setLocalTolerance(Math.max(0, Number(e.target.value) || 0))}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Tooltip title="Allowed change in population count over the window before we consider it stable.">
-                      <InfoIcon fontSize="small" />
-                    </Tooltip>
-                  </InputAdornment>
-                )
+              onChange={e => setLocalTolerance(e.target.value)}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Tooltip title="Allowed change in population count over the window before we consider it stable.">
+                        <InfoIcon fontSize="small" />
+                      </Tooltip>
+                    </InputAdornment>
+                  )
+                },
+                htmlInput: {
+                  min: 0
+                }
               }}
             />
           </Stack>
-          
-          {/* Performance Settings */}
+
           <div style={{ borderTop: '1px solid #ddd', paddingTop: 16, marginTop: 16 }}>
             <h4 style={{ margin: '0 0 16px 0' }}>Performance Settings</h4>
             
             <Stack spacing={2}>
-              <div>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={localShowSpeedGauge}
-                    onChange={(e) => setLocalShowSpeedGauge(e.target.checked)}
-                    style={{ marginRight: 8 }}
-                  />
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={localShowSpeedGauge}
+                  onChange={(e) => setLocalShowSpeedGauge(e.target.checked)}
+                  style={{ marginRight: 8 }}
+                  id="show-speed-gauge-checkbox"
+                />
+                <label htmlFor="show-speed-gauge-checkbox" style={{ margin: 0 }}>
                   Show Speed Gauge
                 </label>
               </div>
-              
 
-              
               <Stack direction="row" spacing={2}>
                 <TextField
                   label="Max FPS"
                   type="number"
                   size="small"
                   value={localMaxFPS}
-                  onChange={(e) => setLocalMaxFPS(Math.max(1, Math.min(120, Number(e.target.value) || 60)))}
-                  inputProps={{ min: 1, max: 120 }}
+                  onChange={e => setLocalMaxFPS(e.target.value)}
                   helperText="1-120"
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <Tooltip title="Maximum frames per second for rendering">
-                          <InfoIcon fontSize="small" />
-                        </Tooltip>
-                      </InputAdornment>
-                    )
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <Tooltip title="Maximum frames per second for rendering">
+                            <InfoIcon fontSize="small" />
+                          </Tooltip>
+                        </InputAdornment>
+                      )
+                    },
+                    htmlInput: {
+                      min: 1,
+                      max: 120
+                    }
                   }}
                 />
-                
                 <TextField
-                  label="Max Gen/Sec"
+                  label="Max GPS"
                   type="number"
                   size="small"
                   value={localMaxGPS}
-                  onChange={(e) => setLocalMaxGPS(Math.max(1, Math.min(60, Number(e.target.value) || 30)))}
-                  inputProps={{ min: 1, max: 60 }}
+                  onChange={e => setLocalMaxGPS(e.target.value)}
                   helperText="1-60"
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <Tooltip title="Maximum generations per second for game logic">
-                          <InfoIcon fontSize="small" />
-                        </Tooltip>
-                      </InputAdornment>
-                    )
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <Tooltip title="Maximum generations per second for game logic">
+                            <InfoIcon fontSize="small" />
+                          </Tooltip>
+                        </InputAdornment>
+                      )
+                    },
+                    htmlInput: {
+                      min: 1,
+                      max: 60
+                    }
                   }}
                 />
               </Stack>
             </Stack>
           </div>
+        
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -193,6 +213,12 @@ OptionsPanel.propTypes = {
   setPopWindowSize: PropTypes.func.isRequired,
   popTolerance: PropTypes.number.isRequired,
   setPopTolerance: PropTypes.func.isRequired,
+  showSpeedGauge: PropTypes.bool.isRequired,
+  setShowSpeedGauge: PropTypes.func.isRequired,
+  maxFPS: PropTypes.number.isRequired,
+  setMaxFPS: PropTypes.func.isRequired,
+  maxGPS: PropTypes.number.isRequired,
+  setMaxGPS: PropTypes.func.isRequired,
   onOk: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired
 };

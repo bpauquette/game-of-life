@@ -82,10 +82,10 @@ describe('GameModel UI State Management', () => {
 
   describe('UI state management', () => {
     test('should set and get UI state values', () => {
-      model.setUIState(CONST_SHOWCHART, true);
+  model.setUIStateModel(CONST_SHOWCHART, true);
       expect(model.getUIState(CONST_SHOWCHART)).toBe(true);
 
-      model.setUIState(CONST_MAXFPS, 120);
+  model.setUIStateModel(CONST_MAXFPS, 120);
       expect(model.getUIState(CONST_MAXFPS)).toBe(120);
     });
 
@@ -93,7 +93,7 @@ describe('GameModel UI State Management', () => {
       const observer = jest.fn();
       model.addObserver(observer);
 
-      model.setUIState(CONST_SHOWSPEEDGAUGE, false);
+  model.setUIStateModel(CONST_SHOWSPEEDGAUGE, false);
 
       expect(observer).toHaveBeenCalledWith(CONST_UISTATECHANGED, {
         type: 'stateChange',
@@ -103,19 +103,19 @@ describe('GameModel UI State Management', () => {
     });
 
     test('should not notify observers when setting same value', () => {
-      model.setUIState('popWindowSize', 15);
+  model.setUIStateModel('popWindowSize', 15);
 
       const observer = jest.fn();
       model.addObserver(observer);
 
-      model.setUIState('popWindowSize', 15); // Same value
+  model.setUIStateModel('popWindowSize', 15); // Same value
 
       expect(observer).not.toHaveBeenCalled();
     });
 
     test('should return all UI state', () => {
-      model.setUIState(CONST_SHOWCHART, true);
-      model.setUIState(CONST_MAXFPS, 90);
+  model.setUIStateModel(CONST_SHOWCHART, true);
+  model.setUIStateModel(CONST_MAXFPS, 90);
 
       const allState = model.getAllUIState();
 
@@ -167,7 +167,7 @@ describe('GameModel UI State Management', () => {
         height: 2
       };
 
-      model.setCaptureData(testData);
+  model.setCaptureDataModel(testData);
       expect(model.getCaptureData()).toBe(testData);
     });
 
@@ -176,7 +176,7 @@ describe('GameModel UI State Management', () => {
       model.addObserver(observer);
 
       const testData = { cells: [], width: 1, height: 1 };
-      model.setCaptureData(testData);
+  model.setCaptureDataModel(testData);
 
       expect(model.isDialogOpen('captureDialog')).toBe(true);
       expect(observer).toHaveBeenCalledWith(CONST_UISTATECHANGED, {
@@ -187,23 +187,23 @@ describe('GameModel UI State Management', () => {
 
     test('should handle null capture data', () => {
       const testData = { cells: [], width: 1, height: 1 };
-      model.setCaptureData(testData);
+  model.setCaptureDataModel(testData);
 
-      model.setCaptureData(null);
+  model.setCaptureDataModel(null);
       expect(model.getCaptureData()).toBe(null);
     });
   });
 
   describe('performance settings', () => {
     test('should set and get max FPS with clamping', () => {
-      model.setMaxFPS(120);
+  model.setMaxFPSModel(120);
       expect(model.getMaxFPS()).toBe(120);
 
       // Test clamping
-      model.setMaxFPS(300);
+  model.setMaxFPSModel(300);
       expect(model.getMaxFPS()).toBe(240); // Clamped to max
 
-      model.setMaxFPS(0);
+  model.setMaxFPSModel(0);
       expect(model.getMaxFPS()).toBe(1); // Clamped to min
     });
 
@@ -222,26 +222,26 @@ describe('GameModel UI State Management', () => {
 
   describe('population stability settings', () => {
     test('should set and get population window size with clamping', () => {
-      model.setPopulationWindowSize(25);
+  model.setPopulationWindowSizeModel(25);
       expect(model.getPopulationWindowSize()).toBe(25);
 
       // Test clamping
-      model.setPopulationWindowSize(150);
+  model.setPopulationWindowSizeModel(150);
       expect(model.getPopulationWindowSize()).toBe(100); // Clamped to max
 
-      model.setPopulationWindowSize(2);
+  model.setPopulationWindowSizeModel(2);
       expect(model.getPopulationWindowSize()).toBe(5); // Clamped to min
     });
 
     test('should set and get population tolerance with clamping', () => {
-      model.setPopulationTolerance(0.25);
+  model.setPopulationToleranceModel(0.25);
       expect(model.getPopulationTolerance()).toBe(0.25);
 
       // Test clamping
-      model.setPopulationTolerance(2);
+  model.setPopulationToleranceModel(2);
       expect(model.getPopulationTolerance()).toBe(1); // Clamped to max
 
-      model.setPopulationTolerance(0.001);
+  model.setPopulationToleranceModel(0.001);
       expect(model.getPopulationTolerance()).toBe(0.01); // Clamped to min
     });
   });
@@ -250,12 +250,12 @@ describe('GameModel UI State Management', () => {
     test('should exclude UI state from export', () => {
       // Set up UI state
       model.openDialog(CONST_HELP);
-      model.setUIState(CONST_SHOWCHART, true);
-      model.setMaxFPS(90);
-      model.setCaptureData({ cells: [], width: 1, height: 1 });
+  model.setUIStateModel(CONST_SHOWCHART, true);
+  model.setMaxFPSModel(90);
+  model.setCaptureDataModel({ cells: [], width: 1, height: 1 });
 
       // Add some game state for comparison
-      model.setCellAlive(1, 1, true);
+  model.setCellAliveModel(1, 1, true);
       model.generation = 5;
 
       const exportedState = model.exportState();
@@ -276,13 +276,13 @@ describe('GameModel UI State Management', () => {
   describe('integration with existing functionality', () => {
     test('should work alongside game state operations', () => {
       // Set up game state
-      model.setCellAlive(5, 5, true);
-      model.setRunning(true);
+  model.setCellAliveModel(5, 5, true);
+  model.setRunningModel(true);
 
       // Set up UI state
       model.openDialog(CONST_ABOUT);
-      model.setUIState(CONST_SHOWCHART, true);
-      model.setMaxFPS(75);
+  model.setUIStateModel(CONST_SHOWCHART, true);
+  model.setMaxFPSModel(75);
 
       // Verify all state is maintained
       expect(model.isCellAlive(5, 5)).toBe(true);
@@ -294,13 +294,13 @@ describe('GameModel UI State Management', () => {
 
     test('should maintain UI state during game operations', () => {
       model.openDialog(CONST_OPTIONS);
-      model.setUIState(CONST_SHOWSPEEDGAUGE, false);
+  model.setUIStateModel(CONST_SHOWSPEEDGAUGE, false);
       model.setMaxGPS(45);
 
       // Perform game operations
-      model.setCellAlive(0, 0, true);
+  model.setCellAliveModel(0, 0, true);
       model.step();
-      model.clear();
+  model.clearModel();
 
       // UI state should be preserved
       expect(model.isDialogOpen(CONST_OPTIONS)).toBe(true);

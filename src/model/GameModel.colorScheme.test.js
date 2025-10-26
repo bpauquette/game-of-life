@@ -17,7 +17,7 @@ describe('GameModel ColorScheme', () => {
 
   test('should set and get colorScheme', () => {
     const testColorScheme = colorSchemes.spectrum;
-    model.setColorScheme(testColorScheme);
+  model.setColorSchemeModel(testColorScheme);
     expect(model.getColorScheme()).toBe(testColorScheme);
   });
 
@@ -26,14 +26,14 @@ describe('GameModel ColorScheme', () => {
     model.addObserver(observer);
 
     const testColorScheme = colorSchemes.neon;
-    model.setColorScheme(testColorScheme);
+  model.setColorSchemeModel(testColorScheme);
 
     expect(observer).toHaveBeenCalledWith('colorSchemeChanged', testColorScheme);
   });
 
   test('should not include colorScheme in exportState', () => {
     const testColorScheme = colorSchemes.bio;
-    model.setColorScheme(testColorScheme);
+  model.setColorSchemeModel(testColorScheme);
 
     const state = model.exportState();
     expect(state).not.toHaveProperty('colorScheme');
@@ -41,11 +41,11 @@ describe('GameModel ColorScheme', () => {
 
   test('should preserve colorScheme through state import/export', () => {
     const testColorScheme = colorSchemes.ember;
-    model.setColorScheme(testColorScheme);
+  model.setColorSchemeModel(testColorScheme);
     
     // Add some cells and export state
-    model.setCellAlive(1, 1, true);
-    model.setCellAlive(2, 2, true);
+  model.setCellAliveModel(1, 1, true);
+  model.setCellAliveModel(2, 2, true);
     const state = model.exportState();
 
     // Create new model and import state

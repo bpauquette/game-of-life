@@ -137,11 +137,11 @@ export class GameController {
       const cells = selectedShape?.cells || selectedShape?.pattern || [];
       try {
         const { EraseOverlay } = require('../view/GameRenderer');
-  this.view.resetOverlays(true);
+        this.view.resetOverlays(true);
         this.view.addOverlay(new EraseOverlay(cells, true));
         this.view.render(this.model.getLiveCells(), this.model.getViewport());
       } catch (e) {
-        // fallback: do nothing
+        logger.error(e);
       }
     }
     this.clearToolState();
@@ -178,7 +178,7 @@ export class GameController {
 
   clearShapeIfNeeded(toolName) {
     if (toolName !== CONST_SHAPES) {
-      this.model.setSelectedShape(null);
+      this.model.setSelectedShapeModel(null);
     }
   }
 
@@ -190,7 +190,7 @@ export class GameController {
   setSelectedShape(shape) {
     if (shape) {
       // When selecting a shape, auto-switch to shapes tool
-      this.model.setSelectedTool(CONST_SHAPES);
+      this.model.setSelectedToolModel(CONST_SHAPES);
     }
     // The model state is managed by GameMVC
   }
@@ -211,7 +211,7 @@ export class GameController {
   }
 
   handleMouseMove(cellCoords, event) {
-    this.model.setCursorPosition(cellCoords);
+    this.model.setCursorPositionModel(cellCoords);
     
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
@@ -235,7 +235,7 @@ export class GameController {
         tool.onMouseUp(this.toolState);
       } else if (cellCoords) {
         tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, (x, y, alive) => {
-          this.model.setCellAlive(x, y, alive);
+          this.model.setCellAliveModel(x, y, alive);
         });
       }
       this.updateToolOverlay();
@@ -244,7 +244,7 @@ export class GameController {
 
   handleClick(cellCoords, event) {
     if (this.model.getSelectedTool() === 'draw') {
-      this.model.setCellAlive(cellCoords.x, cellCoords.y, true);
+      this.model.setCellAliveModel(cellCoords.x, cellCoords.y, true);
     } else if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape()) {
       this.model.placeShape(cellCoords.x, cellCoords.y, this.model.getSelectedShape());
     }
@@ -256,7 +256,7 @@ export class GameController {
     const newCellSize = this.calculateNewCellSize(viewport.cellSize, deltaY);
     
     if (newCellSize !== viewport.cellSize) {
-      this.model.setViewport(viewport.offsetX, viewport.offsetY, newCellSize);
+      this.model.setViewportModel(viewport.offsetX, viewport.offsetY, newCellSize);
     }
     
     if (event.cancelable) {
@@ -332,7 +332,7 @@ export class GameController {
 
     if (handled) {
       if (newOffsetX !== viewport.offsetX || newOffsetY !== viewport.offsetY) {
-        this.model.setViewport(newOffsetX, newOffsetY, viewport.cellSize);
+        this.model.setViewportModel(newOffsetX, newOffsetY, viewport.cellSize);
       }
       event.preventDefault();
     }
@@ -348,19 +348,19 @@ export class GameController {
   }
 
   setRunning(running) {
-    this.model.setRunning(running);
+    this.model.setRunningModel(running);
   }
 
   startGame() {
-    this.model.setRunning(true);
+    this.model.setRunningModel(true);
   }
 
   stopGame() {
-    this.model.setRunning(false);
+    this.model.setRunningModel(false);
   }
 
   toggleRunning() {
-    this.model.setRunning(!this.model.getIsRunning());
+    this.model.setRunningModel(!this.model.getIsRunning());
   }
 
   isRunning() {
