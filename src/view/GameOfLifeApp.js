@@ -76,6 +76,11 @@ const GameOfLifeApp = () => {
     });
   }, [defaultUIState]);
   
+  // Callback to update selectedShape from model
+  const setSelectedModelShape = useCallback((data) => {
+    setSelectedShape(data);
+  }, []);
+  
   // Population stability tracking
   const [popWindowSize, setPopWindowSize] = useState(DEFAULT_POPULATION_WINDOW_SIZE);
   const [popTolerance, setPopTolerance] = useState(DEFAULT_POPULATION_TOLERANCE);
