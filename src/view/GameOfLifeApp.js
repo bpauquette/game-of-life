@@ -7,7 +7,7 @@ import ShapePaletteDialog from '../view/ShapePaletteDialog';
 import CaptureShapeDialog from '../view/CaptureShapeDialog';
 import RecentShapesStrip from '../view/RecentShapesStrip';
 import SpeedGauge from '../view/SpeedGauge';
-// DebugConsole fully removed
+import { flushRandomRectBuffer } from '../controller/tools/randomRectTool';
 import { useShapeManager } from '../view/hooks/useShapeManager';
 import { colorSchemes } from '../model/colorSchemes';
 import isPopulationStable from '../controller/utils/populationUtils';
@@ -33,7 +33,8 @@ const GameOfLifeApp = () => {
   
   // Tool and interaction state now managed by model
   const [selectedTool, setSelectedTool] = useState('draw'); // Temp for UI sync
-  const [selectedShape, setSelectedShapeLocal] = useState(null); // Temp for UI sync  
+  const [selectedShape, setSelectedShape] = useState(null);
+// Temp for UI sync
   const [cursorCell, setCursorCell] = useState(null); // Temp for UI sync
   
   // UI state managed by model
@@ -45,7 +46,7 @@ const GameOfLifeApp = () => {
     paletteOpen: false,
     captureData: null
   }), []);
-  const [uiState, setUIStateRaw] = React.useState(defaultUIState);
+  const [uiState, setUIStateRaw] = useState(defaultUIState);
 
   // Always merge updates with defaults to preserve required keys.
   // When merging updates from the model, prefer the current local UI
@@ -158,7 +159,7 @@ const GameOfLifeApp = () => {
             setSelectedTool(data);
             break;
           case 'selectedShapeChanged':
-            setSelectedShapeLocal(data);
+            setSelectedModelShape(data);
             break;
           case 'cursorPositionChanged':
             setCursorCell(data);
@@ -186,7 +187,7 @@ const GameOfLifeApp = () => {
         
         // Initialize React state from model
         setSelectedTool(game.getSelectedTool());
-        setSelectedShapeLocal(game.getSelectedShape());
+        setSelectedModelShape(game.getSelectedShape());
         setCursorCell(game.getCursorPosition());
         setGeneration(game.getGeneration());
         setIsRunning(game.getIsRunning());
@@ -314,14 +315,7 @@ const GameOfLifeApp = () => {
       gameRef.current.setSelectedTool(tool);
       setSelectedTool(tool);
     }
-  }, []);
-
-  const setSelectedShape = useCallback((shape) => {
-    if (gameRef.current) {
-      gameRef.current.setSelectedShape(shape);
-      setSelectedShapeLocal(shape);
-    }
-  }, []);
+  
 
   // Game controls
   const step = useCallback(() => {
@@ -453,7 +447,27 @@ const GameOfLifeApp = () => {
     }
   }, []);
 
-
+  // Animation loop integration for double buffering
+  useEffect(() => {
+    let animationFrameId;
+    function animationLoop() {
+      // Flush randomRect buffer if present (prefer controller buffer)
+      if (gameRef.current && gameRef.current.randomRectBuffer) {
+        flushRandomRectBuffer({ _controller: gameRef.current }, setCellAlive);
+      } else if (gameRef.current && gameRef.current.toolState?.randomRectBuffer) {
+        flushRandomRectBuffer(gameRef.current.toolState, setCellAlive);
+      }
+      // Continue animation (existing logic)
+      if (isRunning && gameRef.current) {
+        gameRef.current.step();
+      }
+      animationFrameId = requestAnimationFrame(animationLoop);
+    }
+    animationFrameId = requestAnimationFrame(animationLoop);
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
+  }, [isRunning, setCellAlive]);
 
   return (
     <div className="canvas-container">
@@ -557,8 +571,7 @@ const GameOfLifeApp = () => {
         onToggleVisibility={setShowSpeedGauge}
         position={{ top: 10, right: 10 }}
       />
-      
-  {/* DebugConsole fully removed */}
+  
     </div>
   );
 };

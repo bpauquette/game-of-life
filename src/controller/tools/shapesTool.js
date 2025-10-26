@@ -1,3 +1,4 @@
+import { ShapePreviewOverlay } from '../../view/GameRenderer';
 // shapesTool.js — Enhanced shape placement tool with improved UX
 import logger from '../utils/logger';
 
@@ -10,6 +11,60 @@ const PLACEMENT_INDICATOR_COLOR = '#FF5722';
 const GRID_SNAP_INDICATOR_SIZE = 4;
 
 export const shapesTool = {
+  getOverlay(toolState) {
+    const logger = require('../utils/logger').default || require('../utils/logger');
+    logger.debug('[getOverlay] called with toolState:', JSON.stringify(toolState));
+    const sel = toolState.selectedShapeData;
+    const last = toolState.last;
+    if (!sel || !last) {
+      logger.debug('[getOverlay] No shape or position for overlay');
+      return null;
+    }
+
+    let cells = [];
+    if (Array.isArray(sel)) {
+      cells = sel;
+    } else if (sel && Array.isArray(sel.cells)) {
+      cells = sel.cells;
+    } else if (sel && Array.isArray(sel.pattern)) {
+      cells = sel.pattern;
+    } else {
+      logger.debug('[getOverlay] Unknown shape format:', sel);
+      return null;
+    }
+    if (!cells.length) {
+      logger.debug('[getOverlay] Shape has no cells to preview');
+      return null;
+    }
+
+    logger.debug('[getOverlay] Returning ShapePreviewOverlay with cells:', cells, 'and last:', last);
+    return new ShapePreviewOverlay(cells, last, {
+      alpha: SHAPE_PREVIEW_ALPHA,
+      color: PREVIEW_FILL_COLOR
+    });
+  },
+  // getOverlay(toolState) {
+  //   const sel = toolState.selectedShapeData;
+  //   const last = toolState.last;
+  //   if (!sel || !last) return null;
+
+  //   let cells = [];
+  //   if (Array.isArray(sel)) {
+  //     cells = sel;
+  //   } else if (sel && Array.isArray(sel.cells)) {
+  //     cells = sel.cells;
+  //   } else if (sel && Array.isArray(sel.pattern)) {
+  //     cells = sel.pattern;
+  //   } else {
+  //     return null;
+  //   }
+  //   if (!cells.length) return null;
+
+  //   return new ShapePreviewOverlay(cells, last, {
+  //     alpha: SHAPE_PREVIEW_ALPHA,
+  //     color: PREVIEW_FILL_COLOR
+  //   });
+  // },
   onMouseDown(toolState, x, y) {
     toolState.start = { x, y };
     toolState.last = { x, y };

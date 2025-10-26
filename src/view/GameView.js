@@ -4,13 +4,21 @@
 import { GameRenderer } from './GameRenderer';
 
 export class GameView {
+  // Centralized overlay reset
+  resetOverlays(rerender = false) {
+    this.clearOverlays();
+    if (rerender && this.model) {
+      // Use current liveCells and viewport for re-render
+      this.render(this.model.getLiveCells(), this.model.getViewport());
+    }
+  }
   constructor(canvas, options = {}, model = null) {
     this.canvas = canvas;
     this.renderer = new GameRenderer(canvas, options);
     this.model = model; // Reference to model for performance tracking
     
-    // View state
-    this.overlays = [];
+  // View state
+  this.overlay = null;
     this.isVisible = true;
     
     // Event callbacks
@@ -68,8 +76,8 @@ export class GameView {
     // Get colorScheme from model
     const colorScheme = this.model?.getColorScheme();
     
-    // Render everything
-    this.renderer.render(liveCells, this.overlays, colorScheme);
+    // Do not pass overlay; GameRenderer will retrieve it from controller
+    this.renderer.render(liveCells, colorScheme);
   }
 
   clear() {
@@ -77,20 +85,10 @@ export class GameView {
   }
 
   // Overlay management
-  addOverlay(overlay) {
-    this.overlays.push(overlay);
-  }
-
-  removeOverlay(overlay) {
-    const index = this.overlays.indexOf(overlay);
-    if (index > -1) {
-      this.overlays.splice(index, 1);
-    }
-  }
-
-  clearOverlays() {
-    this.overlays = [];
-  }
+  // Overlay management (no-op for derived overlay)
+  // Overlay management methods removed (no longer needed)
+  clearOverlays() { this.overlay = null; }
+  // End overlay management
 
   // Canvas management
   resize(width, height) {

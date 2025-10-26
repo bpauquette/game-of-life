@@ -1,3 +1,4 @@
+// ...existing code...
 const CONST_FUNCTION = 'function';
 const CONST_FFFFFF = '#ffffff';
 // GameRenderer.js
@@ -14,24 +15,16 @@ export class GameRenderer {
     try {
       ctx = canvas && typeof canvas.getContext === CONST_FUNCTION ? canvas.getContext('2d') : null;
     } catch (e) {
-      // Log the failure to obtain a real 2D context so test environments or
-      // unexpected browser errors are visible during debugging, then fall back
-      // to a noop context to keep rendering code safe.
-      
-        // Use console.warn if available; avoid breaking environments without console
-        if (typeof console !== 'undefined' && typeof console.warn === 'function') {
-          console.warn('GameRenderer: failed to get 2D context, falling back to noop context.', e);
-        }
-      
+      if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+        console.warn('GameRenderer: failed to get 2D context, falling back to noop context.', e);
+      }
       ctx = null;
     }
-    const makeNoopCtx = () => ({
-      // Properties
+    this.ctx = ctx || {
       fillStyle: '#000',
       strokeStyle: '#000',
       globalAlpha: 1,
       lineWidth: 1,
-      // Methods (no-ops)
       scale: () => {},
       setTransform: () => {},
       fillRect: () => {},
@@ -45,8 +38,7 @@ export class GameRenderer {
       fillText: () => {},
       strokeRect: () => {},
       clearRect: () => {}
-    });
-    this.ctx = ctx || makeNoopCtx();
+    };
     this.options = {
       backgroundColor: '#000000',
       gridColor: '#333333',
@@ -58,11 +50,9 @@ export class GameRenderer {
       showGrid: true,
       ...options
     };
-    
     this.viewport = { width: 0, height: 0 };
     this.colorCache = new Map();
     this.maxColorCacheSize = 10000;
-    
     // Setup high-DPI rendering
     this.setupHighDPI();
   }
@@ -81,16 +71,20 @@ export class GameRenderer {
    */
   setupHighDPI() {
     const dpr = window.devicePixelRatio || 1;
+    const { displayWidth, displayHeight } = this._getDisplaySize();
+    this._setCanvasSize(displayWidth, displayHeight, dpr);
+    this._scaleContextForDPI(dpr);
+    this.viewport.width = displayWidth;
+    this.viewport.height = displayHeight;
+  }
+
+  _getDisplaySize() {
     const rect = this.canvas.getBoundingClientRect();
-    
     let displayWidth, displayHeight;
-    
-    // Use canvas bounding rect for standard browser environments
     if (rect && rect.width > 0 && rect.height > 0) {
       displayWidth = rect.width;
       displayHeight = rect.height;
     } else {
-      // Fallback to container or reasonable defaults
       const container = this.canvas.parentElement;
       if (container) {
         const containerRect = container.getBoundingClientRect();
@@ -101,33 +95,28 @@ export class GameRenderer {
         displayHeight = 600;
       }
     }
-    
-    // Ensure minimum size and handle edge cases
-    displayWidth = Math.max(displayWidth, 200);
-    displayHeight = Math.max(displayHeight, 200);
-    
-    // Set canvas internal resolution (for high-DPI)
+    return {
+      displayWidth: Math.max(displayWidth, 200),
+      displayHeight: Math.max(displayHeight, 200)
+    };
+  }
+
+  _setCanvasSize(displayWidth, displayHeight, dpr) {
     this.canvas.width = displayWidth * dpr;
     this.canvas.height = displayHeight * dpr;
-    
-    // Set canvas CSS size (what user sees)
     this.canvas.style.width = displayWidth + 'px';
     this.canvas.style.height = displayHeight + 'px';
-    
-    // Scale drawing context for high-DPI (guard if ctx missing)
+  }
+
+  _scaleContextForDPI(dpr) {
     if (this.ctx && typeof this.ctx.scale === CONST_FUNCTION) {
       this.ctx.scale(dpr, dpr);
     } else if (!this.ctx) {
-      // create a minimal mock-like context to avoid tests failing when DOM is mocked
       this.ctx = this.canvas.getContext ? this.canvas.getContext('2d') : { scale: () => {} };
       if (this.ctx && typeof this.ctx.scale === CONST_FUNCTION) {
         this.ctx.scale(dpr, dpr);
       }
     }
-    
-    // Update viewport dimensions
-    this.viewport.width = displayWidth;
-    this.viewport.height = displayHeight;
   }
 
   /**
@@ -267,54 +256,51 @@ export class GameRenderer {
    */
   drawGrid() {
     if (!this.gridCache) {
-      // Create grid cache canvas
-      this.gridCache = document.createElement('canvas');
-      this.gridCache.width = this.viewport.width;
-      this.gridCache.height = this.viewport.height;
-  const gridCtx = this.gridCache.getContext('2d') || this.canvas.getContext('2d') || { fillStyle: '', fillRect: () => {}, beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, stroke: () => {} };
-      
-  // Draw background
-  if (gridCtx) {
+      this._createGridCache();
+    }
+    this._drawGridCache();
+  }
+
+  _createGridCache() {
+    this.gridCache = document.createElement('canvas');
+    this.gridCache.width = this.viewport.width;
+    this.gridCache.height = this.viewport.height;
+    const gridCtx = this.gridCache.getContext('2d') || this.canvas.getContext('2d') || { fillStyle: '', fillRect: () => {}, beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, stroke: () => {} };
+    this._drawGridBackground(gridCtx);
+    this._drawGridLines(gridCtx);
+    gridCtx.stroke();
+  }
+
+  _drawGridBackground(gridCtx) {
     gridCtx.fillStyle = this.options.backgroundColor;
     gridCtx.fillRect(0, 0, this.viewport.width, this.viewport.height);
   }
-      
-  // Draw grid lines
-  if (gridCtx) {
+
+  _drawGridLines(gridCtx) {
     gridCtx.strokeStyle = this.options.gridColor;
     gridCtx.beginPath();
-      
     const centerX = this.viewport.width / 2;
     const centerY = this.viewport.height / 2;
     const computedOffset = {
       x: this.viewport.offsetX * this.viewport.cellSize - centerX,
       y: this.viewport.offsetY * this.viewport.cellSize - centerY
     };
-      
     const startX = -computedOffset.x % this.viewport.cellSize;
     const startY = -computedOffset.y % this.viewport.cellSize;
-      
-    // Vertical lines
     for (let x = startX; x < this.viewport.width; x += this.viewport.cellSize) {
       gridCtx.moveTo(Math.floor(x) + this.options.gridLineOffset, 0);
       gridCtx.lineTo(Math.floor(x) + this.options.gridLineOffset, this.viewport.height);
     }
-      
-    // Horizontal lines
     for (let y = startY; y < this.viewport.height; y += this.viewport.cellSize) {
       gridCtx.moveTo(0, Math.floor(y) + this.options.gridLineOffset);
       gridCtx.lineTo(this.viewport.width, Math.floor(y) + this.options.gridLineOffset);
     }
-      
-    gridCtx.stroke();
   }
-    }
-    
-    // Draw cached grid (guard against missing ctx.drawImage in mocked envs)
+
+  _drawGridCache() {
     if (this.ctx && typeof this.ctx.drawImage === CONST_FUNCTION) {
       this.ctx.drawImage(this.gridCache, 0, 0);
     } else if (this.ctx && typeof this.ctx.fillRect === CONST_FUNCTION) {
-      // Fall back to copying pixels via a safe no-op or by drawing a filled rect
       this.ctx.fillStyle = this.options.backgroundColor;
       this.ctx.fillRect(0, 0, this.viewport.width, this.viewport.height);
     }
@@ -422,19 +408,23 @@ export class GameRenderer {
   /**
    * Main render method - draws everything
    */
-  render(liveCells, overlays = [], colorScheme = null) {
+  render(liveCells, colorScheme = null) {
     // Store colorScheme for use in getCellColor
     this.currentColorScheme = colorScheme;
-    
+
     // Draw grid background
     this.drawGrid();
-    
+
     // Draw live cells
     this.drawCells(liveCells);
-    
-    // Draw overlays (tools, previews, etc.)
-    for (const overlay of overlays) {
-      overlay.draw(this);
+
+    // Get overlay from controller and draw it
+    const controller = this.model?.controller;
+    if (controller && typeof controller.getCurrentOverlay === 'function') {
+      const overlay = controller.getCurrentOverlay();
+      if (overlay && typeof overlay.draw === 'function') {
+        overlay.draw(this);
+      }
     }
   }
 
@@ -472,6 +462,35 @@ export class RenderOverlay {
   // Override in subclasses
   draw(renderer) {
     // Default implementation does nothing
+  }
+}
+
+/**
+ * Erase overlay for shape preview
+ */
+export class EraseOverlay extends RenderOverlay {
+  constructor(cells, showText = true) {
+    super();
+    this.cells = cells;
+    this.showText = showText;
+  }
+
+  draw(renderer) {
+    if (this.cells && this.cells.length > 0) {
+      renderer.drawCellArray(this.cells, '#000');
+    }
+    if (this.showText) {
+      const ctx = renderer.ctx;
+      const w = renderer.canvas.width / (window.devicePixelRatio || 1);
+      const h = renderer.canvas.height / (window.devicePixelRatio || 1);
+      ctx.save();
+      ctx.font = 'bold 32px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ff4444';
+      ctx.fillText('Erasing Shape Overlay', w / 2, h / 2);
+      ctx.restore();
+    }
   }
 }
 

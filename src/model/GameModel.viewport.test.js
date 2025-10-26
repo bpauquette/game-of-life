@@ -17,7 +17,7 @@ describe('GameModel Viewport Management', () => {
       expect(viewport.offsetX).toBe(0);
       expect(viewport.offsetY).toBe(0);
       expect(viewport.cellSize).toBe(20);
-      expect(viewport.zoom).toBe(1.0);
+      expect(viewport.zoom).toBe(1);
       expect(viewport.minCellSize).toBe(1);
       expect(viewport.maxCellSize).toBe(200);
     });
@@ -37,14 +37,14 @@ describe('GameModel Viewport Management', () => {
 
   describe('complete viewport operations', () => {
     test('should set viewport with all parameters', () => {
-      const changed = model.setViewport(10, 20, 15, 2.0);
+      const changed = model.setViewport(10, 20, 15, 2);
 
       expect(changed).toBe(true);
       expect(model.getViewport()).toEqual({
         offsetX: 10,
         offsetY: 20,
         cellSize: 15,
-        zoom: 2.0,
+        zoom: 2,
         minCellSize: 1,
         maxCellSize: 200
       });
@@ -60,7 +60,7 @@ describe('GameModel Viewport Management', () => {
         offsetX: 5,
         offsetY: 10,
         cellSize: 25,
-        zoom: 1.0,
+        zoom: 1,
         minCellSize: 1,
         maxCellSize: 200
       });
@@ -149,7 +149,7 @@ describe('GameModel Viewport Management', () => {
     });
 
     test('should preserve other viewport properties when setting cell size', () => {
-      model.setViewport(10, 20, 15, 2.0);
+      model.setViewport(10, 20, 15, 2);
 
       model.setCellSize(40);
 
@@ -157,7 +157,7 @@ describe('GameModel Viewport Management', () => {
       expect(viewport.offsetX).toBe(10); // Preserved
       expect(viewport.offsetY).toBe(20); // Preserved
       expect(viewport.cellSize).toBe(40);
-      expect(viewport.zoom).toBe(2.0); // Preserved
+      expect(viewport.zoom).toBe(2); // Preserved
     });
 
     test('should notify observers when cell size changes', () => {
@@ -195,12 +195,12 @@ describe('GameModel Viewport Management', () => {
 
     test('should clamp zoom to valid range', () => {
       // Test minimum clamping
-      model.setZoom(0.05);
+      model.setZoom(5);
       expect(model.getZoom()).toBe(0.1); // Clamped to min
 
       // Test maximum clamping
-      model.setZoom(15.0);
-      expect(model.getZoom()).toBe(10.0); // Clamped to max
+      model.setZoom(15);
+      expect(model.getZoom()).toBe(10); // Clamped to max
     });
 
     test('should notify observers when zoom changes', () => {
@@ -227,15 +227,15 @@ describe('GameModel Viewport Management', () => {
     });
 
     test('should preserve other viewport properties when setting zoom', () => {
-      model.setViewport(15, 25, 30, 1.0);
+      model.setViewport(15, 25, 30, 1);
 
-      model.setZoom(3.0);
+      model.setZoom(3);
 
       const viewport = model.getViewport();
       expect(viewport.offsetX).toBe(15); // Preserved
       expect(viewport.offsetY).toBe(25); // Preserved  
       expect(viewport.cellSize).toBe(30); // Preserved
-      expect(viewport.zoom).toBe(3.0);
+      expect(viewport.zoom).toBe(3);
     });
 
     test('should handle fractional zoom values', () => {
@@ -251,7 +251,7 @@ describe('GameModel Viewport Management', () => {
       model.setRunning(true);
 
       // Set up viewport state
-      model.setViewport(10, 20, 30, 2.0);
+      model.setViewport(10, 20, 30, 2);
 
       // Verify all state is maintained
       expect(model.isCellAlive(5, 5)).toBe(true);
@@ -260,7 +260,7 @@ describe('GameModel Viewport Management', () => {
         offsetX: 10,
         offsetY: 20,
         cellSize: 30,
-        zoom: 2.0,
+        zoom: 2,
         minCellSize: 1,
         maxCellSize: 200
       });
@@ -283,7 +283,7 @@ describe('GameModel Viewport Management', () => {
     });
 
     test('should exclude viewport from serialization correctly', () => {
-      model.setViewport(100, 200, 50, 3.0);
+      model.setViewport(100, 200, 50, 3);
       model.setCellAlive(1, 1, true);
 
       const exportedState = model.exportState();
@@ -293,7 +293,7 @@ describe('GameModel Viewport Management', () => {
         offsetX: 100,
         offsetY: 200,
         cellSize: 50,
-        zoom: 3.0,
+        zoom: 3,
         minCellSize: 1,
         maxCellSize: 200
       });

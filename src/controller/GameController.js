@@ -3,6 +3,15 @@ const CONST_SHAPES = 'shapes';
 // Handles user interactions, game loop, and coordination between Model and View
 
 export class GameController {
+  // Centralized overlay retrieval
+  getCurrentOverlay() {
+    const selectedTool = this.model.getSelectedTool();
+    const tool = this.toolMap[selectedTool];
+    if (tool?.getOverlay) {
+      return tool.getOverlay(this.toolState);
+    }
+    return null;
+  }
   constructor(model, view, options = {}) {
     this.model = model;
     this.view = view;
@@ -19,6 +28,9 @@ export class GameController {
     this.toolMap = {};
     this.toolState = {};
     this.mouseState = { isDown: false };
+
+  // Persistent buffer for randomRectTool double buffering
+  this.randomRectBuffer = null;
 
     // Game loop state
     this.animationId = null;
@@ -117,17 +129,56 @@ export class GameController {
 
   setSelectedTool(toolName) {
     const currentTool = this.model.getSelectedTool();
-    if (this.toolMap[toolName] && currentTool !== toolName) {
-      // Clear previous tool state
-      this.toolState = {};
-      this.view.clearOverlays();
-      
-      // Clear selected shape when switching away from shapes tool
-      if (toolName !== CONST_SHAPES) {
-        this.model.setSelectedShape(null);
+    if (!this.toolMap[toolName] || currentTool === toolName) return;
+
+    if (currentTool === CONST_SHAPES && this.model.getSelectedShape()) {
+      // Add EraseOverlay to overlays for one frame
+      const selectedShape = this.model.getSelectedShape();
+      const cells = selectedShape?.cells || selectedShape?.pattern || [];
+      try {
+        const { EraseOverlay } = require('../view/GameRenderer');
+  this.view.resetOverlays(true);
+        this.view.addOverlay(new EraseOverlay(cells, true));
+        this.view.render(this.model.getLiveCells(), this.model.getViewport());
+      } catch (e) {
+        // fallback: do nothing
       }
-      
-      // The model state is managed by GameMVC, we just handle tool logic here
+    }
+    this.clearToolState();
+    this.clearShapeIfNeeded(toolName);
+  }
+
+  eraseShapeOverlay() {
+    const selectedShape = this.model.getSelectedShape();
+    const cells = selectedShape?.cells || selectedShape?.pattern || [];
+    if (this.view.renderer && typeof this.view.renderer.drawCellArray === 'function') {
+      const ctx = this.view.renderer.ctx;
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#000';
+      if (cells.length > 0 && this.toolState.previewPosition) {
+        this.view.renderer.drawCellArray(cells, '#000');
+      }
+      // Always draw text in the center to confirm erase logic
+      const w = this.view.canvas.width / (window.devicePixelRatio || 1);
+      const h = this.view.canvas.height / (window.devicePixelRatio || 1);
+      ctx.font = 'bold 32px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ff4444';
+      ctx.fillText('Erasing Shape Overlay', w / 2, h / 2);
+      ctx.restore();
+    }
+  }
+
+  clearToolState() {
+  this.toolState = {};
+  this.view.resetOverlays(true);
+  }
+
+  clearShapeIfNeeded(toolName) {
+    if (toolName !== CONST_SHAPES) {
+      this.model.setSelectedShape(null);
     }
   }
 
@@ -162,19 +213,13 @@ export class GameController {
   handleMouseMove(cellCoords, event) {
     this.model.setCursorPosition(cellCoords);
     
-    // Only process tool events if mouse is down
-    if (this.mouseState.isDown) {
-      const tool = this.toolMap[this.model.getSelectedTool()];
-      if (tool?.onMouseMove) {
-        tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, (x, y, alive) => {
-          this.model.setCellAlive(x, y, alive);
-        });
-        this.updateToolOverlay();
-      }
-    } else if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape()) {
-      // Update shape preview for shapes tool
-      this.toolState.previewPosition = cellCoords;
-      this.updateToolOverlay();
+    const selectedTool = this.model.getSelectedTool();
+    const tool = this.toolMap[selectedTool];
+    if (tool?.getOverlay) {
+      // Always update toolState.last for shapes tool
+      this.toolState.last = { x: cellCoords.x, y: cellCoords.y };
+      // Trigger a render to show overlay
+      this.requestRender();
     }
   }
 
@@ -393,25 +438,7 @@ export class GameController {
 
   // Tool overlay management
   updateToolOverlay() {
-    this.view.clearOverlays();
-    
-    const tool = this.toolMap[this.model.getSelectedTool()];
-    if (tool?.drawOverlay && Object.keys(this.toolState).length > 0) {
-      const viewport = this.model.getViewport();
-      const { ToolOverlayView } = require('../view/GameView');
-      const toolOverlay = new ToolOverlayView(tool, this.toolState, viewport.cellSize);
-      this.view.addOverlay(toolOverlay);
-    }
-    
-    // Shape preview overlay
-    if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape() && this.toolState.previewPosition) {
-      const selectedShape = this.model.getSelectedShape();
-      const cells = selectedShape.cells || selectedShape.pattern || [];
-      const { ShapePreviewView } = require('../view/GameView');
-      const shapeOverlay = new ShapePreviewView(cells, this.toolState.previewPosition);
-      this.view.addOverlay(shapeOverlay);
-    }
-    
+    // Overlay is now derived from tool state in GameView.render
     this.requestRender();
   }
 

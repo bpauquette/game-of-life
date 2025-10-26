@@ -231,23 +231,29 @@ The backend will start on port 55000.`);
             <Tooltip key={`tt-${s.id || 'shape'}-${idx}`} title={s.description || ''} arrow placement="right" enterDelay={300}>
               <ListItem key={`${s.id || 'shape'}-${idx}`} disablePadding>
                 <ListItemButton onClick={async () => {
-                // fetch full shape by id before returning selection
-                try{
-                  const base = getBaseUrl(backendBase);
-                  const url = new URL(`/v1/shapes/${encodeURIComponent(s.id)}`, base);
-                  const res = await fetch(url.toString());
-                  if(res.ok){
-                    const full = await res.json();
-                    onSelectShape?.(full);
-                    onClose?.();
-                  } else {
-                    // fallback: pass metadata only
+                // Only fetch if shape id is valid
+                if (s.id) {
+                  try {
+                    const base = getBaseUrl(backendBase);
+                    const url = new URL(`/v1/shapes/${encodeURIComponent(s.id)}`, base);
+                    const res = await fetch(url.toString());
+                    if(res.ok){
+                      const full = await res.json();
+                      onSelectShape?.(full);
+                      onClose?.();
+                    } else {
+                      // fallback: pass metadata only
+                      onSelectShape?.(s);
+                      onClose?.();
+                    }
+                  } catch(err) {
+                    logger.warn('Failed to fetch full shape data, using metadata only:', err);
+                    // network error - fallback to metadata
                     onSelectShape?.(s);
                     onClose?.();
                   }
-                }catch(err){
-                  logger.warn('Failed to fetch full shape data, using metadata only:', err);
-                  // network error - fallback to metadata
+                } else {
+                  // No valid id, just use metadata
                   onSelectShape?.(s);
                   onClose?.();
                 }

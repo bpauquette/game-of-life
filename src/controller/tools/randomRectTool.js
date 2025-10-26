@@ -1,4 +1,5 @@
 import logger from '../utils/logger';
+export { flushRandomRectBuffer };
 
 // Randomize cells within a dragged rectangle. Commits on mouseup.
 export const randomRectTool = {
@@ -21,32 +22,47 @@ export const randomRectTool = {
 
   onMouseUp(state, x, y, setCellAlive) {
     if (!state.start) return;
-    
-    // Use final mouse position to compute the rectangle
     const pts = computeRect(state.start.x, state.start.y, x, y);
-    
-    // For large rectangles, warn and potentially limit size
-    if (pts.length > 10000) {
-      logger.warn(`Cancelling randomRect - too large (${pts.length} cells)`);
+    const p = Math.max(0, Math.min(1, state.prob ?? 0.5));
+
+    // Always use controller buffer for double buffering
+  if (pts.length > 500 && globalThis.window !== undefined && globalThis.Worker && state._controller) {
+      try {
+        const worker = new globalThis.Worker(new URL('./randomRectWorker.js', import.meta.url), { type: 'module' });
+        worker.postMessage({ x0: state.start.x, y0: state.start.y, x1: x, y1: y, prob: p });
+        // Clear previous buffer before starting
+        state._controller.randomRectBuffer = null;
+        worker.onmessage = function(e) {
+          const { cells } = e.data;
+          state._controller.randomRectBuffer = cells;
+          worker.terminate();
+        };
+      } catch (err) {
+        logger.error('Failed to start randomRectWorker:', err);
+        // Fallback to synchronous
+        for (const point of pts) {
+          const px = point[0];
+          const py = point[1];
+          const shouldBeAlive = Math.random() < p;
+          setCellAlive(px, py, shouldBeAlive);
+        }
+  }
+  // Do not apply cells yet; wait for buffer
+  state.start = null;
+  state.last = null;
+  state.preview = [];
+    } else {
+      // Small rectangles: synchronous
+      for (const point of pts) {
+        const px = point[0];
+        const py = point[1];
+        const shouldBeAlive = Math.random() < p;
+        setCellAlive(px, py, shouldBeAlive);
+      }
       state.start = null;
       state.last = null;
-      return;
+      state.preview = [];
     }
-    
-    const p = Math.max(0, Math.min(1, state.prob ?? 0.5));
-    
-    // Apply all updates
-    for (const point of pts) {
-      const px = point[0];
-      const py = point[1];
-      const shouldBeAlive = Math.random() < p;
-      setCellAlive(px, py, shouldBeAlive);
-    }
-    
-    // Clear state
-    state.start = null;
-    state.last = null;
-    state.preview = [];
   },
 
   drawOverlay(ctx, state, cellSize, offset) {
@@ -67,13 +83,34 @@ const computeRect = (x0, y0, x1, y1) => {
   const xMax = Math.max(x0, x1);
   const yMin = Math.min(y0, y1);
   const yMax = Math.max(y0, y1);
-  
   const pts = [];
   for (let x = xMin; x <= xMax; x++) {
     for (let y = yMin; y <= yMax; y++) {
       pts.push([x, y]);
     }
   }
-  
   return pts;
+};
+
+/**
+ * Apply any buffered random-rect cells into the grid via setCellAlive and clear the buffer.
+ * Accepts flexible buffer item shapes returned by the worker: [x,y,alive], [x,y], or {x,y,alive}.
+ */
+function flushRandomRectBuffer(state, setCellAlive) {
+  // Prefer controller buffer if available
+  const controller = state?._controller;
+  const buf = controller?.randomRectBuffer ?? state?.randomRectBuffer;
+  if (!buf || typeof setCellAlive !== 'function') return;
+  for (const item of buf) {
+    if (Array.isArray(item)) {
+      const [px, py, alive] = item;
+      const shouldAlive = alive === undefined ? true : !!alive;
+      setCellAlive(px, py, shouldAlive);
+    } else if (item && typeof item === 'object' && 'x' in item && 'y' in item) {
+      setCellAlive(item.x, item.y, !!item.alive);
+    }
+  }
+  // Clear both controller and toolState buffers
+  if (controller) controller.randomRectBuffer = null;
+  state.randomRectBuffer = null;
 }
