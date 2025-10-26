@@ -71,7 +71,7 @@ describe('useCanvasManager', () => {
       height: 600
     };
 
-    Object.defineProperty(global, 'window', {
+  Object.defineProperty(globalThis, 'window', {
       value: {
         devicePixelRatio: 1,
         innerWidth: 800,
@@ -82,7 +82,7 @@ describe('useCanvasManager', () => {
       writable: true
     });
 
-    Object.defineProperty(global, 'requestAnimationFrame', {
+  Object.defineProperty(globalThis, 'requestAnimationFrame', {
       value: jest.fn((cb) => setTimeout(cb, 0)),
       writable: true
     });

@@ -136,7 +136,7 @@ describe('colorSchemes', () => {
   });
 
   it('should have consistent structure across all schemes', () => {
-    for (const [key, scheme] of Object.entries(colorSchemes)) {
+  for (const [, scheme] of Object.entries(colorSchemes)) {
       expect(scheme).toHaveProperty('name');
       expect(scheme).toHaveProperty('background');
       expect(scheme).toHaveProperty('getCellColor');

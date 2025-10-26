@@ -44,7 +44,13 @@ try {
     }
   }
   
-  testPerformance().catch(console.error);
+  try {
+    await testPerformance();
+  } catch (error) {
+    console.log('📝 Performance test requires puppeteer: npm install puppeteer');
+    console.log('✅ Basic cleanup completed - excessive logging removed');
+    console.log('🎯 Application performance test failed:', error);
+  }
   
 } catch (error) {
   console.log('📝 Performance test requires puppeteer: npm install puppeteer');

@@ -45,7 +45,7 @@ function GameOfLifeApp() {
     paletteOpen: false,
     captureData: null
   }), []);
-  const [uiState, setUIStateRaw] = useState(defaultUIState);
+  const [uiState, setUIState] = useState(defaultUIState);
 
   // Always merge updates with defaults to preserve required keys.
   // When merging updates from the model, prefer the current local UI

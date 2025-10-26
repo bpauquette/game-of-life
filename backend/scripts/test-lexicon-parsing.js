@@ -17,7 +17,7 @@ async function testParsing() {
     
     // Show first few patterns as examples
     console.log(`\n=== Sample Patterns ===`);
-    patterns.slice(0, 5).forEach((pattern, i) => {
+  for (const [i, pattern] of patterns.slice(0, 5).entries()) {
       console.log(`${i + 1}. ${pattern.name}`);
       console.log(`   Description: ${pattern.description}`);
       console.log(`   Metadata: ${pattern.metadata || 'none'}`);
