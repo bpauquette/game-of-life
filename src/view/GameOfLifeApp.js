@@ -65,14 +65,14 @@ const GameOfLifeApp = () => {
           ...prev,
           ...newUpdate // user action overrides prev
         };
+      } else {
+        const nextUpdate = update || {};
+        return {
+          ...defaultUIState,
+          ...nextUpdate, // model-provided update
+          ...prev // keep local state (user) last to preserve their actions
+        };
       }
-
-      const nextUpdate = update || {};
-      return {
-        ...defaultUIState,
-        ...nextUpdate, // model-provided update
-        ...prev // keep local state (user) last to preserve their actions
-      };
     });
   }, [defaultUIState]);
   
