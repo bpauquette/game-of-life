@@ -21,22 +21,21 @@ const RECENT_SHAPES_LEFT_OFFSET = 8;
 const RECENT_SHAPES_TOP_OFFSET = 80;
 const RECENT_SHAPES_Z_INDEX = 20;
 
-const GameOfLifeApp = () => {
-  
+function GameOfLifeApp() {
   // Refs
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
-  
+
   // React state for UI components
   const [generation, setGeneration] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  
+
   // Tool and interaction state now managed by model
   const [selectedTool, setSelectedTool] = useState('draw'); // Temp for UI sync
   const [selectedShape, setSelectedShape] = useState(null);
-// Temp for UI sync
+  // Temp for UI sync
   const [cursorCell, setCursorCell] = useState(null); // Temp for UI sync
-  
+
   // UI state managed by model
   const defaultUIState = React.useMemo(() => ({
     showChart: false,
@@ -75,18 +74,18 @@ const GameOfLifeApp = () => {
       }
     });
   }, [defaultUIState]);
-  
+
   // Callback to update selectedShape from model
   const setSelectedModelShape = useCallback((data) => {
     setSelectedShape(data);
   }, []);
-  
+
   // Population stability tracking
   const [popWindowSize, setPopWindowSize] = useState(DEFAULT_POPULATION_WINDOW_SIZE);
   const [popTolerance, setPopTolerance] = useState(DEFAULT_POPULATION_TOLERANCE);
   const [steadyInfo, setSteadyInfo] = useState({ steady: false, period: 0, popChanging: false });
   const steadyDetectedRef = useRef(false);
-  
+
   // Performance tracking managed by model
   const [performanceSettings, setPerformanceSettings] = useState({
     maxFPS: 60,
@@ -113,21 +112,21 @@ const GameOfLifeApp = () => {
   useEffect(() => {
     popWindowSizeRef.current = popWindowSize;
   }, [popWindowSize]);
-  
+
   useEffect(() => {
     popToleranceRef.current = popTolerance;
   }, [popTolerance]);
-  
+
   const updateStabilityDetection = useCallback((game) => {
     const populationHistory = game.getPopulationHistory();
     const liveCells = game.getLiveCells();
-    
+
     // Population stability - use current ref values
     const popSteady = isPopulationStable(populationHistory, popWindowSizeRef.current, popToleranceRef.current);
-    
-    // Pattern period detection  
+
+    // Pattern period detection
     const period = game.detectPeriod();
-    
+
     const detected = popSteady || period > 0;
     setSteadyInfo({
       steady: detected,
@@ -151,8 +150,8 @@ const GameOfLifeApp = () => {
 
     const canvas = canvasRef.current;
     try {
-      const options = { 
-        view: { showCursor: true, colorScheme } 
+      const options = {
+        view: { showCursor: true, colorScheme }
       };
       const game = new GameMVC(canvas, options);
       gameRef.current = game;
@@ -189,7 +188,7 @@ const GameOfLifeApp = () => {
 
       // Wait for all tools to load before enabling interactions
       game.waitForTools().then(() => {
-        
+
         // Initialize React state from model
         setSelectedTool(game.getSelectedTool());
         setSelectedModelShape(game.getSelectedShape());
@@ -211,7 +210,7 @@ const GameOfLifeApp = () => {
       }
     };
   }, [colorScheme, setUIState]); // Re-initialize when color scheme changes  
-  
+
   // Update color scheme in model when it changes
   useEffect(() => {
     if (gameRef.current && colorScheme) {
@@ -231,9 +230,9 @@ const GameOfLifeApp = () => {
   // Setup game event listeners (separate from game creation to avoid circular dependencies)
   useEffect(() => {
     if (!gameRef.current) return;
-    
+
     const game = gameRef.current;
-    
+
     // Setup game event listeners
     game.onModelChange((event, data) => {
       switch (event) {
@@ -320,7 +319,7 @@ const GameOfLifeApp = () => {
       gameRef.current.setSelectedTool(tool);
       setSelectedTool(tool);
     }
-  
+  }, []);
 
   // Game controls
   const step = useCallback(() => {
@@ -379,8 +378,6 @@ const GameOfLifeApp = () => {
     }
   }, [setUIState]);
 
-
-
   const handleSaveCapturedShape = useCallback(async (shapeData) => {
     try {
       const shapeForBackend = {
@@ -391,7 +388,7 @@ const GameOfLifeApp = () => {
           source: 'capture-tool'
         }
       };
-      
+
       delete shapeForBackend.pattern;
 
       const response = await fetch('http://localhost:55000/v1/shapes', {
@@ -409,7 +406,7 @@ const GameOfLifeApp = () => {
 
       const savedShape = await response.json();
       logger.info('Shape saved successfully:', savedShape.name);
-      
+
       return savedShape;
     } catch (error) {
       logger.error('Failed to save captured shape:', error);
@@ -420,17 +417,17 @@ const GameOfLifeApp = () => {
   // Grid loading
   const handleLoadGrid = useCallback((liveCells) => {
     if (!gameRef.current) return;
-    
+
     try {
       gameRef.current.clear();
-      
+
       if (liveCells && liveCells.size > 0) {
         for (const [key] of liveCells.entries()) {
           const [x, y] = key.split(',').map(Number);
           gameRef.current.setCellAlive(x, y, true);
         }
       }
-      
+
       logger.info(`Loaded grid with ${liveCells ? liveCells.size : 0} live cells`);
     } catch (error) {
       logger.error('Failed to load grid:', error);
@@ -477,16 +474,16 @@ const GameOfLifeApp = () => {
   return (
     <div className="canvas-container">
       {/* Left-side recent shapes strip */}
-      <div className="recent-shapes" style={{ 
-        position: 'absolute', 
-        left: RECENT_SHAPES_LEFT_OFFSET, 
-        top: RECENT_SHAPES_TOP_OFFSET, 
-        zIndex: RECENT_SHAPES_Z_INDEX 
+      <div className="recent-shapes" style={{
+        position: 'absolute',
+        left: RECENT_SHAPES_LEFT_OFFSET,
+        top: RECENT_SHAPES_TOP_OFFSET,
+        zIndex: RECENT_SHAPES_Z_INDEX
       }}>
-        <RecentShapesStrip 
+        <RecentShapesStrip
           recentShapes={recentShapes}
           selectShape={selectShape}
-          drawWithOverlay={() => {}} // MVC handles rendering
+          drawWithOverlay={() => {}}
           colorScheme={colorScheme}
           selectedShape={selectedShape}
         />
@@ -504,10 +501,10 @@ const GameOfLifeApp = () => {
         draw={() => {}}
         clear={clear}
         generation={generation}
-        snapshotsRef={{ current: [] }} // Not needed in MVC
+        snapshotsRef={{ current: [] }}
         setSteadyInfo={setSteadyInfo}
         canvasRef={canvasRef}
-        offsetRef={{ current: getViewport() }} // Legacy compatibility
+        offsetRef={{ current: getViewport() }}
         cellSize={getViewport().cellSize}
         setCellAlive={setCellAlive}
         popHistoryRef={{ current: gameRef.current?.getPopulationHistory() || [] }}
@@ -519,10 +516,10 @@ const GameOfLifeApp = () => {
         setPopTolerance={setPopTolerance}
         selectShape={selectShape}
         selectedShape={selectedShape}
-        drawWithOverlay={() => {}} // MVC handles rendering
+        drawWithOverlay={() => {}}
         openPalette={openPalette}
         steadyInfo={steadyInfo}
-        toolStateRef={{ current: {} }} // MVC handles tool state
+        toolStateRef={{ current: {} }}
         cursorCell={cursorCell}
         onLoadGrid={handleLoadGrid}
         showSpeedGauge={uiState.showSpeedGauge}
@@ -554,7 +551,7 @@ const GameOfLifeApp = () => {
 
       <canvas
         ref={canvasRef}
-        style={{ 
+        style={{
           cursor: (selectedShape || selectedTool) ? 'crosshair' : 'default',
           display: 'block',
           width: '100%',
@@ -563,25 +560,21 @@ const GameOfLifeApp = () => {
       />
 
       {uiState.showChart && (
-        <PopulationChart 
-          history={gameRef.current?.getPopulationHistory() || []} 
+        <PopulationChart
+          history={gameRef.current?.getPopulationHistory() || []}
           onClose={() => setShowChart(false)}
           isRunning={isRunning}
         />
       )}
-      
+
       <SpeedGauge
         isVisible={uiState.showSpeedGauge}
         gameRef={gameRef}
         onToggleVisibility={setShowSpeedGauge}
         position={{ top: 10, right: 10 }}
       />
-  
     </div>
   );
-};
-
-// Track component lifecycle
-GameOfLifeApp.displayName = 'GameOfLifeApp';
+}
 
 export default GameOfLifeApp;
