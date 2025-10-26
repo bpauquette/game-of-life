@@ -501,7 +501,7 @@ const GameOfLifeApp = () => {
         isRunning={isRunning}
         setIsRunning={setRunningState}
         step={step}
-        draw={() => {}} // MVC handles rendering automatically
+        draw={() => {}}
         clear={clear}
         generation={generation}
         snapshotsRef={{ current: [] }} // Not needed in MVC
