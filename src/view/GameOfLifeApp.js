@@ -454,9 +454,9 @@ function GameOfLifeApp() {
     let animationFrameId;
     function animationLoop() {
       // Flush randomRect buffer if present (prefer controller buffer)
-      if (gameRef.current && gameRef.current.randomRectBuffer) {
+      if (gameRef.current?.randomRectBuffer) {
         flushRandomRectBuffer({ _controller: gameRef.current }, setCellAlive);
-      } else if (gameRef.current && gameRef.current.toolState?.randomRectBuffer) {
+      } else if (gameRef.current?.toolState?.randomRectBuffer) {
         flushRandomRectBuffer(gameRef.current.toolState, setCellAlive);
       }
       // Continue animation (existing logic)

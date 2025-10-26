@@ -32,8 +32,8 @@ describe('GameRenderer', () => {
     };
 
     // Mock DOM
-    global.window = { devicePixelRatio: 1 };
-    global.document = {
+    globalThis.window = { devicePixelRatio: 1 };
+    globalThis.document = {
       createElement: jest.fn((tagName) => {
         if (tagName === 'canvas') {
           return {
@@ -202,7 +202,7 @@ describe('GameRenderer', () => {
 
   describe('high-DPI support', () => {
     test('should handle device pixel ratio', () => {
-      global.window.devicePixelRatio = 2;
+      globalThis.window.devicePixelRatio = 2;
       
       const scaleSpy = jest.spyOn(renderer.ctx, 'scale');
       
