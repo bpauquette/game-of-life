@@ -15,21 +15,23 @@ export { flushRandomRectBuffer };
 
 // Randomize cells within a dragged rectangle. Commits on mouseup.
 export const randomRectTool = {
+  getOverlay(state, cellSize) {
+    if (!state.start || !state.last) return null;
+    const { ToolOverlay } = require('../../view/GameRenderer');
+    return new ToolOverlay(this, state, cellSize);
+  },
   // Optionally accept a probability in state.prob (0..1)
   onMouseDown(state, x, y) {
     state.start = { x, y };
     state.last = { x, y };
-    // initialize preview array for tests and UI
     state.preview = [];
     if (state.prob == null) state.prob = 0.5;
   },
 
   onMouseMove(state, x, y) {
     if (!state.start) return;
-    // Update last position and compute preview rectangle
     state.last = { x, y };
-    const pts = computeRect(state.start.x, state.start.y, x, y);
-    state.preview = pts;
+    state.preview = computeRect(state.start.x, state.start.y, x, y);
   },
 
   onMouseUp(state, x, y, setCellAlive) {
@@ -47,13 +49,20 @@ export const randomRectTool = {
     }
   },
   drawOverlay(ctx, state, cellSize, offset) {
-    if (!(state?.preview?.length)) return;
-    // semi-transparent white fill similar to other tools
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    for (const pt of state.preview) {
-      const px = pt[0] * cellSize - offset.x;
-      const py = pt[1] * cellSize - offset.y;
-      ctx.fillRect(px, py, cellSize, cellSize);
+    try {
+      if (!state.start || !state.last) return;
+      if (state.preview && state.preview.length > 0) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        for (const pt of state.preview) {
+          const px = pt[0] * cellSize - offset.x;
+          const py = pt[1] * cellSize - offset.y;
+          ctx.fillRect(px, py, cellSize, cellSize);
+        }
+        ctx.restore();
+      }
+    } catch (e) {
+      if (typeof console !== 'undefined') console.warn('RandomRect overlay error:', e);
     }
   }
 };

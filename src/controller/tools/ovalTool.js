@@ -1,5 +1,10 @@
 // Oval (ellipse) perimeter-only tool - axis-aligned, commits on mouseup
 export const ovalTool = {
+  getOverlay(state, cellSize) {
+    if (!state.start || !state.last) return null;
+    const { ToolOverlay } = require('../../view/GameRenderer');
+    return new ToolOverlay(this, state, cellSize);
+  },
   onMouseDown(state, x, y) {
     state.start = { x, y };
     state.last = { x, y };
@@ -26,12 +31,20 @@ export const ovalTool = {
   },
 
   drawOverlay(ctx, state, cellSize, offset) {
-    if (!state.preview || state.preview.length === 0) return;
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    for (const p of state.preview) {
-      const x = p[0];
-      const y = p[1];
-      ctx.fillRect(x * cellSize - offset.x, y * cellSize - offset.y, cellSize, cellSize);
+    try {
+      if (!state.start || !state.last) return;
+      if (state.preview && state.preview.length > 0) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,0,0,0.4)';
+        for (const p of state.preview) {
+          const x = p[0];
+          const y = p[1];
+          ctx.fillRect(x * cellSize - offset.x, y * cellSize - offset.y, cellSize, cellSize);
+        }
+        ctx.restore();
+      }
+    } catch (e) {
+      if (typeof console !== 'undefined') console.warn('Oval overlay error:', e);
     }
   }
 };
