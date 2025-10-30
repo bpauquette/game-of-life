@@ -30,14 +30,11 @@ export const lineTool = {
   },
 
   drawOverlay(renderer, ctx, state, cellSize) {
-    console.log('[lineTool] drawOverlay called');
     if (!state.start || !state.last) {
-      console.log('[lineTool] drawOverlay: missing start or last');
       return;
     }
     const previewPoints = computeLine(state.start.x, state.start.y, state.last.x, state.last.y);
     if (!previewPoints || previewPoints.length === 0) {
-      console.log('[lineTool] drawOverlay: preview is empty or missing');
       return;
     }
   ctx.strokeStyle = 'rgba(0,255,0,0.7)';
@@ -51,20 +48,12 @@ export const lineTool = {
       ctx.fillStyle = 'rgba(0,255,0,0.4)';
       ctx.fillRect(screenCoords.x, screenCoords.y, cellSize, cellSize);
     });
-    console.log(`[lineTool] Overlay: drawn ${previewPoints.length} cell overlays`);
   },
 
   getOverlay(state, cellSize) {
     return {
       draw(renderer) {
         const ctx = renderer.ctx;
-        // Logging for diagnostics
-        console.log('[lineTool] getOverlay.draw called');
-        if (state.preview && state.preview.length > 0) {
-          console.log(`[lineTool] getOverlay.draw preview points: ${state.preview.length}`);
-        } else {
-          console.log('[lineTool] getOverlay.draw: preview is empty or missing');
-        }
         lineTool.drawOverlay(renderer, ctx, state, cellSize);
       }
     };
