@@ -2,11 +2,12 @@
 // Handles all game state, rules, and data operations
 
 import { step as gameStep } from './gameLogic';
-
-const CONST_OPEN = 'Open';
 const CONST_UISTATECHANGED = 'uiStateChanged';
 
 export class GameModel {
+  clear() {
+    this.clearModel();
+  }
   constructor() {
     // Game state
     this.liveCells = new Map();
@@ -38,23 +39,6 @@ export class GameModel {
     this.cursorPosition = null;
     this.lastCursorUpdateTime = 0;
     this.cursorThrottleDelay = 16; // ~60fps throttling for cursor updates
-    // UI state management (not serialized)
-    this.uiState = {
-      helpOpen: false,
-      aboutOpen: false,
-      optionsOpen: false,
-      paletteOpen: false,
-      captureDialogOpen: false,
-      saveDialogOpen: false,
-      loadDialogOpen: false,
-      showChart: false,
-      showSpeedGauge: true,
-      captureData: null,
-      maxFPS: 60,
-      maxGPS: 30,
-      popWindowSize: 10,
-      popTolerance: 0.1
-    };
     // Observers for state changes
     this.observers = new Set();
   }
@@ -183,26 +167,7 @@ export class GameModel {
     return { ...this.viewport };
   }
 
-  setViewportModel(offsetX, offsetY, cellSize, zoom) {
-    const changed =
-      this.viewport.offsetX !== offsetX ||
-      this.viewport.offsetY !== offsetY ||
-      this.viewport.cellSize !== cellSize ||
-      (zoom !== undefined && this.viewport.zoom !== zoom);
-
-    if (changed) {
-      this.viewport.offsetX = offsetX;
-      this.viewport.offsetY = offsetY;
-      this.viewport.cellSize = cellSize;
-      if (zoom !== undefined) {
-        this.viewport.zoom = zoom;
-      }
-      this.notifyObservers('viewportChanged', { ...this.viewport });
-    }
-
-    return changed;
-  }
-
+  
   setOffsetModel(offsetX, offsetY) {
     return this.setViewportModel(offsetX, offsetY, this.viewport.cellSize, this.viewport.zoom);
   }
@@ -273,55 +238,6 @@ export class GameModel {
     return [...this.populationHistory];
   }
 
-  // Viewport operations
-  setViewportModel(offsetX, offsetY, cellSize, zoom) {
-    const changed =
-      this.viewport.offsetX !== offsetX ||
-      this.viewport.offsetY !== offsetY ||
-      this.viewport.cellSize !== cellSize ||
-      (zoom !== undefined && this.viewport.zoom !== zoom);
-
-    if (changed) {
-      this.viewport.offsetX = offsetX;
-      this.viewport.offsetY = offsetY;
-      this.viewport.cellSize = cellSize;
-      if (zoom !== undefined) {
-        this.viewport.zoom = zoom;
-      }
-      this.notifyObservers('viewportChanged', { ...this.viewport });
-    }
-
-    return changed;
-  }
-
-  getViewport() {
-    return { ...this.viewport };
-  }
-
-  // Individual viewport property setters
-  setOffsetModel(offsetX, offsetY) {
-    return this.setViewportModel(offsetX, offsetY, this.viewport.cellSize);
-  }
-
-  setCellSizeModel(cellSize) {
-    // Handle NaN, null, undefined, and invalid values
-    const safeCellSize = (typeof cellSize === 'number' && !Number.isNaN(cellSize)) ? cellSize : this.viewport.cellSize;
-    const clampedSize = Math.max(this.viewport.minCellSize, Math.min(this.viewport.maxCellSize, safeCellSize));
-    return this.setViewportModel(this.viewport.offsetX, this.viewport.offsetY, clampedSize);
-  }
-
-  setZoomModel(zoom) {
-    // Handle NaN, null, undefined, and invalid values
-    const safeZoom = (typeof zoom === 'number' && !Number.isNaN(zoom)) ? zoom : this.viewport.zoom;
-    const clampedZoom = Math.max(0.1, Math.min(10, safeZoom));
-    if (this.viewport.zoom !== clampedZoom) {
-      this.viewport.zoom = clampedZoom;
-      this.notifyObservers('viewportChanged', { ...this.viewport });
-      return true;
-    }
-    return false;
-  }
-
   // Shape operations
   placeShape(x, y, shape) {
     if (!shape || (!shape.cells && !shape.pattern)) return;
@@ -329,6 +245,14 @@ export class GameModel {
     const cells = shape.cells || shape.pattern || [];
     let cellsPlaced = 0;
 
+    cellsPlaced = this.drawShape(cells, x, y, cellsPlaced);
+
+    if (cellsPlaced > 0) {
+      this.notifyObservers('shapePlace', { x, y, shape, cellsPlaced });
+    }
+  }
+
+  drawShape(cells, x, y, cellsPlaced) {
     for (const cell of cells) {
       const hasX = cell && Object.hasOwn(cell, 'x');
       const hasY = cell && Object.hasOwn(cell, 'y');
@@ -353,10 +277,7 @@ export class GameModel {
       this.setCellAliveModel(cellX, cellY, true);
       cellsPlaced++;
     }
-
-    if (cellsPlaced > 0) {
-      this.notifyObservers('shapePlace', { x, y, shape, cellsPlaced });
-    }
+    return cellsPlaced;
   }
 
   // Utility methods
@@ -503,55 +424,8 @@ export class GameModel {
   }
 
   // UI state management operations (not serialized)
-  openDialog(dialogName) {
-    if (this.uiState[dialogName + CONST_OPEN] !== undefined) {
-      this.uiState[dialogName + CONST_OPEN] = true;
-      this.notifyObservers(CONST_UISTATECHANGED, {
-        type: 'dialogOpen',
-        dialog: dialogName,
-        open: true
-      });
-    }
-  }
-
-  closeDialog(dialogName) {
-    if (this.uiState[dialogName + CONST_OPEN] !== undefined) {
-      this.uiState[dialogName + CONST_OPEN] = false;
-      this.notifyObservers(CONST_UISTATECHANGED, {
-        type: 'dialogClose',
-        dialog: dialogName,
-        open: false
-      });
-    }
-  }
-
-  isDialogOpen(dialogName) {
-    return this.uiState[dialogName + CONST_OPEN] || false;
-  }
-
-  setUIStateModel(key, value) {
-    if (this.uiState[key] !== value) {
-      this.uiState[key] = value;
-      this.notifyObservers(CONST_UISTATECHANGED, {
-        type: 'stateChange',
-        key,
-        value
-      });
-    }
-  }
-
-  getUIState(key) {
-    return this.uiState[key];
-  }
-
-  getAllUIState() {
-    return { ...this.uiState };
-  }
 
   // Convenience methods for common UI operations
-  toggleChart() {
-    this.setUIStateModel('showChart', !this.uiState.showChart);
-  }
   clearModel() {
     this.liveCells.clear();
     this.generation = 0;
@@ -575,14 +449,7 @@ export class GameModel {
   }
 
   setCaptureDataModel(data) {
-    this.uiState.captureData = data;
-    if (data) {
-      this.openDialog('captureDialog');
-    }
-    this.notifyObservers(CONST_UISTATECHANGED, {
-      type: 'captureDataChanged',
-      data
-    });
+    // No-op: UI state now managed in React
   }
 
   getCaptureData() {
@@ -591,52 +458,47 @@ export class GameModel {
 
   // Performance settings
   setMaxFPSModel(fps) {
-    this.setUIStateModel('maxFPS', Math.max(1, Math.min(240, fps)));
+  // No-op: UI state now managed in React
   }
 
   getMaxFPS() {
-    return this.uiState.maxFPS;
+  return 60;
   }
 
   setMaxGPS(gps) {
-    this.setUIStateModel('maxGPS', Math.max(1, Math.min(120, gps)));
+  // No-op: UI state now managed in React
   }
 
   getMaxGPS() {
-    return this.uiState.maxGPS;
+  return 30;
   }
 
   // Combined performance settings methods
   getPerformanceSettings() {
     return {
-      maxFPS: this.uiState.maxFPS,
-      maxGPS: this.uiState.maxGPS
+      maxFPS: 60,
+      maxGPS: 30
     };
   }
 
   setPerformanceSettingsModel(settings) {
-    if (settings.maxFPS !== undefined) {
-      this.setMaxFPSModel(settings.maxFPS);
-    }
-    if (settings.maxGPS !== undefined) {
-      this.setMaxGPS(settings.maxGPS);
-    }
+    // No-op: UI state now managed in React
   }
 
   // Population stability settings
   setPopulationWindowSizeModel(size) {
-    this.setUIStateModel('popWindowSize', Math.max(5, Math.min(100, size)));
+  // No-op: UI state now managed in React
   }
 
   getPopulationWindowSize() {
-    return this.uiState.popWindowSize;
+  return 10;
   }
 
   setPopulationToleranceModel(tolerance) {
-    this.setUIStateModel('popTolerance', Math.max(0.01, Math.min(1, tolerance)));
+  // No-op: UI state now managed in React
   }
 
   getPopulationTolerance() {
-    return this.uiState.popTolerance;
+  return 0.1;
   }
 }

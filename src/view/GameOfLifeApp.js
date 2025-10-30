@@ -1,5 +1,6 @@
-// GameOfLifeApp.js - React UI wrapper for the MVC Game of Life system
 import React, { useRef, useEffect, useCallback, useState } from 'react';
+import SelectedToolIndicator from './SelectedToolIndicator';
+import useCanvasManager from '../view/hooks/useCanvasManager';
 import { GameMVC } from '../controller/GameMVC';
 import ControlsBar from '../view/ControlsBar';
 import PopulationChart from '../view/PopulationChart';
@@ -7,13 +8,29 @@ import ShapePaletteDialog from '../view/ShapePaletteDialog';
 import CaptureShapeDialog from '../view/CaptureShapeDialog';
 import RecentShapesStrip from '../view/RecentShapesStrip';
 import SpeedGauge from '../view/SpeedGauge';
-import { flushRandomRectBuffer } from '../controller/tools/randomRectTool';
+import { flushRandomRectBuffer, randomRectTool } from '../controller/tools/randomRectTool';
 import { useShapeManager } from '../view/hooks/useShapeManager';
 import { colorSchemes } from '../model/colorSchemes';
 import isPopulationStable from '../controller/utils/populationUtils';
 import logger from '../controller/utils/logger';
 import '../view/GameOfLife.css';
-
+import { drawTool } from '../controller/tools/drawTool';
+import { lineTool } from '../controller/tools/lineTool';
+import { rectTool } from '../controller/tools/rectTool';
+import { circleTool } from '../controller/tools/circleTool';
+import { ovalTool } from '../controller/tools/ovalTool';
+import { shapesTool } from '../controller/tools/shapesTool';
+import PropTypes from 'prop-types';
+// Fill toolMap with available tools
+const toolMap = {
+  draw: drawTool,
+  line: lineTool,
+  rect: rectTool,
+  circle: circleTool,
+  oval: ovalTool,
+  shapes: shapesTool,
+  randomRect: randomRectTool
+};
 // Constants
 const DEFAULT_POPULATION_WINDOW_SIZE = 50;
 const DEFAULT_POPULATION_TOLERANCE = 3;
@@ -21,22 +38,36 @@ const RECENT_SHAPES_LEFT_OFFSET = 8;
 const RECENT_SHAPES_TOP_OFFSET = 80;
 const RECENT_SHAPES_Z_INDEX = 20;
 
-function GameOfLifeApp() {
+
+
+/* eslint-disable sonarjs/cognitive-complexity */
+function GameOfLifeApp(props) {
+
+  // Helper: handle model change events - defined after updateStabilityDetection
+  // const handleModelChange = ... (moved below)
+  // Viewport helpers for legacy components
+  // Callback to show/hide chart
+  const setShowChart = useCallback((show) => {
+    setUIState(prev => ({ ...prev, showChart: show }));
+  }, []);
+  // Refs
+
+  // Viewport helpers for legacy components
+  // Destructure props for useEffect dependencies
+  const { onModelReady, initialUIState } = props;
+
   // Refs
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
 
-  // React state for UI components
+  // UI state hooks
   const [generation, setGeneration] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-
-  // Tool and interaction state now managed by model
-  const [selectedTool, setSelectedTool] = useState('draw'); // Temp for UI sync
+  const [selectedTool, setSelectedTool] = useState('draw');
   const [selectedShape, setSelectedShape] = useState(null);
-  // Temp for UI sync
-  const [cursorCell, setCursorCell] = useState(null); // Temp for UI sync
+  const [cursorCell, setCursorCell] = useState(null);
 
-  // UI state managed by model
+  // UI state managed locally in React
   const defaultUIState = React.useMemo(() => ({
     showChart: false,
     showSpeedGauge: true,
@@ -45,35 +76,8 @@ function GameOfLifeApp() {
     paletteOpen: false,
     captureData: null
   }), []);
-  const [uiState, setUIState] = useState(defaultUIState);
+  const [uiState, setUIState] = useState(initialUIState || defaultUIState);
 
-  // Always merge updates with defaults to preserve required keys.
-  // When merging updates from the model, prefer the current local UI
-  // state (prev) so user-initiated UI actions (like opening a palette)
-  // are not immediately overwritten by the model during initialization.
-  const setUIState = useCallback((update) => {
-    setUIStateRaw(prev => {
-      // If update is a function, we treat it as a user-initiated change and
-      // allow it to override the previous local state. If it's an object,
-      // we assume it's coming from the model and avoid overwriting user
-      // interactions by keeping prev values last.
-      if (typeof update === 'function') {
-        const newUpdate = update(prev) || {};
-        return {
-          ...defaultUIState,
-          ...prev,
-          ...newUpdate // user action overrides prev
-        };
-      } else {
-        const nextUpdate = update || {};
-        return {
-          ...defaultUIState,
-          ...nextUpdate, // model-provided update
-          ...prev // keep local state (user) last to preserve their actions
-        };
-      }
-    });
-  }, [defaultUIState]);
 
   // Callback to update selectedShape from model
   const setSelectedModelShape = useCallback((data) => {
@@ -117,6 +121,24 @@ function GameOfLifeApp() {
     popToleranceRef.current = popTolerance;
   }, [popTolerance]);
 
+  // Viewport helpers for legacy components - defined early
+  const getViewport = useCallback(() => {
+    if (gameRef.current && typeof gameRef.current.getViewport === 'function') {
+      return gameRef.current.getViewport();
+    }
+    return { offsetX: 0, offsetY: 0, cellSize: 8 };
+  }, []);
+
+  const getLiveCells = useCallback(() => {
+    return gameRef.current ? gameRef.current.getLiveCells() : new Map();
+  }, []);
+
+  const setCellAlive = useCallback((x, y, alive) => {
+    if (gameRef.current) {
+      gameRef.current.setCellAlive(x, y, alive);
+    }
+  }, []);
+
   const updateStabilityDetection = useCallback((game) => {
     const populationHistory = game.getPopulationHistory();
     const liveCells = game.getLiveCells();
@@ -129,8 +151,7 @@ function GameOfLifeApp() {
 
     const detected = popSteady || period > 0;
     setSteadyInfo({
-      steady: detected,
-      period: period || (popSteady ? 1 : 0),
+      steady: detected, period: period || (popSteady ? 1 : 0),
       popChanging: !popSteady
     });
 
@@ -141,6 +162,37 @@ function GameOfLifeApp() {
       steadyDetectedRef.current = false;
     }
   }, []); // No dependencies - use refs for current values
+
+  // Event handler helpers - broken down for reduced complexity
+  const handleGameStep = useCallback((data, game) => {
+    setGeneration(data.generation);
+    if (game) updateStabilityDetection(game);
+  }, [updateStabilityDetection]);
+
+  const handleGameCleared = useCallback(() => {
+    setGeneration(0);
+    steadyDetectedRef.current = false;
+    setSteadyInfo({ steady: false, period: 0, popChanging: false });
+  }, []);
+
+  // Event type to handler mapping
+  const eventHandlers = React.useMemo(() => ({
+    'selectedToolChanged': (data) => setSelectedTool(data),
+    'selectedShapeChanged': (data) => setSelectedShape(data),
+    'cursorPositionChanged': (data) => setCursorCell(data),
+    'gameStep': handleGameStep,
+    'runningStateChanged': (data) => setIsRunning(data.isRunning),
+    'performanceSettingsChanged': (data) => setPerformanceSettings(data),
+    'gameCleared': handleGameCleared
+  }), [handleGameStep, handleGameCleared]);
+
+  // Helper: handle model change events
+  const handleModelChange = useCallback((event, data, game) => {
+    const handler = eventHandlers[event];
+    if (handler) {
+      handler(data, game);
+    }
+  }, [eventHandlers]);
 
   // Initialize MVC system once canvas is available
   useEffect(() => {
@@ -157,46 +209,21 @@ function GameOfLifeApp() {
       gameRef.current = game;
 
       // Setup model observers to sync React state
-      game.onModelChange((event, data) => {
-        switch (event) {
-          case 'selectedToolChanged':
-            setSelectedTool(data);
-            break;
-          case 'selectedShapeChanged':
-            setSelectedModelShape(data);
-            break;
-          case 'cursorPositionChanged':
-            setCursorCell(data);
-            break;
-          case 'gameStep':
-            setGeneration(data.generation);
-            break;
-          case 'runningStateChanged':
-            setIsRunning(data.isRunning);
-            break;
-          case 'uiStateChanged':
-            setUIState(data);
-            break;
-          case 'performanceSettingsChanged':
-            setPerformanceSettings(data);
-            break;
-          default:
-            // Other events not handled by this component
-            break;
-        }
-      });
+      game.onModelChange((event, data) => handleModelChange(event, data, game));
 
       // Wait for all tools to load before enabling interactions
       game.waitForTools().then(() => {
-
         // Initialize React state from model
         setSelectedTool(game.getSelectedTool());
         setSelectedModelShape(game.getSelectedShape());
         setCursorCell(game.getCursorPosition());
-        setGeneration(game.getGeneration());
-        setIsRunning(game.getIsRunning());
-        setUIState(game.getUIState());
+        setGeneration(game.model.getGeneration());
+        setIsRunning(game.model.getIsRunning());
         setPerformanceSettings(game.getPerformanceSettings());
+        // Notify test code that model is ready
+        if (typeof onModelReady === 'function') {
+          onModelReady(game);
+        }
       });
 
     } catch (error) {
@@ -209,12 +236,13 @@ function GameOfLifeApp() {
         gameRef.current = null;
       }
     };
-  }, [colorScheme, setUIState]); // Re-initialize when color scheme changes  
+  }, [colorScheme, onModelReady, setSelectedModelShape, handleModelChange]);
 
   // Update color scheme in model when it changes
   useEffect(() => {
+    const colorSchemeKey = uiState?.colorSchemeKey || 'spectrum';
     if (gameRef.current && colorScheme) {
-      logger.info('🎨 Updating color scheme to:', uiState.colorSchemeKey);
+      logger.info('🎨 Updating color scheme to:', colorSchemeKey);
       // Set colorScheme in the model for rendering
       gameRef.current.setColorScheme(colorScheme);
       // Update renderer background/grid colors
@@ -225,7 +253,7 @@ function GameOfLifeApp() {
       // Force re-render with new colors
       gameRef.current.controller.requestRender();
     }
-  }, [colorScheme, uiState.colorSchemeKey]);
+  }, [colorScheme, uiState?.colorSchemeKey]); // Add missing dependency
 
   // Setup game event listeners (separate from game creation to avoid circular dependencies)
   useEffect(() => {
@@ -234,28 +262,7 @@ function GameOfLifeApp() {
     const game = gameRef.current;
 
     // Setup game event listeners
-    game.onModelChange((event, data) => {
-      switch (event) {
-        case 'gameStep':
-          setGeneration(data.generation);
-          updateStabilityDetection(game);
-          break;
-        case 'cellChanged':
-          // No longer tracking cellCount in React state
-          break;
-        case 'gameCleared':
-          setGeneration(0);
-          steadyDetectedRef.current = false;
-          setSteadyInfo({ steady: false, period: 0, popChanging: false });
-          break;
-        case 'runningStateChanged':
-          setIsRunning(data.isRunning);
-          break;
-        default:
-          // Handle other events
-          break;
-      }
-    });
+    game.onModelChange((event, data) => handleModelChange(event, data, game));
 
     // Setup performance tracking
     if (globalThis.speedGaugeTracker) {
@@ -267,25 +274,15 @@ function GameOfLifeApp() {
     return () => {
       // No cleanup needed for this effect
     };
-  }, [updateStabilityDetection]); // Only re-run when updateStabilityDetection changes
+  }, [updateStabilityDetection, handleModelChange]);
 
   // UI State management functions
   const setColorSchemeKey = useCallback((key) => {
-    if (gameRef.current) {
-      gameRef.current.setUIState({ colorSchemeKey: key });
-    }
-  }, []);
-
-  const setShowChart = useCallback((show) => {
-    if (gameRef.current) {
-      gameRef.current.setUIState({ showChart: show });
-    }
+    setUIState(prev => ({ ...prev, colorSchemeKey: key }));
   }, []);
 
   const setShowSpeedGauge = useCallback((show) => {
-    if (gameRef.current) {
-      gameRef.current.setUIState({ showSpeedGauge: show });
-    }
+    setUIState(prev => ({ ...prev, showSpeedGauge: show }));
   }, []);
 
   const setMaxFPS = useCallback((maxFPS) => {
@@ -301,9 +298,7 @@ function GameOfLifeApp() {
   }, []);
 
   const setCaptureDialogOpen = useCallback((open) => {
-    if (gameRef.current) {
-      gameRef.current.setUIState({ captureDialogOpen: open });
-    }
+    setUIState(prev => ({ ...prev, captureDialogOpen: open }));
   }, []);
 
   // Component lifecycle tracking
@@ -314,12 +309,9 @@ function GameOfLifeApp() {
   }, []);
 
   // Tool management
-  const handleSetSelectedTool = useCallback((tool) => {
-    if (gameRef.current) {
-      gameRef.current.setSelectedTool(tool);
-      setSelectedTool(tool);
-    }
-  }, []);
+  // Tool selection is managed by React state only
+  // Remove all indirection via model/controller for tool selection
+  // ControlsBar and ToolStatus use selectedTool/setSelectedTool from here
 
   // Game controls
   const step = useCallback(() => {
@@ -341,42 +333,74 @@ function GameOfLifeApp() {
     }
   }, []);
 
+
+  // toolMap is defined at the top level
+  const toolStateRef = useRef({});
+  const canvasManager = useCanvasManager({
+    getLiveCells,
+    cellSize: getViewport().cellSize,
+    offsetRef: { current: getViewport() },
+    colorScheme,
+    selectedTool,
+    toolMap,
+    toolStateRef,
+    setCellAlive,
+    scheduleCursorUpdate: () => {},
+    selectedShape,
+    placeShape: () => {},
+    logger
+  });
+
   // Shape management
   const {
     recentShapes,
-    selectShape,
-    selectShapeAndClosePalette
+    selectShape: selectShapeFromHook,
+    selectShapeAndClosePalette: selectShapeAndClosePaletteFromHook
   } = useShapeManager({
     selectedShape,
     setSelectedShape,
     selectedTool,
-    handleSetSelectedTool,
-    toolStateRef: { current: {} }, // MVC handles tool state internally
-    drawWithOverlay: () => {} // MVC handles rendering automatically
+    toolStateRef,
+    drawWithOverlay: canvasManager.drawWithOverlay
   });
+
+  // Wrapper to sync shape selection with game controller
+  const selectShape = useCallback((shape) => {
+    selectShapeFromHook(shape);
+    if (gameRef.current && typeof gameRef.current.setSelectedShape === 'function') {
+      gameRef.current.setSelectedShape(shape);
+    }
+    // When a shape is selected, switch to shapes tool
+    if (shape) {
+      setSelectedTool('shapes');
+      if (gameRef.current && typeof gameRef.current.setSelectedTool === 'function') {
+        gameRef.current.setSelectedTool('shapes');
+      }
+    }
+  }, [selectShapeFromHook]);
+
+  const selectShapeAndClosePalette = useCallback((shape) => {
+    selectShapeAndClosePaletteFromHook(shape);
+    if (gameRef.current && typeof gameRef.current.setSelectedShape === 'function') {
+      gameRef.current.setSelectedShape(shape);
+    }
+    // When a shape is selected, switch to shapes tool
+    if (shape) {
+      setSelectedTool('shapes');
+      if (gameRef.current && typeof gameRef.current.setSelectedTool === 'function') {
+        gameRef.current.setSelectedTool('shapes');
+      }
+    }
+  }, [selectShapeAndClosePaletteFromHook]);
 
   // Centralized palette management through model
   const openPalette = useCallback(() => {
-    if (gameRef.current) {
-      gameRef.current.openDialog('palette');
-      // Also optimistically update local UI state so tests and UI
-      // interactions immediately reflect the user's intent without
-      // waiting for model change events.
-      setUIState(prev => ({ ...prev, paletteOpen: true }));
-    } else {
-      // When running in tests without MVC, toggle local uiState to open the dialog
-      setUIState(prev => ({ ...prev, paletteOpen: true }));
-    }
-  }, [setUIState]);
+    setUIState(prev => ({ ...prev, paletteOpen: true }));
+  }, []);
 
   const closePalette = useCallback(() => {
-    if (gameRef.current) {
-      gameRef.current.closeDialog('palette');
-      setUIState(prev => ({ ...prev, paletteOpen: false }));
-    } else {
-      setUIState(prev => ({ ...prev, paletteOpen: false }));
-    }
-  }, [setUIState]);
+    setUIState(prev => ({ ...prev, paletteOpen: false }));
+  }, []);
 
   const handleSaveCapturedShape = useCallback(async (shapeData) => {
     try {
@@ -434,20 +458,7 @@ function GameOfLifeApp() {
     }
   }, []);
 
-  // Viewport helpers for legacy components
-  const getViewport = useCallback(() => {
-    return gameRef.current ? gameRef.current.getViewport() : { offsetX: 0, offsetY: 0, cellSize: 8 };
-  }, []);
 
-  const getLiveCells = useCallback(() => {
-    return gameRef.current ? gameRef.current.getLiveCells() : new Map();
-  }, []);
-
-  const setCellAlive = useCallback((x, y, alive) => {
-    if (gameRef.current) {
-      gameRef.current.setCellAlive(x, y, alive);
-    }
-  }, []);
 
   // Animation loop integration for double buffering
   useEffect(() => {
@@ -483,54 +494,75 @@ function GameOfLifeApp() {
         <RecentShapesStrip
           recentShapes={recentShapes}
           selectShape={selectShape}
-          drawWithOverlay={() => {}}
+          drawWithOverlay={canvasManager.drawWithOverlay}
           colorScheme={colorScheme}
           selectedShape={selectedShape}
         />
       </div>
 
-      <ControlsBar
-        selectedTool={selectedTool}
-        setSelectedTool={handleSetSelectedTool}
-        colorSchemeKey={uiState.colorSchemeKey}
-        setColorSchemeKey={setColorSchemeKey}
-        colorSchemes={colorSchemes}
-        isRunning={isRunning}
-        setIsRunning={setRunningState}
-        step={step}
-        draw={() => {}}
-        clear={clear}
-        generation={generation}
-        snapshotsRef={{ current: [] }}
-        setSteadyInfo={setSteadyInfo}
-        canvasRef={canvasRef}
-        offsetRef={{ current: getViewport() }}
-        cellSize={getViewport().cellSize}
-        setCellAlive={setCellAlive}
-        popHistoryRef={{ current: gameRef.current?.getPopulationHistory() || [] }}
-        setShowChart={setShowChart}
-        getLiveCells={getLiveCells}
-        popWindowSize={popWindowSize}
-        setPopWindowSize={setPopWindowSize}
-        popTolerance={popTolerance}
-        setPopTolerance={setPopTolerance}
-        selectShape={selectShape}
-        selectedShape={selectedShape}
-        drawWithOverlay={() => {}}
-        openPalette={openPalette}
-        steadyInfo={steadyInfo}
-        toolStateRef={{ current: {} }}
-        cursorCell={cursorCell}
-        onLoadGrid={handleLoadGrid}
-        showSpeedGauge={uiState.showSpeedGauge}
-        setShowSpeedGauge={setShowSpeedGauge}
-        maxFPS={performanceSettings.maxFPS}
-        setMaxFPS={setMaxFPS}
-        maxGPS={performanceSettings.maxGPS}
-        setMaxGPS={setMaxGPS}
-      />
+      {/* Main controls row */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: 8, marginBottom: 8 }}>
+        <div style={{ flex: 1 }}>
+          <ControlsBar
+            selectedTool={selectedTool}
+            setSelectedTool={tool => {
+              setSelectedTool(tool);
+              if (gameRef.current && typeof gameRef.current.setSelectedTool === 'function') {
+                gameRef.current.setSelectedTool(tool);
+              }
+            }}
+            colorSchemeKey={uiState?.colorSchemeKey || 'spectrum'}
+            setColorSchemeKey={setColorSchemeKey}
+            colorSchemes={colorSchemes}
+            isRunning={isRunning}
+            setIsRunning={setRunningState}
+            step={step}
+            draw={canvasManager.drawWithOverlay}
+            clear={clear}
+            generation={generation}
+            snapshotsRef={{ current: [] }}
+            setSteadyInfo={setSteadyInfo}
+            canvasRef={canvasRef}
+            offsetRef={{ current: getViewport() }}
+            cellSize={getViewport().cellSize}
+            setCellAlive={setCellAlive}
+            popHistoryRef={{ current: (gameRef.current && typeof gameRef.current.getPopulationHistory === 'function') ? gameRef.current.getPopulationHistory() : [] }}
+            setShowChart={setShowChart}
+            getLiveCells={getLiveCells}
+            popWindowSize={popWindowSize}
+            setPopWindowSize={setPopWindowSize}
+            popTolerance={popTolerance}
+            setPopTolerance={setPopTolerance}
+            selectShape={selectShape}
+            selectedShape={selectedShape}
+            drawWithOverlay={canvasManager.drawWithOverlay}
+            openPalette={openPalette}
+            steadyInfo={steadyInfo}
+            toolStateRef={toolStateRef}
+            cursorCell={cursorCell}
+            onLoadGrid={handleLoadGrid}
+            showSpeedGauge={uiState?.showSpeedGauge ?? true}
+            setShowSpeedGauge={setShowSpeedGauge}
+            maxFPS={performanceSettings.maxFPS}
+            setMaxFPS={setMaxFPS}
+            maxGPS={performanceSettings.maxGPS}
+            setMaxGPS={setMaxGPS}
+          />
+        </div>
+      </div>
 
-      {uiState.paletteOpen && (
+      {/* Selected tool indicator - bottom center */}
+      <div style={{
+        position: 'fixed',
+        bottom: 20,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 1000
+      }}>
+        <SelectedToolIndicator selectedTool={selectedTool} />
+      </div>
+
+      {(uiState?.paletteOpen ?? false) && (
         <ShapePaletteDialog
           open={uiState.paletteOpen}
           onClose={() => closePalette(true)}
@@ -540,7 +572,7 @@ function GameOfLifeApp() {
         />
       )}
 
-      {uiState.captureDialogOpen && (
+      {(uiState?.captureDialogOpen ?? false) && (
         <CaptureShapeDialog
           open={uiState.captureDialogOpen}
           onClose={() => setCaptureDialogOpen(false)}
@@ -559,16 +591,16 @@ function GameOfLifeApp() {
         }}
       />
 
-      {uiState.showChart && (
+      {(uiState?.showChart ?? false) && (
         <PopulationChart
-          history={gameRef.current?.getPopulationHistory() || []}
+          history={(gameRef.current && typeof gameRef.current.getPopulationHistory === 'function') ? gameRef.current.getPopulationHistory() : []}
           onClose={() => setShowChart(false)}
           isRunning={isRunning}
         />
       )}
 
       <SpeedGauge
-        isVisible={uiState.showSpeedGauge}
+        isVisible={uiState?.showSpeedGauge ?? true}
         gameRef={gameRef}
         onToggleVisibility={setShowSpeedGauge}
         position={{ top: 10, right: 10 }}
@@ -576,5 +608,10 @@ function GameOfLifeApp() {
     </div>
   );
 }
+
+GameOfLifeApp.propTypes = {
+  onModelReady: PropTypes.func,
+  initialUIState: PropTypes.object
+};
 
 export default GameOfLifeApp;

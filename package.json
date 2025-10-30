@@ -31,6 +31,7 @@
     "backend:status": "node ./backend/scripts/manage.js status",
     "lint:css": "stylelint \"src/**/*.css\" || true",
     "lint:js": "eslint -c .eslintrc-sonar.json \"src/**\" --ext .js,.jsx --no-error-on-unmatched-pattern || true",
+    "lint": "npm run lint:js && npm run lint:css",
     "eject": "react-scripts eject"
   },
   "jest": {
@@ -63,7 +64,10 @@
       "globalThis": "readonly"
     },
     "rules": {
-      "sonarjs/cognitive-complexity": ["warn", 15]
+      "sonarjs/cognitive-complexity": [
+        "warn",
+        15
+      ]
     }
   },
   "browserslist": {

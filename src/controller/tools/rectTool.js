@@ -6,6 +6,12 @@ const ARRAY_SECOND_ELEMENT = 1;
 const PERIMETER_BORDER_OFFSET = 1;
 
 export const rectTool = {
+  getOverlay(state) {
+    if (!state.start || !state.last) return null;
+    const { ToolOverlay } = require('../../view/GameRenderer');
+    return new ToolOverlay(this, state, state.cellSize || 8);
+  },
+
   onMouseDown(state, x, y) {
     state.start = { x, y };
     state.last = { x, y };
@@ -15,8 +21,14 @@ export const rectTool = {
   onMouseMove(state, x, y) {
     if (!state.start) return;
     state.last = { x, y };
-    state.preview = computeRectPerimeter(state.start.x, state.start.y, x, y);
+  // Preview is just the rectangle perimeter from start to current
+  state.preview = computeRectPerimeter(state.start.x, state.start.y, x, y);
   },
+
+
+
+}
+
 
   onMouseUp(state, x, y, setCellAlive) {
     if (!state.start) return;

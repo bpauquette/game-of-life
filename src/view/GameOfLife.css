@@ -22,7 +22,7 @@ html, body, #root {
   display: flex;
   gap: 8px;
   align-items: center;
-  background: rgba(0,0,0,0.35);
+  background: rgb(0 0 0 / 35%);
   padding: 8px;
   border-radius: 6px;
   color: white;
@@ -32,6 +32,8 @@ html, body, #root {
 /* Steady-state indicator: placed top-right and isolated from the controls so
    frequent updates to the status bar or tool overlays won't cause layout
    reflows that make the indicator 'jitter'. */
+
+
 /* Pan controls */
 .pan-controls {
   position: absolute;
@@ -44,55 +46,110 @@ html, body, #root {
   align-items: center;
   z-index: 20;
 }
+
+  
 .pan-controls .pan-middle {
   display: flex;
   gap: 8px;
   align-items: center;
 }
+
+  
 .pan-controls button {
-  background: rgba(255,255,255,0.08);
+  background: rgb(255 255 255 / 8%);
   color: white;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid rgb(255 255 255 / 12%);
   padding: 8px 12px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 16px;
 }
-.pan-controls button:hover { background: rgba(255,255,255,0.12); }
 
+.pan-controls button:hover { background: rgb(255 255 255 / 12%); }
+
+  
 /* responsive: move left/right to sides on wide screens, and reduce size on small screens */
-@media (min-width: 800px) {
-  .pan-controls { top: 8px; }
-  .pan-controls .pan-middle { gap: 12px; }
-  .pan-controls .pan-left { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); }
-  .pan-controls .pan-right { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
+
+  
+@media (width >= 800px) {
+  .pan-controls {
+    top: 8px;
+  }
+
+  .pan-controls .pan-middle {
+    gap: 12px;
+  }
+
+  .pan-controls .pan-left {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .pan-controls .pan-right {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
 }
 
-@media (max-width: 480px) {
-  .pan-controls button { padding: 6px 8px; font-size: 14px; }
-}
 
-canvas {
-  display: block; /* remove inline gap */
-  width: 100%;
-  height: 100%;
-}
+  
+@media (width <= 480px) {
+  .pan-controls {
+    top: 8px;
+  }
 
+  .pan-controls .pan-middle {
+    gap: 12px;
+  }
+
+  .pan-controls .pan-left {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .pan-controls .pan-right {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  
+  canvas {
+    display: block; /* remove inline gap */
+    width: 100%;
+  }
+
+  .pan-controls button {
+    padding: 6px 8px;
+    font-size: 14px;
+  }
+}
+  
+  
 .shapes-menu {
   position: absolute;
   z-index: 30;
-  background: rgba(255,255,255,0.95);
+  background: rgb(255 255 255 / 95%);
   color: black;
-  border: 1px solid rgba(0,0,0,0.12);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  border: 1px solid rgb(0 0 0 / 12%);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 25%);
   border-radius: 6px;
   padding: 6px 0;
 }
+
+  
 .shapes-menu-item {
   padding: 6px 12px;
   cursor: pointer;
   white-space: nowrap;
 }
+  
 .shapes-menu-item:hover {
-  background: rgba(0,0,0,0.06);
+  background: rgb(0 0 0 / 6%);
 }

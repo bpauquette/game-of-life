@@ -1,7 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { shapesTool } from './shapesTool';
 
-const CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES = 'should handle negative coordinates';
 const CONST_FUNCTION = 'function';
 
 describe('shapesTool', () => {
@@ -54,7 +53,7 @@ describe('shapesTool', () => {
       expect(toolState.dragging).toBe(true);
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+    it('should handle negative coordinates', () => {
       shapesTool.onMouseDown(toolState, -2, -1);
 
       expect(toolState.start).toEqual({ x: -2, y: -1 });
@@ -92,7 +91,7 @@ describe('shapesTool', () => {
       expect(toolState.last).toEqual({ x: 10, y: 15 });
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+    it('should handle negative coordinates', () => {
       shapesTool.onMouseMove(toolState, -3, -7);
 
       expect(toolState.last).toEqual({ x: -3, y: -7 });
@@ -160,7 +159,7 @@ describe('shapesTool', () => {
       expect(toolState.dragging).toBe(false);
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+    it('should handle negative coordinates', () => {
       toolState.last = { x: -2, y: -3 };
 
       shapesTool.onMouseUp(toolState, 1, 2, mockSetCellAlive, mockPlaceShape);

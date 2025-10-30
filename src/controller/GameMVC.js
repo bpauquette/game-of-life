@@ -1,11 +1,3 @@
-  // Tool selection
-  getSelectedTool() {
-    return this.model.getSelectedTool();
-  }
-
-  getSelectedShape() {
-    return this.model.getSelectedShape();
-  }
 // GameMVC.js - Main orchestrator for MVC pattern
 // Creates and coordinates Model, View, and Controller
 
@@ -14,6 +6,20 @@ import { GameView } from '../view/GameView';
 import { GameController } from './GameController';
 
 export class GameMVC {
+  setSelectedTool(toolName) {
+    if (this.controller && typeof this.controller.setSelectedTool === 'function') {
+      this.controller.setSelectedTool(toolName);
+    }
+  }
+  // Game step
+  step() {
+    return this.model.step();
+  }
+
+  // Population history
+  getPopulationHistory() {
+    return this.model.getPopulationHistory();
+  }
   constructor(canvas, options = {}) {
     // Create MVC components
     this.model = new GameModel();
@@ -26,6 +32,11 @@ export class GameMVC {
 
     // Setup initial state
     this.setupDefaults();
+  }
+
+  // Running state
+  setRunning(isRunning) {
+    this.model.setRunningModel(isRunning);
   }
 
   setupDefaults() {

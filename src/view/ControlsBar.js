@@ -33,7 +33,6 @@ import AboutDialog from './AboutDialog';
 
 // UI Layout Constants  
 const CONTROL_SPACING = 1;
-const TOOL_STATUS_MARGIN_LEFT = 12;
 const STEADY_STATE_PERIOD_INITIAL = 0;
 // ShapePaletteDialog is rendered by the parent (GameOfLife)
 
@@ -161,15 +160,15 @@ const ControlsBar = ({
           size="small"
           onChange={(_, v) => v && setSelectedTool(v)}
         >
-          <ToggleButton value="draw" aria-label="draw"><Tooltip title="Freehand draw"><BrushIcon fontSize="small"/></Tooltip></ToggleButton>
-          <ToggleButton value="line" aria-label="line"><Tooltip title="Line tool"><LineAxisIcon fontSize="small"/></Tooltip></ToggleButton>
-          <ToggleButton value="rect" aria-label="rect"><Tooltip title="Rectangle tool"><CropSquareIcon fontSize="small"/></Tooltip></ToggleButton>
-          <ToggleButton value="circle" aria-label="circle"><Tooltip title="Circle tool"><RadioButtonUncheckedIcon fontSize="small"/></Tooltip></ToggleButton>
-          <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool"><OvalIcon fontSize="small"/></Tooltip></ToggleButton>
-          <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect"><CasinoIcon fontSize="small"/></Tooltip></ToggleButton>
-          <ToggleButton value="capture" aria-label="capture"><Tooltip title="Capture area as shape"><ColorizeIcon fontSize="small"/></Tooltip></ToggleButton>
+          <ToggleButton value="draw" aria-label="draw"><Tooltip title="Freehand draw"><BrushIcon fontSize="small" /></Tooltip></ToggleButton>
+          <ToggleButton value="line" aria-label="line"><Tooltip title="Line tool"><LineAxisIcon fontSize="small" /></Tooltip></ToggleButton>
+          <ToggleButton value="rect" aria-label="rect"><Tooltip title="Rectangle tool"><CropSquareIcon fontSize="small" /></Tooltip></ToggleButton>
+          <ToggleButton value="circle" aria-label="circle"><Tooltip title="Circle tool"><RadioButtonUncheckedIcon fontSize="small" /></Tooltip></ToggleButton>
+          <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool"><OvalIcon fontSize="small" /></Tooltip></ToggleButton>
+          <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect"><CasinoIcon fontSize="small" /></Tooltip></ToggleButton>
+          <ToggleButton value="capture" aria-label="capture"><Tooltip title="Capture area as shape"><ColorizeIcon fontSize="small" /></Tooltip></ToggleButton>
           {/* Palette toggle: opens the ShapePaletteDialog while selected */}
-          <ToggleButton value="shapes" aria-label="shapes" onClick={() => openPalette?.()} data-testid="open-shapes-palette"><Tooltip title="Shapes"><WidgetsIcon fontSize="small"/></Tooltip></ToggleButton>
+          <ToggleButton value="shapes" aria-label="shapes" onClick={() => openPalette?.()} data-testid="open-shapes-palette"><Tooltip title="Shapes"><WidgetsIcon fontSize="small" /></Tooltip></ToggleButton>
         </ToggleButtonGroup>
 
         <Button size="small" onClick={() => { step(); draw(); }}>Step</Button>
@@ -184,21 +183,18 @@ const ControlsBar = ({
         <Button size="small" onClick={() => { clear(); draw(); snapshotsRef.current = []; setSteadyInfo({ steady: false, period: STEADY_STATE_PERIOD_INITIAL, popChanging: false }); }}>Clear</Button>
 
         <Tooltip title="Save current grid state">
-          <span>
-            <Button 
-              size="small" 
-              onClick={openSaveGrid}
-              startIcon={<SaveIcon fontSize="small" />}
-              disabled={getLiveCells().size === 0}
-            >
-              Save
-            </Button>
-          </span>
+          <Button
+            size="small"
+            onClick={openSaveGrid}
+            startIcon={<SaveIcon fontSize="small" />}
+          >
+            Save
+          </Button>
         </Tooltip>
-        
+
         <Tooltip title="Load saved grid state">
-          <Button 
-            size="small" 
+          <Button
+            size="small"
             onClick={openLoadGrid}
             startIcon={<FolderOpenIcon fontSize="small" />}
           >
@@ -206,59 +202,54 @@ const ControlsBar = ({
           </Button>
         </Tooltip>
 
-        <IconButton size="small" onClick={() => setShowChart(true)} aria-label="chart"><BarChartIcon fontSize="small"/></IconButton>
-  {/* palette opener removed; use the palette toggle in the tool group instead */}
-        
-        <IconButton size="small" onClick={openHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small"/></Tooltip></IconButton>
-        <IconButton size="small" onClick={openAbout} aria-label="about"><Tooltip title="About"><InfoIcon fontSize="small"/></Tooltip></IconButton>
-            <IconButton size="small" onClick={openOptions} aria-label="options" data-testid="options-icon-button"><SettingsIcon fontSize="small"/></IconButton>
+        <IconButton size="small" onClick={() => setShowChart(true)} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
+        <IconButton size="small" onClick={openHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
+        <IconButton size="small" onClick={openAbout} aria-label="about"><Tooltip title="About"><InfoIcon fontSize="small" /></Tooltip></IconButton>
+        <IconButton size="small" onClick={openOptions} aria-label="options" data-testid="options-icon-button"><SettingsIcon fontSize="small" /></IconButton>
 
-  <Chip label={`Live Cells: ${getLiveCells().size}`} size="small" variant="outlined" />
+        <Chip label={`Live Cells: ${getLiveCells().size}`} size="small" variant="outlined" />
         <Chip label={`Generation: ${generation}`} size="small" variant="outlined" />
 
-        <div style={{ marginLeft: TOOL_STATUS_MARGIN_LEFT }}>
-          <ToolStatus 
-            selectedTool={selectedTool} 
-            toolStateRef={toolStateRef} 
-            cursorCell={cursorCell} 
-            selectedShape={selectedShape}
-          />
-        </div>
+        <ToolStatus
+          steadyInfo={steadyInfo}
+          toolStateRef={toolStateRef}
+          cursorCell={cursorCell}
+          selectedTool={selectedTool}
+          selectedShape={selectedShape}
+        />
       </Stack>
+      {optionsOpen && (
+        <OptionsPanel
+          colorSchemes={colorSchemes}
+          colorSchemeKey={colorSchemeKey}
+          setColorSchemeKey={setColorSchemeKey}
+          popWindowSize={popWindowSize}
+          setPopWindowSize={setPopWindowSize}
+          popTolerance={popTolerance}
+          setPopTolerance={setPopTolerance}
+          // Performance props
+          showSpeedGauge={showSpeedGauge}
+          setShowSpeedGauge={setShowSpeedGauge}
+          maxFPS={maxFPS}
+          setMaxFPS={setMaxFPS}
+          maxGPS={maxGPS}
+          setMaxGPS={setMaxGPS}
+          onOk={handleOk}
+          onCancel={handleCancel}
+          data-testid-ok="options-ok-button"
+          data-testid-cancel="options-cancel-button"
+        />
+      )}
+      )
 
-            <IconButton size="small" onClick={() => setShowChart(true)} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small"/></IconButton>
-        {optionsOpen && (
-          <OptionsPanel
-            colorSchemes={colorSchemes}
-            colorSchemeKey={colorSchemeKey}
-            setColorSchemeKey={setColorSchemeKey}
-            popWindowSize={popWindowSize}
-            setPopWindowSize={setPopWindowSize}
-            popTolerance={popTolerance}
-            setPopTolerance={setPopTolerance}
-            // Performance props
-            showSpeedGauge={showSpeedGauge}
-            setShowSpeedGauge={setShowSpeedGauge}
-            maxFPS={maxFPS}
-            setMaxFPS={setMaxFPS}
-            maxGPS={maxGPS}
-            setMaxGPS={setMaxGPS}
-            onOk={handleOk}
-            onCancel={handleCancel}
-            data-testid-ok="options-ok-button"
-            data-testid-cancel="options-cancel-button"
-          />
-        )}
-  )
-
-      <HelpDialog 
-        open={helpOpen} 
-        onClose={closeHelp} 
+      <HelpDialog
+        open={helpOpen}
+        onClose={closeHelp}
       />
 
-      <AboutDialog 
-        open={aboutOpen} 
-        onClose={closeAbout} 
+      <AboutDialog
+        open={aboutOpen}
+        onClose={closeAbout}
       />
 
       <SaveGridDialog
@@ -281,7 +272,7 @@ const ControlsBar = ({
         error={gridError}
         loadingGrids={loadingGrids}
       />
-      
+
     </div>
   );
 };

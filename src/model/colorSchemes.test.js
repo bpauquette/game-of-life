@@ -1,7 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { colorSchemes } from './colorSchemes';
 
-const CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND = 'should have correct name and background';
 const CONST_4AFF6C = '#4aff6c';
 const CONST_39FF14 = '#39ff14';
 
@@ -17,7 +16,7 @@ describe('colorSchemes', () => {
   const RETRO_NAME = 'Retro Vector';
   const RETRO_BG = '#001f3f';
   describe('spectrum', () => {
-    it(CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND, () => {
+  it('should have correct name and background', () => {
   expect(colorSchemes.spectrum.name).toBe(SPECTRUM_NAME);
   expect(colorSchemes.spectrum.background).toBe(SPECTRUM_BG);
     });
@@ -53,7 +52,7 @@ describe('colorSchemes', () => {
   });
 
   describe('neon', () => {
-    it(CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND, () => {
+  it('should have correct name and background', () => {
       expect(colorSchemes.neon.name).toBe(NEON_NAME);
       expect(colorSchemes.neon.background).toBe(NEON_BG);
     });
@@ -74,7 +73,7 @@ describe('colorSchemes', () => {
   });
 
   describe('bio', () => {
-    it(CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND, () => {
+  it('should have correct name and background', () => {
       expect(colorSchemes.bio.name).toBe(BIO_NAME);
       expect(colorSchemes.bio.background).toBe(BIO_BG);
     });
@@ -87,7 +86,7 @@ describe('colorSchemes', () => {
   });
 
   describe('ember', () => {
-    it(CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND, () => {
+  it('should have correct name and background', () => {
       expect(colorSchemes.ember.name).toBe(EMBER_NAME);
       expect(colorSchemes.ember.background).toBe(EMBER_BG);
     });
@@ -115,7 +114,7 @@ describe('colorSchemes', () => {
   });
 
   describe('retro', () => {
-    it(CONST_SHOULD_HAVE_CORRECT_NAME_AND_BACKGROUND, () => {
+  it('should have correct name and background', () => {
       expect(colorSchemes.retro.name).toBe(RETRO_NAME);
       expect(colorSchemes.retro.background).toBe(RETRO_BG);
     });

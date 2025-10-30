@@ -1,7 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { circleTool } from './circleTool';
 
-const CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES = 'should handle negative coordinates';
 const CONST_FUNCTION = 'function';
 
 describe('circleTool', () => {
@@ -29,7 +28,7 @@ describe('circleTool', () => {
       expect(toolState.preview).toEqual([]);
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+  it('should handle negative coordinates', () => {
       circleTool.onMouseDown(toolState, -2, -1);
 
       expect(toolState.start).toEqual({ x: -2, y: -1 });
@@ -147,7 +146,7 @@ describe('circleTool', () => {
       expect(toolState.preview.length).toBeGreaterThan(0);
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+  it('should handle negative coordinates', () => {
       toolState.start = { x: -1, y: -1 };
 
       circleTool.onMouseMove(toolState, 1, 1);
@@ -206,7 +205,7 @@ describe('circleTool', () => {
       expect(mockSetCellAlive.mock.calls.length).toBeGreaterThan(4);
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+  it('should handle negative coordinates', () => {
       toolState.start = { x: -2, y: -2 };
 
       circleTool.onMouseUp(toolState, -1, -2, mockSetCellAlive); // radius = 1

@@ -1,4 +1,5 @@
 const CONST_SHAPES = 'shapes';
+const logger = require('./utils/logger').default || require('./utils/logger');
 // GameController.js - Controller layer for Conway's Game of Life
 // Handles user interactions, game loop, and coordination between Model and View
 
@@ -146,6 +147,7 @@ export class GameController {
     }
     this.clearToolState();
     this.clearShapeIfNeeded(toolName);
+    this.model.setSelectedToolModel(toolName);  
   }
 
   eraseShapeOverlay() {
@@ -191,8 +193,12 @@ export class GameController {
     if (shape) {
       // When selecting a shape, auto-switch to shapes tool
       this.model.setSelectedToolModel(CONST_SHAPES);
+      this.model.setSelectedShapeModel(shape);
+      this.model.notifyObservers('selectedShapeChanged', shape);
+    } else {
+      this.model.setSelectedShapeModel(null);
+      this.model.notifyObservers('selectedShapeChanged', null);
     }
-    // The model state is managed by GameMVC
   }
 
   getSelectedShape() {
@@ -212,13 +218,18 @@ export class GameController {
 
   handleMouseMove(cellCoords, event) {
     this.model.setCursorPositionModel(cellCoords);
-    
+
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
+    // Call onMouseMove for drawing tools
+    if (tool?.onMouseMove) {
+      tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, (x, y, alive) => {
+        this.model.setCellAliveModel(x, y, alive);
+      });
+    }
+    // Overlay update for shapes tool
     if (tool?.getOverlay) {
-      // Always update toolState.last for shapes tool
       this.toolState.last = { x: cellCoords.x, y: cellCoords.y };
-      // Trigger a render to show overlay
       this.requestRender();
     }
   }

@@ -1,7 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { ovalTool } from './ovalTool';
 
-const CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES = 'should handle negative coordinates';
 const CONST_FUNCTION = 'function';
 
 describe('ovalTool', () => {
@@ -29,7 +28,7 @@ describe('ovalTool', () => {
       expect(toolState.preview).toEqual([]);
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+  it('should handle negative coordinates', () => {
       ovalTool.onMouseDown(toolState, -2, -1);
 
       expect(toolState.start).toEqual({ x: -2, y: -1 });
@@ -105,7 +104,7 @@ describe('ovalTool', () => {
       expect(toolState.preview.length).toBeGreaterThan(0);
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+  it('should handle negative coordinates', () => {
       toolState.start = { x: -2, y: -2 };
 
       ovalTool.onMouseMove(toolState, 2, 2);
@@ -172,7 +171,7 @@ describe('ovalTool', () => {
       expect(toolState.preview).toEqual([]);
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+  it('should handle negative coordinates', () => {
       toolState.start = { x: -2, y: -2 };
 
       ovalTool.onMouseUp(toolState, 2, 2, mockSetCellAlive);

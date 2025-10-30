@@ -1,7 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { randomRectTool } from './randomRectTool';
 
-const CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES = 'should handle negative coordinates';
 const CONST_FUNCTION = 'function';
 
 describe('randomRectTool', () => {
@@ -63,7 +62,7 @@ describe('randomRectTool', () => {
       expect(toolState.prob).toBe(0.5);
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+  it('should handle negative coordinates', () => {
       randomRectTool.onMouseDown(toolState, -2, -1);
 
       expect(toolState.start).toEqual({ x: -2, y: -1 });
@@ -127,7 +126,7 @@ describe('randomRectTool', () => {
       expect(toolState.preview).toEqual([[5, 5]]);
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+  it('should handle negative coordinates', () => {
       toolState.start = { x: -1, y: -1 };
 
       randomRectTool.onMouseMove(toolState, 1, 1);
@@ -287,7 +286,7 @@ describe('randomRectTool', () => {
       expect(mockSetCellAlive).toHaveBeenCalledTimes(1);
     });
 
-    it(CONST_SHOULD_HANDLE_NEGATIVE_COORDINATES, () => {
+  it('should handle negative coordinates', () => {
       toolState.start = { x: -1, y: -1 };
       toolState.prob = 0.8; // High probability for mostly alive cells
       

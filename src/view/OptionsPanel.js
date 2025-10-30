@@ -39,9 +39,15 @@ const OptionsPanel = ({
   const [localMaxGPS, setLocalMaxGPS] = useState(maxGPS);
 
   const handleOk = () => {
-    try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
-    try { setPopWindowSize(Math.max(1, Number(localWindow) || 1)); } catch (err) { logger.debug('setPopWindowSize failed:', err); }
-    try { setPopTolerance(Math.max(0, Number(localTolerance) || 0)); } catch (err) { logger.debug('setPopTolerance failed:', err); }
+  try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
+  // Clamp and default window size
+  let win = Number.parseInt(localWindow, 10);
+  if (Number.isNaN(win) || win < 1) win = 1;
+  try { setPopWindowSize(win); } catch (err) { logger.debug('setPopWindowSize failed:', err); }
+  // Clamp and default tolerance
+  let tol = Number.parseInt(localTolerance, 10);
+  if (Number.isNaN(tol) || tol < 0) tol = 0;
+  try { setPopTolerance(tol); } catch (err) { logger.debug('setPopTolerance failed:', err); }
     try { setShowSpeedGauge?.(localShowSpeedGauge); } catch (err) { logger.debug('setShowSpeedGauge failed:', err); }
     try { setMaxFPS?.(Math.max(1, Math.min(120, Number(localMaxFPS) || 60))); } catch (err) { logger.debug('setMaxFPS failed:', err); }
     try { setMaxGPS?.(Math.max(1, Math.min(60, Number(localMaxGPS) || 30))); } catch (err) { logger.debug('setMaxGPS failed:', err); }
@@ -87,8 +93,16 @@ const OptionsPanel = ({
               label="Steady window (generations)"
               type="number"
               size="small"
-              value={localWindow}
-              onChange={e => setLocalWindow(e.target.value)}
+              value={(() => { 
+                const v = Number.parseInt(localWindow, 10);
+                if (Number.isNaN(v) || v < 1) return 1;
+                return v;
+              })()}
+              onChange={e => {
+                let v = Number.parseInt(e.target.value, 10);
+                if (Number.isNaN(v) || v < 1) v = 1;
+                setLocalWindow(v);
+              }}
               slotProps={{
                 input: {
                   endAdornment: (
@@ -108,8 +122,16 @@ const OptionsPanel = ({
               label="Population tolerance"
               type="number"
               size="small"
-              value={localTolerance}
-              onChange={e => setLocalTolerance(e.target.value)}
+              value={(() => { 
+                const v = Number.parseInt(localTolerance, 10);
+                if (Number.isNaN(v) || v < 0) return 0;
+                return v;
+              })()}
+              onChange={e => {
+                let v = Number.parseInt(e.target.value, 10);
+                if (Number.isNaN(v) || v < 0) v = 0;
+                setLocalTolerance(v);
+              }}
               slotProps={{
                 input: {
                   endAdornment: (

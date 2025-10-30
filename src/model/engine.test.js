@@ -5,8 +5,8 @@ import { useEngine } from './engine';
 const mockRequestAnimationFrame = jest.fn();
 const mockCancelAnimationFrame = jest.fn();
 
-global.requestAnimationFrame = mockRequestAnimationFrame;
-global.cancelAnimationFrame = mockCancelAnimationFrame;
+globalThis.requestAnimationFrame = mockRequestAnimationFrame;
+globalThis.cancelAnimationFrame = mockCancelAnimationFrame;
 
 describe('useEngine', () => {
   let mockTick;

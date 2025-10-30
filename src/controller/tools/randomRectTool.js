@@ -1,16 +1,16 @@
+import logger from '../utils/logger';
 let createRandomRectWorker;
-if (typeof window !== 'undefined' && typeof globalThis.Worker !== 'undefined') {
-  // Dynamically create the function so import.meta.url is never parsed in Node/Jest
-  createRandomRectWorker = (new Function(
-    'return function() { return new globalThis.Worker(new URL("./randomRectWorker.js", import.meta.url), { type: "module" }); }'
-  ))();
+if (globalThis.window !== undefined && globalThis.Worker !== undefined) {
+  // In browser, use a static string for the worker URL
+  createRandomRectWorker = function() {
+    return new globalThis.Worker(new URL('./randomRectWorker.js', globalThis.window.location.href));
+  };
 } else {
   // In Node/Jest, provide a mock that never references import.meta.url
   createRandomRectWorker = function() {
     return { postMessage: () => {}, terminate: () => {}, onmessage: null };
   };
 }
-import logger from '../utils/logger';
 export { flushRandomRectBuffer };
 
 // Randomize cells within a dragged rectangle. Commits on mouseup.
@@ -38,50 +38,12 @@ export const randomRectTool = {
     const p = Math.max(0, Math.min(1, state.prob ?? 0.5));
 
     // Always use controller buffer for double buffering
-    if (pts.length > 500 && typeof window !== 'undefined' && typeof globalThis.Worker !== 'undefined' && state._controller) {
-      let isJest = typeof process !== 'undefined' && process.env?.JEST_WORKER_ID !== undefined;
-      try {
-        let worker;
-        if (isJest) {
-          // In Jest, mock the Worker to avoid import.meta.url issues
-          worker = { postMessage: () => {}, terminate: () => {}, onmessage: null };
-        } else {
-          worker = createRandomRectWorker();
-        }
-        worker.postMessage({ x0: state.start.x, y0: state.start.y, x1: x, y1: y, prob: p });
-        // Clear previous buffer before starting
-        state._controller.randomRectBuffer = null;
-        worker.onmessage = function(e) {
-          const { cells } = e.data;
-          state._controller.randomRectBuffer = cells;
-          worker.terminate();
-        };
-      } catch (err) {
-        logger.error('Failed to start randomRectWorker:', err);
-        // Fallback to synchronous
-        for (const point of pts) {
-          const px = point[0];
-          const py = point[1];
-          const shouldBeAlive = Math.random() < p;
-          setCellAlive(px, py, shouldBeAlive);
-        }
-      }
-      // Do not apply cells yet; wait for buffer
-      state.start = null;
-      state.last = null;
-      state.preview = [];
+    if (pts.length > 500 && globalThis.window !== undefined && globalThis.Worker !== undefined && state._controller) {
+      drawInWorker(state, x, y, p, pts, setCellAlive);
     }
     else {
       // Small rectangles: synchronous
-      for (const point of pts) {
-        const px = point[0];
-        const py = point[1];
-        const shouldBeAlive = Math.random() < p;
-        setCellAlive(px, py, shouldBeAlive);
-      }
-      state.start = null;
-      state.last = null;
-      state.preview = [];
+      drawSynchronous(pts, p, setCellAlive, state);
     }
   },
   drawOverlay(ctx, state, cellSize, offset) {
@@ -109,6 +71,52 @@ const computeRect = (x0, y0, x1, y1) => {
   }
   return pts;
 };
+
+function drawSynchronous(pts, p, setCellAlive, state) {
+  for (const point of pts) {
+    const px = point[0];
+    const py = point[1];
+    const shouldBeAlive = Math.random() < p;
+    setCellAlive(px, py, shouldBeAlive);
+  }
+  state.start = null;
+  state.last = null;
+  state.preview = [];
+}
+
+function drawInWorker(state, x, y, p, pts, setCellAlive) {
+  let isJest = typeof process !== 'undefined' && process.env?.JEST_WORKER_ID !== undefined;
+  try {
+    let worker;
+    if (isJest) {
+      // In Jest, mock the Worker to avoid import.meta.url issues
+      worker = { postMessage: () => { }, terminate: () => { }, onmessage: null };
+    } else {
+      worker = createRandomRectWorker();
+    }
+    worker.postMessage({ x0: state.start.x, y0: state.start.y, x1: x, y1: y, prob: p });
+    // Clear previous buffer before starting
+    state._controller.randomRectBuffer = null;
+    worker.onmessage = function (e) {
+      const { cells } = e.data;
+      state._controller.randomRectBuffer = cells;
+      worker.terminate();
+    };
+  } catch (err) {
+    logger.error('Failed to start randomRectWorker:', err);
+    // Fallback to synchronous
+    for (const point of pts) {
+      const px = point[0];
+      const py = point[1];
+      const shouldBeAlive = Math.random() < p;
+      setCellAlive(px, py, shouldBeAlive);
+    }
+  }
+  // Do not apply cells yet; wait for buffer
+  state.start = null;
+  state.last = null;
+  state.preview = [];
+}
 
 /**
  * Apply any buffered random-rect cells into the grid via setCellAlive and clear the buffer.

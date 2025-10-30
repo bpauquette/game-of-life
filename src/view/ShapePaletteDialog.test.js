@@ -421,7 +421,13 @@ describe('ShapePaletteDialog', () => {
           fireEvent.click(screen.getByRole(CONST_BUTTON, { name: TEST_TEXT.DELETE_BUTTON }));
       
       await waitFor(() => {
-  // warning logged internally; verify UI state instead
+        // Assert that the UI is in a loading or error state, or that a warning is logged
+        // For example, check that the delete button is disabled or a spinner is shown
+        // If no UI change, assert that the fetch was called
+        expect(fetch).toHaveBeenCalledWith(
+          expect.stringContaining('/v1/shapes/shape-1'),
+          expect.objectContaining({ method: 'DELETE' })
+        );
       });
       
       await waitFor(() => {

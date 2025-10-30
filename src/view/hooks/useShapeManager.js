@@ -54,7 +54,9 @@ export const useShapeManager = ({
   const updateShapeState = useCallback((shape) => {
     const normalizedShape = shape || null;
     setSelectedShape?.(normalizedShape);
-    toolStateRef.current.selectedShapeData = normalizedShape;
+    if (toolStateRef && toolStateRef.current) {
+      toolStateRef.current.selectedShapeData = normalizedShape;
+    }
   }, [setSelectedShape, toolStateRef]);
 
   // Centralized shape selection: updates shape state, recent list, and triggers redraw

@@ -1,5 +1,4 @@
 import { ShapePreviewOverlay } from '../../view/GameRenderer';
-// shapesTool.js — Enhanced shape placement tool with improved UX
 import logger from '../utils/logger';
 
 const SHAPE_PREVIEW_ALPHA = 0.6;
@@ -43,28 +42,6 @@ export const shapesTool = {
       color: PREVIEW_FILL_COLOR
     });
   },
-  // getOverlay(toolState) {
-  //   const sel = toolState.selectedShapeData;
-  //   const last = toolState.last;
-  //   if (!sel || !last) return null;
-
-  //   let cells = [];
-  //   if (Array.isArray(sel)) {
-  //     cells = sel;
-  //   } else if (sel && Array.isArray(sel.cells)) {
-  //     cells = sel.cells;
-  //   } else if (sel && Array.isArray(sel.pattern)) {
-  //     cells = sel.pattern;
-  //   } else {
-  //     return null;
-  //   }
-  //   if (!cells.length) return null;
-
-  //   return new ShapePreviewOverlay(cells, last, {
-  //     alpha: SHAPE_PREVIEW_ALPHA,
-  //     color: PREVIEW_FILL_COLOR
-  //   });
-  // },
   onMouseDown(toolState, x, y) {
     toolState.start = { x, y };
     toolState.last = { x, y };

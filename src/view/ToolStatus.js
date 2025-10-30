@@ -1,7 +1,14 @@
-import React from 'react';
-import PropTypes from 'prop-types';
 
-const fmt = (p) => (p ? `${p.x},${p.y}` : '—');
+
+import React, { useEffect } from 'react';
+import PropTypes from 'prop-types';
+export default function ToolStatus({ selectedTool, toolStateRef, cursorCell, selectedShape, logTool }) {
+  useEffect(() => {
+    if (logTool) logTool(selectedTool);
+  }, [selectedTool, logTool]);
+
+  // Helper to format cell coordinates
+const fmt = (cell) => cell ? `${cell.x},${cell.y}` : '—';
 
 // Helper function to build shape description
 const buildShapeDescription = (shapeInfo, cellCount, dimensions) => {
@@ -57,7 +64,6 @@ const getDefaultToolStatus = (end) => (
   <>Cursor: {end ? `${end.x},${end.y}` : '—'}</>
 );
 
-export default function ToolStatus({ selectedTool, toolStateRef, cursorCell, selectedShape }) {
   const ts = toolStateRef?.current || {};
   const start = ts.start || ts.lastStart || null;
   const end = ts.last || cursorCell || null;
@@ -95,5 +101,6 @@ ToolStatus.propTypes = {
   selectedTool: PropTypes.string.isRequired,
   toolStateRef: PropTypes.object.isRequired,
   cursorCell: PropTypes.object,
-  selectedShape: PropTypes.object
+  selectedShape: PropTypes.object,
+  logTool: PropTypes.func
 };
