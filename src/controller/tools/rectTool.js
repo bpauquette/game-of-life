@@ -26,10 +26,6 @@ export const rectTool = {
   },
 
 
-
-}
-
-
   onMouseUp(state, x, y, setCellAlive) {
     if (!state.start) return;
     const pts = computeRectPerimeter(state.start.x, state.start.y, x, y);
