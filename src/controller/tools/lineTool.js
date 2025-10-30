@@ -29,19 +29,45 @@ export const lineTool = {
     state.preview = [];
   },
 
-  drawOverlay(ctx, state, cellSize, offset) {
-    if (!state.preview || state.preview.length === 0) return;
-    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-    ctx.lineWidth = Math.max(1, Math.min(4, cellSize / 6));
-    ctx.beginPath();
-    let idx = 0;
-    for (const [x, y] of state.preview) {
-      const cx = x * cellSize - offset.x + cellSize / 2;
-      const cy = y * cellSize - offset.y + cellSize / 2;
-      if (idx === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
-      idx++;
+  drawOverlay(renderer, ctx, state, cellSize) {
+    console.log('[lineTool] drawOverlay called');
+    if (!state.start || !state.last) {
+      console.log('[lineTool] drawOverlay: missing start or last');
+      return;
     }
-    ctx.stroke();
+    const previewPoints = computeLine(state.start.x, state.start.y, state.last.x, state.last.y);
+    if (!previewPoints || previewPoints.length === 0) {
+      console.log('[lineTool] drawOverlay: preview is empty or missing');
+      return;
+    }
+  ctx.strokeStyle = 'rgba(0,255,0,0.7)';
+  ctx.lineWidth = cellSize;
+  ctx.beginPath();
+
+    let first = null, last = null;
+    previewPoints.forEach((pt) => {
+      // Draw a filled rectangle for each cell in the line
+      const screenCoords = renderer.cellToScreen(pt[0], pt[1]);
+      ctx.fillStyle = 'rgba(0,255,0,0.4)';
+      ctx.fillRect(screenCoords.x, screenCoords.y, cellSize, cellSize);
+    });
+    console.log(`[lineTool] Overlay: drawn ${previewPoints.length} cell overlays`);
+  },
+
+  getOverlay(state, cellSize) {
+    return {
+      draw(renderer) {
+        const ctx = renderer.ctx;
+        // Logging for diagnostics
+        console.log('[lineTool] getOverlay.draw called');
+        if (state.preview && state.preview.length > 0) {
+          console.log(`[lineTool] getOverlay.draw preview points: ${state.preview.length}`);
+        } else {
+          console.log('[lineTool] getOverlay.draw: preview is empty or missing');
+        }
+        lineTool.drawOverlay(renderer, ctx, state, cellSize);
+      }
+    };
   }
 };
 
