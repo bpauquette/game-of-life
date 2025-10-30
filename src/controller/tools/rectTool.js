@@ -42,27 +42,10 @@ export const rectTool = {
   drawOverlay(ctx, state, cellSize, offset) {
     try {
       if (!state.start || !state.last) return;
-      // Draw perimeter as lines for better visibility
-      const x0 = state.start.x, y0 = state.start.y;
-      const x1 = state.last.x, y1 = state.last.y;
-      const topLeftX = Math.min(x0, x1);
-      const topLeftY = Math.min(y0, y1);
-      const bottomRightX = Math.max(x0, x1);
-      const bottomRightY = Math.max(y0, y1);
-      const screenTopLeftX = topLeftX * cellSize - offset.x;
-      const screenTopLeftY = topLeftY * cellSize - offset.y;
-      const width = (bottomRightX - topLeftX + 1) * cellSize;
-      const height = (bottomRightY - topLeftY + 1) * cellSize;
-      ctx.save();
-  ctx.strokeStyle = 'rgba(255,0,0,1)';
-      ctx.lineWidth = Math.max(2, cellSize / 4);
-      ctx.setLineDash([cellSize / 2, cellSize / 2]);
-      ctx.strokeRect(screenTopLeftX, screenTopLeftY, width, height);
-      ctx.restore();
-      // Also fill preview cells for legacy support
+      // Fill each cell in the computed perimeter, matching final placement
       if (state.preview && state.preview.length > 0) {
         ctx.save();
-  ctx.fillStyle = 'rgba(255,0,0,0.5)';
+        ctx.fillStyle = 'rgba(255,0,0,0.4)';
         for (const p of state.preview) {
           const x = p[ARRAY_FIRST_ELEMENT];
           const y = p[ARRAY_SECOND_ELEMENT];
