@@ -387,15 +387,22 @@ function GameOfLifeApp(props) {
   }, [selectShapeFromHook]);
 
   const selectShapeAndClosePalette = useCallback((shape) => {
+    console.log('[GameOfLifeApp] selectShapeAndClosePalette called with shape:', shape);
     selectShapeAndClosePaletteFromHook(shape);
     if (gameRef.current && typeof gameRef.current.setSelectedShape === 'function') {
+      console.log('[GameOfLifeApp] Calling gameRef.current.setSelectedShape');
       gameRef.current.setSelectedShape(shape);
+    } else {
+      console.warn('[GameOfLifeApp] gameRef.current.setSelectedShape not available');
     }
     // When a shape is selected, switch to shapes tool
     if (shape) {
       setSelectedTool('shapes');
       if (gameRef.current && typeof gameRef.current.setSelectedTool === 'function') {
+        console.log('[GameOfLifeApp] Calling gameRef.current.setSelectedTool');
         gameRef.current.setSelectedTool('shapes');
+      } else {
+        console.warn('[GameOfLifeApp] gameRef.current.setSelectedTool not available');
       }
     }
   }, [selectShapeAndClosePaletteFromHook]);

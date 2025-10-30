@@ -11,6 +11,12 @@ export class GameMVC {
       this.controller.setSelectedTool(toolName);
     }
   }
+
+  setSelectedShape(shape) {
+    if (this.controller && typeof this.controller.setSelectedShape === 'function') {
+      this.controller.setSelectedShape(shape);
+    }
+  }
   // Game step
   step() {
     return this.model.step();

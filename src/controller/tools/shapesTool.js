@@ -1,5 +1,7 @@
+/* eslint-disable sonarjs/no-duplicate-string */
 import { ShapePreviewOverlay } from '../../view/GameRenderer';
 import logger from '../utils/logger';
+
 
 const SHAPE_PREVIEW_ALPHA = 0.6;
 const SHAPE_PREVIEW_STROKE_ALPHA = 0.8;
@@ -11,15 +13,17 @@ const GRID_SNAP_INDICATOR_SIZE = 4;
 
 export const shapesTool = {
   getOverlay(toolState) {
-    const logger = require('../utils/logger').default || require('../utils/logger');
-    logger.debug('[getOverlay] called with toolState:', JSON.stringify(toolState));
+    logger.debug('[shapesTool] getOverlay called with toolState:', JSON.stringify(toolState));
     const sel = toolState.selectedShapeData;
     const last = toolState.last;
-    if (!sel || !last) {
-      logger.debug('[getOverlay] No shape or position for overlay');
+    if (!sel) {
+      logger.warn('[shapesTool] getOverlay: No selectedShapeData');
       return null;
     }
-
+    if (!last) {
+      logger.warn('[shapesTool] getOverlay: No last position');
+      return null;
+    }
     let cells = [];
     if (Array.isArray(sel)) {
       cells = sel;
@@ -28,15 +32,14 @@ export const shapesTool = {
     } else if (sel && Array.isArray(sel.pattern)) {
       cells = sel.pattern;
     } else {
-      logger.debug('[getOverlay] Unknown shape format:', sel);
+      logger.warn('[shapesTool] getOverlay: Unknown shape format', sel);
       return null;
     }
     if (!cells.length) {
-      logger.debug('[getOverlay] Shape has no cells to preview');
+      logger.warn('[shapesTool] getOverlay: Shape has no cells to preview');
       return null;
     }
-
-    logger.debug('[getOverlay] Returning ShapePreviewOverlay with cells:', cells, 'and last:', last);
+  logger.debug('[shapesTool] getOverlay: Returning ShapePreviewOverlay with cells:', cells, 'and last:', last);
     return new ShapePreviewOverlay(cells, last, {
       alpha: SHAPE_PREVIEW_ALPHA,
       color: PREVIEW_FILL_COLOR
@@ -46,26 +49,23 @@ export const shapesTool = {
     toolState.start = { x, y };
     toolState.last = { x, y };
     toolState.dragging = true;
-  const logger = require('../utils/logger').default || require('../utils/logger');
-  logger.debug('Shape tool: Starting drag at', x, y);
+    logger.info('[shapesTool] onMouseDown: drag start at', x, y, 'toolState:', JSON.stringify(toolState));
   },
 
   onMouseMove(toolState, x, y) {
-    // Update preview position for real-time feedback
     toolState.last = { x, y };
-    // Don't log every mouse move to avoid console spam
+    logger.debug('[shapesTool] onMouseMove: moved to', x, y, 'toolState:', JSON.stringify(toolState));
   },
 
   onMouseUp(toolState, x, y, setCellAlive, placeShape) {
     const last = toolState.last || (x === undefined ? null : { x, y });
-  logger.debug('Shape tool: Placing shape at', last);
-    
+    logger.info('[shapesTool] onMouseUp: Placing shape at', last, 'toolState:', JSON.stringify(toolState));
     if (last && placeShape) {
       placeShape(last.x, last.y);
-  logger.info('Shape placed successfully');
+      logger.info('[shapesTool] onMouseUp: Shape placed successfully at', last.x, last.y);
+    } else {
+      logger.warn('[shapesTool] onMouseUp: Cannot place shape, missing last or placeShape');
     }
-    
-    // Clear preview state but keep selectedShapeData for continued placement
     toolState.start = null;
     toolState.last = null;
     toolState.dragging = false;
@@ -75,14 +75,14 @@ export const shapesTool = {
     try {
       const sel = toolState.selectedShapeData;
       const last = toolState.last;
-      
-  if (!sel || !last) {
-    // Debug: log when preview can't be drawn
-    if (!sel) logger.debug('No shape selected for preview');
-    if (!last) logger.debug('No position for shape preview');
-    return;
-  }
-
+      if (!sel) {
+        logger.warn('[shapesTool] drawOverlay: No selectedShapeData');
+        return;
+      }
+      if (!last) {
+        logger.warn('[shapesTool] drawOverlay: No last position');
+        return;
+      }
       // Normalize cells from different formats
       let cells = [];
       if (Array.isArray(sel)) {
@@ -92,23 +92,18 @@ export const shapesTool = {
       } else if (sel && Array.isArray(sel.pattern)) {
         cells = sel.pattern;
       } else {
-  logger.warn('Unknown shape format:', sel);
+        logger.warn('[shapesTool] drawOverlay: Unknown shape format', sel);
         return;
       }
-
       if (!cells.length) {
-  logger.debug('Shape has no cells to preview');
+        logger.warn('[shapesTool] drawOverlay: Shape has no cells to preview');
         return;
       }
-
       ctx.save();
-
       // Draw placement grid indicator (crosshair at placement point)
       this.drawPlacementIndicator(ctx, last, cellSize, computedOffset);
-
       // Draw shape preview with enhanced visibility
       this.drawShapePreview(ctx, cells, last, cellSize, computedOffset);
-
       ctx.restore();
     } catch (err) {
       logger.error('shapesTool.drawOverlay error:', err);

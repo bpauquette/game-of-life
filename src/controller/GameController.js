@@ -200,9 +200,18 @@ export class GameController {
       this.model.setSelectedToolModel(CONST_SHAPES);
       this.model.setSelectedShapeModel(shape);
       this.model.notifyObservers('selectedShapeChanged', shape);
+      // Update toolState for shapes tool overlay
+      if (this.toolState) {
+        this.toolState.selectedShapeData = shape;
+        console.log('[GameController] setSelectedShape: toolState.selectedShapeData updated', shape);
+      }
     } else {
       this.model.setSelectedShapeModel(null);
       this.model.notifyObservers('selectedShapeChanged', null);
+      if (this.toolState) {
+        this.toolState.selectedShapeData = null;
+        console.log('[GameController] setSelectedShape: toolState.selectedShapeData cleared');
+      }
     }
   }
 
@@ -456,9 +465,16 @@ export class GameController {
     }
   }
 
+
   // Tool overlay management
   updateToolOverlay() {
     // Overlay is now derived from tool state in GameView.render
+    // Add debug logging for toolState.selectedShapeData
+    if (this.toolState && Object.prototype.hasOwnProperty.call(this.toolState, 'selectedShapeData')) {
+      console.log('[GameController] updateToolOverlay: toolState.selectedShapeData =', this.toolState.selectedShapeData);
+    } else {
+      console.log('[GameController] updateToolOverlay: toolState.selectedShapeData property not present');
+    }
     this.requestRender();
   }
 
