@@ -41,15 +41,16 @@ export class GameRenderer {
     };
     this.options = {
       backgroundColor: '#000000',
-      gridColor: '#333333',
+  gridColor: '#ffffff',
       cellSaturation: 80,
       cellLightness: 55,
       hueMultiplierX: 2.5,
       hueMultiplierY: 1.7,
       hueMax: 360,
       showGrid: true,
-      ...options
+      ...options,
     };
+    this.options.showGrid = true;
     this.viewport = { width: 0, height: 0 };
     this.colorCache = new Map();
     this.maxColorCacheSize = 10000;
@@ -61,7 +62,14 @@ export class GameRenderer {
    * Update renderer options without recreating the renderer
    */
   updateOptions(newOptions) {
+    const prevGridColor = this.options.gridColor;
     Object.assign(this.options, newOptions);
+    // Always force gridColor to white
+    this.options.gridColor = '#ffffff';
+    // Invalidate grid cache if gridColor changed
+    if (prevGridColor !== this.options.gridColor) {
+      this.gridCache = null;
+    }
     // Clear color cache since colors changed
     this.colorCache.clear();
   }
@@ -256,8 +264,10 @@ export class GameRenderer {
    */
   drawGrid() {
     if (!this.gridCache) {
+      console.log('[GameRenderer] Creating grid cache with cellSize:', this.viewport.cellSize, 'width:', this.viewport.width, 'height:', this.viewport.height, 'showGrid:', this.options.showGrid);
       this._createGridCache();
     }
+    console.log('[GameRenderer] Drawing grid cache');
     this._drawGridCache();
   }
 
@@ -277,24 +287,56 @@ export class GameRenderer {
   }
 
   _drawGridLines(gridCtx) {
-    gridCtx.strokeStyle = this.options.gridColor;
-    gridCtx.beginPath();
-    const centerX = this.viewport.width / 2;
-    const centerY = this.viewport.height / 2;
-    const computedOffset = {
-      x: this.viewport.offsetX * this.viewport.cellSize - centerX,
-      y: this.viewport.offsetY * this.viewport.cellSize - centerY
-    };
-    const startX = -computedOffset.x % this.viewport.cellSize;
-    const startY = -computedOffset.y % this.viewport.cellSize;
-    for (let x = startX; x < this.viewport.width; x += this.viewport.cellSize) {
-      gridCtx.moveTo(Math.floor(x) + this.options.gridLineOffset, 0);
-      gridCtx.lineTo(Math.floor(x) + this.options.gridLineOffset, this.viewport.height);
-    }
-    for (let y = startY; y < this.viewport.height; y += this.viewport.cellSize) {
-      gridCtx.moveTo(0, Math.floor(y) + this.options.gridLineOffset);
-      gridCtx.lineTo(this.viewport.width, Math.floor(y) + this.options.gridLineOffset);
-    }
+  // Hide grid if cell size is extremely small
+  const cellSize = Number(this.viewport.cellSize);
+  if (cellSize < 4) {
+    return;
+  }
+  // Use gray for grid lines, 1px width
+  gridCtx.strokeStyle = '#888';
+  gridCtx.lineWidth = 1;
+  gridCtx.globalAlpha = 1;
+  gridCtx.beginPath();
+
+  const offsetX = Number(this.viewport.offsetX);
+  const offsetY = Number(this.viewport.offsetY);
+  const width = Number(this.viewport.width);
+  const height = Number(this.viewport.height);
+  let gridLineOffset = Number(this.options.gridLineOffset);
+  if (!isFinite(gridLineOffset)) {
+    gridLineOffset = 0;
+  }
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  if (!cellSize || isNaN(cellSize) || cellSize <= 0) {
+    return;
+  }
+  if (isNaN(offsetX) || isNaN(offsetY) || isNaN(width) || isNaN(height)) {
+    return;
+  }
+
+  const computedOffset = {
+    x: offsetX * cellSize - centerX,
+    y: offsetY * cellSize - centerY
+  };
+  const startX = -computedOffset.x % cellSize;
+  const startY = -computedOffset.y % cellSize;
+
+  if (isNaN(startX) || isNaN(startY)) {
+    return;
+  }
+
+  for (let x = startX; x < width; x += cellSize) {
+    const xPos = Math.floor(x) + gridLineOffset;
+    gridCtx.moveTo(xPos, 0);
+    gridCtx.lineTo(xPos, height);
+  }
+  for (let y = startY; y < height; y += cellSize) {
+    const yPos = Math.floor(y) + gridLineOffset;
+    gridCtx.moveTo(0, yPos);
+    gridCtx.lineTo(width, yPos);
+  }
   }
 
   _drawGridCache() {
@@ -409,6 +451,7 @@ export class GameRenderer {
    * Main render method - draws everything
    */
   render(liveCells, colorScheme = null) {
+    console.log('[GameRenderer] render called. cellSize:', this.viewport.cellSize, 'showGrid:', this.options.showGrid);
     // Store colorScheme for use in getCellColor
     this.currentColorScheme = colorScheme;
 
@@ -422,9 +465,15 @@ export class GameRenderer {
     const controller = this.model?.controller;
     if (controller && typeof controller.getCurrentOverlay === 'function') {
       const overlay = controller.getCurrentOverlay();
+      console.log('[GameRenderer] overlay from controller:', overlay ? 'exists' : 'null', overlay);
       if (overlay && typeof overlay.draw === 'function') {
+        console.log('[GameRenderer] calling overlay.draw');
         overlay.draw(this);
+      } else {
+        console.log('[GameRenderer] overlay.draw not found or overlay is null');
       }
+    } else {
+      console.log('[GameRenderer] controller.getCurrentOverlay not found');
     }
   }
 

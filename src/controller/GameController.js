@@ -8,8 +8,12 @@ export class GameController {
   getCurrentOverlay() {
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
+    const cellSize = this.model.getViewport().cellSize;
+    console.log(`[GameController] getCurrentOverlay: selectedTool=${selectedTool}, cellSize=${cellSize}`);
     if (tool?.getOverlay) {
-      return tool.getOverlay(this.toolState);
+      const overlay = tool.getOverlay(this.toolState, cellSize);
+      console.log(`[GameController] getOverlay called for tool=${selectedTool}, overlay=${overlay ? 'exists' : 'null'}`);
+      return overlay;
     }
     return null;
   }
@@ -129,7 +133,8 @@ export class GameController {
   }
 
   setSelectedTool(toolName) {
-    const currentTool = this.model.getSelectedTool();
+  const currentTool = this.model.getSelectedTool();
+  console.log(`[GameController] setSelectedTool: toolName=${toolName}, currentTool=${currentTool}`);
     if (!this.toolMap[toolName] || currentTool === toolName) return;
 
     if (currentTool === CONST_SHAPES && this.model.getSelectedShape()) {
@@ -208,8 +213,9 @@ export class GameController {
   // Mouse event handlers
   handleMouseDown(cellCoords, event) {
     this.mouseState.isDown = true;
-    
-    const tool = this.toolMap[this.model.getSelectedTool()];
+    const selectedTool = this.model.getSelectedTool();
+    const tool = this.toolMap[selectedTool];
+    console.log(`[GameController] handleMouseDown: tool=${selectedTool}, cell=(${cellCoords.x},${cellCoords.y})`);
     if (tool?.onMouseDown) {
       tool.onMouseDown(this.toolState, cellCoords.x, cellCoords.y);
       this.updateToolOverlay();
@@ -218,9 +224,9 @@ export class GameController {
 
   handleMouseMove(cellCoords, event) {
     this.model.setCursorPositionModel(cellCoords);
-
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
+    console.log(`[GameController] handleMouseMove: tool=${selectedTool}, cell=(${cellCoords.x},${cellCoords.y})`);
     // Call onMouseMove for drawing tools
     if (tool?.onMouseMove) {
       tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, (x, y, alive) => {
@@ -235,8 +241,10 @@ export class GameController {
   }
 
   handleMouseUp(cellCoords, event) {
-    this.mouseState.isDown = false;
-    this.handleToolMouseUp(cellCoords);
+  this.mouseState.isDown = false;
+  const selectedTool = this.model.getSelectedTool();
+  console.log(`[GameController] handleMouseUp: tool=${selectedTool}, cell=(${cellCoords?.x},${cellCoords?.y})`);
+  this.handleToolMouseUp(cellCoords);
   }
 
   handleToolMouseUp(cellCoords = null) {
@@ -355,7 +363,8 @@ export class GameController {
   }
 
   clear() {
-    this.model.clear();
+  this.model.clear();
+  this.clearToolState();
   }
 
   setRunning(running) {

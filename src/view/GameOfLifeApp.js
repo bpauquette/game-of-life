@@ -173,6 +173,13 @@ function GameOfLifeApp(props) {
     setGeneration(0);
     steadyDetectedRef.current = false;
     setSteadyInfo({ steady: false, period: 0, popChanging: false });
+    if (gameRef.current && gameRef.current.controller) {
+      gameRef.current.controller.requestRender();
+      // Force a direct render for safety (works even if game loop is stopped)
+      const liveCells = gameRef.current.model.getLiveCells();
+      const viewport = gameRef.current.model.getViewport();
+      gameRef.current.view.render(liveCells, viewport);
+    }
   }, []);
 
   // Event type to handler mapping

@@ -441,6 +441,7 @@ export class GameModel {
       maxCellSize: 200
     };
     this.notifyObservers('modelCleared');
+    this.notifyObservers('gameCleared');
   }
 
   toggleSpeedGauge() {

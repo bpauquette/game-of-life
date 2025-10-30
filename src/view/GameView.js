@@ -16,11 +16,13 @@ export class GameView {
     this.canvas = canvas;
     this.renderer = new GameRenderer(canvas, options);
     this.model = model; // Reference to model for performance tracking
-    
-  // View state
-  this.overlay = null;
+    // Ensure renderer can access model (for overlays)
+    this.renderer.model = this.model;
+
+    // View state
+    this.overlay = null;
     this.isVisible = true;
-    
+
     // Event callbacks
     this.callbacks = {};
   }

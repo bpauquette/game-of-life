@@ -22,9 +22,11 @@ export class GameMVC {
   }
   constructor(canvas, options = {}) {
     // Create MVC components
-    this.model = new GameModel();
-    this.view = new GameView(canvas, options.view, this.model);
-    this.controller = new GameController(this.model, this.view, options.controller);
+  this.model = new GameModel();
+  this.view = new GameView(canvas, options.view, this.model);
+  this.controller = new GameController(this.model, this.view, options.controller);
+  // Ensure overlays work: model.controller must be set
+  this.model.controller = this.controller;
 
     // Track tool loading
     this.toolsLoaded = false;
