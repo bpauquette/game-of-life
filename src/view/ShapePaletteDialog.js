@@ -233,6 +233,9 @@ The backend will start on port 55000.`);
               <ListItem key={`${s.id || 'shape'}-${idx}`} disablePadding>
                 {/* eslint-disable-next-line sonarjs/cognitive-complexity */}
                 <ListItemButton onClick={async () => {
+                // Strategic logging and alert for debugging overlay propagation
+                alert(`Shape selected: ${s.name || s.id || '(unnamed)'} (${s.width}x${s.height})`);
+                logger.info('[ShapePaletteDialog] Shape selected:', s);
                 // Only fetch if shape id is valid
                 if (s.id) {
                   try {
@@ -241,10 +244,13 @@ The backend will start on port 55000.`);
                     const res = await fetch(url.toString());
                     if(res.ok){
                       const full = await res.json();
+                      logger.info('[ShapePaletteDialog] Fetched full shape data:', full);
                       onSelectShape?.(full);
+                      logger.info('[ShapePaletteDialog] onSelectShape called with full shape');
                       onClose?.();
                     } else {
                       // fallback: pass metadata only
+                      logger.warn('[ShapePaletteDialog] Fallback: onSelectShape called with metadata only');
                       onSelectShape?.(s);
                       onClose?.();
                     }
@@ -252,10 +258,12 @@ The backend will start on port 55000.`);
                     logger.warn('Failed to fetch full shape data, using metadata only:', err);
                     // network error - fallback to metadata
                     onSelectShape?.(s);
+                    logger.info('[ShapePaletteDialog] onSelectShape called with metadata only (catch)');
                     onClose?.();
                   }
                 } else {
                   // No valid id, just use metadata
+                  logger.info('[ShapePaletteDialog] onSelectShape called with metadata only (no id)');
                   onSelectShape?.(s);
                   onClose?.();
                 }

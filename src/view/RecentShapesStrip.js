@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { rotateShape } from '../model/shapeTransforms';
 
 // Constants for recent shapes strip
 const RECENT_SHAPES_THUMBNAIL_SIZE = 48;
@@ -32,7 +33,10 @@ const RecentShapesStrip = ({
   selectShape, 
   drawWithOverlay, 
   colorScheme = {},
-  selectedShape = null
+  selectedShape = null,
+  maxSlots = 8,
+  onRotateShape,
+  onSwitchToShapesTool
 }) => {
   const getShapeKey = (shape, index) => {
     // Always include the index to ensure uniqueness even when parent provides
@@ -139,13 +143,20 @@ const RecentShapesStrip = ({
   };
 
   const handleShapeClick = (shape) => {
-    selectShape(shape);
+    // Guarantee controller/model is updated for overlays
+    if (globalThis.gameController && typeof globalThis.gameController.setSelectedShape === 'function') {
+      globalThis.gameController.setSelectedShape(shape);
+    } else if (typeof selectShape === 'function') {
+      selectShape(shape);
+    }
     drawWithOverlay();
+    if (typeof onSwitchToShapesTool === 'function') {
+      onSwitchToShapesTool();
+    }
   };
 
-  if (recentShapes.length === 0) {
-    return null;
-  }
+  // Always show maxSlots slots, fill with empty boxes if needed
+  const slots = Array.from({ length: maxSlots }, (_, i) => recentShapes[i] || null);
 
   return (
     <div 
@@ -171,105 +182,157 @@ const RecentShapesStrip = ({
       >
         Recent Shapes
       </div>
-      {recentShapes.map((shape, index) => {
+      {slots.map((shape, index) => {
+        if (!shape) {
+          // Render empty slot with a stable key
+          const emptyKey = `empty-slot-${index}-${maxSlots}`;
+          return (
+            <div key={emptyKey}
+              style={{
+                marginBottom: SHAPE_MARGIN_BOTTOM,
+                width: RECENT_SHAPES_THUMBNAIL_SIZE,
+                height: RECENT_SHAPES_THUMBNAIL_SIZE,
+                background: '#222',
+                border: `1px dashed #555`,
+                borderRadius: SHAPE_BORDER_RADIUS,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: 0.4
+              }}
+              title="Empty slot"
+            >
+              <span style={{ color: '#888', fontSize: 18 }}>Empty</span>
+            </div>
+          );
+        }
+        // ...existing shape rendering code...
         const key = getShapeKey(shape, index);
         const cells = getShapeCells(shape);
         const { width, height } = getShapeDimensions(cells);
         const title = getShapeTitle(shape, index);
-
         return (
-          <button 
-            key={key} 
-            type="button"
-            style={{ 
-              marginBottom: SHAPE_MARGIN_BOTTOM, 
-              cursor: 'pointer',
-              position: 'relative',
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-              background: 'transparent',
-              border: 'none',
-              padding: 0
-            }} 
-            onClick={() => handleShapeClick(shape)}
-            title={title}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-              if (!isShapeSelected(shape)) {
-                e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_HOVER_COLOR;
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-              if (!isShapeSelected(shape)) {
-                e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_COLOR;
-              }
-            }}
-          >
-            <svg 
-              width={RECENT_SHAPES_THUMBNAIL_SIZE} 
-              height={RECENT_SHAPES_THUMBNAIL_SIZE} 
-              viewBox={`0 0 ${Math.max(1, width)} ${Math.max(1, height)}`} 
-              preserveAspectRatio="xMidYMid meet" 
+          <div key={key} style={{ position: 'relative', marginBottom: SHAPE_MARGIN_BOTTOM }}>
+            <button 
+              type="button"
               style={{ 
-                background: isShapeSelected(shape)
-                  ? `linear-gradient(${SELECTED_BACKGROUND_OVERLAY}, ${SELECTED_BACKGROUND_OVERLAY}), ${colorScheme.background || '#1a1a1a'}`
-                  : colorScheme.background || '#1a1a1a',
-                border: isShapeSelected(shape) 
-                  ? `${SELECTED_BORDER_WIDTH} solid ${SELECTED_BORDER_COLOR}` 
-                  : `1px solid ${SHAPE_BORDER_COLOR}`, 
-                borderRadius: SHAPE_BORDER_RADIUS,
-                boxShadow: isShapeSelected(shape) ? SELECTED_BOX_SHADOW : 'none',
-                transition: 'all 0.3s ease'
+                cursor: 'pointer',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                display: 'block'
+              }} 
+              onClick={() => handleShapeClick(shape)}
+              title={title}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+                if (!isShapeSelected(shape)) {
+                  e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_HOVER_COLOR;
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                if (!isShapeSelected(shape)) {
+                  e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_COLOR;
+                }
               }}
             >
-              {renderGridBackground(width, height, key)}
-              {renderShapeCells(cells, key, colorScheme)}
-            </svg>
-            {isShapeSelected(shape) && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '-3px',
-                  right: '-3px',
-                  width: '16px',
-                  height: '16px',
-                  background: SELECTED_BORDER_COLOR,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '10px',
-                  color: '#000',
-                  fontWeight: 'bold',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                  zIndex: 10
+              <svg 
+                width={RECENT_SHAPES_THUMBNAIL_SIZE} 
+                height={RECENT_SHAPES_THUMBNAIL_SIZE} 
+                viewBox={`0 0 ${Math.max(1, width)} ${Math.max(1, height)}`} 
+                preserveAspectRatio="xMidYMid meet" 
+                style={{ 
+                  background: isShapeSelected(shape)
+                    ? `linear-gradient(${SELECTED_BACKGROUND_OVERLAY}, ${SELECTED_BACKGROUND_OVERLAY}), ${colorScheme.background || '#1a1a1a'}`
+                    : colorScheme.background || '#1a1a1a',
+                  border: isShapeSelected(shape) 
+                    ? `${SELECTED_BORDER_WIDTH} solid ${SELECTED_BORDER_COLOR}` 
+                    : `1px solid ${SHAPE_BORDER_COLOR}`, 
+                  borderRadius: SHAPE_BORDER_RADIUS,
+                  boxShadow: isShapeSelected(shape) ? SELECTED_BOX_SHADOW : 'none',
+                  transition: 'all 0.3s ease'
                 }}
               >
-                ✓
+                {renderGridBackground(width, height, key)}
+                {renderShapeCells(cells, key, colorScheme)}
+              </svg>
+              {isShapeSelected(shape) && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '-3px',
+                    right: '-3px',
+                    width: '16px',
+                    height: '16px',
+                    background: SELECTED_BORDER_COLOR,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '10px',
+                    color: '#000',
+                    fontWeight: 'bold',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                    zIndex: 10
+                  }}
+                >
+                  ✓
+                </div>
+              )}
+              <div 
+                style={{
+                  position: 'absolute',
+                  bottom: '-2px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: LABEL_BACKGROUND,
+                  color: LABEL_COLOR,
+                  fontSize: LABEL_FONT_SIZE,
+                  padding: LABEL_PADDING,
+                  borderRadius: LABEL_BORDER_RADIUS,
+                  whiteSpace: 'nowrap',
+                  maxWidth: `${RECENT_SHAPES_THUMBNAIL_SIZE}px`,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  textAlign: 'center',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+                }}
+              >
+                {title}
               </div>
-            )}
-            <div 
-              style={{
-                position: 'absolute',
-                bottom: '-2px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                background: LABEL_BACKGROUND,
-                color: LABEL_COLOR,
-                fontSize: LABEL_FONT_SIZE,
-                padding: LABEL_PADDING,
-                borderRadius: LABEL_BORDER_RADIUS,
-                whiteSpace: 'nowrap',
-                maxWidth: `${RECENT_SHAPES_THUMBNAIL_SIZE}px`,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                textAlign: 'center',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
-              }}
-            >
-              {title}
+            </button>
+            {/* Rotation controls */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginTop: 2 }}>
+              <button
+                key={`rotate-90-${key}`}
+                type="button"
+                style={{
+                  fontSize: 12,
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  border: '1px solid #444',
+                  background: '#222',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  opacity: 0.8
+                }}
+                title="Rotate 90°"
+                onClick={e => {
+                  e.stopPropagation();
+                  if (typeof onRotateShape === 'function') {
+                    // Rotate shape 90° clockwise, update in place
+                    const rotatedCells = rotateShape(getShapeCells(shape), 90);
+                    // Update the shape in place, do not create a new entry
+                    const rotatedShape = { ...shape, cells: rotatedCells };
+                    onRotateShape(rotatedShape, index, { inPlace: true });
+                  }
+                }}
+              >
+                ⟳90
+              </button>
             </div>
-          </button>
+          </div>
         );
       })}
     </div>
@@ -281,7 +344,10 @@ RecentShapesStrip.propTypes = {
   selectShape: PropTypes.func.isRequired,
   drawWithOverlay: PropTypes.func.isRequired,
   colorScheme: PropTypes.object,
-  selectedShape: PropTypes.object
+  selectedShape: PropTypes.object,
+  maxSlots: PropTypes.number,
+  onRotateShape: PropTypes.func,
+  onSwitchToShapesTool: PropTypes.func
 };
 
 export default RecentShapesStrip;

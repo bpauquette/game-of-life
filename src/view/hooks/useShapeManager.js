@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 const MAX_RECENT_SHAPES = 20;
 
@@ -22,23 +22,20 @@ const MAX_RECENT_SHAPES = 20;
  * @returns {Object} Shape manager interface
  */
 export const useShapeManager = ({
-  selectedShape,
-  setSelectedShape,
+  toolStateRef,
+  drawWithOverlay,
+  model,
   selectedTool,
   setSelectedTool,
-  toolStateRef,
-  drawWithOverlay
+  setSelectedShape
 }) => {
   // Local state for shape management
   const [recentShapes, setRecentShapes] = useState([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const prevToolRef = useRef(null);
 
-  // Always sync toolStateRef.current.selectedShapeData with selectedShape
-  // This ensures overlays work even if selection changes outside palette
-  useEffect(() => {
-    toolStateRef?.current && (toolStateRef.current.selectedShapeData = selectedShape ?? null);
-  }, [selectedShape, toolStateRef]);
+  // Removed aggressive sync of toolStateRef.current.selectedShapeData with selectedShape.
+  // Tool state is now only updated on explicit selection (see selectShape).
 
   // Generate a unique key for shape identification and deduplication
   const generateShapeKey = useCallback((shape) => {
@@ -57,48 +54,82 @@ export const useShapeManager = ({
   }, [generateShapeKey]);
 
   // Update shape state in both game state and tool state
-  const updateShapeState = useCallback((shape) => {
-    const normalizedShape = shape ?? null;
-    if (typeof window !== 'undefined' && window.console) {
-      console.debug('[useShapeManager] updateShapeState called:', normalizedShape);
-      if (toolStateRef?.current) {
-        console.debug('[useShapeManager] toolStateRef.current before:', toolStateRef.current);
-      }
+  // Helper for debug logging to reduce cognitive complexity
+  const debugLog = useCallback((...args) => {
+    if (typeof globalThis !== 'undefined' && globalThis.window && globalThis.console) {
+      console.debug(...args);
     }
-    setSelectedShape?.(normalizedShape);
+  }, []);
+
+  const updateShapeState = useCallback((shape = null) => {
+    debugLog('[useShapeManager] updateShapeState called:', shape);
     if (toolStateRef?.current) {
-      toolStateRef.current.selectedShapeData = normalizedShape;
-      if (typeof window !== 'undefined' && window.console) {
-        console.debug('[useShapeManager] toolStateRef.current.selectedShapeData set:', toolStateRef.current.selectedShapeData);
+      debugLog('[useShapeManager] toolStateRef.current before:', toolStateRef.current);
+    }
+    if (model && typeof model.setSelectedShapeModel === 'function') {
+      model.setSelectedShapeModel(shape);
+    }
+    // Back-compat: notify external setter if provided (tests expect this)
+    if (typeof setSelectedShape === 'function') {
+      setSelectedShape(shape ?? null);
+    }
+    if (toolStateRef?.current) {
+      toolStateRef.current.selectedShapeData = shape;
+      debugLog('[useShapeManager] toolStateRef.current.selectedShapeData set:', toolStateRef.current.selectedShapeData);
+      // Strategic logging for preview position (last)
+      const last = toolStateRef.current.last;
+      if (!last || typeof last.x !== 'number' || typeof last.y !== 'number') {
+        toolStateRef.current.last = { x: 0, y: 0 };
+        debugLog('[useShapeManager] toolStateRef.current.last set to default:', toolStateRef.current.last);
+      } else {
+        debugLog('[useShapeManager] toolStateRef.current.last already set:', toolStateRef.current.last);
       }
     }
-  }, [setSelectedShape, toolStateRef]);
+  }, [toolStateRef, debugLog, model]);
 
   // Centralized shape selection: updates shape state, recent list, and triggers redraw
   const selectShape = useCallback((shape) => {
     updateShapeState(shape);
     if (shape) {
       updateRecentShapesList(shape);
+      // Ensure overlay preview position is set
+      if (toolStateRef?.current) {
+        toolStateRef.current.selectedShapeData = shape;
+        // If last is missing or invalid, set to grid center
+        if (!toolStateRef.current.last || typeof toolStateRef.current.last.x !== 'number' || typeof toolStateRef.current.last.y !== 'number') {
+          toolStateRef.current.last = { x: 0, y: 0 };
+        }
+      }
     }
     drawWithOverlay();
-  }, [updateShapeState, updateRecentShapesList, drawWithOverlay]);
+  }, [updateShapeState, updateRecentShapesList, drawWithOverlay, toolStateRef]);
 
   // Open the shape palette and switch to shapes tool for previews
   const openPalette = useCallback(() => {
-    prevToolRef.current = selectedTool;
-    // activate shapes tool while the palette is open so previews work
-    setSelectedTool?.('shapes');
+    if (model && typeof model.getSelectedTool === 'function') {
+      prevToolRef.current = model.getSelectedTool();
+      if (typeof model.setSelectedToolModel === 'function') {
+        model.setSelectedToolModel('shapes');
+      }
+    }
+    // Back-compat: mirror to external setter
+    if (typeof setSelectedTool === 'function') {
+      setSelectedTool('shapes');
+    }
     setPaletteOpen?.(true);
-  }, [selectedTool, setSelectedTool]);
+  }, [model, setSelectedTool]);
 
   // Close the palette and optionally restore the previous tool
   const closePalette = useCallback((restorePrev = true) => {
     setPaletteOpen?.(false);
-    if (restorePrev && prevToolRef.current) {
-      setSelectedTool?.(prevToolRef.current);
+    if (restorePrev && prevToolRef.current && model && typeof model.setSelectedToolModel === 'function') {
+      model.setSelectedToolModel(prevToolRef.current);
+    }
+    if (restorePrev && prevToolRef.current && typeof setSelectedTool === 'function') {
+      setSelectedTool(prevToolRef.current);
     }
     prevToolRef.current = null;
-  }, [setSelectedTool]);
+  }, [model, setSelectedTool]);
 
   // Helper to select a shape and close the palette in one action
   const selectShapeAndClosePalette = useCallback((shape) => {

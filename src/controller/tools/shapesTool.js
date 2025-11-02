@@ -1,5 +1,5 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import { ShapePreviewOverlay } from '../../view/GameRenderer';
+import { makeShapePreviewOverlay } from '../../overlays/overlayTypes';
 import logger from '../utils/logger';
 
 
@@ -39,10 +39,10 @@ export const shapesTool = {
       logger.warn('[shapesTool] getOverlay: Shape has no cells to preview');
       return null;
     }
-  logger.debug('[shapesTool] getOverlay: Returning ShapePreviewOverlay with cells:', cells, 'and last:', last);
-    return new ShapePreviewOverlay(cells, last, {
+  logger.debug('[shapesTool] getOverlay: Returning descriptor with cells:', cells, 'and last:', last);
+    return makeShapePreviewOverlay(cells, last, {
       alpha: SHAPE_PREVIEW_ALPHA,
-      color: PREVIEW_FILL_COLOR
+      color: PREVIEW_FILL_COLOR,
     });
   },
   onMouseDown(toolState, x, y) {

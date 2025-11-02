@@ -74,7 +74,9 @@ const ControlsBar = ({
   maxFPS,
   setMaxFPS,
   maxGPS,
-  setMaxGPS
+  setMaxGPS,
+  // Optional model to drive ToolStatus observer
+  model
 }) => {
   // Options dialog open state
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -216,6 +218,7 @@ const ControlsBar = ({
           cursorCell={cursorCell}
           selectedTool={selectedTool}
           selectedShape={selectedShape}
+          model={model}
         />
       </Stack>
       {optionsOpen && (
@@ -313,6 +316,9 @@ ControlsBar.propTypes = {
   setPopWindowSize: PropTypes.func.isRequired,
   popTolerance: PropTypes.number.isRequired,
   setPopTolerance: PropTypes.func.isRequired
+  ,
+  // Optional model for tool state observation
+  model: PropTypes.object
 };
 
 export default ControlsBar;

@@ -191,6 +191,8 @@ export class GameMVC {
 
   // Color scheme operations
   setColorScheme(colorScheme) {
+    const logger = require('./utils/logger').default || require('./utils/logger');
+    logger.info('[GameMVC] setColorScheme called:', colorScheme);
     this.model.setColorSchemeModel(colorScheme);
   }
 

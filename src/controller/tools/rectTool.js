@@ -8,14 +8,17 @@ const PERIMETER_BORDER_OFFSET = 1;
 export const rectTool = {
   getOverlay(state, cellSize) {
     if (!state.start || !state.last) return null;
-    const { ToolOverlay } = require('../../view/GameRenderer');
-    return new ToolOverlay(this, state, cellSize);
+    // Prefer descriptor-based overlay: highlight absolute preview cells
+    const { makeCellsHighlightOverlay } = require('../../overlays/overlayTypes');
+    const cells = Array.isArray(state.preview) ? state.preview : [];
+    return makeCellsHighlightOverlay(cells, { color: RECT_PREVIEW_COLOR, alpha: 0.6 });
   },
 
   onMouseDown(state, x, y) {
-    state.start = { x, y };
-    state.last = { x, y };
-    state.preview = [];
+  // Clear previous drag state
+  state.start = { x, y };
+  state.last = { x, y };
+  state.preview = [];
   },
 
   onMouseMove(state, x, y) {
@@ -45,7 +48,7 @@ export const rectTool = {
       // Fill each cell in the computed perimeter, matching final placement
       if (state.preview && state.preview.length > 0) {
         ctx.save();
-        ctx.fillStyle = 'rgba(255,0,0,0.4)';
+  ctx.fillStyle = RECT_PREVIEW_COLOR;
         for (const p of state.preview) {
           const x = p[ARRAY_FIRST_ELEMENT];
           const y = p[ARRAY_SECOND_ELEMENT];

@@ -61,6 +61,41 @@ export class GameRenderer {
   /**
    * Update renderer options without recreating the renderer
    */
+  
+
+    /**
+     * Draws overlay from a descriptor object
+     * Currently supports: shapePreview
+     * @param {{type:string, cells:Array<{x:number,y:number}>, origin?:{x:number,y:number}, style?:{color?:string,alpha?:number}}} overlay
+     */
+    drawOverlayDescriptor(overlay) {
+      const type = overlay?.type;
+      if (!type) return;
+      if (type === 'shapePreview') {
+        const origin = overlay.origin || { x: 0, y: 0 };
+        const cells = Array.isArray(overlay.cells) ? overlay.cells : [];
+        const color = overlay.style?.color || '#4CAF50';
+        const shapeCells = cells.map(({ x, y }) => ({ x: x + origin.x, y: y + origin.y }));
+        // Optional alpha handling
+        const prevAlpha = this.ctx.globalAlpha;
+        if (typeof overlay.style?.alpha === 'number') {
+          this.ctx.globalAlpha = overlay.style.alpha;
+        }
+        this.drawCellArray(shapeCells, color);
+    this.ctx.globalAlpha = prevAlpha;
+      } else if (type === 'cellsHighlight') {
+        const cells = Array.isArray(overlay.cells) ? overlay.cells : [];
+        const color = overlay.style?.color || '#ffffff';
+        const prevAlpha = this.ctx.globalAlpha;
+        if (typeof overlay.style?.alpha === 'number') {
+          this.ctx.globalAlpha = overlay.style.alpha;
+        }
+        this.drawCellArray(cells, color);
+        this.ctx.globalAlpha = prevAlpha;
+      }
+      // Unknown overlay type; ignore
+    }
+
   updateOptions(newOptions) {
     const prevGridColor = this.options.gridColor;
     Object.assign(this.options, newOptions);
@@ -264,10 +299,8 @@ export class GameRenderer {
    */
   drawGrid() {
     if (!this.gridCache) {
-      console.log('[GameRenderer] Creating grid cache with cellSize:', this.viewport.cellSize, 'width:', this.viewport.width, 'height:', this.viewport.height, 'showGrid:', this.options.showGrid);
       this._createGridCache();
     }
-    console.log('[GameRenderer] Drawing grid cache');
     this._drawGridCache();
   }
 
@@ -303,16 +336,16 @@ export class GameRenderer {
   const width = Number(this.viewport.width);
   const height = Number(this.viewport.height);
   let gridLineOffset = Number(this.options.gridLineOffset);
-  if (!isFinite(gridLineOffset)) {
+  if (!Number.isFinite(gridLineOffset)) {
     gridLineOffset = 0;
   }
   const centerX = width / 2;
   const centerY = height / 2;
 
-  if (!cellSize || isNaN(cellSize) || cellSize <= 0) {
+  if (!cellSize || Number.isNaN(cellSize) || cellSize <= 0) {
     return;
   }
-  if (isNaN(offsetX) || isNaN(offsetY) || isNaN(width) || isNaN(height)) {
+  if (Number.isNaN(offsetX) || Number.isNaN(offsetY) || Number.isNaN(width) || Number.isNaN(height)) {
     return;
   }
 
@@ -323,7 +356,7 @@ export class GameRenderer {
   const startX = -computedOffset.x % cellSize;
   const startY = -computedOffset.y % cellSize;
 
-  if (isNaN(startX) || isNaN(startY)) {
+  if (Number.isNaN(startX) || Number.isNaN(startY)) {
     return;
   }
 
@@ -364,7 +397,12 @@ export class GameRenderer {
         continue;
       }
       
-      this.ctx.fillStyle = this.getCellColor(cellX, cellY);
+      const cellColor = this.getCellColor(cellX, cellY);
+      this.ctx.fillStyle = cellColor;
+      // Log color for debugging colorScheme switching
+      if (globalThis.DEBUG_COLOR_SCHEME) {
+        console.log(`[GameRenderer] Drawing cell (${cellX},${cellY}) with color:`, cellColor);
+      }
       this.ctx.fillRect(
         Math.floor(screenPos.x), 
         Math.floor(screenPos.y), 
@@ -450,10 +488,11 @@ export class GameRenderer {
   /**
    * Main render method - draws everything
    */
-  render(liveCells, colorScheme = null) {
-    console.log('[GameRenderer] render called. cellSize:', this.viewport.cellSize, 'showGrid:', this.options.showGrid);
-    // Store colorScheme for use in getCellColor
-    this.currentColorScheme = colorScheme;
+  render(liveCells, colorScheme = null, overlay = null) {
+    // Store colorScheme for use in getCellColor. The model is the single source.
+    // If null, retain previous currentColorScheme; if still missing, use a minimal local fallback.
+    const effectiveColorScheme = colorScheme || this.currentColorScheme || { background: '#000000', getCellColor: () => '#ffffff' };
+    this.currentColorScheme = effectiveColorScheme;
 
     // Draw grid background
     this.drawGrid();
@@ -461,19 +500,14 @@ export class GameRenderer {
     // Draw live cells
     this.drawCells(liveCells);
 
-    // Get overlay from controller and draw it
-    const controller = this.model?.controller;
-    if (controller && typeof controller.getCurrentOverlay === 'function') {
-      const overlay = controller.getCurrentOverlay();
-      console.log('[GameRenderer] overlay from controller:', overlay ? 'exists' : 'null', overlay);
-      if (overlay && typeof overlay.draw === 'function') {
-        console.log('[GameRenderer] calling overlay.draw');
+    // Draw overlay if provided
+    if (overlay) {
+      // Legacy support: class instance with draw(renderer)
+      if (typeof overlay.draw === 'function') {
         overlay.draw(this);
-      } else {
-        console.log('[GameRenderer] overlay.draw not found or overlay is null');
+      } else if (overlay.type) {
+        this.drawOverlayDescriptor(overlay);
       }
-    } else {
-      console.log('[GameRenderer] controller.getCurrentOverlay not found');
     }
   }
 

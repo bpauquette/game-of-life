@@ -4,18 +4,33 @@ const logger = require('./utils/logger').default || require('./utils/logger');
 // Handles user interactions, game loop, and coordination between Model and View
 
 export class GameController {
+  // Emit tool state changes through the model's observer mechanism
+  emitToolStateChanged() {
+    const snapshot = {
+      start: this.toolState?.start || null,
+      last: this.toolState?.last || null,
+      dragging: !!this.toolState?.dragging,
+      meta: this.toolState?.meta || {}
+    };
+    this.model.notifyObservers('toolStateChanged', snapshot);
+  }
+
+  // Merge and publish tool state (single path). Optionally update overlay.
+  _setToolState(patch, { updateOverlay = false } = {}) {
+    if (!this.toolState || typeof this.toolState !== 'object') {
+      this.toolState = {};
+    }
+    if (patch && typeof patch === 'object') {
+      Object.assign(this.toolState, patch);
+    }
+    this.emitToolStateChanged();
+    if (updateOverlay) this.updateToolOverlay();
+  }
   // Centralized overlay retrieval
   getCurrentOverlay() {
-    const selectedTool = this.model.getSelectedTool();
-    const tool = this.toolMap[selectedTool];
-    const cellSize = this.model.getViewport().cellSize;
-    console.log(`[GameController] getCurrentOverlay: selectedTool=${selectedTool}, cellSize=${cellSize}`);
-    if (tool?.getOverlay) {
-      const overlay = tool.getOverlay(this.toolState, cellSize);
-      console.log(`[GameController] getOverlay called for tool=${selectedTool}, overlay=${overlay ? 'exists' : 'null'}`);
-      return overlay;
-    }
-    return null;
+    // Overlay is now managed by the model
+    const overlay = this.model.getOverlay();
+    return overlay;
   }
   constructor(model, view, options = {}) {
     this.model = model;
@@ -69,6 +84,10 @@ export class GameController {
           break;
         case 'viewportChanged':
           this.requestRender();
+          break;
+        case 'selectedToolChanged':
+        case 'selectedShapeChanged':
+          this.updateToolOverlay();
           break;
         default:
           // Handle unknown events silently
@@ -128,91 +147,27 @@ export class GameController {
     if (typeof toolObject !== 'object' || !toolObject) {
       throw new Error(`Tool '${name}' must be an object`);
     }
-    
+   
     this.toolMap[name] = toolObject;
   }
 
-  setSelectedTool(toolName) {
-  const currentTool = this.model.getSelectedTool();
-  console.log(`[GameController] setSelectedTool: toolName=${toolName}, currentTool=${currentTool}`);
-    if (!this.toolMap[toolName] || currentTool === toolName) return;
-
-    if (currentTool === CONST_SHAPES && this.model.getSelectedShape()) {
-      // Add EraseOverlay to overlays for one frame
-      const selectedShape = this.model.getSelectedShape();
-      const cells = selectedShape?.cells || selectedShape?.pattern || [];
-      try {
-        const { EraseOverlay } = require('../view/GameRenderer');
-        this.view.resetOverlays(true);
-        this.view.addOverlay(new EraseOverlay(cells, true));
-        this.view.render(this.model.getLiveCells(), this.model.getViewport());
-      } catch (e) {
-        logger.error(e);
-      }
-    }
-    this.clearToolState();
-    this.clearShapeIfNeeded(toolName);
-    this.model.setSelectedToolModel(toolName);  
+   setSelectedTool(toolName) {
+  if (!this.toolMap[toolName]) return;
+  logger.debug(`[GameController] setSelectedTool: toolName=${toolName}`);
+  this.model.setSelectedToolModel(toolName);
+  // Always update overlay after tool change
+  this.updateToolOverlay();
   }
-
-  eraseShapeOverlay() {
-    const selectedShape = this.model.getSelectedShape();
-    const cells = selectedShape?.cells || selectedShape?.pattern || [];
-    if (this.view.renderer && typeof this.view.renderer.drawCellArray === 'function') {
-      const ctx = this.view.renderer.ctx;
-      ctx.save();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = '#000';
-      if (cells.length > 0 && this.toolState.previewPosition) {
-        this.view.renderer.drawCellArray(cells, '#000');
-      }
-      // Always draw text in the center to confirm erase logic
-      const w = this.view.canvas.width / (window.devicePixelRatio || 1);
-      const h = this.view.canvas.height / (window.devicePixelRatio || 1);
-      ctx.font = 'bold 32px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#ff4444';
-      ctx.fillText('Erasing Shape Overlay', w / 2, h / 2);
-      ctx.restore();
-    }
-  }
-
-  clearToolState() {
-  this.toolState = {};
-  this.view.resetOverlays(true);
-  }
-
-  clearShapeIfNeeded(toolName) {
-    if (toolName !== CONST_SHAPES) {
-      this.model.setSelectedShapeModel(null);
-    }
-  }
-
+ 
   getSelectedTool() {
     return this.model.getSelectedTool();
   }
 
   // Shape management
   setSelectedShape(shape) {
-    if (shape) {
-      // When selecting a shape, auto-switch to shapes tool
-      this.model.setSelectedToolModel(CONST_SHAPES);
-      this.model.setSelectedShapeModel(shape);
-      this.model.notifyObservers('selectedShapeChanged', shape);
-      // Update toolState for shapes tool overlay
-      if (this.toolState) {
-        this.toolState.selectedShapeData = shape;
-        console.log('[GameController] setSelectedShape: toolState.selectedShapeData updated', shape);
-      }
-    } else {
-      this.model.setSelectedShapeModel(null);
-      this.model.notifyObservers('selectedShapeChanged', null);
-      if (this.toolState) {
-        this.toolState.selectedShapeData = null;
-        console.log('[GameController] setSelectedShape: toolState.selectedShapeData cleared');
-      }
-    }
+    this.model.setSelectedShapeModel(shape || null);
+    // Keep controller toolState in sync for tools that read from it (e.g., shapes preview)
+    this._setToolState({ selectedShapeData: shape || null }, { updateOverlay: true });
   }
 
   getSelectedShape() {
@@ -224,10 +179,27 @@ export class GameController {
     this.mouseState.isDown = true;
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
-    console.log(`[GameController] handleMouseDown: tool=${selectedTool}, cell=(${cellCoords.x},${cellCoords.y})`);
+    // Ensure start/last/dragging set for two-point flows
+    if (selectedTool === CONST_SHAPES) {
+      const selectedShape = this.model.getSelectedShape();
+      this._setToolState({
+        selectedShapeData: selectedShape || null,
+        start: { x: cellCoords.x, y: cellCoords.y },
+        last: { x: cellCoords.x, y: cellCoords.y },
+        dragging: true
+      });
+    } else {
+      this._setToolState({
+        start: { x: cellCoords.x, y: cellCoords.y },
+        last: { x: cellCoords.x, y: cellCoords.y },
+        dragging: true
+      });
+    }
     if (tool?.onMouseDown) {
       tool.onMouseDown(this.toolState, cellCoords.x, cellCoords.y);
-      this.updateToolOverlay();
+      this._setToolState({}, { updateOverlay: true });
+    } else {
+      // No-op if tool lacks mousedown
     }
   }
 
@@ -235,36 +207,46 @@ export class GameController {
     this.model.setCursorPositionModel(cellCoords);
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
-    console.log(`[GameController] handleMouseMove: tool=${selectedTool}, cell=(${cellCoords.x},${cellCoords.y})`);
     // Call onMouseMove for drawing tools
     if (tool?.onMouseMove) {
       tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, (x, y, alive) => {
         this.model.setCellAliveModel(x, y, alive);
       });
+      this.emitToolStateChanged();
     }
-    // Overlay update for shapes tool
-    if (tool?.getOverlay) {
-      this.toolState.last = { x: cellCoords.x, y: cellCoords.y };
-      this.requestRender();
-    }
+    // Update last position and overlay for preview-enabled tools
+    this._setToolState({ last: { x: cellCoords.x, y: cellCoords.y } }, { updateOverlay: !!tool?.getOverlay });
   }
 
   handleMouseUp(cellCoords, event) {
-  this.mouseState.isDown = false;
-  const selectedTool = this.model.getSelectedTool();
-  console.log(`[GameController] handleMouseUp: tool=${selectedTool}, cell=(${cellCoords?.x},${cellCoords?.y})`);
-  this.handleToolMouseUp(cellCoords);
+    this.mouseState.isDown = false;
+    this.handleToolMouseUp(cellCoords);
+    this.emitToolStateChanged();
   }
 
   handleToolMouseUp(cellCoords = null) {
-    const tool = this.toolMap[this.model.getSelectedTool()];
+    const selectedTool = this.model.getSelectedTool();
+    const tool = this.toolMap[selectedTool];
     if (tool?.onMouseUp) {
       if (tool.onMouseUp.length === 1) {
         tool.onMouseUp(this.toolState);
       } else if (cellCoords) {
-        tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, (x, y, alive) => {
+        // Common callback for pixel-level cell placement
+        const setCellAlive = (x, y, alive) => {
           this.model.setCellAliveModel(x, y, alive);
-        });
+        };
+        if (selectedTool === 'shapes') {
+          // Provide placeShape callback to shapes tool
+          const placeShape = (x, y) => {
+            const shape = this.model.getSelectedShape();
+            if (shape) {
+              this.model.placeShape(x, y, shape);
+            }
+          };
+          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, placeShape);
+        } else {
+          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive);
+        }
       }
       this.updateToolOverlay();
     }
@@ -376,6 +358,14 @@ export class GameController {
   this.clearToolState();
   }
 
+  // Reset transient tool state and clear overlay
+  clearToolState() {
+    this.toolState = {};
+    this.emitToolStateChanged();
+    this.model.setOverlay(null);
+    this.requestRender();
+  }
+
   setRunning(running) {
     this.model.setRunningModel(running);
   }
@@ -468,12 +458,15 @@ export class GameController {
 
   // Tool overlay management
   updateToolOverlay() {
-    // Overlay is now derived from tool state in GameView.render
-    // Add debug logging for toolState.selectedShapeData
-    if (this.toolState && Object.prototype.hasOwnProperty.call(this.toolState, 'selectedShapeData')) {
-      console.log('[GameController] updateToolOverlay: toolState.selectedShapeData =', this.toolState.selectedShapeData);
+    // Overlay is managed by the model; tools provide descriptors
+    const selectedTool = this.model.getSelectedTool();
+    const tool = this.toolMap[selectedTool];
+    const cellSize = this.model.getViewport().cellSize;
+    if (tool?.getOverlay) {
+      const overlay = tool.getOverlay(this.toolState, cellSize);
+      this.model.setOverlay(overlay);
     } else {
-      console.log('[GameController] updateToolOverlay: toolState.selectedShapeData property not present');
+      this.model.setOverlay(null);
     }
     this.requestRender();
   }

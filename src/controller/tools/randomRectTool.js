@@ -17,8 +17,15 @@ export { flushRandomRectBuffer };
 export const randomRectTool = {
   getOverlay(state, cellSize) {
     if (!state.start || !state.last) return null;
-    const { ToolOverlay } = require('../../view/GameRenderer');
-    return new ToolOverlay(this, state, cellSize);
+    // Descriptor-based overlay for absolute preview cells
+    try {
+      const { makeCellsHighlightOverlay } = require('../../overlays/overlayTypes');
+      const cells = Array.isArray(state.preview) ? state.preview : [];
+      return makeCellsHighlightOverlay(cells, { color: 'rgba(255,255,255,0.08)', alpha: 0.5 });
+    } catch (e) {
+      logger.error('randomRectTool.getOverlay failed:', e);
+      return null;
+    }
   },
   // Optionally accept a probability in state.prob (0..1)
   onMouseDown(state, x, y) {

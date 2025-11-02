@@ -4,23 +4,12 @@
 import { GameRenderer } from './GameRenderer';
 
 export class GameView {
-  // Centralized overlay reset
-  resetOverlays(rerender = false) {
-    this.clearOverlays();
-    if (rerender && this.model) {
-      // Use current liveCells and viewport for re-render
-      this.render(this.model.getLiveCells(), this.model.getViewport());
-    }
-  }
   constructor(canvas, options = {}, model = null) {
     this.canvas = canvas;
     this.renderer = new GameRenderer(canvas, options);
     this.model = model; // Reference to model for performance tracking
-    // Ensure renderer can access model (for overlays)
-    this.renderer.model = this.model;
 
     // View state
-    this.overlay = null;
     this.isVisible = true;
 
     // Event callbacks
@@ -75,11 +64,12 @@ export class GameView {
     // Update viewport
     this.renderer.setViewport(viewport.offsetX, viewport.offsetY, viewport.cellSize);
     
-    // Get colorScheme from model
+    // Get colorScheme and overlay from model
     const colorScheme = this.model?.getColorScheme();
-    
-    // Do not pass overlay; GameRenderer will retrieve it from controller
-    this.renderer.render(liveCells, colorScheme);
+    const overlay = this.model?.getOverlay ? this.model.getOverlay() : null;
+
+    // Pass overlay descriptor directly to renderer
+    this.renderer.render(liveCells, colorScheme, overlay);
   }
 
   clear() {
@@ -87,10 +77,7 @@ export class GameView {
   }
 
   // Overlay management
-  // Overlay management (no-op for derived overlay)
-  // Overlay management methods removed (no longer needed)
-  clearOverlays() { this.overlay = null; }
-  // End overlay management
+  // Overlay management handled by the model/renderer; no per-view overlay state
 
   // Canvas management
   resize(width, height) {
@@ -203,7 +190,7 @@ export class GameView {
   getDebugInfo() {
     return {
       ...this.renderer.getDebugInfo(),
-      overlayCount: this.overlays.length,
+      overlayPresent: !!(this.model && typeof this.model.getOverlay === 'function' && this.model.getOverlay()),
       isVisible: this.isVisible,
       callbackCount: Object.keys(this.callbacks).reduce((total, key) => {
         return total + (this.callbacks[key] ? this.callbacks[key].length : 0);
@@ -216,58 +203,7 @@ export class GameView {
     // Remove event listeners
     this.callbacks = {};
     
-    // Clear overlays
-    this.overlays = [];
-    
     // Clear renderer caches
     this.renderer.clearCaches();
-  }
-}
-
-// View helper classes for specific overlays
-export class ToolOverlayView {
-  constructor(tool, toolState, cellSize, options = {}) {
-    this.tool = tool;
-    this.toolState = toolState;
-    this.cellSize = cellSize;
-    this.options = options;
-  }
-
-  draw(renderer) {
-    if (!this.tool?.drawOverlay || !this.toolState) return;
-    
-    // Create compatible offset for legacy tools
-    const centerX = renderer.viewport.width / 2;
-    const centerY = renderer.viewport.height / 2;
-    const offset = {
-      x: renderer.viewport.offsetX * renderer.viewport.cellSize - centerX,
-      y: renderer.viewport.offsetY * renderer.viewport.cellSize - centerY
-    };
-    
-    this.tool.drawOverlay(renderer.ctx, this.toolState, this.cellSize, offset);
-  }
-}
-
-export class ShapePreviewView {
-  constructor(cells, position, options = {}) {
-    this.cells = cells;
-    this.position = position;
-    this.alpha = options.alpha || 0.6;
-    this.color = options.color || '#4CAF50';
-  }
-
-  draw(renderer) {
-    if (!this.cells || !this.position) return;
-    
-    renderer.ctx.save();
-    renderer.ctx.globalAlpha = this.alpha;
-    
-    const shapeCells = this.cells.map(cell => ({
-      x: this.position.x + (cell.x || cell[0] || 0),
-      y: this.position.y + (cell.y || cell[1] || 0)
-    }));
-    
-    renderer.drawCellArray(shapeCells, this.color);
-    renderer.ctx.restore();
   }
 }

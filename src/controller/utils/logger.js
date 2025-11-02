@@ -9,12 +9,12 @@ const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 let currentLevel = LEVELS.debug;
 
 // Global toggle (can be set from anywhere)
-if (typeof window !== 'undefined') {
-  window.GOL_LOGGING_ENABLED = true;
+if (globalThis.window !== undefined) {
+  globalThis.window.GOL_LOGGING_ENABLED = true;
 }
 
 function shouldLog(level) {
-  const enabled = (typeof window === 'undefined' || window.GOL_LOGGING_ENABLED !== false);
+  const enabled = globalThis.window?.GOL_LOGGING_ENABLED !== false;
   return enabled && LEVELS[level] <= currentLevel;
 }
 

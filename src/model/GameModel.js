@@ -2,9 +2,22 @@
 // Handles all game state, rules, and data operations
 
 import { step as gameStep } from './gameLogic';
+import { colorSchemes } from './colorSchemes';
 const CONST_UISTATECHANGED = 'uiStateChanged';
 
 export class GameModel {
+  // Overlay management
+  setOverlay(overlay) {
+    const changed = this.overlay !== overlay;
+    this.overlay = overlay;
+    if (changed) {
+      this.notifyObservers('overlayChanged', overlay);
+    }
+  }
+
+  getOverlay() {
+    return this.overlay || null;
+  }
   clear() {
     this.clearModel();
   }
@@ -32,15 +45,22 @@ export class GameModel {
     this.generationTimestamps = [];
     this.maxTimestamps = 60; // Keep last 60 timestamps for averaging
     // Color scheme for rendering (not serialized)
-    this.colorScheme = null;
-    // Tool and interaction state (not serialized)
-    this.selectedTool = 'draw'; // Default to draw tool
-    this.selectedShape = null;
-    this.cursorPosition = null;
-    this.lastCursorUpdateTime = 0;
-    this.cursorThrottleDelay = 16; // ~60fps throttling for cursor updates
-    // Observers for state changes
-    this.observers = new Set();
+    // Safe default comes from model; renderer should not guess/import
+    const defaultKey = 'spectrum';
+    const defaultFromKey = colorSchemes?.[defaultKey] || null;
+    const firstKey = Object.keys(colorSchemes || {}).at(0);
+    const fallback = firstKey ? colorSchemes[firstKey] : { background: '#000000', getCellColor: () => '#ffffff' };
+    this.colorScheme = defaultFromKey || fallback;
+    // Overlay for tools
+  this.overlay = null;
+  // Tool and interaction state (not serialized)
+  this.selectedTool = 'draw'; // Default to draw tool
+  this.selectedShape = null;
+  this.cursorPosition = null;
+  this.lastCursorUpdateTime = 0;
+  this.cursorThrottleDelay = 16; // ~60fps throttling for cursor updates
+  // Observers for state changes
+  this.observers = new Set();
   }
 
   addObserver(observer) {
@@ -87,14 +107,19 @@ export class GameModel {
   }
 
   setRunningModel(isRunning) {
-    this.isRunning = isRunning;
-    this.notifyObservers('runningStateChanged', { isRunning });
+  const logger = require('../controller/utils/logger').default || require('../controller/utils/logger');
+  logger.info('[GameModel] setRunningModel called:', isRunning);
+  this.isRunning = isRunning;
+  this.notifyObservers('runningStateChanged', { isRunning });
   }
 
   setColorSchemeModel(colorScheme) {
+    const logger = require('../controller/utils/logger').default || require('../controller/utils/logger');
+    logger.info('[GameModel] setColorSchemeModel called:', colorScheme);
     this.colorScheme = colorScheme;
     this.notifyObservers('colorSchemeChanged', colorScheme);
   }
+
 
   getColorScheme() {
     return this.colorScheme;

@@ -41,13 +41,12 @@ export const lineTool = {
   ctx.lineWidth = cellSize;
   ctx.beginPath();
 
-    let first = null, last = null;
-    previewPoints.forEach((pt) => {
+    for (const pt of previewPoints) {
       // Draw a filled rectangle for each cell in the line
       const screenCoords = renderer.cellToScreen(pt[0], pt[1]);
       ctx.fillStyle = 'rgba(0,255,0,0.4)';
       ctx.fillRect(screenCoords.x, screenCoords.y, cellSize, cellSize);
-    });
+    }
   },
 
   getOverlay(state, cellSize) {
