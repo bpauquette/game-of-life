@@ -147,6 +147,14 @@ export const useShapeManager = ({
     openPalette,
     closePalette,
     selectShapeAndClosePalette,
+    replaceRecentShapeAt: (index, shape) => {
+      setRecentShapes(prev => {
+        if (index < 0 || index >= prev.length) return prev;
+        const next = [...prev];
+        next[index] = shape;
+        return next;
+      });
+    },
     
     // Internal utilities (exposed for testing)
     generateShapeKey,

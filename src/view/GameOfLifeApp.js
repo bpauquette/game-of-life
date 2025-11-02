@@ -148,23 +148,22 @@ function GameOfLifeApp(props) {
   }, [shapeManager.recentShapes, selectedShape, selectedTool]);
 
   const handleRotateShape = useCallback((rotatedShape, index) => {
-    // Update the existing entry in-place, do not append to recent list
-    setRecentShapesState(prev => {
-      const updated = [...prev];
-      updated[index] = rotatedShape;
-      return updated;
-    });
-    // Update selection and tool state without changing the recent list ordering
-    if (typeof shapeManager.updateShapeState === 'function') {
-      shapeManager.updateShapeState(rotatedShape);
-    } else if (gameRef.current && typeof gameRef.current.setSelectedShape === 'function') {
+    // Update source-of-truth recent list in place
+    if (typeof shapeManager.replaceRecentShapeAt === 'function') {
+      shapeManager.replaceRecentShapeAt(index, rotatedShape);
+    }
+    // Ensure controller state updates so overlays refresh correctly
+    if (gameRef.current && typeof gameRef.current.setSelectedShape === 'function') {
       gameRef.current.setSelectedShape(rotatedShape);
+      // Force an immediate render so the overlay updates without waiting
+      if (gameRef.current.controller && typeof gameRef.current.controller.requestRender === 'function') {
+        gameRef.current.controller.requestRender();
+      }
+    } else if (typeof shapeManager.updateShapeState === 'function') {
+      // Fallback: update model/tool state via shapeManager
+      shapeManager.updateShapeState(rotatedShape);
     }
-    // Redraw overlay so the preview reflects the rotation
-    if (typeof canvasManager?.drawWithOverlay === 'function') {
-      canvasManager.drawWithOverlay();
-    }
-  }, [shapeManager, canvasManager]);
+  }, [shapeManager]);
 
   // Helper: handle model change events - defined after updateStabilityDetection
   // const handleModelChange = ... (moved below)

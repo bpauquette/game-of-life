@@ -15,10 +15,19 @@ export const OVERLAY_TYPES = {
  * @returns {{type:string, cells:Array, origin:Object, style:Object}}
  */
 export function makeShapePreviewOverlay(cells, origin, style = {}) {
+  // Normalize cells to objects {x, y} to ensure renderer compatibility
+  const normalizedCells = Array.isArray(cells)
+    ? cells.map((c) => (Array.isArray(c) ? { x: c[0], y: c[1] } : { x: c?.x ?? 0, y: c?.y ?? 0 }))
+    : [];
+
+  const normalizedOrigin = origin
+    ? { x: origin.x, y: origin.y }
+    : null;
+
   return {
     type: OVERLAY_TYPES.SHAPE_PREVIEW,
-    cells: Array.isArray(cells) ? cells : [],
-    origin: origin ? { x: origin.x, y: origin.y } : null,
+    cells: normalizedCells,
+    origin: normalizedOrigin,
     style: {
       color: style.color || '#4CAF50',
       alpha: typeof style.alpha === 'number' ? style.alpha : 0.6,

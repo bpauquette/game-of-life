@@ -2,20 +2,20 @@
 import { useEffect, useState } from 'react';
 
 // Accepts an object: { model, toolStateRef }
-export default function useToolStateObserver({ model, toolStateRef } = {}) {
-  const initial = toolStateRef?.current ? { ...toolStateRef.current } : {};
-  const [toolState, setToolState] = useState(initial);
-
+function useSyncFromRef(toolStateRef, setToolState) {
   // Keep local state in sync with the ref on ref change
   useEffect(() => {
-    if (toolStateRef?.current) {
-      setToolState({ ...toolStateRef.current });
+    const current = toolStateRef?.current;
+    if (current) {
+      setToolState({ ...current });
     }
-  }, [toolStateRef]);
+  }, [toolStateRef, setToolState]);
+}
 
+function useSubscribeToolState(model, setToolState) {
   // Subscribe to model observer for 'toolStateChanged'
   useEffect(() => {
-    if (!model || typeof model.addObserver !== 'function') return;
+    if (!model || typeof model.addObserver !== 'function') return undefined;
     const handler = (event, data) => {
       if (event === 'toolStateChanged') {
         setToolState(data ? { ...data } : {});
@@ -27,7 +27,15 @@ export default function useToolStateObserver({ model, toolStateRef } = {}) {
         model.removeObserver(handler);
       }
     };
-  }, [model]);
+  }, [model, setToolState]);
+}
+
+export default function useToolStateObserver({ model, toolStateRef } = {}) {
+  const initial = toolStateRef?.current ? { ...toolStateRef.current } : {};
+  const [toolState, setToolState] = useState(initial);
+
+  useSyncFromRef(toolStateRef, setToolState);
+  useSubscribeToolState(model, setToolState);
 
   return toolState;
 }
