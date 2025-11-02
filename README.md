@@ -13,10 +13,27 @@ Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 The page will reload when you make changes.\
 You may also see any lint errors in the console.
 
-### `npm test`
+### Tests
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+This repo uses a small, architecture-aligned test suite under `src/new-tests/`:
+
+- Model observer events (overlay, tool/shape selection, viewport/running)
+- Renderer overlay descriptors (pure-data overlays)
+- React hook `useToolStateObserver`
+
+Run non-interactively with coverage:
+
+```bash
+npm run test:coverage
+```
+
+Run in interactive watch mode:
+
+```bash
+npm test
+```
+
+Note: Coverage thresholds are temporarily relaxed while the new suite grows; we’ll raise them as we add tests.
 
 ### `npm run build`
 
@@ -56,6 +73,18 @@ If you aren't satisfied with the build tool and configuration choices, you can `
 Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
 
 ## Learn More
+## Architecture notes
+
+Key design docs:
+
+- Overlay descriptors and observer-driven UI: `docs/ADR-2025-11-02-overlay-observer-arch.md`
+
+Highlights:
+
+- Tools emit overlay descriptors; model stores overlay; view passes overlay to the renderer; renderer draws descriptors.
+- Model is the single source of truth for color schemes.
+- UI observes the model for tool state and selection changes.
+
 
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
