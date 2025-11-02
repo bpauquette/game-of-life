@@ -493,6 +493,16 @@ export class GameRenderer {
     const effectiveColorScheme = colorScheme || this.currentColorScheme || { background: '#000000', getCellColor: () => '#ffffff' };
     this.currentColorScheme = effectiveColorScheme;
 
+    // Keep renderer background/grid options in sync with the active color scheme
+    // This avoids relying on external callers to remember updating renderer options.
+    const desiredBackground = effectiveColorScheme.background || effectiveColorScheme.backgroundColor || this.options.backgroundColor;
+    const desiredGrid = Object.prototype.hasOwnProperty.call(effectiveColorScheme, 'gridColor')
+      ? effectiveColorScheme.gridColor
+      : this.options.gridColor;
+    if (desiredBackground !== this.options.backgroundColor || desiredGrid !== this.options.gridColor) {
+      this.updateOptions({ backgroundColor: desiredBackground, gridColor: desiredGrid });
+    }
+
     // Draw grid background
     this.drawGrid();
 
