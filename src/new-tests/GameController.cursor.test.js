@@ -45,7 +45,7 @@ describe('Controller cursor/mouse -> model updates', () => {
     controller.handleMouseMove(pos, {});
 
     expect(model.getCursorPosition()).toEqual(pos);
-    expect(events.some(e => e.event === 'cursorPositionChanged' && e.data && e.data.x === 7 && e.data.y === 9)).toBe(true);
+    expect(events.some(e => e.event === 'cursorPositionChanged' && e.data?.x === 7 && e.data.y === 9)).toBe(true);
   });
 
   test('throttles rapid cursor updates under 16ms', () => {

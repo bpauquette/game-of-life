@@ -213,7 +213,7 @@ const ControlsBar = ({
         <IconButton size="small" onClick={openOptions} aria-label="options" data-testid="options-icon-button"><SettingsIcon fontSize="small" /></IconButton>
         <Tooltip title="Center on live cells (shortcut: 'f')">
           <span>
-            <IconButton size="small" onClick={() => onCenterViewport && onCenterViewport()} aria-label="center" disabled={!onCenterViewport}>
+            <IconButton size="small" onClick={() => onCenterViewport?.()} aria-label="center" disabled={!onCenterViewport}>
               <CenterFocusStrongIcon fontSize="small" />
             </IconButton>
           </span>
@@ -253,7 +253,6 @@ const ControlsBar = ({
           data-testid-cancel="options-cancel-button"
         />
       )}
-      )
 
       <HelpDialog
         open={helpOpen}

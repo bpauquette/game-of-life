@@ -111,7 +111,14 @@ function ShapeSlot({
     );
   }
 
-  const key = shape?.id ? `${shape.id}-${index}` : (shape?.name ? `${shape.name}-${index}` : `${index}`);
+  let key;
+  if (shape?.id) {
+    key = `${shape.id}-${index}`;
+  } else if (shape?.name) {
+    key = `${shape.name}-${index}`;
+  } else {
+    key = `${index}`;
+  }
   const cells = getShapeCells(shape);
   const { minX, minY, maxX, maxY } = getShapeExtents(cells);
   const width = Math.max(1, (maxX - minX + 1));

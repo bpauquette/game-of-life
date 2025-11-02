@@ -83,7 +83,7 @@ describe.skip('GameRenderer colorScheme switching', () => {
     expect(renderer.options.gridColor).toBe('#aaaaaa');
 
     // One cell was drawn with scheme A color
-    const lastFill = ctxCalls.fillRects[ctxCalls.fillRects.length - 1];
+    const lastFill = ctxCalls.fillRects.at(-1);
     expect(lastFill).toBeDefined();
     expect(ctx.fillStyle).toBe('A:(0,0)'); // current fillStyle after drawCells
 
@@ -101,7 +101,7 @@ describe.skip('GameRenderer colorScheme switching', () => {
     expect(renderer.options.gridColor).toBe('#bbbbbb');
 
     // Cell color should reflect scheme B
-    const lastFillB = ctxCalls.fillRects[ctxCalls.fillRects.length - 1];
+    const lastFillB = ctxCalls.fillRects.at(-1);
     expect(lastFillB).toBeDefined();
     expect(ctx.fillStyle).toBe('B:(0,0)');
 
