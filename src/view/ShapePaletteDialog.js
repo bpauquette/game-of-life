@@ -233,8 +233,7 @@ The backend will start on port 55000.`);
               <ListItem key={`${s.id || 'shape'}-${idx}`} disablePadding>
                 {/* eslint-disable-next-line sonarjs/cognitive-complexity */}
                 <ListItemButton onClick={async () => {
-                // Strategic logging and alert for debugging overlay propagation
-                alert(`Shape selected: ${s.name || s.id || '(unnamed)'} (${s.width}x${s.height})`);
+                // Strategic logging for debugging overlay propagation
                 logger.info('[ShapePaletteDialog] Shape selected:', s);
                 // Only fetch if shape id is valid
                 if (s.id) {
