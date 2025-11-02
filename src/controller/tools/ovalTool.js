@@ -1,9 +1,10 @@
+import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
+
 // Oval (ellipse) perimeter-only tool - axis-aligned, commits on mouseup
 export const ovalTool = {
   getOverlay(state, cellSize) {
     if (!state.start || !state.last) return null;
-    // Prefer descriptor-based overlay: highlight absolute preview cells
-    const { makeCellsHighlightOverlay } = require('../../overlays/overlayTypes');
+    // Descriptor-based overlay: highlight absolute preview cells
     const cells = Array.isArray(state.preview) ? state.preview : [];
     return makeCellsHighlightOverlay(cells, { color: 'rgba(255,0,0,0.4)', alpha: 0.6 });
   },

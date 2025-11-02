@@ -1,4 +1,5 @@
 import logger from '../utils/logger';
+import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
 let createRandomRectWorker;
 if (globalThis.window !== undefined && globalThis.Worker !== undefined) {
   // In browser, use a static string for the worker URL
@@ -19,7 +20,6 @@ export const randomRectTool = {
     if (!state.start || !state.last) return null;
     // Descriptor-based overlay for absolute preview cells
     try {
-      const { makeCellsHighlightOverlay } = require('../../overlays/overlayTypes');
       const cells = Array.isArray(state.preview) ? state.preview : [];
       return makeCellsHighlightOverlay(cells, { color: 'rgba(255,255,255,0.08)', alpha: 0.5 });
     } catch (e) {

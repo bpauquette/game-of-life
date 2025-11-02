@@ -1,3 +1,5 @@
+import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
+
 // Rectangle perimeter-only tool
 // Rectangle tool constants
 const RECT_PREVIEW_COLOR = 'rgba(255,255,255,0.12)';
@@ -8,8 +10,7 @@ const PERIMETER_BORDER_OFFSET = 1;
 export const rectTool = {
   getOverlay(state, cellSize) {
     if (!state.start || !state.last) return null;
-    // Prefer descriptor-based overlay: highlight absolute preview cells
-    const { makeCellsHighlightOverlay } = require('../../overlays/overlayTypes');
+    // Descriptor-based overlay: highlight absolute preview cells
     const cells = Array.isArray(state.preview) ? state.preview : [];
     return makeCellsHighlightOverlay(cells, { color: RECT_PREVIEW_COLOR, alpha: 0.6 });
   },
