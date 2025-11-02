@@ -218,8 +218,14 @@ export class GameController {
       const setCellAlive = (x, y, alive) => {
         this.model.setCellAliveModel(x, y, alive);
       };
-      const isCellAlive = (x, y) => this.model.isCellAlive(x, y);
-      tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, isCellAlive);
+      // For most tools the 5th arg is isCellAlive; for capture we provide getLiveCells
+      if (selectedTool === 'capture') {
+        const getLiveCells = () => this.model.getLiveCells();
+        tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, getLiveCells);
+      } else {
+        const isCellAlive = (x, y) => this.model.isCellAlive(x, y);
+        tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, isCellAlive);
+      }
       this.emitToolStateChanged();
     }
     // Update last position and overlay for preview-enabled tools
@@ -253,6 +259,10 @@ export class GameController {
             }
           };
           tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, placeShape);
+        } else if (selectedTool === 'capture') {
+          // Provide getLiveCells and the tool itself for callback
+          const getLiveCells = () => this.model.getLiveCells();
+          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, getLiveCells, tool);
         } else {
           tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive);
         }
