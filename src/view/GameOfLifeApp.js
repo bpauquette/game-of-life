@@ -148,14 +148,23 @@ function GameOfLifeApp(props) {
   }, [shapeManager.recentShapes, selectedShape, selectedTool]);
 
   const handleRotateShape = useCallback((rotatedShape, index) => {
+    // Update the existing entry in-place, do not append to recent list
     setRecentShapesState(prev => {
       const updated = [...prev];
       updated[index] = rotatedShape;
       return updated;
     });
-    // Optionally select the rotated shape
-    shapeManager.selectShape(rotatedShape);
-  }, [shapeManager]);
+    // Update selection and tool state without changing the recent list ordering
+    if (typeof shapeManager.updateShapeState === 'function') {
+      shapeManager.updateShapeState(rotatedShape);
+    } else if (gameRef.current && typeof gameRef.current.setSelectedShape === 'function') {
+      gameRef.current.setSelectedShape(rotatedShape);
+    }
+    // Redraw overlay so the preview reflects the rotation
+    if (typeof canvasManager?.drawWithOverlay === 'function') {
+      canvasManager.drawWithOverlay();
+    }
+  }, [shapeManager, canvasManager]);
 
   // Helper: handle model change events - defined after updateStabilityDetection
   // const handleModelChange = ... (moved below)

@@ -64,20 +64,34 @@ const RecentShapesStrip = ({
     return [];
   };
 
-  const getShapeDimensions = (cells) => {
-    if (cells.length === 0) return { width: DEFAULT_SHAPE_SIZE, height: DEFAULT_SHAPE_SIZE };
-    
-    const width = cells.reduce((max, c) => {
-      const x = Array.isArray(c) ? c[ARRAY_X_INDEX] : (c.x || 0);
-      return Math.max(max, x);
-    }, 0) + 1;
-    
-    const height = cells.reduce((max, c) => {
-      const y = Array.isArray(c) ? c[ARRAY_Y_INDEX] : (c.y || 0);
-      return Math.max(max, y);
-    }, 0) + 1;
-    
-    return { width, height };
+  const getShapeExtents = (cells) => {
+    if (!cells || cells.length === 0) {
+      return { minX: 0, minY: 0, maxX: DEFAULT_SHAPE_SIZE - 1, maxY: DEFAULT_SHAPE_SIZE - 1 };
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const c of cells) {
+      const x = Array.isArray(c) ? c[ARRAY_X_INDEX] : (c.x ?? 0);
+      const y = Array.isArray(c) ? c[ARRAY_Y_INDEX] : (c.y ?? 0);
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+    if (!Number.isFinite(minX)) minX = 0;
+    if (!Number.isFinite(minY)) minY = 0;
+    if (!Number.isFinite(maxX)) maxX = DEFAULT_SHAPE_SIZE - 1;
+    if (!Number.isFinite(maxY)) maxY = DEFAULT_SHAPE_SIZE - 1;
+    return { minX, minY, maxX, maxY };
+  };
+
+  const normalizeCellsForDisplay = (cells) => {
+    if (!cells || cells.length === 0) return [];
+    const { minX, minY } = getShapeExtents(cells);
+    return cells.map(c => {
+      const x = Array.isArray(c) ? c[ARRAY_X_INDEX] : (c.x ?? 0);
+      const y = Array.isArray(c) ? c[ARRAY_Y_INDEX] : (c.y ?? 0);
+      return { x: x - minX, y: y - minY };
+    });
   };
 
   const getShapeTitle = (shape, index) => {
@@ -125,7 +139,8 @@ const RecentShapesStrip = ({
   };
 
   const renderShapeCells = (cells, shapeKey, colorScheme) => {
-    return cells.map((cell, index) => {
+    const norm = normalizeCellsForDisplay(cells);
+    return norm.map((cell, index) => {
       const { x, y } = getCellCoordinates(cell);
       const fillColor = colorScheme?.getCellColor?.(x, y) ?? DEFAULT_SHAPE_COLOR;
       
@@ -209,7 +224,9 @@ const RecentShapesStrip = ({
         // ...existing shape rendering code...
         const key = getShapeKey(shape, index);
         const cells = getShapeCells(shape);
-        const { width, height } = getShapeDimensions(cells);
+        const { minX, minY, maxX, maxY } = getShapeExtents(cells);
+        const width = Math.max(1, (maxX - minX + 1));
+        const height = Math.max(1, (maxY - minY + 1));
         const title = getShapeTitle(shape, index);
         return (
           <div key={key} style={{ position: 'relative', marginBottom: SHAPE_MARGIN_BOTTOM }}>
