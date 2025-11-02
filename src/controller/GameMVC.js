@@ -4,6 +4,7 @@
 import { GameModel } from '../model/GameModel';
 import { GameView } from '../view/GameView';
 import { GameController } from './GameController';
+import logger from './utils/logger';
 
 export class GameMVC {
   setSelectedTool(toolName) {
@@ -115,8 +116,7 @@ export class GameMVC {
     Promise.all(toolImports).then(() => {
       this.toolsLoaded = true;
     }).catch(error => {
-  const logger = require('./utils/logger').default || require('./utils/logger');
-  logger.error('GameMVC: ❌ Error loading tools:', error);
+      logger.error('GameMVC: ❌ Error loading tools:', error);
     });
     
     this.toolLoadPromises = toolImports;
@@ -191,7 +191,6 @@ export class GameMVC {
 
   // Color scheme operations
   setColorScheme(colorScheme) {
-    const logger = require('./utils/logger').default || require('./utils/logger');
     logger.info('[GameMVC] setColorScheme called:', colorScheme);
     this.model.setColorSchemeModel(colorScheme);
   }

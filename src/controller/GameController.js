@@ -1,5 +1,5 @@
 const CONST_SHAPES = 'shapes';
-const logger = require('./utils/logger').default || require('./utils/logger');
+import logger from './utils/logger';
 // GameController.js - Controller layer for Conway's Game of Life
 // Handles user interactions, game loop, and coordination between Model and View
 

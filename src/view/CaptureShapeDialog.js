@@ -13,6 +13,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import { BUTTONS, STATUS } from '../utils/Constants';
+import logger from '../controller/utils/logger';
 
 const CaptureShapeDialog = ({ 
   open, 
@@ -46,8 +47,6 @@ const CaptureShapeDialog = ({
   const drawPreview = () => {
     const canvas = canvasRef.current;
     if (!canvas || !captureData) return;
-
-  const logger = require('../controller/utils/logger').default || require('../controller/utils/logger');
   logger.debug('Drawing preview with captureData:', captureData);
 
     const ctx = canvas.getContext('2d');
@@ -103,7 +102,7 @@ const CaptureShapeDialog = ({
   logger.debug('Drawing', cells.length, 'cells:', cells);
     
     for (const [index, cell] of cells.entries()) {
-      if (!cell || typeof cell.x !== 'number' || typeof cell.y !== 'number') {
+    if (!cell || typeof cell.x !== 'number' || typeof cell.y !== 'number') {
   logger.error('Invalid cell at index', index, ':', cell);
         continue;
       }
@@ -171,9 +170,13 @@ const CaptureShapeDialog = ({
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           {/* Debug information */}
-          <Box sx={{ p: 1, backgroundColor: '#f5f5f5', borderRadius: 1, fontSize: '0.8em', fontFamily: 'monospace' }}>
-            <strong>Debug Info:</strong><br/>
-            Capture Data: {captureData ? JSON.stringify(captureData, null, 2) : 'null'}
+          <Box sx={{ p: 1, backgroundColor: '#f5f5f5', borderRadius: 1, fontSize: '0.8em' }}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              Debug Info:
+            </Typography>
+            <pre aria-label="capture-debug" style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace' }}>
+              {captureData ? JSON.stringify(captureData, null, 2) : 'null'}
+            </pre>
           </Box>
           
           {captureData && (

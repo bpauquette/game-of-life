@@ -3,6 +3,7 @@
 
 import { step as gameStep } from './gameLogic';
 import { colorSchemes } from './colorSchemes';
+import logger from '../controller/utils/logger';
 const CONST_UISTATECHANGED = 'uiStateChanged';
 
 export class GameModel {
@@ -107,14 +108,12 @@ export class GameModel {
   }
 
   setRunningModel(isRunning) {
-  const logger = require('../controller/utils/logger').default || require('../controller/utils/logger');
   logger.info('[GameModel] setRunningModel called:', isRunning);
   this.isRunning = isRunning;
   this.notifyObservers('runningStateChanged', { isRunning });
   }
 
   setColorSchemeModel(colorScheme) {
-    const logger = require('../controller/utils/logger').default || require('../controller/utils/logger');
     logger.info('[GameModel] setColorSchemeModel called:', colorScheme);
     this.colorScheme = colorScheme;
     this.notifyObservers('colorSchemeChanged', colorScheme);

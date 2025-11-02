@@ -18,6 +18,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import GridOnIcon from '@mui/icons-material/GridOn';
 
 import { BUTTONS, STATUS } from '../utils/Constants';
+import logger from '../controller/utils/logger';
 
 const SaveGridDialog = ({ 
   open, 
@@ -72,8 +73,7 @@ const SaveGridDialog = ({
       onClose();
     } catch (saveError) {
       // Error handling is managed by the parent component
-  const logger = require('../controller/utils/logger').default || require('../controller/utils/logger');
-  logger.warn('Save failed:', saveError.message);
+      logger.warn('Save failed:', saveError.message);
     }
   };
 
