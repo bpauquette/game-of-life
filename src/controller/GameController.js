@@ -175,7 +175,14 @@ export class GameController {
 
   // Mouse event handlers
   handleMouseDown(cellCoords, event) {
+    // Only handle left-button interactions for drawing
+    const button = event && typeof event.button === 'number' ? event.button : 0;
     this.mouseState.isDown = true;
+    this.mouseState.button = button;
+    if (button !== 0) {
+      // Do not start tool interactions for non-left clicks
+      return;
+    }
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
     // Ensure start/last/dragging set for two-point flows
@@ -206,11 +213,13 @@ export class GameController {
     this.model.setCursorPositionModel(cellCoords);
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
-    // Call onMouseMove for drawing tools
-    if (tool?.onMouseMove) {
-      tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, (x, y, alive) => {
+    // Only process tool movement when left button is held from a prior mouseDown
+    if (this.mouseState.isDown && this.mouseState.button === 0 && tool?.onMouseMove) {
+      const setCellAlive = (x, y, alive) => {
         this.model.setCellAliveModel(x, y, alive);
-      });
+      };
+      const isCellAlive = (x, y) => this.model.isCellAlive(x, y);
+      tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, isCellAlive);
       this.emitToolStateChanged();
     }
     // Update last position and overlay for preview-enabled tools
@@ -219,6 +228,7 @@ export class GameController {
 
   handleMouseUp(cellCoords, event) {
     this.mouseState.isDown = false;
+    this.mouseState.button = undefined;
     this.handleToolMouseUp(cellCoords);
     this.emitToolStateChanged();
   }
@@ -252,8 +262,12 @@ export class GameController {
   }
 
   handleClick(cellCoords, event) {
+    // Only left-click toggles
+    const button = event && typeof event.button === 'number' ? event.button : 0;
+    if (button !== 0) return;
     if (this.model.getSelectedTool() === 'draw') {
-      this.model.setCellAliveModel(cellCoords.x, cellCoords.y, true);
+      const currentlyAlive = this.model.isCellAlive(cellCoords.x, cellCoords.y);
+      this.model.setCellAliveModel(cellCoords.x, cellCoords.y, !currentlyAlive);
     } else if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape()) {
       this.model.placeShape(cellCoords.x, cellCoords.y, this.model.getSelectedShape());
     }

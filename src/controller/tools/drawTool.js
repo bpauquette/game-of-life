@@ -7,7 +7,7 @@ export const drawTool = {
   },
 
   // Called on mouse move while pressing
-  onMouseMove(toolState, x, y, setCellAlive) {
+  onMouseMove(toolState, x, y, setCellAlive, isCellAlive = () => false) {
     if (!toolState.last) return;
 
     const { x: lx, y: ly } = toolState.last;
@@ -17,13 +17,15 @@ export const drawTool = {
     const steps = Math.max(Math.abs(dx), Math.abs(dy));
     
     if (steps === 0) {
-      // Same position - just draw the single cell
-      setCellAlive(x, y, true);
+      // Same position - toggle the single cell
+      const alive = isCellAlive(x, y);
+      setCellAlive(x, y, !alive);
     } else {
       for (let i = 0; i <= steps; i++) {
         const px = Math.round(lx + (dx * i) / steps);
         const py = Math.round(ly + (dy * i) / steps);
-        setCellAlive(px, py, true);
+        const alive = isCellAlive(px, py);
+        setCellAlive(px, py, !alive);
       }
     }
 
