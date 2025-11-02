@@ -98,14 +98,13 @@ export class GameRenderer {
 
   updateOptions(newOptions) {
     const prevGridColor = this.options.gridColor;
+    const prevBackground = this.options.backgroundColor;
     Object.assign(this.options, newOptions);
-    // Always force gridColor to white
-    this.options.gridColor = '#ffffff';
-    // Invalidate grid cache if gridColor changed
-    if (prevGridColor !== this.options.gridColor) {
+    // Invalidate grid cache if visual grid appearance changed (grid or background color)
+    if (prevGridColor !== this.options.gridColor || prevBackground !== this.options.backgroundColor) {
       this.gridCache = null;
     }
-    // Clear color cache since colors changed
+    // Clear color cache since colors or background changed
     this.colorCache.clear();
   }
 
@@ -325,8 +324,8 @@ export class GameRenderer {
   if (cellSize < 4) {
     return;
   }
-  // Use gray for grid lines, 1px width
-  gridCtx.strokeStyle = '#888';
+  // Use configured grid color for grid lines, default to gray
+  gridCtx.strokeStyle = this.options.gridColor || '#888';
   gridCtx.lineWidth = 1;
   gridCtx.globalAlpha = 1;
   gridCtx.beginPath();

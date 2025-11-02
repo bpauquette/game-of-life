@@ -48,7 +48,7 @@ function GameOfLifeApp(props) {
     captureData: null
   }), []);
 
-  const [canvasKey, setCanvasKey] = useState(0);
+  // We no longer remount the canvas on color scheme changes to preserve GameView listeners
   const [uiState, setUIState] = useState(props.initialUIState || defaultUIState);
 
   // UI state hooks and refs
@@ -322,8 +322,6 @@ function GameOfLifeApp(props) {
           gridColor: colorScheme.gridColor || '#202020'
         });
       }
-      // Force full canvas/UI re-render by updating a state key
-      setCanvasKey(prev => prev + 1);
       if (gameRef.current.controller && typeof gameRef.current.controller.requestRender === 'function') {
         gameRef.current.controller.requestRender();
       }
@@ -471,6 +469,14 @@ function GameOfLifeApp(props) {
           const [x, y] = key.split(',').map(Number);
           gameRef.current.setCellAlive(x, y, true);
         }
+        // After loading, center viewport on the loaded pattern and force a render
+        if (typeof gameRef.current.controller?.centerOnLiveCells === 'function') {
+          gameRef.current.controller.centerOnLiveCells();
+        } else if (typeof gameRef.current.view?.render === 'function') {
+          const lp = gameRef.current.model.getLiveCells();
+          const vp = gameRef.current.model.getViewport();
+          gameRef.current.view.render(lp, vp);
+        }
       }
 
       logger.info(`Loaded grid with ${liveCells ? liveCells.size : 0} live cells`);
@@ -532,6 +538,11 @@ function GameOfLifeApp(props) {
               setSelectedTool={tool => {
                 if (gameRef.current && typeof gameRef.current.setSelectedTool === 'function') {
                   gameRef.current.setSelectedTool(tool);
+                }
+              }}
+              onCenterViewport={() => {
+                if (gameRef.current && typeof gameRef.current.centerOnLiveCells === 'function') {
+                  gameRef.current.centerOnLiveCells();
                 }
               }}
               model={gameRef.current ? gameRef.current.model : null}
@@ -610,7 +621,7 @@ function GameOfLifeApp(props) {
           />
         )}
 
-        <canvas key={canvasKey} 
+        <canvas 
           ref={canvasRef}
           style={{
             cursor: (selectedShape || selectedTool) ? 'crosshair' : 'default',

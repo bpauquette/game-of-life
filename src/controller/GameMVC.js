@@ -34,6 +34,10 @@ export class GameMVC {
   this.controller = new GameController(this.model, this.view, options.controller);
   // Ensure overlays work: model.controller must be set
   this.model.controller = this.controller;
+  // Expose controller for developer debugging (dev convenience)
+  if (typeof globalThis !== 'undefined') {
+    globalThis.gameController = this.controller;
+  }
 
     // Track tool loading
     this.toolsLoaded = false;

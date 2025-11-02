@@ -27,6 +27,7 @@ import CasinoIcon from '@mui/icons-material/Casino';
 import ColorizeIcon from '@mui/icons-material/Colorize';
 import SaveIcon from '@mui/icons-material/Save';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import OvalIcon from './components/OvalIcon';
 import HelpDialog from './HelpDialog';
 import AboutDialog from './AboutDialog';
@@ -60,6 +61,8 @@ const ControlsBar = ({
   generation,
   // Grid management props
   onLoadGrid,
+  // Viewport helpers
+  onCenterViewport,
   // Options-related props (must be forwarded to OptionsPanel)
   colorSchemes,
   colorSchemeKey,
@@ -208,6 +211,13 @@ const ControlsBar = ({
         <IconButton size="small" onClick={openHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
         <IconButton size="small" onClick={openAbout} aria-label="about"><Tooltip title="About"><InfoIcon fontSize="small" /></Tooltip></IconButton>
         <IconButton size="small" onClick={openOptions} aria-label="options" data-testid="options-icon-button"><SettingsIcon fontSize="small" /></IconButton>
+        <Tooltip title="Center on live cells (shortcut: 'f')">
+          <span>
+            <IconButton size="small" onClick={() => onCenterViewport && onCenterViewport()} aria-label="center" disabled={!onCenterViewport}>
+              <CenterFocusStrongIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
 
         <Chip label={`Live Cells: ${getLiveCells().size}`} size="small" variant="outlined" />
         <Chip label={`Generation: ${generation}`} size="small" variant="outlined" />
@@ -302,6 +312,7 @@ ControlsBar.propTypes = {
   openPalette: PropTypes.func.isRequired,
   generation: PropTypes.number.isRequired,
   onLoadGrid: PropTypes.func.isRequired,
+  onCenterViewport: PropTypes.func,
   colorSchemes: PropTypes.object.isRequired,
   colorSchemeKey: PropTypes.string.isRequired,
   setColorSchemeKey: PropTypes.func.isRequired,

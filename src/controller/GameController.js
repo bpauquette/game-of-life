@@ -334,6 +334,10 @@ export class GameController {
           handled = true;
         }
         break;
+      case 'f': // Focus viewport on live cells
+        this.centerOnLiveCells();
+        handled = true;
+        break;
       default:
         // Handle other keys
         break;
@@ -345,6 +349,16 @@ export class GameController {
       }
       event.preventDefault();
     }
+  }
+
+  // Center viewport on current live cells
+  centerOnLiveCells() {
+    const bounds = this.model.getBounds();
+    const viewport = this.model.getViewport();
+    const centerX = Math.floor((bounds.minX + bounds.maxX) / 2);
+    const centerY = Math.floor((bounds.minY + bounds.maxY) / 2);
+    this.model.setViewportModel(centerX, centerY, viewport.cellSize, viewport.zoom);
+    this.requestRender();
   }
 
   // Game control methods

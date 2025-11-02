@@ -64,9 +64,6 @@ function renderShapeStatus(selectedShape, cursorCell) {
 function ToolStatus({ selectedTool, toolStateRef, cursorCell, selectedShape, logTool, model }) {
   // Use observer hook for live tool state (model-driven)
   const toolState = useToolStateObserver({ model, toolStateRef });
-  // Diagnostic logging
-  console.log('[ToolStatus] toolState.start:', toolState?.start);
-  console.log('[ToolStatus] toolState.last:', toolState?.last);
   useEffect(() => {
     if (logTool) logTool(selectedTool);
   }, [selectedTool, logTool]);
