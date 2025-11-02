@@ -101,15 +101,16 @@ export class GameMVC {
       }),
       
       import('./tools/captureTool').then(({ captureTool }) => {
-        // Add callback to trigger capture dialog
+        // Add callback to trigger capture dialog via observer event
         const enhancedCaptureTool = {
           ...captureTool,
           onCaptureComplete: (captureData) => {
-            // Set capture data and open dialog through model
-            this.model.setUIStateModel({ 
-              captureData: captureData,
-              captureDialogOpen: true 
-            });
+            // Notify React layer to open the capture dialog with data
+            try {
+              this.model.notifyObservers('captureCompleted', captureData);
+            } catch (e) {
+              logger.error('Failed to notify captureCompleted:', e);
+            }
           }
         };
         this.controller.registerTool('capture', enhancedCaptureTool);

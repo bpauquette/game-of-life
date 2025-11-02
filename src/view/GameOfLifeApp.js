@@ -259,7 +259,15 @@ function GameOfLifeApp(props) {
     'gameStep': handleGameStep,
     'runningStateChanged': (data) => setIsRunning(data.isRunning),
     'performanceSettingsChanged': (data) => setPerformanceSettings(data),
-    'gameCleared': handleGameCleared
+    'gameCleared': handleGameCleared,
+    // Open capture dialog when capture tool completes selection
+    'captureCompleted': (captureData) => {
+      setUIState(prev => ({
+        ...prev,
+        captureData,
+        captureDialogOpen: true
+      }));
+    }
   }), [handleGameStep, handleGameCleared, updateSelectedToolFromModel, updateSelectedShapeFromModel]);
 
   // Helper: handle model change events
