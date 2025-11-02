@@ -40,7 +40,7 @@ async function importPatterns(patterns) {
       const shape = {
         id: uuidv4(),
         name: pattern.name,
-        description: pattern.description || `Pattern from Life Lexicon${pattern.metadata ? ` (${pattern.metadata})` : ''}`,
+        description: pattern.description || `Pattern from Life Lexicon${pattern.metadata ? ' (' + pattern.metadata + ')' : ''}`,
         width: pattern.width,
         height: pattern.height,
         cells: pattern.cells,
@@ -88,12 +88,16 @@ async function main() {
     console.log('=== Life Lexicon Pattern Importer ===\n');
     
     // Check if lexicon file exists
-    try {
-      await fs.access(LEXICON_FILE);
-    } catch (e) {
-      console.error(`Lexicon file not found: ${LEXICON_FILE}`);
-      process.exit(1);
-    }
+        try {
+          await fs.access(LEXICON_FILE);
+        } catch (e) {
+          if (e?.code === 'ENOENT') {
+          console.error(`Lexicon file not found: ${LEXICON_FILE}`, e);
+          process.exit(1);
+          }
+          // Unexpected error: let the outer handler deal with it
+          throw e;
+        }
     
     // Parse patterns
   const patterns = await parseLexicon();

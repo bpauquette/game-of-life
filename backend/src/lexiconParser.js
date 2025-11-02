@@ -60,12 +60,12 @@ export function parseLexiconText(text) {
     }
 
     // Compute full description
-    const descJoined = [current.headDescription, ...textLines]
-      .filter(Boolean)
-      .map(s => s.replace(/^\s+/, ''))
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+        const descJoined = [current.headDescription, ...textLines]
+          .filter(Boolean)
+          .map(s => s.replace(/^\s+/, ''))
+          .join(' ')
+          .replaceAll(/\s+/g, ' ')
+          .trim();
 
     // Parse geometry (RLE preferred, else dot-asterisk)
     let cells = [];
