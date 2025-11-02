@@ -54,6 +54,8 @@ function GameOfLifeApp(props) {
   // UI state hooks and refs
   const [generation, setGeneration] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
+  /* eslint-disable react-hooks/exhaustive-deps */
+  // We intentionally run this once to avoid re-creating MVC on color scheme or UI changes.
   useEffect(() => {
     logger.info('[GameOfLifeApp] isRunning state changed:', isRunning);
   }, [isRunning]);
@@ -71,6 +73,7 @@ function GameOfLifeApp(props) {
     }
     return { offsetX: 0, offsetY: 0, cellSize: 8 };
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
   const cellSize = getViewport().cellSize || 8;
   const cursorCell = useGridMousePosition({ canvasRef, cellSize });
 
@@ -302,13 +305,15 @@ function GameOfLifeApp(props) {
       logger.error('❌ Failed to create MVC Game System:', error);
     }
 
+    // Cleanup only on unmount. We intentionally avoid resetting gameRef on
+    // colorScheme or other UI changes to prevent recreating the model.
     return () => {
       if (gameRef.current) {
         // Note: GameMVC doesn't have a destroy method yet
         gameRef.current = null;
       }
     };
-  }, [colorScheme, onModelReady, updateSelectedToolFromModel, updateSelectedShapeFromModel, handleModelChange]);
+  }, []);
 
   // Update color scheme in model when it changes
   useEffect(() => {
