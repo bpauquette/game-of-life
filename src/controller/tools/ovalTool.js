@@ -2,8 +2,10 @@
 export const ovalTool = {
   getOverlay(state, cellSize) {
     if (!state.start || !state.last) return null;
-    const { ToolOverlay } = require('../../view/GameRenderer');
-    return new ToolOverlay(this, state, cellSize);
+    // Prefer descriptor-based overlay: highlight absolute preview cells
+    const { makeCellsHighlightOverlay } = require('../../overlays/overlayTypes');
+    const cells = Array.isArray(state.preview) ? state.preview : [];
+    return makeCellsHighlightOverlay(cells, { color: 'rgba(255,0,0,0.4)', alpha: 0.6 });
   },
   onMouseDown(state, x, y) {
     state.start = { x, y };

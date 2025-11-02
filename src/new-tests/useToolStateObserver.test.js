@@ -1,5 +1,4 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import useToolStateObserver from '../../src/view/hooks/useToolStateObserver';
 
 function createFakeModel() {
@@ -7,13 +6,21 @@ function createFakeModel() {
   return {
     addObserver: (fn) => observers.add(fn),
     removeObserver: (fn) => observers.delete(fn),
-    emit: (event, data) => observers.forEach(fn => fn(event, data)),
+    emit: (event, data) => {
+      for (const fn of observers) {
+        fn(event, data);
+      }
+    },
   };
 }
 
-function HookHarness({ model, toolStateRef }) {
+// This is an intentionally minimal React function component used to exercise a hook in tests.
+// Some static analyzers may not recognize it as a component and raise a false positive about
+// calling hooks from a non-component. It's rendered via JSX (<HookHarness />), so this usage is valid.
+function HookHarness({ model, toolStateRef }) { // NOSONAR: valid React component used for hook testing
   const state = useToolStateObserver({ model, toolStateRef });
-  return <pre data-testid="state">{JSON.stringify(state)}</pre>;
+  // Use an accessible element so we can query without test IDs
+  return <output aria-label="tool-state">{JSON.stringify(state)}</output>;
 }
 
 describe('useToolStateObserver', () => {
@@ -22,10 +29,11 @@ describe('useToolStateObserver', () => {
     const toolStateRef = { current: { start: { x: 1, y: 2 } } };
     render(<HookHarness model={model} toolStateRef={toolStateRef} />);
 
-    expect(screen.getByTestId('state').textContent).toContain('\"start\":{\"x\":1,\"y\":2}');
+    expect(screen.getByRole('status', { name: 'tool-state' })).toHaveTextContent('"start":{"x":1,"y":2}');
 
     model.emit('toolStateChanged', { last: { x: 3, y: 4 }, dragging: true });
-    await waitFor(() => expect(screen.getByTestId('state').textContent).toContain('"last":{"x":3,"y":4}'));
-    await waitFor(() => expect(screen.getByTestId('state').textContent).toContain('"dragging":true'));
+    // Prefer findBy* queries to wait for async DOM updates
+    expect(await screen.findByText(/"last":\{"x":3,"y":4\}/)).toBeInTheDocument();
+    expect(await screen.findByText(/"dragging":true/)).toBeInTheDocument();
   });
 });
