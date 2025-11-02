@@ -85,7 +85,7 @@ export const useShapeManager = ({
         debugLog('[useShapeManager] toolStateRef.current.last already set:', toolStateRef.current.last);
       }
     }
-  }, [toolStateRef, debugLog, model]);
+  }, [toolStateRef, debugLog, model, setSelectedShape]);
 
   // Centralized shape selection: updates shape state, recent list, and triggers redraw
   const selectShape = useCallback((shape) => {

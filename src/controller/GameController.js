@@ -1,5 +1,5 @@
-const CONST_SHAPES = 'shapes';
 import logger from './utils/logger';
+const CONST_SHAPES = 'shapes';
 // GameController.js - Controller layer for Conway's Game of Life
 // Handles user interactions, game loop, and coordination between Model and View
 
@@ -29,8 +29,7 @@ export class GameController {
   // Centralized overlay retrieval
   getCurrentOverlay() {
     // Overlay is now managed by the model
-    const overlay = this.model.getOverlay();
-    return overlay;
+    return this.model.getOverlay();
   }
   constructor(model, view, options = {}) {
     this.model = model;
