@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import WidgetsIcon from '@mui/icons-material/Widgets';
 
 // Constants for recent shapes strip
 
@@ -19,8 +22,14 @@ const RecentShapesStrip = ({
   selectedShape = null,
   maxSlots = 8,
   onRotateShape,
-  onSwitchToShapesTool
+  onSwitchToShapesTool,
+  openPalette
 }) => {
+  const openShapesPalette = useCallback(() => {
+    // Switch to shapes tool and open the palette for browsing
+    try { onSwitchToShapesTool?.(); } catch {}
+    try { openPalette?.(); } catch {}
+  }, [onSwitchToShapesTool, openPalette]);
   const getShapeTitle = (shape, index) => {
     return shape?.name || shape?.meta?.name || shape?.id || `shape ${index}`;
   };
@@ -72,15 +81,29 @@ const RecentShapesStrip = ({
     >
       <div 
         style={{
-          fontSize: '12px',
-          color: LABEL_COLOR,
-          marginBottom: '8px',
-          fontWeight: '500',
-          textAlign: 'center',
-          opacity: 0.8
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 6,
+          width: '100%',
+          marginBottom: 8
         }}
       >
-        Recent Shapes
+        <div 
+          style={{
+            fontSize: '12px',
+            color: LABEL_COLOR,
+            fontWeight: 500,
+            opacity: 0.8
+          }}
+        >
+          Recent Shapes
+        </div>
+        <Tooltip title="Shapes">
+          <IconButton size="small" onClick={openShapesPalette} aria-label="shapes" data-testid="open-shapes-palette">
+            <WidgetsIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </div>
       {slots.map((shape, index) => (
         <ShapeSlot
@@ -110,7 +133,8 @@ RecentShapesStrip.propTypes = {
   selectedShape: PropTypes.object,
   maxSlots: PropTypes.number,
   onRotateShape: PropTypes.func,
-  onSwitchToShapesTool: PropTypes.func
+  onSwitchToShapesTool: PropTypes.func,
+  openPalette: PropTypes.func
 };
 
 export default RecentShapesStrip;

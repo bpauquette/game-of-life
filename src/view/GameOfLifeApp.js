@@ -245,7 +245,7 @@ SelectedToolBadge.propTypes = {
   selectedTool: PropTypes.string
 };
 
-function RecentShapesPanel({ recentShapes, onSelectShape, drawWithOverlay, colorScheme, selectedShape, onRotateShape, onSwitchToShapesTool }) {
+function RecentShapesPanel({ recentShapes, onSelectShape, drawWithOverlay, colorScheme, selectedShape, onRotateShape, onSwitchToShapesTool, openPalette }) {
   return (
     <div className="recent-shapes" style={{ width: 110, minWidth: 110, background: '#222', padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
       <RecentShapesStrip
@@ -257,6 +257,7 @@ function RecentShapesPanel({ recentShapes, onSelectShape, drawWithOverlay, color
         maxSlots={8}
         onRotateShape={onRotateShape}
         onSwitchToShapesTool={onSwitchToShapesTool}
+        openPalette={openPalette}
       />
     </div>
   );
@@ -268,7 +269,8 @@ RecentShapesPanel.propTypes = {
   colorScheme: PropTypes.object,
   selectedShape: PropTypes.object,
   onRotateShape: PropTypes.func,
-  onSwitchToShapesTool: PropTypes.func
+  onSwitchToShapesTool: PropTypes.func,
+  openPalette: PropTypes.func
 };
 
 function PalettePortal({ open, onClose, onSelectShape, backendBase, colorScheme }) {
@@ -358,8 +360,8 @@ function GameUILayout({
         selectedShape={selectedShapeForPanel}
         onRotateShape={onRotateShape}
         onSwitchToShapesTool={onSwitchToShapesTool}
+        openPalette={controlsProps?.openPalette}
       />
-
       <div style={{ flex: 1, position: 'relative' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: 8, marginBottom: 8 }}>
           <div style={{ flex: 1 }}>
@@ -601,7 +603,23 @@ function GameOfLifeApp(props) {
 
   // UI State management functions
   const setColorSchemeKey = useCallback((key) => {
+    // Update UI state
     setUIState(prev => ({ ...prev, colorSchemeKey: key }));
+    // Apply immediately to the running MVC to avoid waiting for the effect tick
+    try {
+      const scheme = getColorSchemeFromKey(key || 'spectrum');
+      if (gameRef.current?.setColorScheme) {
+        gameRef.current.setColorScheme(scheme);
+      }
+      // Keep renderer options in sync so background/grid update promptly
+      gameRef.current?.view?.renderer?.updateOptions?.({
+        backgroundColor: scheme.background || scheme.backgroundColor || '#000000',
+        gridColor: scheme.gridColor || '#202020'
+      });
+      gameRef.current?.controller?.requestRender?.();
+    } catch (err) {
+      logger.debug('Immediate color scheme apply failed:', err);
+    }
   }, []);
 
   const setShowSpeedGauge = useCallback((show) => {

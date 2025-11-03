@@ -52,7 +52,6 @@ function ToolToggleGroup({ selectedTool, setSelectedTool, openPalette }) {
       <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool"><OvalIcon fontSize="small" /></Tooltip></ToggleButton>
       <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect"><CasinoIcon fontSize="small" /></Tooltip></ToggleButton>
       <ToggleButton value="capture" aria-label="capture"><Tooltip title="Capture area as shape"><ColorizeIcon fontSize="small" /></Tooltip></ToggleButton>
-      <ToggleButton value="shapes" aria-label="shapes" onClick={() => openPalette?.()} data-testid="open-shapes-palette"><Tooltip title="Shapes"><WidgetsIcon fontSize="small" /></Tooltip></ToggleButton>
     </ToggleButtonGroup>
   );
 }

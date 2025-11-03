@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import PropTypes from 'prop-types';
 import { rotateShape } from '../../model/shapeTransforms';
 
@@ -87,6 +87,8 @@ function ShapeSlot({
   onRotate,
   title
 }) {
+  // Use a stable timestamp to avoid flicker with animated color schemes (e.g., Spectrum)
+  const tRef = useRef(Date.now());
   if (!shape) {
     const emptyKey = `empty-slot-${index}`;
     return (
@@ -126,7 +128,7 @@ function ShapeSlot({
   const normalized = normalizeCellsForDisplay(cells);
 
   return (
-    <div key={key} style={{ position: 'relative', marginBottom: SHAPE_MARGIN_BOTTOM }}>
+    <div key={key} style={{ position: 'relative', marginBottom: SHAPE_MARGIN_BOTTOM, display: 'flex', alignItems: 'center', gap: 6 }}>
       <button
         type="button"
         style={{
@@ -172,7 +174,7 @@ function ShapeSlot({
           {normalized.map((cell, i) => {
             const x = cell.x;
             const y = cell.y;
-            const fillColor = colorScheme?.getCellColor?.(x, y) ?? DEFAULT_SHAPE_COLOR;
+            const fillColor = colorScheme?.getCellColor?.(x, y, tRef.current) ?? DEFAULT_SHAPE_COLOR;
             return (
               <rect key={`c-${key}-${i}`} x={x} y={y} width={1} height={1} fill={fillColor} />
             );
@@ -183,7 +185,7 @@ function ShapeSlot({
             style={{
               position: 'absolute',
               top: '-3px',
-              right: '-3px',
+              left: `${RECENT_SHAPES_THUMBNAIL_SIZE - 13}px`,
               width: '16px',
               height: '16px',
               background: SELECTED_BORDER_COLOR,
@@ -223,32 +225,30 @@ function ShapeSlot({
           {title}
         </div>
       </button>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginTop: 2 }}>
-        <button
-          key={`rotate-90-${key}`}
-          type="button"
-          style={{
-            fontSize: 12,
-            padding: '2px 6px',
-            borderRadius: 4,
-            border: '1px solid #444',
-            background: '#222',
-            color: '#fff',
-            cursor: 'pointer',
-            opacity: 0.8
-          }}
-          title="Rotate 90° (clockwise)"
-          onClick={(e) => {
-            e.stopPropagation();
-            // Use 270° math rotation to achieve 90° clockwise in screen (y-down) coords
-            const rotatedCells = rotateShape(getShapeCells(shape), 270);
-            const rotatedShape = { ...shape, cells: rotatedCells };
-            onRotate(rotatedShape, index);
-          }}
-        >
-          ⟳90
-        </button>
-      </div>
+      <button
+        key={`rotate-90-${key}`}
+        type="button"
+        style={{
+          fontSize: 12,
+          padding: '2px 6px',
+          borderRadius: 4,
+          border: '1px solid #444',
+          background: '#222',
+          color: '#fff',
+          cursor: 'pointer',
+          opacity: 0.8
+        }}
+        title="Rotate 90° (clockwise)"
+        onClick={(e) => {
+          e.stopPropagation();
+          // Use 270° math rotation to achieve 90° clockwise in screen (y-down) coords
+          const rotatedCells = rotateShape(getShapeCells(shape), 270);
+          const rotatedShape = { ...shape, cells: rotatedCells };
+          onRotate(rotatedShape, index);
+        }}
+      >
+        ⟳90
+      </button>
     </div>
   );
 }

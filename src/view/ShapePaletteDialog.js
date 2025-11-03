@@ -129,7 +129,9 @@ async function fetchAndUpdateShapes({
 
 // Small presentational: per-shape list item with preview and delete affordance
 function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete }) {
-  const getCellColor = (x, y) => colorScheme?.getCellColor?.(x, y) ?? '#4a9';
+  // Use a stable timestamp for animated schemes (e.g., Spectrum) to avoid flicker across rerenders
+  const tRef = useRef(Date.now());
+  const getCellColor = (x, y) => colorScheme?.getCellColor?.(x, y, tRef.current) ?? '#4a9';
   const w = Math.max(1, s.width || 1);
   const h = Math.max(1, s.height || 1);
   const keyBase = s.id || 'shape';
