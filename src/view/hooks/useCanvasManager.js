@@ -95,8 +95,7 @@ export const useCanvasManager = ({
     if (tool?.drawOverlay) {
       tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset, colorScheme);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toolMap, selectedTool, cellSize, colorScheme]);
+  }, [toolMap, selectedTool, cellSize, toolStateRef, colorScheme]);
 
   const drawWithOverlay = useCallback(() => {
     draw();
@@ -122,8 +121,7 @@ export const useCanvasManager = ({
       // overlay drawing should never break main render
       logger.warn('Overlay rendering failed:', err);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draw, selectedTool, cellSize, offsetRef, drawToolOverlay, drawShapePreview, selectedShape, logger]);
+  }, [draw, selectedTool, cellSize, offsetRef, drawToolOverlay, drawShapePreview, selectedShape, toolStateRef, logger]);
 
   // Resize canvas to fill window and account for devicePixelRatio
   const resizeCanvas = useCallback(() => {
