@@ -45,6 +45,284 @@ const getBaseUrl = (backendBase) => {
     : 'http://localhost';
 }
 
+// Build catalog URL
+const buildShapesUrl = (base, q, limit, offset) => {
+  const url = new URL('/v1/shapes', base);
+  url.searchParams.set('q', q);
+  url.searchParams.set('limit', String(limit));
+  url.searchParams.set('offset', String(offset));
+  return url.toString();
+};
+
+// Detect typical connection errors
+const looksLikeConnectionError = (err) => {
+  const msg = String(err?.message || err || '');
+  return (
+    msg.includes('fetch') ||
+    msg.includes('NetworkError') ||
+    msg.includes('ECONNREFUSED') ||
+    err?.code === 'ECONNREFUSED'
+  );
+};
+
+// Fetch shapes with safe JSON parsing
+async function fetchShapes(base, q, limit, offset) {
+  const res = await fetch(buildShapesUrl(base, q, limit, offset));
+  if (!res.ok) {
+    return { ok: false, status: res.status, items: [], total: 0 };
+  }
+  try {
+    const data = await res.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    const total = Number(data.total) || 0;
+    return { ok: true, items, total };
+  } catch (e) {
+    logger.warn('Failed to parse JSON response:', e?.message);
+    return { ok: true, items: [], total: 0 };
+  }
+}
+
+async function maybeHandleBackendDown(err, { checkBackendHealth, cancelRef, setLoading, setShowBackendDialog }) {
+  if (!looksLikeConnectionError(err)) return false;
+  const healthy = await checkBackendHealth();
+  if (healthy) return false;
+  if (!cancelRef.cancelled) {
+    setLoading(false);
+    setShowBackendDialog(true);
+  }
+  return true;
+}
+
+// Orchestrate fetch + state updates with cancellation support
+async function fetchAndUpdateShapes({
+  backendBase,
+  q,
+  limit,
+  offset,
+  setResults,
+  setTotal,
+  setLoading,
+  setShowBackendDialog,
+  checkBackendHealth,
+  cancelRef
+}) {
+  try {
+    const base = getBaseUrl(backendBase);
+    const out = await fetchShapes(base, q, limit, offset);
+    if (cancelRef.cancelled) return;
+    if (!out.ok) {
+      logger.warn('Shape search returned non-OK status:', out.status);
+      setResults([]);
+      setTotal(0);
+      return;
+    }
+    setTotal(out.total);
+    setResults((prev) => (offset > 0 ? [...prev, ...out.items] : out.items));
+  } catch (err) {
+    logger.error('Shape search error:', err);
+    if (await maybeHandleBackendDown(err, { checkBackendHealth, cancelRef, setLoading, setShowBackendDialog })) return;
+    if (!cancelRef.cancelled) setResults([]);
+  } finally {
+    if (!cancelRef.cancelled) setLoading(false);
+  }
+}
+
+// Small presentational: per-shape list item with preview and delete affordance
+function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete }) {
+  const getCellColor = (x, y) => colorScheme?.getCellColor?.(x, y) ?? '#4a9';
+  const w = Math.max(1, s.width || 1);
+  const h = Math.max(1, s.height || 1);
+  const keyBase = s.id || 'shape';
+  return (
+    <Tooltip key={`tt-${keyBase}-${idx}`} title={s.description || ''} arrow placement="right" enterDelay={300}>
+      <ListItem key={`${keyBase}-${idx}`} disablePadding>
+        <ListItemButton onClick={() => onSelect(s)}>
+          <ListItemText primary={s.name || '(unnamed)'} secondary={`${w}×${h} — ${s.cellsCount || 0} cells`} />
+          <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg
+              width={PREVIEW_SVG_SIZE}
+              height={PREVIEW_SVG_SIZE}
+              viewBox={`0 0 ${w} ${h}`}
+              preserveAspectRatio="xMidYMid meet"
+              style={{ background: colorScheme.background || 'transparent', border: `1px solid rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`, borderRadius: PREVIEW_BORDER_RADIUS }}
+            >
+              {Array.isArray(s.cells) && s.cells.length > 0 ? (
+                s.cells.map((c) => (
+                  <rect key={`${keyBase}-${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
+                ))
+              ) : (
+                <g stroke={`rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`} fill="none">
+                  {Array.from({ length: w }, (_, i) => (
+                    <line key={`v-${keyBase}-${i}`} x1={i + GRID_LINE_OFFSET} y1={0} x2={i + GRID_LINE_OFFSET} y2={h} />
+                  ))}
+                  {Array.from({ length: h }, (_, j) => (
+                    <line key={`h-${keyBase}-${j}`} x1={0} y1={j + GRID_LINE_OFFSET} x2={w} y2={j + GRID_LINE_OFFSET} />
+                  ))}
+                </g>
+              )}
+            </svg>
+          </Box>
+          <IconButton
+            edge="end"
+            aria-label="delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRequestDelete(s);
+            }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </ListItemButton>
+      </ListItem>
+    </Tooltip>
+  );
+}
+
+// Backend server helper dialog
+function BackendServerDialog({
+  open,
+  onClose,
+  backendError,
+  backendStarting,
+  onRetry,
+  onShowInstructions,
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm">
+      <DialogTitle>
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Typography variant="h6">Backend Server Not Found</Typography>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Typography sx={{ mb: 2 }}>
+          The shapes catalog backend server doesn't appear to be running. You need to start it to access the shapes catalog.
+        </Typography>
+        {backendError && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="body2" component="pre" style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+              {backendError}
+            </Typography>
+          </Alert>
+        )}
+        <Typography variant="body2" color="text.secondary">
+          The backend provides access to a catalog of Conway's Game of Life patterns and shapes.
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onRetry} variant="outlined" disabled={backendStarting} startIcon={backendStarting ? <CircularProgress size={16} /> : <UndoIcon />}>
+          {backendStarting ? 'Checking...' : 'Retry Connection'}
+        </Button>
+        <Button onClick={onShowInstructions} variant="contained" disabled={backendStarting}>
+          Show Instructions
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// Presentational: search input + spinner
+function SearchBar({ value, onChange, loading }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+      <TextField
+        label="Search shapes"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        fullWidth
+        placeholder="Type 3+ chars to search"
+        size="small"
+      />
+      {loading && <CircularProgress size={24} />}
+    </div>
+  );
+}
+
+// Presentational: list of shapes or empty state
+function ShapesList({ items, colorScheme, loading, onSelect, onDeleteRequest }) {
+  return (
+    <List dense>
+      {items.map((s, idx) => (
+        <ShapeListItem
+          key={`${s.id || 'shape'}-${idx}`}
+          s={s}
+          idx={idx}
+          colorScheme={colorScheme}
+          onSelect={onSelect}
+          onRequestDelete={onDeleteRequest}
+        />
+      ))}
+      {(!loading && items.length === 0) && (
+        <ListItem><ListItemText primary="No shapes found" /></ListItem>
+      )}
+    </List>
+  );
+}
+
+// Presentational: footer with load more and close
+function FooterControls({ total, threshold, canLoadMore, onLoadMore, onClose, loading }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+      <div>
+        {total > 0 && (
+          <small>
+            {total} shapes in catalog{total > threshold ? ' — large catalog, use search or paging' : ''}
+          </small>
+        )}
+      </div>
+      <div>
+        {canLoadMore && (
+          <Button onClick={onLoadMore} disabled={loading}>{BUTTONS.LOAD_MORE}</Button>
+        )}
+        <Button onClick={onClose}>Close</Button>
+      </div>
+    </div>
+  );
+}
+
+// Presentational: delete confirmation
+function DeleteConfirmDialog({ open, shape, onCancel, onConfirm }) {
+  return (
+    <Dialog open={open} onClose={onCancel}>
+      <DialogTitle>Delete shape?</DialogTitle>
+      <DialogContent>
+        Are you sure you want to delete <strong>{shape?.name || shape?.meta?.name || 'this shape'}</strong>? This cannot be undone.
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onCancel}>Cancel</Button>
+        <Button onClick={() => onConfirm(shape)} color="error">Delete</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// Presentational: snackbar with optional UNDO
+function SnackMessage({ open, message, details, canUndo, onUndo, onClose }) {
+  return (
+    <Snackbar
+      open={open}
+      autoHideDuration={6000}
+      onClose={onClose}
+      slots={{ transition: SlideUpTransition }}
+    >
+      <Alert onClose={onClose} severity="info" action={canUndo ? (<Button color="inherit" size="small" onClick={onUndo}>UNDO</Button>) : null}>
+        <div>
+          <div>{message}</div>
+          {details && (
+            <pre style={{ margin: '8px 0 0 0', maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+              {details}
+            </pre>
+          )}
+        </div>
+      </Alert>
+    </Snackbar>
+  );
+}
+
 export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {} }){
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]); // metadata items
@@ -67,10 +345,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   // deletingId removed; we track optimistic removal in local results
   const timerRef = useRef(null);
 
-  // helper to pick a cell color for the small SVG preview
-  const getCellColor = (x, y) => {
-      return colorScheme?.getCellColor?.(x, y) ?? '#4a9';
-  };
+  // color helper handled inside ShapeListItem
 
   // Check if backend is reachable
   const checkBackendHealth = useCallback(async () => {
@@ -87,6 +362,119 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       return false;
     }
   }, [backendBase]);
+
+  // --- Extracted small helpers to keep event handlers simple and reduce complexity ---
+  const fetchShapeById = useCallback(async (id) => {
+    const base = getBaseUrl(backendBase);
+    const url = new URL(`/v1/shapes/${encodeURIComponent(id)}`, base);
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      let body = '';
+      try { body = await res.text(); } catch { /* ignore */ }
+      return { ok: false, data: null, status: res.status, body };
+    }
+    let data = null;
+    try { data = await res.json(); } catch { data = null; }
+    return { ok: true, data };
+  }, [backendBase]);
+
+  const handleShapeSelect = useCallback(async (shape) => {
+    logger.info('[ShapePaletteDialog] Shape selected:', shape);
+    if (!shape?.id) {
+      onSelectShape?.(shape);
+      onClose?.();
+      return;
+    }
+    try {
+      const res = await fetchShapeById(shape.id);
+      if (res.ok && res.data) {
+        logger.info('[ShapePaletteDialog] Fetched full shape data:', res.data);
+        onSelectShape?.(res.data);
+      } else {
+        logger.warn('[ShapePaletteDialog] Fallback: onSelectShape called with metadata only');
+        onSelectShape?.(shape);
+      }
+    } catch (err) {
+      logger.warn('Failed to fetch full shape data, using metadata only:', err);
+      onSelectShape?.(shape);
+    } finally {
+      onClose?.();
+    }
+  }, [fetchShapeById, onSelectShape, onClose]);
+
+  const deleteShapeById = useCallback(async (id) => {
+    const base = getBaseUrl(backendBase);
+    const url = new URL(`/v1/shapes/${encodeURIComponent(id)}`, base);
+    const res = await fetch(url.toString(), { method: 'DELETE' });
+    let bodyText = '';
+    try { bodyText = await res.text(); } catch { /* ignore */ }
+    return {
+      ok: res.ok,
+      status: res.status,
+      details: `DELETE ${url.toString()}\nStatus: ${res.status}\nBody: ${bodyText}`
+    };
+  }, [backendBase]);
+
+  const handleDelete = useCallback(async (shape) => {
+    if (!shape) return;
+    const id = shape.id;
+    const old = results.slice();
+    // optimistic removal
+    setResults(results.filter(r => r.id !== id));
+    setConfirmOpen(false);
+    setToDelete(null);
+    try {
+      const outcome = await deleteShapeById(id);
+      if (outcome.ok) {
+        setSnackMsg('Shape deleted');
+        setSnackUndoShape(old.find(x => x.id === id) || null);
+        setSnackDetails(null);
+        setSnackOpen(true);
+      } else {
+        logger.warn('Delete failed:', outcome.status);
+        setSnackMsg('Delete failed');
+        setSnackDetails(outcome.details);
+        setSnackOpen(true);
+        // restore on failure
+        setResults(old);
+      }
+    } catch (err) {
+      setResults(old);
+      logger.error('Delete error:', err);
+      setSnackMsg('Delete error');
+      setSnackDetails(err?.stack ?? String(err));
+      setSnackOpen(true);
+    }
+  }, [results, deleteShapeById]);
+
+  const createShape = useCallback(async (shape) => {
+    const base = getBaseUrl(backendBase);
+    const url = new URL('/v1/shapes', base);
+    const res = await fetch(url.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(shape)
+    });
+    return res.ok;
+  }, [backendBase]);
+
+  const handleUndo = useCallback(async () => {
+    const shape = snackUndoShape;
+    if (!shape) return;
+    try {
+      const ok = await createShape(shape);
+      if (ok) {
+        setResults(prev => [shape, ...prev]);
+        setSnackMsg('Restored');
+        setSnackUndoShape(null);
+      } else {
+        setSnackMsg('Restore failed');
+      }
+    } catch (err) {
+      logger.error('Restore error:', err);
+      setSnackMsg('Restore error');
+    }
+  }, [snackUndoShape, createShape]);
 
   // Start the backend server
   const startBackendServer = async () => {
@@ -137,318 +525,75 @@ The backend will start on port 55000.`);
   };
 
   useEffect(()=>{ if(!open){ setQ(''); setResults([]); setLoading(false); } }, [open]);
-  /* eslint-disable sonarjs/cognitive-complexity */
+  
   useEffect(()=>{
-    let mounted = true;
+    const cancelRef = { cancelled: false };
     if (timerRef.current) clearTimeout(timerRef.current);
-    // When the dialog opens we want to show the catalog even before a
-    // search term is entered. Previously the UI required 3+ chars which made
-    // the catalog appear empty by default. We'll still debounce queries.
     setLoading(true);
-
-    const parseJsonSafe = async (res) => {
-      try {
-        return await res.json();
-      } catch (err) {
-        logger.warn('Failed to parse JSON response:', err?.message);
-        return { items: [], total: 0 };
-      }
-    };
-
-    const handleSuccessfulResponse = async (res) => {
-      const data = await parseJsonSafe(res);
-      const items = Array.isArray(data.items) ? data.items : [];
-      if (mounted) {
-        setTotal(Number(data.total) || 0);
-        // append when offset > 0 (load more), otherwise replace
-        setResults(prev => (offset > 0 ? [...prev, ...items] : items));
-      }
-    };
-
-    const handleNonOkResponse = (res) => {
-      logger.warn('Shape search returned non-OK status:', res.status);
-      if (mounted) { setResults([]); setTotal(0); }
-    };
-
-    const handleFetchError = async (err) => {
-      logger.error('Shape search error:', err);
-      const msg = String(err?.message || '');
-      // Detect common network/connection problems
-      if (msg.includes('fetch') || msg.includes('NetworkError') ||
-          msg.includes('ECONNREFUSED') || err?.code === 'ECONNREFUSED') {
-        const isHealthy = await checkBackendHealth();
-        if (!isHealthy) {
-          if (mounted) setLoading(false);
-          if (mounted) setShowBackendDialog(true);
-          return; // Don't set empty results yet
-        }
-      }
-      if (mounted) setResults([]);
-    };
-
-    const performFetch = async () => {
-      try {
-        const base = getBaseUrl(backendBase);
-        const url = new URL('/v1/shapes', base);
-        url.searchParams.set('q', q);
-        url.searchParams.set('limit', String(limit));
-        url.searchParams.set('offset', String(offset));
-        const res = await fetch(url.toString());
-        if (res.ok === false) {
-          handleNonOkResponse(res);
-        } else {
-          await handleSuccessfulResponse(res);
-        }
-      } catch (e) {
-        await handleFetchError(e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    timerRef.current = setTimeout(() => { performFetch(); }, 300);
-    return ()=>{ mounted = false; if(timerRef.current) clearTimeout(timerRef.current); };
+    timerRef.current = setTimeout(() => {
+      fetchAndUpdateShapes({
+        backendBase,
+        q,
+        limit,
+        offset,
+        setResults,
+        setTotal,
+        setLoading,
+        setShowBackendDialog,
+        checkBackendHealth,
+        cancelRef
+      });
+    }, 300);
+    return () => { cancelRef.cancelled = true; if (timerRef.current) clearTimeout(timerRef.current); };
   }, [q, backendBase, offset, limit, checkBackendHealth]);
 
   return (
     <>
-  <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth data-testid="shapes-palette">
-      <DialogTitle>Insert shape from catalog</DialogTitle>
-      <DialogContent>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-          <TextField
-            label="Search shapes"
-            value={q}
-            onChange={e=>setQ(e.target.value)}
-            fullWidth
-            placeholder="Type 3+ chars to search"
-            size="small"
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth data-testid="shapes-palette">
+        <DialogTitle>Insert shape from catalog</DialogTitle>
+        <DialogContent>
+          <SearchBar value={q} onChange={setQ} loading={loading} />
+          <ShapesList
+            items={results}
+            colorScheme={colorScheme}
+            loading={loading}
+            onSelect={handleShapeSelect}
+            onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
           />
-          {loading && <CircularProgress size={24} />}
-        </div>
-
-        <List dense>
-          {results.map((s, idx) => (
-            <Tooltip key={`tt-${s.id || 'shape'}-${idx}`} title={s.description || ''} arrow placement="right" enterDelay={300}>
-              <ListItem key={`${s.id || 'shape'}-${idx}`} disablePadding>
-                {/* eslint-disable-next-line sonarjs/cognitive-complexity */}
-                <ListItemButton onClick={async () => {
-                // Strategic logging for debugging overlay propagation
-                logger.info('[ShapePaletteDialog] Shape selected:', s);
-                // Only fetch if shape id is valid
-                if (s.id) {
-                  try {
-                    const base = getBaseUrl(backendBase);
-                    const url = new URL(`/v1/shapes/${encodeURIComponent(s.id)}`, base);
-                    const res = await fetch(url.toString());
-                    if(res.ok){
-                      const full = await res.json();
-                      logger.info('[ShapePaletteDialog] Fetched full shape data:', full);
-                      onSelectShape?.(full);
-                      logger.info('[ShapePaletteDialog] onSelectShape called with full shape');
-                      onClose?.();
-                    } else {
-                      // fallback: pass metadata only
-                      logger.warn('[ShapePaletteDialog] Fallback: onSelectShape called with metadata only');
-                      onSelectShape?.(s);
-                      onClose?.();
-                    }
-                  } catch(err) {
-                    logger.warn('Failed to fetch full shape data, using metadata only:', err);
-                    // network error - fallback to metadata
-                    onSelectShape?.(s);
-                    logger.info('[ShapePaletteDialog] onSelectShape called with metadata only (catch)');
-                    onClose?.();
-                  }
-                } else {
-                  // No valid id, just use metadata
-                  logger.info('[ShapePaletteDialog] onSelectShape called with metadata only (no id)');
-                  onSelectShape?.(s);
-                  onClose?.();
-                }
-                }}>
-                  <ListItemText primary={s.name || '(unnamed)'} secondary={`${s.width}×${s.height} — ${s.cellsCount||0} cells`} />
-                  <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width={PREVIEW_SVG_SIZE} height={PREVIEW_SVG_SIZE} viewBox={`0 0 ${Math.max(1, s.width||1)} ${Math.max(1, s.height||1)}`} preserveAspectRatio="xMidYMid meet" style={{ background: colorScheme.background || 'transparent', border: `1px solid rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`, borderRadius: PREVIEW_BORDER_RADIUS }}>
-                    {Array.isArray(s.cells) && s.cells.length > 0 ? (
-                      s.cells.map((c) => (
-                        <rect key={`${s.id || 'shape'}-${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
-                      ))
-                    ) : (
-                      // small empty placeholder grid
-                      <g stroke={`rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`} fill="none">
-                        {Array.from({length: Math.max(1, s.width||1)}, (_, i) => (
-                          <line key={`v-${s.id || 'unknown'}-${i}`} x1={i+GRID_LINE_OFFSET} y1={0} x2={i+GRID_LINE_OFFSET} y2={Math.max(1, s.height||1)} />
-                        ))}
-                        {Array.from({length: Math.max(1, s.height||1)}, (_, j) => (
-                          <line key={`h-${s.id || 'unknown'}-${j}`} x1={0} y1={j+GRID_LINE_OFFSET} x2={Math.max(1, s.width||1)} y2={j+GRID_LINE_OFFSET} />
-                        ))}
-                      </g>
-                    )}
-                  </svg>
-                  </Box>
-                  <IconButton edge="end" aria-label="delete" onClick={(e) => { e.stopPropagation(); setToDelete(s); setConfirmOpen(true); }}>
-                    <DeleteIcon />
-                  </IconButton>
-                </ListItemButton>
-              </ListItem>
-            </Tooltip>
-          ))}
-          {(!loading && results.length===0) && (
-            <ListItem><ListItemText primary="No shapes found" /></ListItem>
-          )}
-        </List>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-          <div>
-            {total > 0 && <small>{total} shapes in catalog{total > LARGE_CATALOG_THRESHOLD ? ' — large catalog, use search or paging' : ''}</small>}
-          </div>
-          <div>
-            {offset + results.length < total && (
-              <Button onClick={() => { setOffset(prev => prev + limit); }} disabled={loading}>{BUTTONS.LOAD_MORE}</Button>
-            )}
-            <Button onClick={onClose}>Close</Button>
-          </div>
-        </div>
-        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-          <DialogTitle>Delete shape?</DialogTitle>
-          <DialogContent>
-            Are you sure you want to delete <strong>{toDelete?.name || toDelete?.meta?.name || 'this shape'}</strong>? This cannot be undone.
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => { setConfirmOpen(false); setToDelete(null); }}>Cancel</Button>
-            <Button onClick={async () => {
-              // perform delete with better UX
-              if(!toDelete) return;
-              const id = toDelete.id;
-              const old = results.slice();
-              // optimistic removal
-              setResults(results.filter(r => r.id !== id));
-              setConfirmOpen(false);
-              setToDelete(null);
-              // no-op: removed deletingId tracking
-                try {
-                  const base = getBaseUrl(backendBase);
-                  const url = new URL(`/v1/shapes/${encodeURIComponent(id)}`, base);
-                  const res = await fetch(url.toString(), { method: 'DELETE' });
-                  if (res.ok === false) {
-                    // restore on failure
-                    logger.warn('Delete failed:', res.status);
-                    let bodyText = '';
-                    try { bodyText = await res.text(); } catch { bodyText = '<no body>'; }
-                    const details = `DELETE ${url.toString()}\nStatus: ${res.status}\nBody: ${bodyText}`;
-                    setSnackMsg('Delete failed');
-                    setSnackDetails(details);
-                    setSnackOpen(true);
-                  } else {
-                    setSnackMsg('Shape deleted');
-                    setSnackUndoShape(old.find(x => x.id === id) || null);
-                    setSnackDetails(null);
-                    setSnackOpen(true);
-                  }
-                } catch (err) {
-                  setResults(old);
-                  logger.error('Delete error:', err);
-                  setSnackMsg('Delete error');
-                  setSnackDetails(err?.stack ?? String(err));
-                  setSnackOpen(true);
-                } finally {
-                  // nothing to clear
-                }
-            }} color="error">Delete</Button>
-          </DialogActions>
-        </Dialog>
-        <Snackbar
-          open={snackOpen}
-          autoHideDuration={6000}
-          onClose={() => { setSnackOpen(false); setSnackMsg(''); setSnackUndoShape(null); }}
-          slots={{ transition: SlideUpTransition }}
-        >
-          <Alert
+          <FooterControls
+            total={total}
+            threshold={LARGE_CATALOG_THRESHOLD}
+            canLoadMore={offset + results.length < total}
+            onLoadMore={() => { setOffset(prev => prev + limit); }}
+            onClose={onClose}
+            loading={loading}
+          />
+          <DeleteConfirmDialog
+            open={confirmOpen}
+            shape={toDelete}
+            onCancel={() => { setConfirmOpen(false); setToDelete(null); }}
+            onConfirm={handleDelete}
+          />
+          <SnackMessage
+            open={snackOpen}
+            message={snackMsg}
+            details={snackDetails}
+            canUndo={!!snackUndoShape}
+            onUndo={handleUndo}
             onClose={() => { setSnackOpen(false); setSnackMsg(''); setSnackUndoShape(null); }}
-            severity="info"
-            action={snackUndoShape ? (
-              <Button color="inherit" size="small" onClick={async () => {
-                // re-add shape
-                const shape = snackUndoShape;
-                try {
-                  const base = getBaseUrl(backendBase);
-                  const url = new URL('/v1/shapes', base);
-                  const res = await fetch(url.toString(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(shape) });
-                  if (res.ok) {
-                    setResults(prev => [shape, ...prev]);
-                    setSnackMsg('Restored');
-                    setSnackUndoShape(null);
-                  } else {
-                    setSnackMsg('Restore failed');
-                  }
-                } catch (err) {
-                  logger.error('Restore error:', err);
-                  setSnackMsg('Restore error');
-                }
-              }}>UNDO</Button>
-            ) : null}
-          >
-            <div>
-              <div>{snackMsg}</div>
-              {snackDetails && (
-                <pre style={{ margin: '8px 0 0 0', maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
-                  {snackDetails}
-                </pre>
-              )}
-            </div>
-          </Alert>
-        </Snackbar>
-      </DialogContent>
-    </Dialog>
-    
-    {/* Backend Server Start Dialog */}
-    <Dialog open={showBackendDialog} onClose={() => setShowBackendDialog(false)} maxWidth="sm">
-      <DialogTitle>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="h6">Backend Server Not Found</Typography>
-          <IconButton onClick={() => setShowBackendDialog(false)} size="small">
-            <CloseIcon />
-          </IconButton>
-        </Box>
-      </DialogTitle>
-      <DialogContent>
-        <Typography sx={{ mb: 2 }}>
-          The shapes catalog backend server doesn't appear to be running. 
-          You need to start it to access the shapes catalog.
-        </Typography>
-        {backendError && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <Typography variant="body2" component="pre" style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-              {backendError}
-            </Typography>
-          </Alert>
-        )}
-        <Typography variant="body2" color="text.secondary">
-          The backend provides access to a catalog of Conway's Game of Life patterns and shapes.
-        </Typography>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setShowBackendDialog(false)}>
-          Cancel
-        </Button>
-        <Button 
-          onClick={retryBackendConnection} 
-          variant="outlined" 
-          disabled={backendStarting}
-          startIcon={backendStarting ? <CircularProgress size={16} /> : <UndoIcon />}
-        >
-          {backendStarting ? 'Checking...' : 'Retry Connection'}
-        </Button>
-        <Button 
-          onClick={startBackendServer} 
-          variant="contained" 
-          disabled={backendStarting}
-        >
-          Show Instructions
-        </Button>
-      </DialogActions>
-    </Dialog>
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Backend Server Start Dialog */}
+      <BackendServerDialog
+        open={showBackendDialog}
+        onClose={() => setShowBackendDialog(false)}
+        backendError={backendError}
+        backendStarting={backendStarting}
+        onRetry={retryBackendConnection}
+        onShowInstructions={startBackendServer}
+      />
     </>
   );
 }

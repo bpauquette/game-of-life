@@ -59,6 +59,9 @@ export class GameController {
     // Performance tracking
     this.performanceCallbacks = [];
 
+  // Render coalescing flag to avoid redundant renders on bulk updates
+  this.renderScheduled = false;
+
     this.init();
   }
 
@@ -473,22 +476,33 @@ export class GameController {
 
   // Rendering
   requestRender() {
-    const renderStart = performance.now();
-    
-    const liveCells = this.model.getLiveCells();
-    const viewport = this.model.getViewport();
-    this.view.render(liveCells, viewport);
-    
-    const renderTime = performance.now() - renderStart;
-    
-    // Track performance for SpeedGauge
-    if (globalThis.speedGaugeTracker) {
-      globalThis.speedGaugeTracker(renderTime, renderTime);
-    }
-    
-    // Call performance callbacks
-    for (const callback of this.performanceCallbacks) {
-      callback(renderTime);
+    // Coalesce multiple requestRender calls into a single animation frame
+    if (this.renderScheduled) return;
+    this.renderScheduled = true;
+
+    const doRender = () => {
+      this.renderScheduled = false;
+      const renderStart = performance.now();
+
+      const liveCells = this.model.getLiveCells();
+      const viewport = this.model.getViewport();
+      this.view.render(liveCells, viewport);
+
+      const renderTime = performance.now() - renderStart;
+
+      if (globalThis.speedGaugeTracker) {
+        globalThis.speedGaugeTracker(renderTime, renderTime);
+      }
+      for (const callback of this.performanceCallbacks) {
+        callback(renderTime);
+      }
+    };
+
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(doRender);
+    } else {
+      // Fallback for non-browser environments
+      setTimeout(doRender, 0);
     }
   }
 
