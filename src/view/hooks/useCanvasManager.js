@@ -223,8 +223,8 @@ export const useCanvasManager = ({
     }
     
     drawWithOverlay();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toolMap, selectedTool, eventToCell, scheduleCursorUpdate, setCellAlive, getLiveCells, drawWithOverlay]);
+   
+  }, [toolMap, selectedTool, eventToCell, scheduleCursorUpdate, setCellAlive, getLiveCells, drawWithOverlay, toolStateRef]);
 
   const handleShapeToolMove = useCallback((e, tool, pt) => {
     if (!pt) return;
@@ -238,13 +238,13 @@ export const useCanvasManager = ({
     }
     
     drawWithOverlay();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTool, setCellAlive, getLiveCells, drawWithOverlay]);
+    
+  }, [selectedTool, setCellAlive, getLiveCells, drawWithOverlay, toolStateRef]);
 
   const shouldToolMove = useCallback((e) => {
     return (e.buttons & 1) || toolStateRef.current.last || toolStateRef.current.start;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    
+  }, [toolStateRef]);
 
   // Mouse event handlers
   const handleMouseDown = useCallback((e) => {
@@ -273,8 +273,8 @@ export const useCanvasManager = ({
       toolStateRef.current.last = { x: pt.x, y: pt.y };
       drawWithOverlay();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventToCell, scheduleCursorUpdate, toolMap, selectedTool, shouldToolMove, handleShapeToolMove, drawWithOverlay, updatePanning]);
+    
+  }, [eventToCell, scheduleCursorUpdate, toolMap, selectedTool, shouldToolMove, handleShapeToolMove, drawWithOverlay, updatePanning, toolStateRef]);
 
   const handleMouseUp = useCallback((e) => {
     if (isPanningRef.current) {
@@ -296,8 +296,8 @@ export const useCanvasManager = ({
       }
       drawWithOverlay();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toolMap, selectedTool, eventToCell, setCellAlive, placeShape, getLiveCells, drawWithOverlay]);
+    
+  }, [toolMap, selectedTool, eventToCell, setCellAlive, placeShape, getLiveCells, drawWithOverlay, toolStateRef]);
 
   // Initial setup and resize handling
   useEffect(() => {
