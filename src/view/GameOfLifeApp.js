@@ -510,7 +510,8 @@ function GameOfLifeApp(props) {
 
 
 
-  // Animation loop integration for double buffering
+  // Animation loop: ONLY flush randomRect double buffer
+  // Do not call gameRef.current.step() here; the controller runs the game loop.
   useEffect(() => {
     let animationFrameId;
     function animationLoop() {
@@ -520,17 +521,13 @@ function GameOfLifeApp(props) {
       } else if (gameRef.current?.toolState?.randomRectBuffer) {
         flushRandomRectBuffer(gameRef.current.toolState, setCellAlive);
       }
-      // Continue animation (existing logic)
-      if (isRunning && gameRef.current) {
-        gameRef.current.step();
-      }
       animationFrameId = requestAnimationFrame(animationLoop);
     }
     animationFrameId = requestAnimationFrame(animationLoop);
     return () => {
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
-  }, [isRunning, setCellAlive]);
+  }, [setCellAlive]);
 
   return (
     <div className="canvas-container" style={{ display: 'flex', flexDirection: 'row', height: '100vh' }}>
