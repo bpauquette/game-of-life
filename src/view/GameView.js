@@ -153,11 +153,25 @@ export class GameView {
 
   // Keyboard event setup (global)
   setupKeyboardEvents() {
+    const isTypingTarget = (el) => {
+      if (!el || typeof el.tagName !== 'string') return false;
+      const tag = el.tagName.toLowerCase();
+      const type = (el.type || '').toLowerCase();
+      const nonTextTypes = new Set(['checkbox','radio','button','submit','reset','file','color','range']);
+      if (el.isContentEditable) return true;
+      if (tag === 'textarea') return true;
+      if (tag === 'input') return !nonTextTypes.has(type);
+      return false;
+    };
+
     document.addEventListener('keydown', (e) => {
+      // Do not capture/override keys while user is typing in inputs/textareas/contentEditable
+      if (isTypingTarget(e.target)) return;
       this.emit('keyDown', { event: e, key: e.key, shiftKey: e.shiftKey });
     });
 
     document.addEventListener('keyup', (e) => {
+      if (isTypingTarget(e.target)) return;
       this.emit('keyUp', { event: e, key: e.key });
     });
   }
