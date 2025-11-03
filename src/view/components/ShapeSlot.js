@@ -237,10 +237,11 @@ function ShapeSlot({
             cursor: 'pointer',
             opacity: 0.8
           }}
-          title="Rotate 90°"
+          title="Rotate 90° (clockwise)"
           onClick={(e) => {
             e.stopPropagation();
-            const rotatedCells = rotateShape(getShapeCells(shape), 90);
+            // Use 270° math rotation to achieve 90° clockwise in screen (y-down) coords
+            const rotatedCells = rotateShape(getShapeCells(shape), 270);
             const rotatedShape = { ...shape, cells: rotatedCells };
             onRotate(rotatedShape, index);
           }}

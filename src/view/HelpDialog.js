@@ -1,62 +1,94 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
+          <Typography variant="h6" gutterBottom>
+            Drawing Tools
+          </Typography>
   DialogActions,
   Button,
   Box,
   Typography,
-  Tabs,
-  Tab,
+                primary="Freehand Draw" 
+                secondary="Click and drag to draw living cells freely. Single-click toggles one cell."
   Link,
   List,
   ListItem,
   ListItemText,
   Divider,
-  Card,
-  CardContent,
+                primary="Line Tool" 
+                secondary="Draw straight lines of living cells between two points. Press and hold, move to set the endpoint, then release. A preview overlay shows the line before placement."
   Chip
 } from '@mui/material';
 import {
   Brush as BrushIcon,
   ShowChart as LineAxisIcon,
-  CropSquare as CropSquareIcon,
-  RadioButtonUnchecked as RadioButtonUncheckedIcon,
+                primary="Rectangle Tool" 
+                secondary="Create filled rectangles of living cells. Press and drag to size; release to place."
   Casino as CasinoIcon,
   Widgets as WidgetsIcon,
   PlayArrow as PlayArrowIcon,
   BarChart as BarChartIcon,
   Settings as SettingsIcon
-} from '@mui/icons-material';
-import OvalIcon from './components/OvalIcon';
+                primary="Circle Tool" 
+                secondary="Draw circles that fit within a bounding box. Press and drag to size; release to place."
 
 function TabPanel({ children, value, index, ...other }) {
   return (
     <div
       role="tabpanel"
-      hidden={value !== index}
-      id={`help-tabpanel-${index}`}
+                primary="Oval Tool" 
+                secondary="Create elliptical patterns within a bounding box. Press and drag to size; release to place."
       aria-labelledby={`help-tab-${index}`}
       {...other}
     >
       {value === index && (
         <Box sx={{ p: 3 }}>
           {children}
-        </Box>
+                secondary="Fill a rectangular area with randomly placed living cells. Press and drag to size; release to commit."
       )}
     </div>
   );
 }
 
-TabPanel.propTypes = {
-  children: PropTypes.node,
+                primary="Shapes Library" 
+                secondary="Place pre-defined patterns like gliders, oscillators, and spaceships. Select a shape from the palette or recent strip; a preview overlay follows your cursor, and a click places the shape."
   index: PropTypes.number.isRequired,
   value: PropTypes.number.isRequired,
 };
 
 export default function HelpDialog({ open, onClose }) {
+
+          <Typography variant="h6" gutterBottom>
+            Shapes & Capture
+          </Typography>
+          <List>
+            <ListItem>
+              <ListItemText 
+                primary="Recent Shapes Strip" 
+                secondary={
+                  <>
+                    Choose from your recently used shapes. Each tile has a ⟳90 button that rotates the shape 90° clockwise. The thumbnail and on-canvas preview update immediately.
+                  </>
+                }
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText 
+                primary="Rotate Direction" 
+                secondary="Rotation is visually clockwise (y-down screen coordinates). Each click rotates the selected shape 90° clockwise."
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText 
+                primary="Capture Tool" 
+                secondary={
+                  <>
+                    Click and drag to select a rectangular region of the grid. When you release, a dialog opens to name and describe the captured pattern. The preview is shown in the dialog, and fields autofocus so you can type immediately. Spaces and normal typing are supported without triggering global shortcuts.
+                  </>
+                }
+              />
+            </ListItem>
+          </List>
   const [tabValue, setTabValue] = useState(0);
 
   // Extract repeated style keys to constants to satisfy sonarjs/no-duplicate-string
@@ -66,20 +98,20 @@ export default function HelpDialog({ open, onClose }) {
     setTabValue(newValue);
   };
 
-  return (
+                secondary="Begin or pause the automatic simulation (shortcut: Spacebar)."
     <Dialog
       open={open}
       onClose={onClose}
       maxWidth="lg"
       fullWidth
-      slotProps={{
+                secondary="Advance the simulation by exactly one generation."
         paper: {
           sx: { minHeight: '70vh', maxHeight: '90vh' }
         }
       }}
     >
       <DialogTitle>
-        Conway's Game of Life - Help & Guide
+                secondary="Remove all living cells and reset to generation 0."
       </DialogTitle>
       
       <DialogContent dividers>
@@ -95,14 +127,14 @@ export default function HelpDialog({ open, onClose }) {
         <TabPanel value={tabValue} index={0}>
           <Typography variant="h6" gutterBottom>
             What is Conway's Game of Life?
-          </Typography>
+                secondary="View population changes over time in a graphical format."
           <Typography sx={{ mb: 2 }}>
             The Game of Life is a cellular automaton devised by mathematician John Conway in 1970. 
             It's a zero-player game where the evolution is determined by its initial state, requiring 
             no further input. You interact by creating an initial configuration and observing how it evolves.
           </Typography>
 
-          <Typography variant="h6" gutterBottom>
+                secondary="Adjust color schemes, population stability detection, and performance preferences. Color scheme changes take effect immediately and update grid/cell colors."
             The Rules
           </Typography>
           <Typography sx={{ mb: 2 }}>
@@ -116,21 +148,27 @@ export default function HelpDialog({ open, onClose }) {
                 At each step in time, the following transitions occur:
               </Typography>
               <List dense>
-                <ListItem>
+                secondary="Zoom in and out of the grid (snapped to device pixels for crisp rendering)."
                   <ListItemText 
                     primary="Birth" 
                     secondary="A dead cell with exactly 3 live neighbors becomes alive" 
                   />
                 </ListItem>
-                <ListItem>
+                secondary="Pan around the infinite grid. Hold Shift to pan faster."
                   <ListItemText 
                     primary="Survival" 
                     secondary="A live cell with 2 or 3 live neighbors stays alive" 
                   />
                 </ListItem>
-                <ListItem>
+                secondary="Use the Center button (crosshair icon) or press 'f' to focus the viewport on all live cells."
                   <ListItemText 
                     primary="Death by Isolation" 
+            <ListItem>
+              <ListItemText 
+                primary="Typing in Dialogs" 
+                secondary="When typing in inputs or text areas (e.g., capture dialog), global shortcuts are temporarily disabled so you can enter spaces and text normally."
+              />
+            </ListItem>
                     secondary="A live cell with fewer than 2 neighbors dies" 
                   />
                 </ListItem>

@@ -195,6 +195,40 @@ If you prefer a manual approach, open `backend/data/shapes.json` and paste or ed
 
 If you'd like a cross-platform replacement for the shell start/stop scripts (Node-based process manager), I can add a small Node script that uses `child_process` and `detect-port` to make lifecycle control work consistently on Windows/macOS/Linux.
 
+## Controls & Tools quick reference
+
+- Draw: Click to toggle a single cell. Click and drag to draw continuously.
+- Line: Press, drag to endpoint, release to place; preview overlay shows the line.
+- Rectangle: Press and drag to size a filled rectangle; release to place.
+- Circle: Press and drag to size a circle; release to place.
+- Oval: Press and drag to size an ellipse; release to place.
+- Random Rectangle: Press and drag to size; on release, the area is filled with random live cells.
+- Shapes Library: Open the palette to pick predefined patterns. When a shape is selected, a preview follows your cursor; click to place.
+- Capture: Click and drag to select a rectangular region; on release a dialog opens to name/describe and save the captured pattern. The dialog previews the selection and autofocuses inputs. While typing, global shortcuts are suspended so spaces and normal text entry work.
+
+Simulation controls:
+- Start/Stop: Toggle simulation (Spacebar shortcut).
+- Step: Advance exactly one generation.
+- Clear: Remove all live cells and reset generation to 0.
+- Population Chart: Show a chart of population over time.
+- Settings: Change color scheme and other options. Color scheme changes immediately update grid and cell colors.
+
+Navigation:
+- Zoom: Mouse wheel zooms in/out; zoom snaps to device pixels for crisp rendering on high-DPI displays.
+- Pan: Arrow keys pan; hold Shift for faster panning.
+- Center: Click the crosshair button or press 'f' to focus on all live cells.
+
+Rotation direction (shapes):
+- The ⟳90 button on recent shape tiles rotates the shape 90° clockwise visually. Due to screen coordinates (y increases downward), this is implemented internally as a 270° mathematical rotation.
+
+Notes on rendering cadence:
+- The controller owns the simulation loop and render requests. The React app’s animation frame loop only flushes tool buffers (e.g., Random Rectangle) and does not step the world, ensuring consistent visual cadence.
+
+## What changed recently
+
+- Align rotate button behavior and icon: the ⟳90 action now rotates shapes clockwise (and the help text reflects this).
+- Help content expanded: added detailed tool descriptions, capture flow, shortcuts (Space to Start/Stop, 'f' to Center), and clarified color scheme updates.
+
 ## Attributions
 
 This project includes patterns from the **Life Lexicon** (Release 29, July 2018) by Stephen A. Silver, Dave Greene, and David Bell. The lexicon is used under the Creative Commons Attribution-ShareAlike 3.0 license (CC BY-SA 3.0).
