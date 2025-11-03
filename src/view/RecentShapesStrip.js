@@ -99,7 +99,7 @@ const RecentShapesStrip = ({
         >
           Recent Shapes
         </div>
-        <Tooltip title="Shapes">
+        <Tooltip title="Shapes Catalog">
           <IconButton size="small" onClick={openShapesPalette} aria-label="shapes" data-testid="open-shapes-palette">
             <WidgetsIcon fontSize="small" />
           </IconButton>

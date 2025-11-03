@@ -247,7 +247,7 @@ SelectedToolBadge.propTypes = {
 
 function RecentShapesPanel({ recentShapes, onSelectShape, drawWithOverlay, colorScheme, selectedShape, onRotateShape, onSwitchToShapesTool, openPalette }) {
   return (
-    <div className="recent-shapes" style={{ width: 110, minWidth: 110, background: '#222', padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+    <div className="recent-shapes" style={{ width: 140, minWidth: 140, background: '#222', padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
       <RecentShapesStrip
         recentShapes={recentShapes}
         selectShape={onSelectShape}
