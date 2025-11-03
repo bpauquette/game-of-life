@@ -1,2 +1,6 @@
 node_modules/
 .env
+
+# Local/generated data reports and backups
+data/shapes-missing-cells.json
+data/shapes.backup*.json

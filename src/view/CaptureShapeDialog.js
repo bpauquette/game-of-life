@@ -26,6 +26,7 @@ const CaptureShapeDialog = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const canvasRef = useRef(null);
+  const nameInputRef = useRef(null);
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -34,15 +35,26 @@ const CaptureShapeDialog = ({
       setDescription('');
       setError('');
       setSaving(false);
+      // Ensure focus moves to the required field as soon as the dialog mounts
+      // Use a rAF to wait for the input to be attached to the DOM
+      requestAnimationFrame(() => {
+        if (nameInputRef.current) {
+          try { nameInputRef.current.focus(); } catch (_) {}
+        }
+      });
     }
   }, [open]);
 
   // Draw preview when capture data changes
   useEffect(() => {
-    if (captureData && canvasRef.current) {
-      drawPreview();
+    if (!open) return;
+    // Schedule preview draw on next frame to ensure canvas is mounted and sized
+    if (captureData) {
+      requestAnimationFrame(() => {
+        if (canvasRef.current) drawPreview();
+      });
     }
-  }, [captureData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, captureData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const drawPreview = () => {
     const canvas = canvasRef.current;
@@ -54,10 +66,21 @@ const CaptureShapeDialog = ({
     
   logger.debug('Preview cells:', cells, 'width:', width, 'height:', height);
     
+    // Guard: nothing to draw
+    if (!Array.isArray(cells) || cells.length === 0 || width <= 0 || height <= 0) {
+      logger.warn('No cells to draw in preview or invalid dimensions');
+      // Clear any previous content and show an empty board
+      canvas.width = 200; canvas.height = 200;
+      const ctx2 = canvas.getContext('2d');
+      ctx2.fillStyle = '#ffffff';
+      ctx2.fillRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
     // Set canvas size based on capture dimensions
     const cellSize = Math.min(10, Math.max(4, 200 / Math.max(width, height)));
-    const canvasWidth = width * cellSize;
-    const canvasHeight = height * cellSize;
+    const canvasWidth = Math.max(1, Math.round(width * cellSize));
+    const canvasHeight = Math.max(1, Math.round(height * cellSize));
     
   logger.debug('Canvas setup - cellSize:', cellSize, 'canvasWidth:', canvasWidth, 'canvasHeight:', canvasHeight);
     
@@ -93,11 +116,6 @@ const CaptureShapeDialog = ({
     
     // Draw live cells with high contrast
     ctx.fillStyle = '#000000'; // Black for maximum visibility
-    
-    if (!cells || cells.length === 0) {
-  logger.warn('No cells to draw in preview!');
-      return;
-    }
     
   logger.debug('Drawing', cells.length, 'cells:', cells);
     
@@ -233,6 +251,8 @@ const CaptureShapeDialog = ({
             disabled={saving}
             error={!!error && !name.trim()}
             helperText={!!error && !name.trim() ? 'Name is required' : ''}
+            inputRef={nameInputRef}
+            autoFocus
           />
 
           <TextField

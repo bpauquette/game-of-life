@@ -20,6 +20,7 @@ import { rectTool } from '../controller/tools/rectTool';
 import { circleTool } from '../controller/tools/circleTool';
 import { ovalTool } from '../controller/tools/ovalTool';
 import { shapesTool } from '../controller/tools/shapesTool';
+import { captureTool } from '../controller/tools/captureTool';
 import useGridMousePosition from './hooks/useGridMousePosition';
 import PropTypes from 'prop-types';
 
@@ -30,6 +31,7 @@ const toolMap = {
   circle: circleTool,
   oval: ovalTool,
   shapes: shapesTool,
+  capture: captureTool,
   randomRect: randomRectTool
 };
 // Constants
