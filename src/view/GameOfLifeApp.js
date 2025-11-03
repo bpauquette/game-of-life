@@ -74,7 +74,9 @@ function GameOfLifeApp(props) {
       return gameRef.current.getViewport();
     }
     return { offsetX: 0, offsetY: 0, cellSize: 8 };
-  }, []);
+  }, 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  []);
   /* eslint-enable react-hooks/exhaustive-deps */
   const cellSize = getViewport().cellSize || 8;
   const cursorCell = useGridMousePosition({ canvasRef, cellSize });
@@ -281,11 +283,19 @@ function GameOfLifeApp(props) {
   }, [eventHandlers]);
 
   // Initialize MVC system once canvas is available
+  // NOTE: This effect intentionally runs only once.
+  // - Creating GameMVC binds DOM/canvas listeners and sets up a controller loop.
+  // - Re-running on changes (colorScheme, handlers, selections) would recreate
+  //   the model/view/controller stack and rebind listeners, causing duplicate
+  //   events and jank. Those concerns are handled by targeted effects below
+  //   (e.g., the color scheme effect) and by model observers.
+  // - We suppress react-hooks/exhaustive-deps here on purpose to preserve this
+  //   one-time initialization contract.
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!canvasRef.current || gameRef.current) {
       return;
     }
-
     const canvas = canvasRef.current;
     try {
       const options = {
@@ -530,7 +540,7 @@ function GameOfLifeApp(props) {
   }, [setCellAlive]);
 
   return (
-    <div className="canvas-container" style={{ display: 'flex', flexDirection: 'row', height: '100vh' }}>
+  <div className="canvas-container" style={{ display: 'flex', flexDirection: 'row', height: '100vh', backgroundColor: '#000' }}>
       {/* Static recent shapes strip on the left */}
       <div className="recent-shapes" style={{ width: 110, minWidth: 110, background: '#222', padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
         <RecentShapesStrip
@@ -647,7 +657,8 @@ function GameOfLifeApp(props) {
             cursor: (selectedShape || selectedTool) ? 'crosshair' : 'default',
             display: 'block',
             width: '100%',
-            height: '100%'
+            height: '100%',
+            backgroundColor: '#000'
           }}
         />
 

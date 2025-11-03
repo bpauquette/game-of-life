@@ -181,6 +181,16 @@ export default function AboutDialog({ open, onClose }) {
             >
               Life Lexicon Home Page
             </Link>
+            <Box sx={{ mt: 1 }}>
+              <Link 
+                href="https://creativecommons.org/licenses/by-sa/3.0/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                variant="body2"
+              >
+                CC BY-SA 3.0 License
+              </Link>
+            </Box>
           </CardContent>
         </Card>
 

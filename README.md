@@ -78,6 +78,7 @@ Instead, it will copy all the configuration files and the transitive dependencie
 Key design docs:
 
 - Overlay descriptors and observer-driven UI: `docs/ADR-2025-11-02-overlay-observer-arch.md`
+- One-time MVC initialization (effect rationale): `docs/ADR-2025-11-02-one-time-mvc-init.md`
 
 Highlights:
 
@@ -199,7 +200,7 @@ If you'd like a cross-platform replacement for the shell start/stop scripts (Nod
 
 - Draw: Click to toggle a single cell. Click and drag to draw continuously.
 - Line: Press, drag to endpoint, release to place; preview overlay shows the line.
-- Rectangle: Press and drag to size a filled rectangle; release to place.
+- Rectangle: Press and drag to size an outline rectangle (not filled); release to place.
 - Circle: Press and drag to size a circle; release to place.
 - Oval: Press and drag to size an ellipse; release to place.
 - Random Rectangle: Press and drag to size; on release, the area is filled with random live cells.
@@ -231,7 +232,10 @@ Notes on rendering cadence:
 
 ## Attributions
 
-This project includes patterns from the **Life Lexicon** (Release 29, July 2018) by Stephen A. Silver, Dave Greene, and David Bell. The lexicon is used under the Creative Commons Attribution-ShareAlike 3.0 license (CC BY-SA 3.0).
+This project includes patterns from the **Life Lexicon** (Release 29, July 2018) by Stephen A. Silver, Dave Greene, and David Bell, used under the Creative Commons Attribution-ShareAlike 3.0 license (CC BY-SA 3.0).
+
+- Life Lexicon home: http://conwaylife.com/ref/lexicon/
+- License: https://creativecommons.org/licenses/by-sa/3.0/
 
 See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for complete attribution details and licensing information.
 
