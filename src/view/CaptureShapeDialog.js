@@ -62,7 +62,27 @@ const CaptureShapeDialog = ({
   logger.debug('Drawing preview with captureData:', captureData);
 
     const ctx = canvas.getContext('2d');
-    const { cells, width, height } = captureData;
+    let { cells, width, height } = captureData;
+    // Normalize cells to objects {x,y}
+    if (Array.isArray(cells)) {
+      cells = cells.map(c => Array.isArray(c) ? ({ x: c[0], y: c[1] }) : ({ x: Number(c?.x ?? 0), y: Number(c?.y ?? 0) }));
+    } else {
+      cells = [];
+    }
+    // If width/height are missing or invalid, compute from cells
+    if (!(Number.isFinite(width) && width > 0) || !(Number.isFinite(height) && height > 0)) {
+      if (cells.length > 0) {
+        const xs = cells.map(c => c.x);
+        const ys = cells.map(c => c.y);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+        width = (maxX - minX + 1) || 1;
+        height = (maxY - minY + 1) || 1;
+      } else {
+        width = width || 0;
+        height = height || 0;
+      }
+    }
     
   logger.debug('Preview cells:', cells, 'width:', width, 'height:', height);
     
@@ -119,18 +139,16 @@ const CaptureShapeDialog = ({
     
   logger.debug('Drawing', cells.length, 'cells:', cells);
     
-    for (const [index, cell] of cells.entries()) {
-    if (!cell || typeof cell.x !== 'number' || typeof cell.y !== 'number') {
-  logger.error('Invalid cell at index', index, ':', cell);
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      if (!cell || !Number.isFinite(cell.x) || !Number.isFinite(cell.y)) {
+        logger.error('Invalid cell at index', i, ':', cell);
         continue;
       }
-      
       const x = cell.x * cellSize + 1;
       const y = cell.y * cellSize + 1;
-      
-  logger.debug(`Drawing cell ${index} at (${cell.x}, ${cell.y}) -> screen (${x}, ${y})`);
-      
-      ctx.fillRect(x, y, cellSize - 2, cellSize - 2);
+      logger.debug(`Drawing cell ${i} at (${cell.x}, ${cell.y}) -> screen (${x}, ${y})`);
+      ctx.fillRect(x, y, Math.max(1, cellSize - 2), Math.max(1, cellSize - 2));
     }
   };
 

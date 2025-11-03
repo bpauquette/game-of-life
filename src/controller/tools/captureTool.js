@@ -1,4 +1,5 @@
 import logger from '../utils/logger';
+import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
 // Rectangular area capture tool for shapes catalog
 // Uses eyedropper metaphor for sampling/capturing patterns from the grid
 
@@ -10,6 +11,13 @@ const SELECTION_LINE_WIDTH = 2;
 const DASH_PATTERN = [5, 5];
 
 export const captureTool = {
+  getOverlay(toolState /*, cellSize */) {
+    // Provide a descriptor overlay so GameRenderer can draw it during main render
+    if (!toolState.start || !toolState.end) return null;
+    const cells = Array.isArray(toolState.preview) ? toolState.preview : [];
+    // Use a subtle greenish highlight similar to the tool's canvas overlay
+    return makeCellsHighlightOverlay(cells, { color: 'rgba(0,255,136,0.28)', alpha: 0.6 });
+  },
   onMouseDown(toolState, x, y) {
     // Start rectangle selection
     toolState.start = { x, y };
@@ -30,17 +38,17 @@ export const captureTool = {
     const minY = Math.min(toolState.start.y, y);
     const maxY = Math.max(toolState.start.y, y);
     
-    // Create rectangle perimeter for preview
-    toolState.preview = [];
+  // Create rectangle perimeter for preview (absolute cell coords)
+  toolState.preview = [];
     
-    // Add top and bottom edges
+  // Add top and bottom edges
     const topBottomEdges = [];
     for (let px = minX; px <= maxX; px++) {
       topBottomEdges.push([px, minY], [px, maxY]);
     }
     toolState.preview.push(...topBottomEdges);
     
-    // Add left and right edges  
+  // Add left and right edges
     const leftRightEdges = [];
     for (let py = minY + 1; py < maxY; py++) {
       leftRightEdges.push([minX, py], [maxX, py]);
