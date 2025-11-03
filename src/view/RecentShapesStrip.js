@@ -89,6 +89,11 @@ const RecentShapesStrip = ({
           marginBottom: 8
         }}
       >
+        <Tooltip title="Shapes Catalog">
+          <IconButton size="small" onClick={openShapesPalette} aria-label="shapes" data-testid="open-shapes-palette">
+            <WidgetsIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
         <div 
           style={{
             fontSize: '12px',
@@ -99,11 +104,6 @@ const RecentShapesStrip = ({
         >
           Recent Shapes
         </div>
-        <Tooltip title="Shapes Catalog">
-          <IconButton size="small" onClick={openShapesPalette} aria-label="shapes" data-testid="open-shapes-palette" style={{ marginTop: 2 }}>
-            <WidgetsIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
       </div>
       {slots.map((shape, index) => (
         <ShapeSlot

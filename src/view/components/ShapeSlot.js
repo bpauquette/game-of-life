@@ -129,7 +129,7 @@ function ShapeSlot({
   const normalized = normalizeCellsForDisplay(cells);
 
   return (
-    <div key={key} style={{ position: 'relative', marginBottom: SHAPE_MARGIN_BOTTOM, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+  <div key={key} style={{ position: 'relative', marginBottom: SHAPE_MARGIN_BOTTOM, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
       <button
         type="button"
         style={{
@@ -189,8 +189,8 @@ function ShapeSlot({
           <div
             style={{
               position: 'absolute',
-              top: '-3px',
-              right: '-3px',
+              top: '2px',
+              left: '2px',
               width: '16px',
               height: '16px',
               background: SELECTED_BORDER_COLOR,

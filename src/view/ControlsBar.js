@@ -22,7 +22,6 @@ import BrushIcon from '@mui/icons-material/Brush';
 import LineAxisIcon from '@mui/icons-material/ShowChart';
 import CropSquareIcon from '@mui/icons-material/CropSquare';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-import WidgetsIcon from '@mui/icons-material/Widgets';
 import CasinoIcon from '@mui/icons-material/Casino';
 import ColorizeIcon from '@mui/icons-material/Colorize';
 import SaveIcon from '@mui/icons-material/Save';
