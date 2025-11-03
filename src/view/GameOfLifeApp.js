@@ -53,9 +53,17 @@ function useGameMvcInit({ canvasRef, gameRef, colorScheme, onModelReady, handleM
     if (!canvasRef.current || gameRef.current) return;
     const canvas = canvasRef.current;
     try {
+      // Singleton-ish guard: if a previous instance exists (e.g., dev StrictMode remount), destroy it
+      if (typeof globalThis !== 'undefined' && globalThis.__GOL_GAME__) {
+        try { globalThis.__GOL_GAME__.destroy?.(); } catch {}
+        globalThis.__GOL_GAME__ = null;
+      }
       const options = { view: { showCursor: true, colorScheme } };
       const game = new GameMVC(canvas, options);
       gameRef.current = game;
+      if (typeof globalThis !== 'undefined') {
+        globalThis.__GOL_GAME__ = game;
+      }
       game.onModelChange((event, data) => handleModelChange(event, data, game));
       game.waitForTools().then(() => {
         if (typeof onModelReady === 'function') onModelReady(game);
@@ -63,7 +71,13 @@ function useGameMvcInit({ canvasRef, gameRef, colorScheme, onModelReady, handleM
     } catch (error) {
       logger.error('❌ Failed to create MVC Game System:', error);
     }
-    return () => { if (gameRef.current) gameRef.current = null; };
+    return () => {
+      try { gameRef.current?.destroy?.(); } catch {}
+      if (typeof globalThis !== 'undefined' && globalThis.__GOL_GAME__ === gameRef.current) {
+        globalThis.__GOL_GAME__ = null;
+      }
+      if (gameRef.current) gameRef.current = null;
+    };
   }, [canvasRef, gameRef, colorScheme, handleModelChange, onModelReady]);
 }
 
@@ -86,12 +100,16 @@ function useGameListenersSetup({ gameRef, updateStabilityDetection, handleModelC
   useEffect(() => {
     if (!gameRef.current) return;
     const game = gameRef.current;
-    game.onModelChange((event, data) => handleModelChange(event, data, game));
+    const handler = (event, data) => handleModelChange(event, data, game);
+    game.onModelChange(handler);
     if (globalThis.speedGaugeTracker) {
       game.addPerformanceCallback((frameTime) => {
         globalThis.speedGaugeTracker(frameTime, frameTime);
       });
     }
+    return () => {
+      try { game.offModelChange?.(handler); } catch {}
+    };
   }, [gameRef, updateStabilityDetection, handleModelChange]);
 }
 
