@@ -81,6 +81,10 @@ export class GameController {
         case 'shapePlace':
           this.requestRender();
           break;
+        case 'colorSchemeChanged':
+          // Re-render immediately to apply new background/grid and cell colors
+          this.requestRender();
+          break;
         case 'runningStateChanged':
           this.handleRunningStateChange(data.isRunning);
           break;
