@@ -41,7 +41,7 @@ export const randomRectTool = {
     state.preview = computeRect(state.start.x, state.start.y, x, y);
   },
 
-  onMouseUp(state, x, y, setCellAlive) {
+  onMouseUp(state, x, y, setCellAlive, setCellsAliveBulk) {
     if (!state.start) return;
     const pts = computeRect(state.start.x, state.start.y, x, y);
     const p = Math.max(0, Math.min(1, state.prob ?? 0.5));
@@ -52,7 +52,7 @@ export const randomRectTool = {
     }
     else {
       // Small rectangles: synchronous
-      drawSynchronous(pts, p, setCellAlive, state);
+      drawSynchronous(pts, p, setCellAlive, state, setCellsAliveBulk);
     }
   },
   drawOverlay(ctx, state, cellSize, offset) {
@@ -88,12 +88,22 @@ const computeRect = (x0, y0, x1, y1) => {
   return pts;
 };
 
-function drawSynchronous(pts, p, setCellAlive, state) {
+function drawSynchronous(pts, p, setCellAlive, state, setCellsAliveBulk) {
+  const updates = [];
   for (const point of pts) {
     const px = point[0];
     const py = point[1];
     const shouldBeAlive = Math.random() < p;
-    setCellAlive(px, py, shouldBeAlive);
+    if (shouldBeAlive) {
+      updates.push([px, py, true]);
+    }
+  }
+  if (typeof setCellsAliveBulk === 'function' && updates.length > 0) {
+    setCellsAliveBulk(updates);
+  } else {
+    for (const [px, py] of updates) {
+      setCellAlive(px, py, true);
+    }
   }
   state.start = null;
   state.last = null;
@@ -138,21 +148,32 @@ function drawInWorker(state, x, y, p, pts, setCellAlive) {
  * Apply any buffered random-rect cells into the grid via setCellAlive and clear the buffer.
  * Accepts flexible buffer item shapes returned by the worker: [x,y,alive], [x,y], or {x,y,alive}.
  */
-function flushRandomRectBuffer(state, setCellAlive) {
+function flushRandomRectBuffer(state, setCellAlive, setCellsAliveBulk) {
   // Prefer controller buffer if available
   const controller = state?._controller;
   const buf = controller?.randomRectBuffer ?? state?.randomRectBuffer;
   if (!buf || typeof setCellAlive !== 'function') return;
-  for (const item of buf) {
-    if (Array.isArray(item)) {
-      const [px, py, alive] = item;
-      const shouldAlive = alive === undefined ? true : !!alive;
-      setCellAlive(px, py, shouldAlive);
-    } else if (item && typeof item === 'object' && 'x' in item && 'y' in item) {
-      setCellAlive(item.x, item.y, !!item.alive);
-    }
+  const updates = collectUpdates(buf);
+  if (typeof setCellsAliveBulk === 'function' && updates.length > 0) {
+    setCellsAliveBulk(updates);
+  } else if (updates.length > 0) {
+    for (const [px, py] of updates) setCellAlive(px, py, true);
   }
   // Clear both controller and toolState buffers
   if (controller) controller.randomRectBuffer = null;
   state.randomRectBuffer = null;
+}
+
+function collectUpdates(buf) {
+  const updates = [];
+  for (const item of buf) {
+    if (Array.isArray(item)) {
+      const [px, py, alive] = item;
+      const shouldAlive = alive === undefined ? true : !!alive;
+      if (shouldAlive) updates.push([px, py, true]);
+    } else if (item && typeof item === 'object' && 'x' in item && 'y' in item && (item.alive === undefined || item.alive)) {
+      updates.push([item.x, item.y, true]);
+    }
+  }
+  return updates;
 }

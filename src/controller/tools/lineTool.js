@@ -18,11 +18,16 @@ export const lineTool = {
     state.preview = computeLine(state.start.x, state.start.y, x, y);
   },
 
-  onMouseUp(state, x, y, setCellAlive) {
+  onMouseUp(state, x, y, setCellAlive, setCellsAliveBulk) {
     if (!state.start) return;
     const pts = computeLine(state.start.x, state.start.y, x, y);
-    for (const [px, py] of pts) {
-      setCellAlive(px, py, true);
+    if (typeof setCellsAliveBulk === 'function') {
+      const updates = pts.map(([px, py]) => [px, py, true]);
+      setCellsAliveBulk(updates);
+    } else {
+      for (const [px, py] of pts) {
+        setCellAlive(px, py, true);
+      }
     }
     state.start = null;
     state.last = null;

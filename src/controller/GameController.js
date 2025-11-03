@@ -253,6 +253,9 @@ export class GameController {
         const setCellAlive = (x, y, alive) => {
           this.model.setCellAliveModel(x, y, alive);
         };
+        const setCellsAliveBulk = (updates) => {
+          return this.model.setCellsAliveBulk(updates);
+        };
         if (selectedTool === 'shapes') {
           // Provide placeShape callback to shapes tool
           const placeShape = (x, y) => {
@@ -261,13 +264,13 @@ export class GameController {
               this.model.placeShape(x, y, shape);
             }
           };
-          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, placeShape);
+          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, placeShape, setCellsAliveBulk);
         } else if (selectedTool === 'capture') {
           // Provide getLiveCells and the tool itself for callback
           const getLiveCells = () => this.model.getLiveCells();
-          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, getLiveCells, tool);
+          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, getLiveCells, tool, setCellsAliveBulk);
         } else {
-          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive);
+          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, setCellsAliveBulk);
         }
       }
       this.updateToolOverlay();

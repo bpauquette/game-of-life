@@ -4,6 +4,28 @@
 import { step as gameStep } from './gameLogic';
 import { colorSchemes } from './colorSchemes';
 import logger from '../controller/utils/logger';
+
+// Helpers for bulk updates (module-scope to keep method complexity low)
+function normalizeBulkUpdate(u) {
+  if (Array.isArray(u)) return { x: u[0], y: u[1], alive: u.length > 2 ? !!u[2] : true };
+  if (u && typeof u === 'object') return { x: u.x, y: u.y, alive: Object.prototype.hasOwnProperty.call(u, 'alive') ? !!u.alive : true };
+  return null;
+}
+
+function applyBulkUpdate(liveCells, upd) {
+  const key = `${upd.x},${upd.y}`;
+  const wasAlive = liveCells.has(key);
+  if (upd.alive) {
+    if (!wasAlive) {
+      liveCells.set(key, true);
+      return { add: 1, rem: 0 };
+    }
+  } else if (wasAlive) {
+    liveCells.delete(key);
+    return { add: 0, rem: 1 };
+  }
+  return { add: 0, rem: 0 };
+}
 const CONST_UISTATECHANGED = 'uiStateChanged';
 
 export class GameModel {
@@ -93,6 +115,30 @@ export class GameModel {
       this.liveCells.delete(key);
       this.notifyObservers('cellChanged', { x, y, alive: false });
     }
+  }
+
+  // Bulk update API: apply many cell state changes with a single notification
+  // Accepts an array of updates; each update can be:
+  // - [x, y]
+  // - [x, y, alive]
+  // - { x, y, alive }
+  // When alive is omitted, defaults to true.
+  setCellsAliveBulk(updates) {
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return { added: 0, removed: 0, changed: 0 };
+    }
+    let added = 0;
+    let removed = 0;
+    for (const raw of updates) {
+      const upd = normalizeBulkUpdate(raw);
+      if (!upd || typeof upd.x !== 'number' || typeof upd.y !== 'number') continue;
+      const res = applyBulkUpdate(this.liveCells, upd);
+      added += res.add;
+      removed += res.rem;
+    }
+    const changed = added + removed;
+    if (changed > 0) this.notifyObservers('cellsChangedBulk', { added, removed, changed });
+    return { added, removed, changed };
   }
 
   isCellAlive(x, y) {

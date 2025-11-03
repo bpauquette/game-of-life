@@ -100,9 +100,11 @@ function useAnimationFlushRandomRect({ gameRef, setCellAlive }) {
     let animationFrameId;
     function animationLoop() {
       if (gameRef.current?.randomRectBuffer) {
-        flushRandomRectBuffer({ _controller: gameRef.current }, setCellAlive);
+        const setCellsAliveBulk = (updates) => gameRef.current?.setCellsAliveBulk?.(updates);
+        flushRandomRectBuffer({ _controller: gameRef.current }, setCellAlive, setCellsAliveBulk);
       } else if (gameRef.current?.toolState?.randomRectBuffer) {
-        flushRandomRectBuffer(gameRef.current.toolState, setCellAlive);
+        const setCellsAliveBulk = (updates) => gameRef.current?.setCellsAliveBulk?.(updates);
+        flushRandomRectBuffer(gameRef.current.toolState, setCellAlive, setCellsAliveBulk);
       }
       animationFrameId = requestAnimationFrame(animationLoop);
     }

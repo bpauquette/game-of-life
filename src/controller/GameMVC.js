@@ -142,6 +142,10 @@ export class GameMVC {
   return this.model.setCellAliveModel(x, y, alive);
   }
 
+  setCellsAliveBulk(updates) {
+    return this.model.setCellsAliveBulk(updates);
+  }
+
   getLiveCells() {
     return this.model.getLiveCells();
   }

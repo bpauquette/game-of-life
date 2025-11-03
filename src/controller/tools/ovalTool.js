@@ -20,13 +20,18 @@ export const ovalTool = {
     state.preview = computeEllipsePerimeter(state.start.x, state.start.y, x, y);
   },
 
-  onMouseUp(state, x, y, setCellAlive) {
+  onMouseUp(state, x, y, setCellAlive, setCellsAliveBulk) {
     if (!state.start) return;
     const pts = computeEllipsePerimeter(state.start.x, state.start.y, x, y);
-    for (const p of pts) {
-      const px = p[0];
-      const py = p[1];
-      setCellAlive(px, py, true);
+    if (typeof setCellsAliveBulk === 'function') {
+      const updates = pts.map(p => [p[0], p[1], true]);
+      setCellsAliveBulk(updates);
+    } else {
+      for (const p of pts) {
+        const px = p[0];
+        const py = p[1];
+        setCellAlive(px, py, true);
+      }
     }
     state.start = null;
     state.last = null;
