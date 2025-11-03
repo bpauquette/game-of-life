@@ -60,12 +60,12 @@ export function parseLexiconText(text) {
     }
 
     // Compute full description
-        const descJoined = [current.headDescription, ...textLines]
-          .filter(Boolean)
-          .map(s => s.replace(/^\s+/, ''))
-          .join(' ')
-          .replaceAll(/\s+/g, ' ')
-          .trim();
+    const descJoined = [current.headDescription, ...textLines]
+      .filter(Boolean)
+      .map(s => s.replace(/^\s+/, ''))
+      .join(' ')
+      .replaceAll(/\s+/g, ' ')
+      .trim();
 
     // Parse geometry (RLE preferred, else dot-asterisk)
     let cells = [];
@@ -82,10 +82,26 @@ export function parseLexiconText(text) {
     cells = normalizeCells(cells);
     const { width, height } = dims(cells);
 
+    // Classify entry type and detect alias/cross-reference
+    let aliasOf = null;
+    let entryType = 'concept';
+    const descStart = descJoined;
+    let m;
+    if ((m = descStart.match(/^=\s*\{([^}]+)\}/))) {
+      aliasOf = m[1];
+      entryType = 'alias';
+    } else if ((m = descStart.match(/^See\s*\{([^}]+)\}/i))) {
+      aliasOf = m[1];
+      entryType = 'crossref';
+    }
+    if (cells.length > 0) entryType = 'pattern';
+
     out.push({
       name: current.name,
       metadata: current.metadata,
       description: descJoined,
+      type: entryType,
+      aliasOf: aliasOf || undefined,
       width, height,
       cells,
       cellCount: cells.length
