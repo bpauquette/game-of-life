@@ -48,7 +48,6 @@ function getColorSchemeFromKey(key) {
 // Custom hooks extracted to reduce cognitive complexity in the main component
 function useGameMvcInit({ canvasRef, gameRef, colorScheme, onModelReady, handleModelChange }) {
   // NOTE: intentionally one-time init; depends only on canvasRef.current existence
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!canvasRef.current || gameRef.current) return;
     const canvas = canvasRef.current;
@@ -64,7 +63,6 @@ function useGameMvcInit({ canvasRef, gameRef, colorScheme, onModelReady, handleM
       if (typeof globalThis !== 'undefined') {
         globalThis.__GOL_GAME__ = game;
       }
-      game.onModelChange((event, data) => handleModelChange(event, data, game));
       game.waitForTools().then(() => {
         if (typeof onModelReady === 'function') onModelReady(game);
       });
@@ -78,7 +76,7 @@ function useGameMvcInit({ canvasRef, gameRef, colorScheme, onModelReady, handleM
       }
       if (gameRef.current) gameRef.current = null;
     };
-  }, [canvasRef, gameRef, colorScheme, handleModelChange, onModelReady]);
+  }, [canvasRef, gameRef, onModelReady]);
 }
 
 function useColorSchemeSync({ gameRef, colorScheme, colorSchemeKey }) {

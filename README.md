@@ -75,11 +75,6 @@ Instead, it will copy all the configuration files and the transitive dependencie
 ## Learn More
 ## Architecture notes
 
-Key design docs:
-
-- Overlay descriptors and observer-driven UI: `docs/ADR-2025-11-02-overlay-observer-arch.md`
-- One-time MVC initialization (effect rationale): `docs/ADR-2025-11-02-one-time-mvc-init.md`
-
 Highlights:
 
 - Tools emit overlay descriptors; model stores overlay; view passes overlay to the renderer; renderer draws descriptors.
