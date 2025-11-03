@@ -82,9 +82,9 @@ const RecentShapesStrip = ({
       <div 
         style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 6,
+          gap: 8,
           width: '100%',
           marginBottom: 8
         }}
@@ -100,7 +100,7 @@ const RecentShapesStrip = ({
           Recent Shapes
         </div>
         <Tooltip title="Shapes Catalog">
-          <IconButton size="small" onClick={openShapesPalette} aria-label="shapes" data-testid="open-shapes-palette">
+          <IconButton size="small" onClick={openShapesPalette} aria-label="shapes" data-testid="open-shapes-palette" style={{ marginTop: 2 }}>
             <WidgetsIcon fontSize="small" />
           </IconButton>
         </Tooltip>

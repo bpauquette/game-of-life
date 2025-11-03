@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { rotateShape } from '../../model/shapeTransforms';
 
 const RECENT_SHAPES_THUMBNAIL_SIZE = 48;
+const RECENT_SHAPES_BUTTON_WIDTH = 130; // Give label room to avoid ellipsis
 const SHAPE_MARGIN_BOTTOM = 12;
 const SHAPE_BORDER_RADIUS = 8;
 const SHAPE_BORDER_COLOR = 'rgba(255,255,255,0.15)';
@@ -128,7 +129,7 @@ function ShapeSlot({
   const normalized = normalizeCellsForDisplay(cells);
 
   return (
-    <div key={key} style={{ position: 'relative', marginBottom: SHAPE_MARGIN_BOTTOM, display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div key={key} style={{ position: 'relative', marginBottom: SHAPE_MARGIN_BOTTOM, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
       <button
         type="button"
         style={{
@@ -136,7 +137,11 @@ function ShapeSlot({
           background: 'transparent',
           border: 'none',
           padding: 0,
-          display: 'block'
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          width: RECENT_SHAPES_BUTTON_WIDTH
         }}
         onClick={onSelect}
         title={title}
@@ -185,7 +190,7 @@ function ShapeSlot({
             style={{
               position: 'absolute',
               top: '-3px',
-              left: `${RECENT_SHAPES_THUMBNAIL_SIZE - 13}px`,
+              right: '-3px',
               width: '16px',
               height: '16px',
               background: SELECTED_BORDER_COLOR,
@@ -205,21 +210,13 @@ function ShapeSlot({
         )}
         <div
           style={{
-            position: 'absolute',
-            bottom: '-2px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'rgba(0,0,0,0.8)',
+            marginTop: 6,
             color: '#ffffff',
-            fontSize: '10px',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            whiteSpace: 'nowrap',
-            maxWidth: `${RECENT_SHAPES_THUMBNAIL_SIZE}px`,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
+            fontSize: '11px',
+            lineHeight: 1.2,
+            padding: '0 4px',
             textAlign: 'center',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+            wordBreak: 'break-word'
           }}
         >
           {title}
