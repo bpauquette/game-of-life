@@ -5,7 +5,6 @@ import Tooltip from '@mui/material/Tooltip';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import SelectedToolIndicator from './SelectedToolIndicator';
 import Chip from '@mui/material/Chip';
 import useCanvasManager from '../view/hooks/useCanvasManager';
 import { GameMVC } from '../controller/GameMVC';
@@ -270,22 +269,7 @@ function useModelEventHandlers({
 }
 
 // Presentational components to reduce GameOfLifeApp render complexity
-function SelectedToolBadge({ selectedTool }) {
-  return (
-    <div style={{
-      position: 'fixed',
-      bottom: 20,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: 1000
-    }}>
-      <SelectedToolIndicator selectedTool={selectedTool} />
-    </div>
-  );
-}
-SelectedToolBadge.propTypes = {
-  selectedTool: PropTypes.string
-};
+// Removed SelectedToolIndicator overlay in favor of clearer ToolGroup highlight and header chip
 
 function BottomStatusBar({ selectedTool, toolStateRef, cursorCell, selectedShape, model, liveCellsCount, generation }) {
   const cursorLabel = cursorCell ? `${cursorCell.x},${cursorCell.y}` : '—';
@@ -467,7 +451,7 @@ function GameUILayout({
       )}
 
   <div style={{ position: 'absolute', top: (uiState?.showChrome ?? true) ? 104 : 0, left: (sidebarOpen && (uiState?.showChrome ?? true)) ? 180 : 0, right: 0, bottom: 0, transition: 'left 200ms ease' }}>
-        <SelectedToolBadge selectedTool={selectedTool} />
+  {/* Selected tool indicator overlay removed; current tool is displayed in the header toolbar */}
 
         <PalettePortal
           open={uiState?.paletteOpen ?? false}

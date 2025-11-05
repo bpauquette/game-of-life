@@ -12,6 +12,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import SaveLoadGroup from './components/SaveLoadGroup';
 import RunControlGroup from './components/RunControlGroup';
 import ToolGroup from './components/ToolGroup';
+import Chip from '@mui/material/Chip';
 import OptionsPanel from './OptionsPanel';
 import HelpDialog from './HelpDialog';
 import AboutDialog from './AboutDialog';
@@ -231,6 +232,15 @@ export default function HeaderBar({
           }}
         >
           <ToolGroup selectedTool={selectedTool} setSelectedTool={setSelectedTool} isSmall={isSmall} />
+          <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
+            <Chip
+              size={isSmall ? 'small' : 'medium'}
+              color="primary"
+              label={`Tool: ${String(selectedTool || '').toUpperCase()}`}
+              sx={{ fontWeight: 600 }}
+              data-testid="selected-tool-chip"
+            />
+          </Box>
         </Box>
       )}
 
