@@ -39,7 +39,7 @@ export default function StatisticsPanel({
       </Stack>
 
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexDirection: isSmall ? 'column' : 'row' }}>
-        <Box sx={{ flex: isSmall ? '0 0 auto' : '0 0 auto' }}>
+        <Box sx={{ flex: '0 0 auto' }}>
           <SpeedGauge isVisible embedded gameRef={gameRef} />
         </Box>
         <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>

@@ -166,6 +166,10 @@ export class GameController {
   if (!this.toolMap[toolName]) return;
   logger.debug(`[GameController] setSelectedTool: toolName=${toolName}`);
   this.model.setSelectedToolModel(toolName);
+  // If user selects the capture (pick) tool, pause the simulation for precise selection
+  if (toolName === 'capture' && this.model.getIsRunning?.() === true) {
+    this.model.setRunningModel(false);
+  }
   // Always update overlay after tool change
   this.updateToolOverlay();
   }
