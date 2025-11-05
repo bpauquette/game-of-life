@@ -15,6 +15,7 @@ import ShapePaletteDialog from '../view/ShapePaletteDialog';
 import CaptureShapeDialog from '../view/CaptureShapeDialog';
 // RecentShapesStrip is used inside LeftSidebar component
 import LeftSidebar from '../view/LeftSidebar';
+import RecentShapesDrawer from '../view/RecentShapesDrawer';
 import { flushRandomRectBuffer, randomRectTool } from '../controller/tools/randomRectTool';
 import { useShapeManager } from '../view/hooks/useShapeManager';
 import { colorSchemes } from '../model/colorSchemes';
@@ -237,7 +238,8 @@ function useModelEventHandlers({
   handleGameStep,
   setIsRunning,
   setPerformanceSettings,
-  handleGameCleared
+  handleGameCleared,
+  shapeManager
 }) {
   const eventHandlers = React.useMemo(() => ({
     selectedToolChanged: (data) => updateSelectedToolFromModel(data),
@@ -246,7 +248,34 @@ function useModelEventHandlers({
     runningStateChanged: (data) => setIsRunning(data.isRunning),
     performanceSettingsChanged: (data) => setPerformanceSettings(data),
     gameCleared: handleGameCleared,
-    captureCompleted: (captureData) => {
+    captureCompleted: (captureData, game) => {
+      // Instant add to Recent: create a shape object and select it
+      try {
+        const timestamp = Date.now();
+        const name = captureData?.name || `Capture ${new Date(timestamp).toLocaleTimeString()}`;
+        const newShape = {
+          id: `capture-${timestamp}`,
+          name,
+          // Use cells directly; GameModel.placeShape accepts `cells` or `pattern`
+          cells: Array.isArray(captureData?.cells) ? captureData.cells : [],
+          meta: {
+            width: captureData?.width,
+            height: captureData?.height,
+            cellCount: captureData?.cellCount,
+            originalBounds: captureData?.originalBounds,
+            capturedAt: new Date(timestamp).toISOString(),
+            source: 'capture-tool'
+          }
+        };
+        // Add to recent and select for immediate placement
+        shapeManager?.selectShape?.(newShape);
+        // Switch to shapes tool for stamping
+        game?.setSelectedTool?.('shapes');
+      } catch (e) {
+        // Log and continue to show dialog
+        try { logger.debug('Instant add to Recent failed:', e); } catch {}
+      }
+      // Preserve existing behavior: open the capture dialog with details
       setUIState((prev) => ({ ...prev, captureData, captureDialogOpen: true }));
     }
   }), [
@@ -256,7 +285,8 @@ function useModelEventHandlers({
     setIsRunning,
     setPerformanceSettings,
     updateSelectedToolFromModel,
-    updateSelectedShapeFromModel
+    updateSelectedShapeFromModel,
+    shapeManager
   ]);
 
   const handleModelChange = useCallback((event, data, game) => {
@@ -432,24 +462,24 @@ function GameUILayout({
       />
       )}
 
-      { (uiState?.showChrome ?? true) && (
-      <LeftSidebar
-        recentShapes={recentShapes}
-        onSelectShape={onSelectShape}
-        drawWithOverlay={drawWithOverlay}
-        colorScheme={colorScheme}
-        selectedShape={selectedShapeForPanel}
-        onRotateShape={onRotateShape}
-        onSwitchToShapesTool={onSwitchToShapesTool}
-        openPalette={controlsProps?.openPalette}
-        selectedTool={selectedTool}
-        setSelectedTool={controlsProps?.setSelectedTool}
-        open={sidebarOpen}
-        topOffset={104}
-      />
+      { (uiState?.showChrome ?? true) && !isSmall && (
+        <LeftSidebar
+          recentShapes={recentShapes}
+          onSelectShape={onSelectShape}
+          drawWithOverlay={drawWithOverlay}
+          colorScheme={colorScheme}
+          selectedShape={selectedShapeForPanel}
+          onRotateShape={onRotateShape}
+          onSwitchToShapesTool={onSwitchToShapesTool}
+          openPalette={controlsProps?.openPalette}
+          selectedTool={selectedTool}
+          setSelectedTool={controlsProps?.setSelectedTool}
+          open={sidebarOpen}
+          topOffset={104}
+        />
       )}
 
-  <div style={{ position: 'absolute', top: (uiState?.showChrome ?? true) ? 104 : 0, left: (sidebarOpen && (uiState?.showChrome ?? true)) ? 180 : 0, right: 0, bottom: 0, transition: 'left 200ms ease' }}>
+  <div style={{ position: 'absolute', top: (uiState?.showChrome ?? true) ? 104 : 0, left: (!isSmall && sidebarOpen && (uiState?.showChrome ?? true)) ? 180 : 0, right: 0, bottom: 0, transition: 'left 200ms ease' }}>
   {/* Selected tool indicator overlay removed; current tool is displayed in the header toolbar */}
 
         <PalettePortal
@@ -471,6 +501,16 @@ function GameUILayout({
           ref={canvasRef}
           style={{ cursor: cursorStyle, display: 'block', width: '100%', height: '100%', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         />
+        {/* Mobile recent shapes drawer */}
+        {(uiState?.showChrome ?? true) && isSmall && (
+          <RecentShapesDrawer
+            open={sidebarOpen}
+            onClose={onToggleSidebar}
+            recentShapes={recentShapes}
+            onSelectShape={(shape) => { onSelectShape(shape); onSwitchToShapesTool(); }}
+            colorScheme={colorScheme}
+          />
+        )}
 
         {(uiState?.showChrome ?? true) && (uiState?.showChart ?? false) && (
           <StatisticsPanel
@@ -708,7 +748,8 @@ function GameOfLifeApp(props) {
     handleGameStep,
     setIsRunning,
     setPerformanceSettings,
-    handleGameCleared
+    handleGameCleared,
+    shapeManager
   });
 
   // MVC system initialization
