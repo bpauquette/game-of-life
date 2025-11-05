@@ -85,7 +85,9 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
       <div style={{ background: '#111', color: '#fff', padding: MODAL_PADDING, borderRadius: MODAL_BORDER_RADIUS, boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <strong>Population Over Time</strong>
-          <button onClick={onClose} style={{ marginLeft: 12 }}>Close</button>
+          {typeof onClose === 'function' && (
+            <button onClick={onClose} style={{ marginLeft: 12 }}>Close</button>
+          )}
         </div>
         <svg width={w} height={h} style={{ background: '#020202', display: 'block' }}>
           <rect x={0} y={0} width={w} height={h} fill="#020202" />
@@ -192,7 +194,7 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
 
 PopulationChart.propTypes = {
   history: PropTypes.array,
-  onClose: PropTypes.func.isRequired,
+  onClose: PropTypes.func,
   isRunning: PropTypes.bool,
   position: PropTypes.shape({
     top: PropTypes.number,

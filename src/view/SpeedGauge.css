@@ -14,6 +14,12 @@
   transition: all 0.3s ease;
 }
 
+/* Embedded variant to use inside containers/panels */
+.speed-gauge.embedded {
+  position: static;
+  z-index: auto;
+}
+
 .speed-gauge.minimized {
   width: 32px;
   height: 32px;

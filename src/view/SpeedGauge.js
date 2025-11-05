@@ -12,7 +12,8 @@ const SpeedGauge = ({
   onToggleVisibility,
   position = { top: 10, right: 10 },
   generation = 0,
-  liveCellsCount = 0
+  liveCellsCount = 0,
+  embedded = false
 }) => {
   const [metrics, setMetrics] = useState({
     fps: 0,
@@ -111,7 +112,7 @@ const SpeedGauge = ({
 
   return (
     <div 
-      className={`speed-gauge ${isExpanded ? 'expanded' : 'compact'}`}
+      className={`speed-gauge ${isExpanded ? 'expanded' : 'compact'}${embedded ? ' embedded' : ''}`}
       style={posStyle}
     >
       <div className="gauge-header">
@@ -198,5 +199,6 @@ SpeedGauge.propTypes = {
   onToggleVisibility: PropTypes.func,
   position: PropTypes.shape({ top: PropTypes.number, right: PropTypes.number }),
   generation: PropTypes.number,
-  liveCellsCount: PropTypes.number
+  liveCellsCount: PropTypes.number,
+  embedded: PropTypes.bool
 };

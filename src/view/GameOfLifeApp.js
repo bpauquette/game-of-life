@@ -11,6 +11,7 @@ import { GameMVC } from '../controller/GameMVC';
 // Replaced ControlsBar overlay with a fixed HeaderBar
 import HeaderBar from '../view/HeaderBar';
 import PopulationChart from '../view/PopulationChart';
+import StatisticsPanel from '../view/StatisticsPanel';
 import ShapePaletteDialog from '../view/ShapePaletteDialog';
 import CaptureShapeDialog from '../view/CaptureShapeDialog';
 // RecentShapesStrip is used inside LeftSidebar component
@@ -473,21 +474,24 @@ function GameUILayout({
           style={{ cursor: cursorStyle, display: 'block', width: '100%', height: '100%', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         />
 
-        {(uiState?.showChart ?? false) && (uiState?.showChrome ?? true) && (
-          <PopulationChart
-            history={populationHistory}
+        {(uiState?.showChrome ?? true) && (uiState?.showChart ?? false) && (
+          <StatisticsPanel
+            open
             onClose={onCloseChart}
+            history={populationHistory}
             isRunning={isRunning}
-            position={{ bottom: 12, right: 12 }}
+            gameRef={gameRef}
           />
         )}
 
-        <SpeedGauge
-          isVisible={(uiState?.showChrome ?? true) && showSpeedGauge}
-          gameRef={gameRef}
-          onToggleVisibility={onToggleSpeedGauge}
-          position={{ bottom: (uiState?.showChart ? 220 : 12), left: 12 }}
-        />
+        {((uiState?.showChrome ?? true) && showSpeedGauge && !(uiState?.showChart ?? false)) && (
+          <SpeedGauge
+            isVisible
+            gameRef={gameRef}
+            onToggleVisibility={onToggleSpeedGauge}
+            position={{ bottom: 12, left: 12 }}
+          />
+        )}
 
         {(uiState?.showChrome ?? true) && (
         <BottomStatusBar
