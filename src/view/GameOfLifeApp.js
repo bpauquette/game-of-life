@@ -15,7 +15,6 @@ import ShapePaletteDialog from '../view/ShapePaletteDialog';
 import CaptureShapeDialog from '../view/CaptureShapeDialog';
 // RecentShapesStrip is used inside LeftSidebar component
 import LeftSidebar from '../view/LeftSidebar';
-import SpeedGauge from '../view/SpeedGauge';
 import { flushRandomRectBuffer, randomRectTool } from '../controller/tools/randomRectTool';
 import { useShapeManager } from '../view/hooks/useShapeManager';
 import { colorSchemes } from '../model/colorSchemes';
@@ -483,14 +482,7 @@ function GameUILayout({
           />
         )}
 
-        {((uiState?.showChrome ?? true) && showSpeedGauge && !(uiState?.showChart ?? false)) && (
-          <SpeedGauge
-            isVisible
-            gameRef={gameRef}
-            onToggleVisibility={onToggleSpeedGauge}
-            position={{ bottom: 12, left: 12 }}
-          />
-        )}
+        {/* Standalone performance gauge removed; available within StatisticsPanel */}
 
         {(uiState?.showChrome ?? true) && (
         <BottomStatusBar
