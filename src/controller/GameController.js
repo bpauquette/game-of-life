@@ -182,7 +182,11 @@ export class GameController {
   setSelectedShape(shape) {
     this.model.setSelectedShapeModel(shape || null);
     // Keep controller toolState in sync for tools that read from it (e.g., shapes preview)
-    this._setToolState({ selectedShapeData: shape || null }, { updateOverlay: true });
+    const cursor = this.model.getCursorPosition?.();
+    const lastPos = (cursor && typeof cursor.x === 'number' && typeof cursor.y === 'number')
+      ? { x: cursor.x, y: cursor.y }
+      : (this.toolState?.last || { x: 0, y: 0 });
+    this._setToolState({ selectedShapeData: shape || null, last: lastPos }, { updateOverlay: true });
   }
 
   getSelectedShape() {

@@ -13,15 +13,14 @@ const GRID_SNAP_INDICATOR_SIZE = 4;
 
 export const shapesTool = {
   getOverlay(toolState) {
-    logger.debug('[shapesTool] getOverlay called with toolState:', JSON.stringify(toolState));
     const sel = toolState.selectedShapeData;
     const last = toolState.last;
     if (!sel) {
-      logger.warn('[shapesTool] getOverlay: No selectedShapeData');
+      // No selected shape
       return null;
     }
     if (!last) {
-      logger.warn('[shapesTool] getOverlay: No last position');
+      // No cursor position yet
       return null;
     }
     let cells = [];
@@ -32,14 +31,11 @@ export const shapesTool = {
     } else if (sel && Array.isArray(sel.pattern)) {
       cells = sel.pattern;
     } else {
-      logger.warn('[shapesTool] getOverlay: Unknown shape format', sel);
       return null;
     }
     if (!cells.length) {
-      logger.warn('[shapesTool] getOverlay: Shape has no cells to preview');
       return null;
     }
-  logger.debug('[shapesTool] getOverlay: Returning descriptor with cells:', cells, 'and last:', last);
     return makeShapePreviewOverlay(cells, last, {
       alpha: SHAPE_PREVIEW_ALPHA,
       color: PREVIEW_FILL_COLOR,
@@ -49,22 +45,18 @@ export const shapesTool = {
     toolState.start = { x, y };
     toolState.last = { x, y };
     toolState.dragging = true;
-    logger.info('[shapesTool] onMouseDown: drag start at', x, y, 'toolState:', JSON.stringify(toolState));
   },
 
   onMouseMove(toolState, x, y) {
     toolState.last = { x, y };
-    logger.debug('[shapesTool] onMouseMove: moved to', x, y, 'toolState:', JSON.stringify(toolState));
   },
 
   onMouseUp(toolState, x, y, setCellAlive, placeShape) {
     const last = toolState.last || (x === undefined ? null : { x, y });
-    logger.info('[shapesTool] onMouseUp: Placing shape at', last, 'toolState:', JSON.stringify(toolState));
     if (last && placeShape) {
       placeShape(last.x, last.y);
-      logger.info('[shapesTool] onMouseUp: Shape placed successfully at', last.x, last.y);
     } else {
-      logger.warn('[shapesTool] onMouseUp: Cannot place shape, missing last or placeShape');
+      // Missing last/handler
     }
     toolState.start = null;
     toolState.last = null;
@@ -75,14 +67,7 @@ export const shapesTool = {
     try {
       const sel = toolState.selectedShapeData;
       const last = toolState.last;
-      if (!sel) {
-        logger.warn('[shapesTool] drawOverlay: No selectedShapeData');
-        return;
-      }
-      if (!last) {
-        logger.warn('[shapesTool] drawOverlay: No last position');
-        return;
-      }
+      if (!sel || !last) return;
       // Normalize cells from different formats
       let cells = [];
       if (Array.isArray(sel)) {
@@ -91,23 +76,15 @@ export const shapesTool = {
         cells = sel.cells;
       } else if (sel && Array.isArray(sel.pattern)) {
         cells = sel.pattern;
-      } else {
-        logger.warn('[shapesTool] drawOverlay: Unknown shape format', sel);
-        return;
-      }
-      if (!cells.length) {
-        logger.warn('[shapesTool] drawOverlay: Shape has no cells to preview');
-        return;
-      }
+      } else { return; }
+      if (!cells.length) { return; }
       ctx.save();
       // Draw placement grid indicator (crosshair at placement point)
       this.drawPlacementIndicator(ctx, last, cellSize, computedOffset);
       // Draw shape preview with enhanced visibility
       this.drawShapePreview(ctx, cells, last, cellSize, computedOffset);
       ctx.restore();
-    } catch (err) {
-      logger.error('shapesTool.drawOverlay error:', err);
-    }
+    } catch (_) { /* noop */ }
   },
 
   drawPlacementIndicator(ctx, position, cellSize, computedOffset) {
