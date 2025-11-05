@@ -139,7 +139,21 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete }) {
     <Tooltip key={`tt-${keyBase}-${idx}`} title={s.description || ''} arrow placement="right" enterDelay={300}>
       <ListItem key={`${keyBase}-${idx}`} disablePadding>
         <ListItemButton onClick={() => onSelect(s)}>
-          <ListItemText primary={s.name || '(unnamed)'} secondary={`${w}×${h} — ${s.cellsCount || 0} cells`} />
+          <ListItemText
+            primary={s.name || '(unnamed)'}
+            secondary={
+              <>
+                {s.description && (
+                  <Typography variant="body2" color="text.secondary" sx={{ display: 'block' }}>
+                    {s.description}
+                  </Typography>
+                )}
+                <Typography variant="caption" color="text.secondary">
+                  {`${w}×${h} — ${s.cellsCount || 0} cells`}
+                </Typography>
+              </>
+            }
+          />
           <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg
               width={PREVIEW_SVG_SIZE}

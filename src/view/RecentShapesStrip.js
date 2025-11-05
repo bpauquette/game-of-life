@@ -1,9 +1,6 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
-import WidgetsIcon from '@mui/icons-material/Widgets';
 
 // Constants for recent shapes strip
 
@@ -22,14 +19,8 @@ const RecentShapesStrip = ({
   selectedShape = null,
   maxSlots = 8,
   onRotateShape,
-  onSwitchToShapesTool,
-  openPalette
+  onSwitchToShapesTool
 }) => {
-  const openShapesPalette = useCallback(() => {
-    // Switch to shapes tool and open the palette for browsing
-    try { onSwitchToShapesTool?.(); } catch {}
-    try { openPalette?.(); } catch {}
-  }, [onSwitchToShapesTool, openPalette]);
   const getShapeTitle = (shape, index) => {
     return shape?.name || shape?.meta?.name || shape?.id || `shape ${index}`;
   };
@@ -89,11 +80,6 @@ const RecentShapesStrip = ({
           marginBottom: 8
         }}
       >
-        <Tooltip title="Shapes Catalog">
-          <IconButton size="small" onClick={openShapesPalette} aria-label="shapes" data-testid="open-shapes-palette">
-            <WidgetsIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
         <div 
           style={{
             fontSize: '12px',
@@ -133,8 +119,7 @@ RecentShapesStrip.propTypes = {
   selectedShape: PropTypes.object,
   maxSlots: PropTypes.number,
   onRotateShape: PropTypes.func,
-  onSwitchToShapesTool: PropTypes.func,
-  openPalette: PropTypes.func
+  onSwitchToShapesTool: PropTypes.func
 };
 
 export default RecentShapesStrip;
