@@ -523,6 +523,22 @@ export class GameRenderer {
         this.drawOverlayDescriptor(overlay);
       }
     }
+
+    // Always draw a 1px red border around the canvas to diagnose rendering edges
+    try {
+      this.ctx.save?.();
+      this.ctx.strokeStyle = '#ff0000';
+      this.ctx.lineWidth = 1;
+      // Use 0.5 offset for crisp 1px stroke in CSS pixel space
+      const w = this.viewport.width;
+      const h = this.viewport.height;
+      if (Number.isFinite(w) && Number.isFinite(h) && w > 1 && h > 1) {
+        this.ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+      }
+      this.ctx.restore?.();
+    } catch {
+      // Non-fatal: border is diagnostic only
+    }
   }
 
 
