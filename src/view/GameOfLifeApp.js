@@ -248,34 +248,8 @@ function useModelEventHandlers({
     runningStateChanged: (data) => setIsRunning(data.isRunning),
     performanceSettingsChanged: (data) => setPerformanceSettings(data),
     gameCleared: handleGameCleared,
-    captureCompleted: (captureData, game) => {
-      // Instant add to Recent: create a shape object and select it
-      try {
-        const timestamp = Date.now();
-        const name = captureData?.name || `Capture ${new Date(timestamp).toLocaleTimeString()}`;
-        const newShape = {
-          id: `capture-${timestamp}`,
-          name,
-          // Use cells directly; GameModel.placeShape accepts `cells` or `pattern`
-          cells: Array.isArray(captureData?.cells) ? captureData.cells : [],
-          meta: {
-            width: captureData?.width,
-            height: captureData?.height,
-            cellCount: captureData?.cellCount,
-            originalBounds: captureData?.originalBounds,
-            capturedAt: new Date(timestamp).toISOString(),
-            source: 'capture-tool'
-          }
-        };
-        // Add to recent and select for immediate placement
-        shapeManager?.selectShape?.(newShape);
-        // Switch to shapes tool for stamping
-        game?.setSelectedTool?.('shapes');
-      } catch (e) {
-        // Log and continue to show dialog
-        try { logger.debug('Instant add to Recent failed:', e); } catch {}
-      }
-      // Preserve existing behavior: open the capture dialog with details
+    captureCompleted: (captureData) => {
+      // Open the capture dialog; defer adding to Recent until user confirms and closes
       setUIState((prev) => ({ ...prev, captureData, captureDialogOpen: true }));
     }
   }), [
@@ -834,7 +808,32 @@ function GameOfLifeApp(props) {
     setUIState(prev => ({ ...prev, paletteOpen: false }));
   }, []);
 
-  const handleSaveCapturedShape = useCallback((shapeData) => saveCapturedShapeToBackend(shapeData), []);
+  const handleSaveCapturedShape = useCallback(async (shapeData) => {
+    // Save to backend first
+    const saved = await saveCapturedShapeToBackend(shapeData);
+    // Build a local shape using the user's entered name and captured pattern
+    const now = Date.now();
+    const localShape = {
+      id: saved?.id || saved?._id || `shape-${now}`,
+      name: saved?.name || shapeData.name,
+      cells: Array.isArray(shapeData?.pattern) ? shapeData.pattern.map(c => ({ x: c.x, y: c.y })) : [],
+      meta: {
+        width: shapeData?.width,
+        height: shapeData?.height,
+        cellCount: shapeData?.cellCount,
+        savedAt: new Date(now).toISOString(),
+        source: 'capture-tool'
+      }
+    };
+    // Add to Recent and switch to Shapes tool for immediate use
+    try {
+      shapeManager?.selectShape?.(localShape);
+      gameRef.current?.setSelectedTool?.('shapes');
+    } catch (e) {
+      try { logger.debug('Post-save add to Recent failed:', e); } catch {}
+    }
+    return saved;
+  }, [shapeManager]);
 
   // Grid loading
   const handleLoadGrid = useCallback((liveCells) => {
