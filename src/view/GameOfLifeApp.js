@@ -303,7 +303,6 @@ function BottomStatusBar({ selectedTool, toolStateRef, cursorCell, selectedShape
         selectedShape={selectedShape}
         model={model}
       />
-      <Chip label={`Cursor: ${cursorLabel}`} size="small" variant="outlined" />
       <Chip label={`Live Cells: ${liveCellsCount}`} size="small" variant="outlined" />
       <Chip label={`Generation: ${generation}`} size="small" variant="outlined" />
     </div>

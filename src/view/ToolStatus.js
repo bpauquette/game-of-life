@@ -47,18 +47,11 @@ function renderTwoPointStatus(toolState) {
 }
 
 function renderCursorStatus(cursorCell) {
-  return <span>Cursor: {cursorCell ? fmt(cursorCell) : '—'}</span>;
+  return <span>Cursor: {cursorCell ? fmt(cursorCell) : ''};</span>;
 }
 
 function renderShapeStatus(selectedShape, cursorCell) {
-  return (
-    <>
-      {getShapeToolStatus(selectedShape, cursorCell)}
-      <div style={{ marginTop: 2, color: '#888' }}>
-        Cursor: {cursorCell ? fmt(cursorCell) : '—'}
-      </div>
-    </>
-  );
+  return getShapeToolStatus(selectedShape, cursorCell);
 }
 
 function ToolStatus({ selectedTool, toolStateRef, cursorCell, selectedShape, logTool, model }) {
