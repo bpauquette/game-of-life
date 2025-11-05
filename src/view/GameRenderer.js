@@ -42,6 +42,8 @@ export class GameRenderer {
     this.options = {
       backgroundColor: '#000000',
   gridColor: '#ffffff',
+      // Align 1px grid lines crisply on device pixels by default
+      gridLineOffset: 0.5,
       cellSaturation: 80,
       cellLightness: 55,
       hueMultiplierX: 2.5,
@@ -352,8 +354,9 @@ export class GameRenderer {
     x: offsetX * cellSize - centerX,
     y: offsetY * cellSize - centerY
   };
-  const startX = -computedOffset.x % cellSize;
-  const startY = -computedOffset.y % cellSize;
+  // Normalize to positive remainders in [0, cellSize)
+  const startX = ((-computedOffset.x % cellSize) + cellSize) % cellSize;
+  const startY = ((-computedOffset.y % cellSize) + cellSize) % cellSize;
 
   if (Number.isNaN(startX) || Number.isNaN(startY)) {
     return;
@@ -402,11 +405,12 @@ export class GameRenderer {
       if (globalThis.DEBUG_COLOR_SCHEME) {
         console.log(`[GameRenderer] Drawing cell (${cellX},${cellY}) with color:`, cellColor);
       }
+      // Draw using exact floating coordinates to keep alignment with grid math
       this.ctx.fillRect(
-        Math.floor(screenPos.x), 
-        Math.floor(screenPos.y), 
-        Math.ceil(this.viewport.cellSize), 
-        Math.ceil(this.viewport.cellSize)
+        screenPos.x,
+        screenPos.y,
+        this.viewport.cellSize,
+        this.viewport.cellSize
       );
     }
   }
@@ -437,11 +441,12 @@ export class GameRenderer {
         continue;
       }
       
+      // Use exact positions/sizes to avoid cumulative rounding drift
       this.ctx.fillRect(
-        Math.floor(screenPos.x), 
-        Math.floor(screenPos.y), 
-        Math.ceil(this.viewport.cellSize), 
-        Math.ceil(this.viewport.cellSize)
+        screenPos.x,
+        screenPos.y,
+        this.viewport.cellSize,
+        this.viewport.cellSize
       );
     }
   }
