@@ -41,7 +41,7 @@ const Y_AXIS_TEXT_OFFSET_Y = 4;
 // - onClose: function to close the modal
 // - isRunning: boolean indicating if simulation is running
 // - position: optional fixed positioning overrides (top/right/bottom/left)
-export default function PopulationChart({ history = [], onClose, isRunning = false, position }) {
+export default function PopulationChart({ history = [], onClose, isRunning = false, position, embedded = false }) {
   const [hoverIdx, setHoverIdx] = useState(null);
 
   const max = useMemo(() => Math.max(1, ...history), [history]);
@@ -64,21 +64,22 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
   const xTicks = Math.min(MAX_X_TICKS, Math.max(MIN_X_TICKS, Math.floor(history.length / X_TICK_INTERVAL_DIVISOR)));
 
   // Build positioning style; default to top-right if not provided
-  const posStyle = {
-    position: 'fixed',
-    zIndex: MODAL_Z_INDEX,
-    width: w + CHART_CONTAINER_PADDING
-  };
-  const hasCustom = position && (position.top !== undefined || position.right !== undefined || position.bottom !== undefined || position.left !== undefined);
-  if (hasCustom) {
-    if (position.top !== undefined) posStyle.top = position.top;
-    if (position.right !== undefined) posStyle.right = position.right;
-    if (position.bottom !== undefined) posStyle.bottom = position.bottom;
-    if (position.left !== undefined) posStyle.left = position.left;
-  } else {
-    posStyle.top = MODAL_POSITION_TOP;
-    posStyle.right = MODAL_POSITION_RIGHT;
-  }
+  const posStyle = embedded
+    ? { position: 'static', width: '100%' }
+    : (() => {
+        const st = { position: 'fixed', zIndex: MODAL_Z_INDEX, width: w + CHART_CONTAINER_PADDING };
+        const hasCustom = position && (position.top !== undefined || position.right !== undefined || position.bottom !== undefined || position.left !== undefined);
+        if (hasCustom) {
+          if (position.top !== undefined) st.top = position.top;
+          if (position.right !== undefined) st.right = position.right;
+          if (position.bottom !== undefined) st.bottom = position.bottom;
+          if (position.left !== undefined) st.left = position.left;
+        } else {
+          st.top = MODAL_POSITION_TOP;
+          st.right = MODAL_POSITION_RIGHT;
+        }
+        return st;
+      })();
 
   return (
     <div style={posStyle}>
@@ -201,7 +202,8 @@ PopulationChart.propTypes = {
     right: PropTypes.number,
     bottom: PropTypes.number,
     left: PropTypes.number
-  })
+  }),
+  embedded: PropTypes.bool
 };
 
 PopulationChart.defaultProps = {

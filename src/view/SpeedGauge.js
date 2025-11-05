@@ -88,7 +88,8 @@ const SpeedGauge = ({
   if (typeof position.bottom === 'number') posStyle.bottom = position.bottom;
   if (typeof position.left === 'number') posStyle.left = position.left;
 
-  if (!isVisible) {
+  // In embedded mode, always visible and simplified (no minimize button)
+  if (!embedded && !isVisible) {
     return (
       <button
         type="button"
@@ -110,29 +111,34 @@ const SpeedGauge = ({
     return '#F44336'; // Red - bad
   };
 
+  // Force expanded view for embedded mode and hide controls
+  const effectiveExpanded = embedded ? true : isExpanded;
+
   return (
     <div 
-      className={`speed-gauge ${isExpanded ? 'expanded' : 'compact'}${embedded ? ' embedded' : ''}`}
+      className={`speed-gauge ${effectiveExpanded ? 'expanded' : 'compact'}${embedded ? ' embedded' : ''}`}
       style={posStyle}
     >
       <div className="gauge-header">
         <span className="gauge-title">Performance</span>
-        <div className="gauge-controls">
-          <button 
-            className="gauge-button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            title={isExpanded ? 'Collapse' : 'Expand'}
-          >
-            {isExpanded ? '−' : '+'}
-          </button>
-          <button 
-            className="gauge-button"
-            onClick={() => onToggleVisibility?.(false)}
-            title="Hide"
-          >
-            ×
-          </button>
-        </div>
+        {!embedded && (
+          <div className="gauge-controls">
+            <button 
+              className="gauge-button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              title={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              {isExpanded ? '−' : '+'}
+            </button>
+            <button 
+              className="gauge-button"
+              onClick={() => onToggleVisibility?.(false)}
+              title="Hide"
+            >
+              ×
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="gauge-content">
@@ -152,7 +158,7 @@ const SpeedGauge = ({
           <span className="metric-value">{metrics.gps}</span>
         </div>
 
-        {isExpanded && (
+        {effectiveExpanded && (
           <>
             <div className="metric-row">
               <span className="metric-label">Cells:</span>

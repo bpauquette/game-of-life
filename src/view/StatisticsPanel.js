@@ -49,11 +49,11 @@ export default function StatisticsPanel({
       </Stack>
 
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-        <Box sx={{ flex: '1 1 auto' }}>
-          <PopulationChart history={history} isRunning={isRunning} position={{}} />
-        </Box>
         <Box sx={{ flex: '0 0 auto' }}>
           <SpeedGauge isVisible embedded gameRef={gameRef} />
+        </Box>
+        <Box sx={{ flex: '1 1 auto' }}>
+          <PopulationChart history={history} isRunning={isRunning} embedded />
         </Box>
       </Box>
     </Paper>

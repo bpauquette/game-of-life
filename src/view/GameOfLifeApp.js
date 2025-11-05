@@ -10,7 +10,6 @@ import useCanvasManager from '../view/hooks/useCanvasManager';
 import { GameMVC } from '../controller/GameMVC';
 // Replaced ControlsBar overlay with a fixed HeaderBar
 import HeaderBar from '../view/HeaderBar';
-import PopulationChart from '../view/PopulationChart';
 import StatisticsPanel from '../view/StatisticsPanel';
 import ShapePaletteDialog from '../view/ShapePaletteDialog';
 import CaptureShapeDialog from '../view/CaptureShapeDialog';
