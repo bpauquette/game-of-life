@@ -242,7 +242,13 @@ function useModelEventHandlers({
   shapeManager
 }) {
   const eventHandlers = React.useMemo(() => ({
-    selectedToolChanged: (data) => updateSelectedToolFromModel(data),
+    selectedToolChanged: (data) => {
+      updateSelectedToolFromModel(data);
+      // Auto-open shapes palette when switching to Shapes tool
+      if (data === 'shapes') {
+        setUIState(prev => ({ ...prev, paletteOpen: true }));
+      }
+    },
     selectedShapeChanged: (data) => updateSelectedShapeFromModel(data),
     gameStep: handleGameStep,
     runningStateChanged: (data) => setIsRunning(data.isRunning),

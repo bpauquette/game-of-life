@@ -149,8 +149,15 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete }) {
               style={{ background: colorScheme.background || 'transparent', border: `1px solid rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`, borderRadius: PREVIEW_BORDER_RADIUS }}
             >
               {Array.isArray(s.cells) && s.cells.length > 0 ? (
-                s.cells.map((c) => (
-                  <rect key={`${keyBase}-${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
+                // Performance: for very large shapes, draw a single bounding box preview
+                (s.cells.length > 800 ? (
+                  <g>
+                    <rect x={0} y={0} width={w} height={h} fill="rgba(76,175,80,0.35)" stroke={`rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`} />
+                  </g>
+                ) : (
+                  s.cells.map((c) => (
+                    <rect key={`${keyBase}-${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
+                  ))
                 ))
               ) : (
                 <g stroke={`rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`} fill="none">

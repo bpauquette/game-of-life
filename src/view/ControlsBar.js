@@ -20,6 +20,7 @@ import HelpDialog from './HelpDialog';
 import AboutDialog from './AboutDialog';
 import RunControlGroup from './components/RunControlGroup';
 import SaveLoadGroup from './components/SaveLoadGroup';
+import ToolGroup from './components/ToolGroup';
 
 // UI Layout Constants  
 const CONTROL_SPACING = 1;
@@ -307,7 +308,17 @@ const ControlsBar = ({
           setSteadyInfo={setSteadyInfo}
         />
 
-  {/* Tool toggles moved to top-middle overlay */}
+        {/* Tool toggles: put them back here, with Shapes first */}
+        <ToolGroup
+          selectedTool={selectedTool}
+          setSelectedTool={(tool) => {
+            try { setSelectedTool(tool); } catch {}
+            if (tool === 'shapes') {
+              try { openPalette?.(); } catch {}
+            }
+          }}
+          isSmall={false}
+        />
 
         <AuxButtons
           setShowChart={setShowChart}

@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import WidgetsIcon from '@mui/icons-material/Widgets';
 import BrushIcon from '@mui/icons-material/Brush';
 import LineAxisIcon from '@mui/icons-material/ShowChart';
 import CropSquareIcon from '@mui/icons-material/CropSquare';
@@ -38,6 +39,8 @@ export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = fal
         }
       }}
     >
+      {/* Shapes tool first, to the left of Draw */}
+      <ToggleButton value="shapes" aria-label="shapes"><Tooltip title="Shapes tool"><WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
       <ToggleButton value="draw" aria-label="draw"><Tooltip title="Freehand draw"><BrushIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
       <ToggleButton value="line" aria-label="line"><Tooltip title="Line tool"><LineAxisIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
       <ToggleButton value="rect" aria-label="rect"><Tooltip title="Rectangle tool"><CropSquareIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>

@@ -1,6 +1,5 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { makeShapePreviewOverlay } from '../../overlays/overlayTypes';
-import logger from '../utils/logger';
 
 
 const SHAPE_PREVIEW_ALPHA = 0.6;
