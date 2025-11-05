@@ -353,7 +353,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const checkBackendHealth = useCallback(async () => {
     try {
       const base = getBaseUrl(backendBase);
-      const healthUrl = new URL('/health', base);
+      const healthUrl = new URL('/v1/health', base);
       const response = await fetch(healthUrl.toString(), {
         method: 'GET',
         timeout: 3000 // 3 second timeout
@@ -484,6 +484,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     setBackendError('');
     
     try {
+      const backendPort = process.env.REACT_APP_BACKEND_PORT || '55000';
       // Since we can't directly start the backend from the frontend,
       // we'll provide instructions and offer to retry the connection
       setBackendError(`To start the backend server, please run one of these commands in your terminal:
@@ -491,7 +492,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
 1. From the project root: npm run backend:start
 2. From the backend directory: cd backend && npm start
 
-The backend will start on port 55000.`);
+The backend will start on port ${backendPort}.`);
       
       // Don't close the dialog, let user retry after starting manually
     } catch (error) {
@@ -516,7 +517,8 @@ The backend will start on port 55000.`);
         setResults([]);
         setOffset(0);
       } else {
-        setBackendError('Backend server is still not responding. Please make sure it\'s running on port 55000.');
+        const backendPort = process.env.REACT_APP_BACKEND_PORT || '55000';
+        setBackendError(`Backend server is still not responding. Please make sure it's running on port ${backendPort}.`);
       }
     } catch (error) {
       logger.warn('Backend health check failed:', error.message);

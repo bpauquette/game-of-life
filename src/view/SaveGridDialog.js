@@ -13,6 +13,7 @@ import {
   Alert,
   Chip
 } from '@mui/material';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import GridOnIcon from '@mui/icons-material/GridOn';
@@ -32,6 +33,7 @@ const SaveGridDialog = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
+  const isSmall = useMediaQuery('(max-width:600px)');
 
   const handleNameChange = (event) => {
     const value = event.target.value;
@@ -100,9 +102,10 @@ const SaveGridDialog = ({
       onClose={handleCancel}
       maxWidth="sm"
       fullWidth
+      fullScreen={isSmall}
       slotProps={{
         paper: {
-          sx: { minHeight: '300px' }
+          sx: { minHeight: '300px', ...(isSmall ? { height: '100%' } : {}) }
         }
       }}
     >
@@ -111,7 +114,7 @@ const SaveGridDialog = ({
         Save Grid State
       </DialogTitle>
       
-      <DialogContent>
+      <DialogContent sx={{ overflowY: 'auto', ...(isSmall ? { flex: 1 } : { maxHeight: '60vh' }) }}>
         <Box sx={{ mb: 2 }}>
           <Typography variant="body2" color="text.secondary">
             Save the current grid state to load it back later.
@@ -173,7 +176,7 @@ const SaveGridDialog = ({
         />
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: 3, pb: 2, ...(isSmall ? { position: 'sticky', bottom: 0, backgroundColor: 'background.paper', borderTop: '1px solid', borderColor: 'divider' } : {}) }}>
         <Button 
           onClick={handleCancel}
           disabled={loading}
@@ -187,7 +190,7 @@ const SaveGridDialog = ({
           variant="contained"
           startIcon={loading ? <CircularProgress size={18} /> : <SaveIcon />}
         >
-          {loading ? STATUS.SAVING : `${BUTTONS.SAVE} Grid`}
+          {loading ? STATUS.SAVING : (isSmall ? BUTTONS.SAVE : `${BUTTONS.SAVE} Grid`)}
         </Button>
       </DialogActions>
     </Dialog>

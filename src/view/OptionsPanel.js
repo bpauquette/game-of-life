@@ -28,6 +28,9 @@ const OptionsPanel = ({
   setMaxFPS,
   maxGPS,
   setMaxGPS,
+  // UX settings
+  confirmOnClear = true,
+  setConfirmOnClear,
   onOk,
   onCancel
 }) => {
@@ -37,6 +40,7 @@ const OptionsPanel = ({
   const [localShowSpeedGauge, setLocalShowSpeedGauge] = useState(showSpeedGauge);
   const [localMaxFPS, setLocalMaxFPS] = useState(maxFPS);
   const [localMaxGPS, setLocalMaxGPS] = useState(maxGPS);
+  const [localConfirmOnClear, setLocalConfirmOnClear] = useState(confirmOnClear);
 
   const handleOk = () => {
   try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
@@ -51,6 +55,7 @@ const OptionsPanel = ({
     try { setShowSpeedGauge?.(localShowSpeedGauge); } catch (err) { logger.debug('setShowSpeedGauge failed:', err); }
     try { setMaxFPS?.(Math.max(1, Math.min(120, Number(localMaxFPS) || 60))); } catch (err) { logger.debug('setMaxFPS failed:', err); }
     try { setMaxGPS?.(Math.max(1, Math.min(60, Number(localMaxGPS) || 30))); } catch (err) { logger.debug('setMaxGPS failed:', err); }
+    try { setConfirmOnClear?.(!!localConfirmOnClear); } catch (err) { logger.debug('setConfirmOnClear failed:', err); }
     onOk?.();
   };
 
@@ -216,6 +221,22 @@ const OptionsPanel = ({
               </Stack>
             </Stack>
           </div>
+
+          <div style={{ borderTop: '1px solid #ddd', paddingTop: 16, marginTop: 16 }}>
+            <h4 style={{ margin: '0 0 16px 0' }}>Interaction</h4>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={!!localConfirmOnClear}
+                onChange={(e) => setLocalConfirmOnClear(e.target.checked)}
+                style={{ marginRight: 8 }}
+                id="confirm-on-clear-checkbox"
+              />
+              <label htmlFor="confirm-on-clear-checkbox" style={{ margin: 0 }}>
+                Confirm before clearing grid
+              </label>
+            </div>
+          </div>
         
         </Stack>
       </DialogContent>
@@ -241,6 +262,8 @@ OptionsPanel.propTypes = {
   setMaxFPS: PropTypes.func.isRequired,
   maxGPS: PropTypes.number.isRequired,
   setMaxGPS: PropTypes.func.isRequired,
+  confirmOnClear: PropTypes.bool,
+  setConfirmOnClear: PropTypes.func,
   onOk: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired
 };

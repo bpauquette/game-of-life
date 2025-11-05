@@ -80,12 +80,19 @@ const SpeedGauge = ({
     return () => clearInterval(interval);
   }, [gameRef]);
 
+  // Build positioning style supporting top/right/bottom/left
+  const posStyle = {};
+  if (typeof position.top === 'number') posStyle.top = position.top;
+  if (typeof position.right === 'number') posStyle.right = position.right;
+  if (typeof position.bottom === 'number') posStyle.bottom = position.bottom;
+  if (typeof position.left === 'number') posStyle.left = position.left;
+
   if (!isVisible) {
     return (
       <button
         type="button"
         className="speed-gauge minimized"
-        style={{ top: position.top, right: position.right }}
+        style={posStyle}
         onClick={() => onToggleVisibility?.(true)}
         aria-label="Show performance gauge"
         title="Show performance gauge"
@@ -105,7 +112,7 @@ const SpeedGauge = ({
   return (
     <div 
       className={`speed-gauge ${isExpanded ? 'expanded' : 'compact'}`}
-      style={{ top: position.top, right: position.right }}
+      style={posStyle}
     >
       <div className="gauge-header">
         <span className="gauge-title">Performance</span>

@@ -128,6 +128,11 @@ export class GameController {
       this.handleWheel(deltaY, event);
     });
 
+    // Two-finger pan from touch/pointer gestures
+    this.view.on('gesturePan', ({ dx, dy }) => {
+      this.handleGesturePan(dx, dy);
+    });
+
     this.view.on('keyDown', ({ key, shiftKey, event }) => {
       this.handleKeyDown(key, shiftKey, event);
     });
@@ -330,6 +335,18 @@ export class GameController {
     const snappedSize = Math.max(minCellSize, snappedDevice / dpr);
     
     return snappedSize === currentSize ? currentSize : snappedSize;
+  }
+
+  // Handle two-finger panning by mapping screen dx/dy to cell offset deltas
+  handleGesturePan(dx, dy) {
+    const viewport = this.model.getViewport();
+    const cellSize = viewport.cellSize || 1;
+    if (!Number.isFinite(dx) || !Number.isFinite(dy) || !Number.isFinite(cellSize) || cellSize <= 0) return;
+    const deltaCellsX = dx / cellSize;
+    const deltaCellsY = dy / cellSize;
+    const newOffsetX = viewport.offsetX - deltaCellsX;
+    const newOffsetY = viewport.offsetY - deltaCellsY;
+    this.model.setViewportModel(newOffsetX, newOffsetY, viewport.cellSize);
   }
 
   // Keyboard handlers

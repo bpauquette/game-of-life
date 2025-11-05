@@ -1,12 +1,21 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
+import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import SelectedToolIndicator from './SelectedToolIndicator';
+import Chip from '@mui/material/Chip';
 import useCanvasManager from '../view/hooks/useCanvasManager';
 import { GameMVC } from '../controller/GameMVC';
-import ControlsBar from '../view/ControlsBar';
+// Replaced ControlsBar overlay with a fixed HeaderBar
+import HeaderBar from '../view/HeaderBar';
 import PopulationChart from '../view/PopulationChart';
 import ShapePaletteDialog from '../view/ShapePaletteDialog';
 import CaptureShapeDialog from '../view/CaptureShapeDialog';
-import RecentShapesStrip from '../view/RecentShapesStrip';
+// RecentShapesStrip is used inside LeftSidebar component
+import LeftSidebar from '../view/LeftSidebar';
 import SpeedGauge from '../view/SpeedGauge';
 import { flushRandomRectBuffer, randomRectTool } from '../controller/tools/randomRectTool';
 import { useShapeManager } from '../view/hooks/useShapeManager';
@@ -23,6 +32,8 @@ import { shapesTool } from '../controller/tools/shapesTool';
 import { captureTool } from '../controller/tools/captureTool';
 import useGridMousePosition from './hooks/useGridMousePosition';
 import PropTypes from 'prop-types';
+import ToolStatus from './ToolStatus';
+// Tool toggles are now embedded in HeaderBar
 
 const toolMap = {
   draw: drawTool,
@@ -46,8 +57,12 @@ function getColorSchemeFromKey(key) {
 }
 
 // Custom hooks extracted to reduce cognitive complexity in the main component
+// eslint-disable-next-line sonarjs/cognitive-complexity
 function useGameMvcInit({ canvasRef, gameRef, colorScheme, onModelReady, handleModelChange }) {
   // NOTE: intentionally one-time init; depends only on canvasRef.current existence
+  // We intentionally avoid adding colorScheme here to prevent re-initializing the MVC on theme changes.
+  // Color scheme updates are handled by useColorSchemeSync.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!canvasRef.current || gameRef.current) return;
     const canvas = canvasRef.current;
@@ -184,6 +199,17 @@ function updateStabilityInfo(game, popWindowSize, popTolerance, steadyDetectedRe
   }
 }
 
+// Resolve backend base URL in a way that works on phone (avoid localhost)
+function resolveBackendBase() {
+  // Prefer explicit override
+  const envBase = process.env.REACT_APP_BACKEND_BASE;
+  if (envBase && typeof envBase === 'string' && envBase.trim().length > 0) return envBase;
+  // Derive from current host so phone clients use LAN IP/host
+  const { protocol, hostname } = globalThis.window?.location || { protocol: 'http:', hostname: 'localhost' };
+  const port = process.env.REACT_APP_BACKEND_PORT || '55000';
+  return `${protocol}//${hostname}:${port}`;
+}
+
 // Backend API helper
 async function saveCapturedShapeToBackend(shapeData) {
   const shapeForBackend = {
@@ -192,7 +218,7 @@ async function saveCapturedShapeToBackend(shapeData) {
     meta: { capturedAt: new Date().toISOString(), source: 'capture-tool' }
   };
   delete shapeForBackend.pattern;
-  const response = await fetch('http://localhost:55000/v1/shapes', {
+  const response = await fetch(`${resolveBackendBase()}/v1/shapes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(shapeForBackend)
@@ -261,33 +287,46 @@ SelectedToolBadge.propTypes = {
   selectedTool: PropTypes.string
 };
 
-function RecentShapesPanel({ recentShapes, onSelectShape, drawWithOverlay, colorScheme, selectedShape, onRotateShape, onSwitchToShapesTool, openPalette }) {
+function BottomStatusBar({ selectedTool, toolStateRef, cursorCell, selectedShape, model, liveCellsCount, generation }) {
+  const cursorLabel = cursorCell ? `${cursorCell.x},${cursorCell.y}` : '—';
   return (
-  <div className="recent-shapes" style={{ width: 180, minWidth: 180, background: '#222', padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-      <RecentShapesStrip
-        recentShapes={recentShapes}
-        selectShape={onSelectShape}
-        drawWithOverlay={drawWithOverlay}
-        colorScheme={colorScheme}
+    <div style={{
+      position: 'fixed',
+      bottom: 12,
+      left: 12,
+      zIndex: 1000,
+      display: 'flex',
+      gap: 8,
+      alignItems: 'center',
+      background: 'rgb(0 0 0 / 35%)',
+      padding: 8,
+      borderRadius: 6,
+      color: 'white'
+    }}>
+      <ToolStatus
+        selectedTool={selectedTool || 'draw'}
+        toolStateRef={toolStateRef}
+        cursorCell={cursorCell}
         selectedShape={selectedShape}
-        maxSlots={10}
-        onRotateShape={onRotateShape}
-        onSwitchToShapesTool={onSwitchToShapesTool}
-        openPalette={openPalette}
+        model={model}
       />
+      <Chip label={`Cursor: ${cursorLabel}`} size="small" variant="outlined" />
+      <Chip label={`Live Cells: ${liveCellsCount}`} size="small" variant="outlined" />
+      <Chip label={`Generation: ${generation}`} size="small" variant="outlined" />
     </div>
   );
 }
-RecentShapesPanel.propTypes = {
-  recentShapes: PropTypes.array,
-  onSelectShape: PropTypes.func,
-  drawWithOverlay: PropTypes.func,
-  colorScheme: PropTypes.object,
+BottomStatusBar.propTypes = {
+  selectedTool: PropTypes.string,
+  toolStateRef: PropTypes.object.isRequired,
+  cursorCell: PropTypes.object,
   selectedShape: PropTypes.object,
-  onRotateShape: PropTypes.func,
-  onSwitchToShapesTool: PropTypes.func,
-  openPalette: PropTypes.func
+  model: PropTypes.object,
+  liveCellsCount: PropTypes.number.isRequired,
+  generation: PropTypes.number.isRequired
 };
+
+// Recent shapes moved into LeftSidebar
 
 function PalettePortal({ open, onClose, onSelectShape, backendBase, colorScheme }) {
   if (!open) return null;
@@ -359,16 +398,59 @@ function GameUILayout({
   onSaveCapture,
   canvasRef,
   cursorStyle,
+  cursorCell,
   populationHistory,
   onCloseChart,
   isRunning,
   showSpeedGauge,
   onToggleSpeedGauge,
-  gameRef
+  gameRef,
+  liveCellsCount,
+  generation,
+  sidebarOpen,
+  onToggleSidebar,
+  isSmall,
+  onToggleChrome
 }) {
   return (
-    <div className="canvas-container" style={{ display: 'flex', flexDirection: 'row', height: '100vh', backgroundColor: '#000' }}>
-      <RecentShapesPanel
+    <div className="canvas-container" style={{ height: '100vh', backgroundColor: '#000' }}>
+      { (uiState?.showChrome ?? true) && (
+      <HeaderBar
+        isRunning={isRunning}
+        setIsRunning={controlsProps?.setIsRunning}
+        step={controlsProps?.step}
+        draw={drawWithOverlay}
+        clear={controlsProps?.clear}
+        snapshotsRef={controlsProps?.snapshotsRef}
+        setSteadyInfo={controlsProps?.setSteadyInfo}
+        colorSchemes={colorSchemes}
+        colorSchemeKey={uiState?.colorSchemeKey || 'spectrum'}
+        setColorSchemeKey={controlsProps?.setColorSchemeKey}
+        popWindowSize={controlsProps?.popWindowSize}
+        setPopWindowSize={controlsProps?.setPopWindowSize}
+        popTolerance={controlsProps?.popTolerance}
+        setPopTolerance={controlsProps?.setPopTolerance}
+        showSpeedGauge={showSpeedGauge}
+        setShowSpeedGauge={controlsProps?.setShowSpeedGauge}
+        maxFPS={controlsProps?.maxFPS}
+        setMaxFPS={controlsProps?.setMaxFPS}
+        maxGPS={controlsProps?.maxGPS}
+        setMaxGPS={controlsProps?.setMaxGPS}
+        getLiveCells={controlsProps?.getLiveCells}
+        onLoadGrid={controlsProps?.onLoadGrid}
+        generation={generation}
+        setShowChart={controlsProps?.setShowChart}
+        onToggleSidebar={onToggleSidebar}
+        isSidebarOpen={sidebarOpen}
+        isSmall={isSmall}
+        selectedTool={selectedTool}
+        setSelectedTool={controlsProps?.setSelectedTool}
+        showToolsRow={true}
+      />
+      )}
+
+      { (uiState?.showChrome ?? true) && (
+      <LeftSidebar
         recentShapes={recentShapes}
         onSelectShape={onSelectShape}
         drawWithOverlay={drawWithOverlay}
@@ -377,21 +459,21 @@ function GameUILayout({
         onRotateShape={onRotateShape}
         onSwitchToShapesTool={onSwitchToShapesTool}
         openPalette={controlsProps?.openPalette}
+        selectedTool={selectedTool}
+        setSelectedTool={controlsProps?.setSelectedTool}
+        open={sidebarOpen}
+        topOffset={104}
       />
-      <div style={{ flex: 1, position: 'relative' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: 8, marginBottom: 8 }}>
-          <div style={{ flex: 1 }}>
-            <ControlsBar {...controlsProps} />
-          </div>
-        </div>
+      )}
 
+  <div style={{ position: 'absolute', top: (uiState?.showChrome ?? true) ? 104 : 0, left: (sidebarOpen && (uiState?.showChrome ?? true)) ? 180 : 0, right: 0, bottom: 0, transition: 'left 200ms ease' }}>
         <SelectedToolBadge selectedTool={selectedTool} />
 
         <PalettePortal
           open={uiState?.paletteOpen ?? false}
           onClose={onClosePalette}
           onSelectShape={onPaletteSelect}
-          backendBase={process.env.REACT_APP_BACKEND_BASE || 'http://localhost:55000'}
+          backendBase={resolveBackendBase()}
           colorScheme={colorSchemes ? (colorSchemes[uiState.colorSchemeKey] || {}) : {}}
         />
 
@@ -404,23 +486,52 @@ function GameUILayout({
 
         <canvas
           ref={canvasRef}
-          style={{ cursor: cursorStyle, display: 'block', width: '100%', height: '100%', backgroundColor: '#000' }}
+          style={{ cursor: cursorStyle, display: 'block', width: '100%', height: '100%', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         />
 
-        {(uiState?.showChart ?? false) && (
+        {(uiState?.showChart ?? false) && (uiState?.showChrome ?? true) && (
           <PopulationChart
             history={populationHistory}
             onClose={onCloseChart}
             isRunning={isRunning}
+            position={{ bottom: 12, right: 12 }}
           />
         )}
 
         <SpeedGauge
-          isVisible={showSpeedGauge}
+          isVisible={(uiState?.showChrome ?? true) && showSpeedGauge}
           gameRef={gameRef}
           onToggleVisibility={onToggleSpeedGauge}
-          position={{ top: 10, right: 10 }}
+          position={{ bottom: (uiState?.showChart ? 220 : 12), left: 12 }}
         />
+
+        {(uiState?.showChrome ?? true) && (
+        <BottomStatusBar
+          selectedTool={selectedTool}
+          toolStateRef={controlsProps?.toolStateRef}
+          cursorCell={cursorCell}
+          selectedShape={selectedShapeForPanel}
+          model={controlsProps?.model}
+          liveCellsCount={liveCellsCount}
+          generation={generation}
+        />
+        )}
+
+        {/* Floating UI chrome toggle button for mobile/compact view.
+            When chrome is visible, shift it below the header/tools row to avoid overlapping header icons. */}
+        <Box sx={{ position: 'fixed', top: (uiState?.showChrome ?? true) ? 112 : 8, right: 8, zIndex: 50 }}>
+          <Tooltip title={(uiState?.showChrome ?? true) ? 'Hide controls' : 'Show controls'}>
+            <IconButton
+              size={isSmall ? 'small' : 'medium'}
+              color="default"
+              aria-label={(uiState?.showChrome ?? true) ? 'hide-controls' : 'show-controls'}
+              onClick={onToggleChrome}
+              sx={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
+            >
+              {(uiState?.showChrome ?? true) ? <FullscreenIcon fontSize="small" /> : <FullscreenExitIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Box>
       </div>
     </div>
   );
@@ -444,12 +555,19 @@ GameUILayout.propTypes = {
   onSaveCapture: PropTypes.func,
   canvasRef: PropTypes.object,
   cursorStyle: PropTypes.string,
+  cursorCell: PropTypes.object,
   populationHistory: PropTypes.oneOfType([PropTypes.array, PropTypes.object]),
   onCloseChart: PropTypes.func,
   isRunning: PropTypes.bool,
   showSpeedGauge: PropTypes.bool,
   onToggleSpeedGauge: PropTypes.func,
-  gameRef: PropTypes.object
+  gameRef: PropTypes.object,
+  liveCellsCount: PropTypes.number,
+  generation: PropTypes.number,
+  sidebarOpen: PropTypes.bool,
+  onToggleSidebar: PropTypes.func,
+  isSmall: PropTypes.bool,
+  onToggleChrome: PropTypes.func
 };
 function GameOfLifeApp(props) {
 
@@ -460,7 +578,8 @@ function GameOfLifeApp(props) {
     colorSchemeKey: 'spectrum',
     captureDialogOpen: false,
     paletteOpen: false,
-    captureData: null
+    captureData: null,
+    showChrome: true
   }), []);
 
   // We no longer remount the canvas on color scheme changes to preserve GameView listeners
@@ -505,6 +624,11 @@ function GameOfLifeApp(props) {
   }, []);
 
   const colorScheme = React.useMemo(() => getColorSchemeFromKey(uiState?.colorSchemeKey || 'spectrum'), [uiState?.colorSchemeKey]);
+  const isSmall = useMediaQuery('(max-width:900px)');
+  const [sidebarOpen, setSidebarOpen] = useState(!isSmall);
+  useEffect(() => {
+    setSidebarOpen(!isSmall);
+  }, [isSmall]);
 
   // Canvas manager must be defined before useShapeManager
   const canvasManager = useCanvasManager({
@@ -657,6 +781,10 @@ function GameOfLifeApp(props) {
     setUIState(prev => ({ ...prev, captureDialogOpen: open }));
   }, []);
 
+  const toggleChrome = useCallback(() => {
+    setUIState(prev => ({ ...prev, showChrome: !(prev.showChrome ?? true) }));
+  }, []);
+
   // Component lifecycle tracking (removed no-op unmount effect)
 
   // Tool management
@@ -763,12 +891,19 @@ function GameOfLifeApp(props) {
       onSaveCapture={handleSaveCapturedShape}
       canvasRef={canvasRef}
       cursorStyle={(selectedShape || selectedTool) ? 'crosshair' : 'default'}
+      cursorCell={cursorCell}
       populationHistory={(gameRef.current && typeof gameRef.current.getPopulationHistory === 'function') ? gameRef.current.getPopulationHistory() : []}
       onCloseChart={() => setShowChart(false)}
       isRunning={isRunning}
       showSpeedGauge={uiState?.showSpeedGauge ?? true}
       onToggleSpeedGauge={setShowSpeedGauge}
       gameRef={gameRef}
+      liveCellsCount={getLiveCells().size}
+      generation={generation}
+      sidebarOpen={sidebarOpen}
+      onToggleSidebar={() => setSidebarOpen((v) => !v)}
+      isSmall={isSmall}
+      onToggleChrome={toggleChrome}
     />
   );
 }

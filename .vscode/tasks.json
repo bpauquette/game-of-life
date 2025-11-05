@@ -1,0 +1,66 @@
+{
+  // VS Code tasks to launch elevated (Admin) Windows PowerShell or run admin scripts.
+  // Note: VS Code cannot elevate the integrated terminal itself; these tasks spawn
+  // a separate elevated PowerShell window via Start-Process -Verb RunAs.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Open Windows PowerShell (Admin)",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-Command",
+        // Launch a new elevated PowerShell window and cd into the workspace folder
+        "Start-Process PowerShell -Verb RunAs -ArgumentList '-NoExit','-NoProfile','-ExecutionPolicy','Bypass','-Command','cd \"${workspaceFolder}\"'"
+      ],
+      "problemMatcher": [],
+      "windows": {
+        "command": "powershell.exe"
+      },
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "Cleanup GOL Dev Network (Admin)",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-Command",
+        // Use wslpath on-the-fly if running this from WSL; otherwise path is already Windows style
+        // This command starts an elevated PS that runs the cleanup script, then keeps window open briefly
+        "Start-Process PowerShell -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','\"' + ((Test-Path '${workspaceFolder}') ? (Resolve-Path '${workspaceFolder}').Path + '\\scripts\\windows\\cleanup-gol-dev-network.ps1' : '${workspaceFolder}\\scripts\\windows\\cleanup-gol-dev-network.ps1') + '\"'"
+      ],
+      "problemMatcher": [],
+      "windows": {
+        "command": "powershell.exe"
+      },
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "Cleanup GOL Dev Network (Admin) with params",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-Command",
+        // Example passing ports and listen address; edit args as needed
+        "Start-Process PowerShell -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','\"${workspaceFolder}\\scripts\\windows\\cleanup-gol-dev-network.ps1\"','-Ports','3000','55000','-ListenAddress','0.0.0.0'"
+      ],
+      "problemMatcher": [],
+      "windows": {
+        "command": "powershell.exe"
+      },
+      "presentation": {
+        "reveal": "always"
+      }
+    }
+  ]
+}

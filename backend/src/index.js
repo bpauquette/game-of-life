@@ -28,8 +28,24 @@ const ensureUniqueName = async (baseName, userId = null) => {
 const start = async () => {
   const app = express();
   app.use(cors());
-  app.use(express.json());
-  app.use(express.text({ type: ['text/*', 'application/octet-stream'], limit: '1mb' }));
+  // Explicitly enable preflight for all routes (helps some mobile browsers)
+  app.options('*', cors());
+  // Increase body size limits to support large grids/shapes from mobile
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(express.text({ type: ['text/*', 'application/octet-stream'], limit: '5mb' }));
+
+  // Lightweight request logger (no bodies)
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const { method, originalUrl } = req;
+    res.on('finish', () => {
+      const ms = Date.now() - start;
+      const len = req.headers['content-length'] || '-';
+      logger.info(`${method} ${originalUrl} -> ${res.statusCode} ${ms}ms cl=${len}`);
+    });
+    next();
+  });
 
   app.get('/v1/health', (req,res)=> res.json({ok:true}));
 
@@ -67,6 +83,21 @@ const start = async () => {
       logger.error('delete error:', err);
       res.status(500).json({error: err.message});
     }
+  });
+
+  // Handle payload-too-large and other body parsing errors with a clear message
+  // This must come after the body parsers have been registered but before the catch-all error handling
+  app.use((err, req, res, next) => {
+    // Body parser sets type for size errors
+    if (err && (err.type === 'entity.too.large' || err.status === 413)) {
+      const cl = req.headers['content-length'] || '-';
+      logger.warn(`413 Payload too large at ${req.method} ${req.originalUrl} cl=${cl}`);
+      return res.status(413).json({
+        error: 'Request payload too large. Try saving a smaller grid or update server limits.',
+        maxJson: '10mb'
+      });
+    }
+    return next(err);
   });
 
   // Allow adding a full shape object (used by UI and capture tool)
@@ -161,6 +192,9 @@ const start = async () => {
   app.post('/v1/grids', async (req,res)=>{
     try{
       const { name, description, liveCells, generation } = req.body;
+      const cl = req.headers['content-length'] || '-';
+      const count = Array.isArray(liveCells) ? liveCells.length : 'n/a';
+      logger.info(`POST /v1/grids start name="${String(name||'').slice(0,100)}" cells=${count} gen=${generation||0} cl=${cl}`);
       
       if(!name || typeof name !== 'string' || name.trim().length === 0) {
         return res.status(400).json({error:'Grid name is required'});
@@ -181,6 +215,7 @@ const start = async () => {
       };
 
       await db.saveGrid(grid);
+      logger.info(`POST /v1/grids ok id=${grid.id} cells=${grid.liveCells.length}`);
       res.status(201).json(grid);
     }catch(err){
       logger.error('save grid error:', err);

@@ -6,7 +6,8 @@ import logger from '../../controller/utils/logger';
  */
 const useGridFileManager = (config = {}) => {
   const { 
-    backendBase = process.env.REACT_APP_BACKEND_BASE || 'http://localhost:55000',
+    // If not explicitly provided, derive from the current window location so mobile clients don't hit localhost
+    backendBase = process.env.REACT_APP_BACKEND_BASE || null,
     getLiveCells = null,
     generation = 0 
   } = config;
@@ -16,16 +17,22 @@ const useGridFileManager = (config = {}) => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
   const abortControllerRef = useRef(null);
+  const inFlightSaveRef = useRef(null);
 
   // Helper to get base URL consistently
   const getBaseUrl = useCallback(() => {
     if (typeof backendBase === 'string' && backendBase.length > 0) {
       return backendBase;
     }
-    const fallbackOrigin = globalThis.window?.location?.origin 
-      ? String(globalThis.window.location.origin) 
-      : 'http://localhost:3000';
-    return fallbackOrigin.replace('3000', '55000'); // Default backend port
+    const loc = globalThis.window?.location;
+    const port = process.env.REACT_APP_BACKEND_PORT || '55000';
+    if (loc && loc.hostname) {
+      const protocol = loc.protocol || 'http:';
+      const host = loc.hostname; // works on phone: uses Windows LAN IP
+      return `${protocol}//${host}:${port}`;
+    }
+    // Last resort (dev-only fallback)
+    return `http://127.0.0.1:${port}`;
   }, [backendBase]);
 
   // Convert live cells to serializable format
@@ -70,9 +77,12 @@ const useGridFileManager = (config = {}) => {
       abortControllerRef.current = new AbortController();
       const base = getBaseUrl();
       const url = new URL('/v1/grids', base);
+      url.searchParams.set('_ts', String(Date.now()));
       
       const response = await fetch(url.toString(), {
-        signal: abortControllerRef.current.signal
+        signal: abortControllerRef.current.signal,
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
       });
       
       if (response.ok === false) {
@@ -112,16 +122,68 @@ const useGridFileManager = (config = {}) => {
         generation: generation || 0
       };
 
-      const base = getBaseUrl();
-      const url = new URL('/v1/grids', base);
+  const base = getBaseUrl();
+  const url = new URL('/v1/grids', base);
+  url.searchParams.set('_ts', String(Date.now()));
       
-      const response = await fetch(url.toString(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(gridData)
-      });
+      // Network robustness: retry on transient failures (connection closed, timeouts)
+      const doPostWithRetry = async (attempts = 3, perAttemptTimeoutMs = 30000) => {
+        let lastError;
+        for (let i = 1; i <= attempts; i++) {
+          // Abort previous attempt if still hanging
+          if (inFlightSaveRef.current) {
+            try { inFlightSaveRef.current.abort(); } catch (_) {}
+          }
+          const ac = new AbortController();
+          inFlightSaveRef.current = ac;
+
+          const timeoutId = setTimeout(() => {
+            try { ac.abort(); } catch (_) {}
+          }, perAttemptTimeoutMs);
+
+          try {
+            const response = await fetch(url.toString(), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+              body: JSON.stringify(gridData),
+              signal: ac.signal,
+              cache: 'no-store',
+            });
+            clearTimeout(timeoutId);
+            if (!response.ok) {
+              // Try to read JSON to surface server-provided error details
+              let errorText = `Failed to save grid: ${response.status}`;
+              try {
+                const data = await response.json();
+                if (data && data.error) errorText = data.error;
+                // Friendly message for payload-too-large
+                if (response.status === 413) {
+                  errorText = data?.error || 'Grid is too large to upload (413)';
+                }
+              } catch (_) {}
+              throw new Error(errorText);
+            }
+            return response;
+          } catch (e) {
+            clearTimeout(timeoutId);
+            lastError = e;
+            const isAbort = e?.name === 'AbortError';
+            const isNetwork = e && /Failed to fetch|NetworkError|TypeError/.test(String(e));
+            // On final attempt or non-transient error, rethrow
+            if (i === attempts || (!isAbort && !isNetwork)) {
+              throw e;
+            }
+            // Backoff before retry
+            const backoffMs = i * 500;
+            await new Promise(r => setTimeout(r, backoffMs));
+            continue;
+          }
+        }
+        // Should not reach here
+        throw lastError || new Error('Unknown error saving grid');
+      };
+
+      const response = await doPostWithRetry(3, 30000);
 
       if (response.ok === false) {
         const errorData = await response.json().catch(() => ({}));
@@ -141,6 +203,11 @@ const useGridFileManager = (config = {}) => {
       throw error_;
     } finally {
       setLoading(false);
+      // Clear any in-flight controller
+      if (inFlightSaveRef.current) {
+        try { inFlightSaveRef.current.abort(); } catch (_) {}
+        inFlightSaveRef.current = null;
+      }
     }
   }, [getLiveCells, serializeLiveCells, generation, getBaseUrl, loadGridsList]);
 
@@ -154,10 +221,11 @@ const useGridFileManager = (config = {}) => {
     setError(null);
 
     try {
-      const base = getBaseUrl();
-      const url = new URL(`/v1/grids/${encodeURIComponent(gridId)}`, base);
+  const base = getBaseUrl();
+  const url = new URL(`/v1/grids/${encodeURIComponent(gridId)}`, base);
+  url.searchParams.set('_ts', String(Date.now()));
       
-      const response = await fetch(url.toString());
+  const response = await fetch(url.toString(), { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
 
       if (response.ok === false) {
         const errorData = await response.json().catch(() => ({}));
@@ -196,9 +264,12 @@ const useGridFileManager = (config = {}) => {
     try {
       const base = getBaseUrl();
       const url = new URL(`/v1/grids/${encodeURIComponent(gridId)}`, base);
+      url.searchParams.set('_ts', String(Date.now()));
       
       const response = await fetch(url.toString(), {
-        method: 'DELETE'
+        method: 'DELETE',
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
       });
 
       if (response.ok === false) {

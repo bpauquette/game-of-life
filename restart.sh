@@ -10,9 +10,18 @@ pkill -9 -f "npm.*start" 2>/dev/null
 pkill -9 -f "node.*index.js" 2>/dev/null
 pkill -9 -f "webpack" 2>/dev/null
 
+# Load .env for centralized ports (if present)
+ENV_FILE="$(dirname "$0")/.env"
+if [ -f "$ENV_FILE" ]; then
+    # shellcheck disable=SC2046
+    export $(grep -E '^(PORT|GOL_BACKEND_PORT)=' "$ENV_FILE" | xargs)
+fi
+FRONTEND_PORT="${PORT:-3000}"
+BACKEND_PORT="${GOL_BACKEND_PORT:-55000}"
+
 # Force kill ports
-lsof -ti:3000 | xargs kill -9 2>/dev/null
-lsof -ti:55000 | xargs kill -9 2>/dev/null
+lsof -ti:"$FRONTEND_PORT" | xargs kill -9 2>/dev/null
+lsof -ti:"$BACKEND_PORT" | xargs kill -9 2>/dev/null
 
 sleep 3
 
@@ -23,7 +32,7 @@ npm start &
 sleep 5
 
 # Test backend
-if curl -s http://localhost:55000/v1/health >/dev/null 2>&1; then
+if curl -s "http://localhost:${BACKEND_PORT}/v1/health" >/dev/null 2>&1; then
     echo "✅ Backend running"
 else
     echo "❌ Backend failed - check backend/error.log"
@@ -37,5 +46,5 @@ npm start &
 sleep 10
 
 echo "✅ Done!"
-echo "🌐 Frontend: http://localhost:3000"
-echo "🔧 Backend:  http://localhost:55000"
+echo "🌐 Frontend: http://localhost:${FRONTEND_PORT}"
+echo "🔧 Backend:  http://localhost:${BACKEND_PORT}"

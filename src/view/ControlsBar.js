@@ -6,103 +6,30 @@ import SaveGridDialog from './SaveGridDialog';
 import LoadGridDialog from './LoadGridDialog';
 import useGridFileManager from './hooks/useGridFileManager';
 import Stack from '@mui/material/Stack';
-import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
-import Chip from '@mui/material/Chip';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StopIcon from '@mui/icons-material/Stop';
+// icons used inside RunControlGroup
 import SettingsIcon from '@mui/icons-material/Settings';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import HelpIcon from '@mui/icons-material/Help';
 import InfoIcon from '@mui/icons-material/Info';
-import BrushIcon from '@mui/icons-material/Brush';
-import LineAxisIcon from '@mui/icons-material/ShowChart';
-import CropSquareIcon from '@mui/icons-material/CropSquare';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-import CasinoIcon from '@mui/icons-material/Casino';
-import ColorizeIcon from '@mui/icons-material/Colorize';
-import SaveIcon from '@mui/icons-material/Save';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
-import OvalIcon from './components/OvalIcon';
+// tool icons moved to ToolGroupOverlay
+// Save/Load icons moved to SaveLoadGroup component
+// OvalIcon used in ToolGroupOverlay
 import HelpDialog from './HelpDialog';
 import AboutDialog from './AboutDialog';
+import RunControlGroup from './components/RunControlGroup';
+import SaveLoadGroup from './components/SaveLoadGroup';
 
 // UI Layout Constants  
 const CONTROL_SPACING = 1;
 // ShapePaletteDialog is rendered by the parent (GameOfLife)
 
-// Presentational subcomponents to reduce complexity
-function ToolToggleGroup({ selectedTool, setSelectedTool, openPalette }) {
-  return (
-    <ToggleButtonGroup
-      value={selectedTool}
-      exclusive
-      size="small"
-      onChange={(_, v) => v && setSelectedTool(v)}
-    >
-      <ToggleButton value="draw" aria-label="draw"><Tooltip title="Freehand draw"><BrushIcon fontSize="small" /></Tooltip></ToggleButton>
-      <ToggleButton value="line" aria-label="line"><Tooltip title="Line tool"><LineAxisIcon fontSize="small" /></Tooltip></ToggleButton>
-      <ToggleButton value="rect" aria-label="rect"><Tooltip title="Rectangle tool"><CropSquareIcon fontSize="small" /></Tooltip></ToggleButton>
-      <ToggleButton value="circle" aria-label="circle"><Tooltip title="Circle tool"><RadioButtonUncheckedIcon fontSize="small" /></Tooltip></ToggleButton>
-      <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool"><OvalIcon fontSize="small" /></Tooltip></ToggleButton>
-      <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect"><CasinoIcon fontSize="small" /></Tooltip></ToggleButton>
-      <ToggleButton value="capture" aria-label="capture"><Tooltip title="Capture area as shape"><ColorizeIcon fontSize="small" /></Tooltip></ToggleButton>
-    </ToggleButtonGroup>
-  );
-}
-ToolToggleGroup.propTypes = {
-  selectedTool: PropTypes.string.isRequired,
-  setSelectedTool: PropTypes.func.isRequired,
-  openPalette: PropTypes.func
-};
+// Tool toggles moved to top-middle overlay component
 
-function RunControls({ isRunning, setIsRunning, step, draw, clear, snapshotsRef, setSteadyInfo }) {
-  const STEADY_STATE_PERIOD_INITIAL_LOCAL = 0;
-  return (
-    <>
-      <Button size="small" onClick={() => { step(); draw(); }}>Step</Button>
-      <Button
-        size="small"
-        variant="contained"
-        onClick={() => setIsRunning(!isRunning)}
-        startIcon={isRunning ? <StopIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
-      >
-        {isRunning ? 'Stop' : 'Start'}
-      </Button>
-      <Button size="small" onClick={() => { clear(); draw(); snapshotsRef.current = []; setSteadyInfo({ steady: false, period: STEADY_STATE_PERIOD_INITIAL_LOCAL, popChanging: false }); }}>Clear</Button>
-    </>
-  );
-}
-RunControls.propTypes = {
-  isRunning: PropTypes.bool.isRequired,
-  setIsRunning: PropTypes.func.isRequired,
-  step: PropTypes.func.isRequired,
-  draw: PropTypes.func.isRequired,
-  clear: PropTypes.func.isRequired,
-  snapshotsRef: PropTypes.object.isRequired,
-  setSteadyInfo: PropTypes.func.isRequired
-};
+// RunControls moved to a standalone, visually distinct component (RunControlGroup)
 
-function SaveLoadButtons({ openSaveGrid, openLoadGrid }) {
-  return (
-    <>
-      <Tooltip title="Save current grid state">
-        <Button size="small" onClick={openSaveGrid} startIcon={<SaveIcon fontSize="small" />}>Save</Button>
-      </Tooltip>
-      <Tooltip title="Load saved grid state">
-        <Button size="small" onClick={openLoadGrid} startIcon={<FolderOpenIcon fontSize="small" />}>Load</Button>
-      </Tooltip>
-    </>
-  );
-}
-SaveLoadButtons.propTypes = {
-  openSaveGrid: PropTypes.func.isRequired,
-  openLoadGrid: PropTypes.func.isRequired
-};
+// Save/Load moved to a standalone, visually distinct component (SaveLoadGroup)
 
 function AuxButtons({ setShowChart, openHelp, openAbout, openOptions, onCenterViewport }) {
   return (
@@ -111,13 +38,6 @@ function AuxButtons({ setShowChart, openHelp, openAbout, openOptions, onCenterVi
       <IconButton size="small" onClick={openHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={openAbout} aria-label="about"><Tooltip title="About"><InfoIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={openOptions} aria-label="options" data-testid="options-icon-button"><SettingsIcon fontSize="small" /></IconButton>
-      <Tooltip title="Center on live cells (shortcut: 'f')">
-        <span>
-          <IconButton size="small" onClick={() => onCenterViewport?.()} aria-label="center" disabled={!onCenterViewport}>
-            <CenterFocusStrongIcon fontSize="small" />
-          </IconButton>
-        </span>
-      </Tooltip>
     </>
   );
 }
@@ -129,18 +49,7 @@ AuxButtons.propTypes = {
   onCenterViewport: PropTypes.func
 };
 
-function StatusChips({ liveCellsCount, generation }) {
-  return (
-    <>
-      <Chip label={`Live Cells: ${liveCellsCount}`} size="small" variant="outlined" />
-      <Chip label={`Generation: ${generation}`} size="small" variant="outlined" />
-    </>
-  );
-}
-StatusChips.propTypes = {
-  liveCellsCount: PropTypes.number.isRequired,
-  generation: PropTypes.number.isRequired
-};
+// Status chips moved to the bottom status panel (see GameOfLifeApp)
 
 function ControlsDialogs({
   optionsOpen,
@@ -385,9 +294,10 @@ const ControlsBar = ({
   return (
     <div className="controls">
       <Stack direction="row" spacing={CONTROL_SPACING} alignItems="center">
-        <ToolToggleGroup selectedTool={selectedTool} setSelectedTool={setSelectedTool} openPalette={openPalette} />
+        {/* Order: Save/Load (far left) -> Start/Stop/Clear -> Tool toggles -> Aux */}
+  <SaveLoadGroup openSaveGrid={openSaveGrid} openLoadGrid={openLoadGrid} />
 
-        <RunControls
+        <RunControlGroup
           isRunning={isRunning}
           setIsRunning={setIsRunning}
           step={step}
@@ -397,7 +307,7 @@ const ControlsBar = ({
           setSteadyInfo={setSteadyInfo}
         />
 
-        <SaveLoadButtons openSaveGrid={openSaveGrid} openLoadGrid={openLoadGrid} />
+  {/* Tool toggles moved to top-middle overlay */}
 
         <AuxButtons
           setShowChart={setShowChart}
@@ -406,8 +316,6 @@ const ControlsBar = ({
           openOptions={openOptions}
           onCenterViewport={onCenterViewport}
         />
-
-        <StatusChips liveCellsCount={getLiveCells().size} generation={generation} />
 
         <ToolStatus
           steadyInfo={steadyInfo}

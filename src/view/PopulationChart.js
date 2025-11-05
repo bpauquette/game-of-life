@@ -40,7 +40,8 @@ const Y_AXIS_TEXT_OFFSET_Y = 4;
 // - history: array of integers (population count per generation)
 // - onClose: function to close the modal
 // - isRunning: boolean indicating if simulation is running
-export default function PopulationChart({ history = [], onClose, isRunning = false }) {
+// - position: optional fixed positioning overrides (top/right/bottom/left)
+export default function PopulationChart({ history = [], onClose, isRunning = false, position }) {
   const [hoverIdx, setHoverIdx] = useState(null);
 
   const max = useMemo(() => Math.max(1, ...history), [history]);
@@ -62,9 +63,25 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
   const yTicks = Y_TICK_COUNT;
   const xTicks = Math.min(MAX_X_TICKS, Math.max(MIN_X_TICKS, Math.floor(history.length / X_TICK_INTERVAL_DIVISOR)));
 
+  // Build positioning style; default to top-right if not provided
+  const posStyle = {
+    position: 'fixed',
+    zIndex: MODAL_Z_INDEX,
+    width: w + CHART_CONTAINER_PADDING
+  };
+  const hasCustom = position && (position.top !== undefined || position.right !== undefined || position.bottom !== undefined || position.left !== undefined);
+  if (hasCustom) {
+    if (position.top !== undefined) posStyle.top = position.top;
+    if (position.right !== undefined) posStyle.right = position.right;
+    if (position.bottom !== undefined) posStyle.bottom = position.bottom;
+    if (position.left !== undefined) posStyle.left = position.left;
+  } else {
+    posStyle.top = MODAL_POSITION_TOP;
+    posStyle.right = MODAL_POSITION_RIGHT;
+  }
+
   return (
-    // place modal in upper-right quadrant
-    <div style={{ position: 'fixed', top: MODAL_POSITION_TOP, right: MODAL_POSITION_RIGHT, width: w + CHART_CONTAINER_PADDING, zIndex: MODAL_Z_INDEX }}>
+    <div style={posStyle}>
       <div style={{ background: '#111', color: '#fff', padding: MODAL_PADDING, borderRadius: MODAL_BORDER_RADIUS, boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <strong>Population Over Time</strong>
@@ -176,7 +193,13 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
 PopulationChart.propTypes = {
   history: PropTypes.array,
   onClose: PropTypes.func.isRequired,
-  isRunning: PropTypes.bool
+  isRunning: PropTypes.bool,
+  position: PropTypes.shape({
+    top: PropTypes.number,
+    right: PropTypes.number,
+    bottom: PropTypes.number,
+    left: PropTypes.number
+  })
 };
 
 PopulationChart.defaultProps = {

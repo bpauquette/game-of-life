@@ -113,35 +113,206 @@ export class GameView {
       return { screenX, screenY, cellCoords };
     };
 
-    // Mouse down
-    this.canvas.addEventListener('mousedown', (e) => {
-      const coords = getMouseCoords(e);
-      this.emit('mouseDown', { event: e, ...coords });
-    });
+    // Prefer Pointer Events if available to get unified mouse/touch/pen handling
+    if (globalThis.PointerEvent) {
+      // Pointer Events path with basic pinch-zoom support
+      const activePointers = new Map(); // id -> {x,y}
+      let pinchStartDist = null;
+      let isPinchZooming = false;
+      let lastPrimaryCoords = null;
+      const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-    // Mouse move
-    this.canvas.addEventListener('mousemove', (e) => {
-      const coords = getMouseCoords(e);
-      this.emit('mouseMove', { event: e, ...coords });
-    });
+      const onPointerDown = (e) => {
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (activePointers.size === 1 && e.isPrimary !== false && !isPinchZooming) {
+          const coords = getMouseCoords(e);
+          lastPrimaryCoords = coords;
+          this.emit('mouseDown', { event: e, ...coords });
+        }
+        if (activePointers.size === 2) {
+          const [p1, p2] = Array.from(activePointers.values());
+          pinchStartDist = distance(p1, p2);
+          // Enter pinch-zoom mode: suspend tool interactions
+          if (!isPinchZooming && lastPrimaryCoords) {
+            this.emit('mouseUp', { event: e, ...lastPrimaryCoords });
+          }
+          isPinchZooming = true;
+        }
+        if (e.cancelable) e.preventDefault();
+      };
+      let pinchLastCenter = null;
+      const onPointerMove = (e) => {
+        if (!activePointers.has(e.pointerId)) return;
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    // Mouse up
-    this.canvas.addEventListener('mouseup', (e) => {
-      const coords = getMouseCoords(e);
-      this.emit('mouseUp', { event: e, ...coords });
-    });
+        if (activePointers.size >= 2 && pinchStartDist) {
+          const [p1, p2] = Array.from(activePointers.values());
+          // Pan: compute centroid movement while pinching
+          const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+          if (pinchLastCenter) {
+            const dx = center.x - pinchLastCenter.x;
+            const dy = center.y - pinchLastCenter.y;
+            if (Math.abs(dx) + Math.abs(dy) > 0.5) {
+              this.emit('gesturePan', { dx, dy });
+            }
+          }
+          pinchLastCenter = center;
+          const newDist = distance(p1, p2);
+          if (newDist > 0) {
+            const ratio = newDist / pinchStartDist;
+            const threshold = 1.02; // small hysteresis
+            if (ratio > threshold || ratio < (1 / threshold)) {
+              // Map pinch to synthetic wheel delta
+              const deltaY = ratio > 1 ? -100 : 100;
+              this.emit('wheel', { event: { cancelable: false }, deltaY });
+              pinchStartDist = newDist; // step forward
+            }
+          }
+          if (e.cancelable) e.preventDefault();
+          return; // Skip normal mouse move while pinching
+        }
 
-    // Mouse click
-    this.canvas.addEventListener('click', (e) => {
-      const coords = getMouseCoords(e);
-      this.emit('click', { event: e, ...coords });
-    });
+        if (e.isPrimary !== false && !isPinchZooming) {
+          const coords = getMouseCoords(e);
+          lastPrimaryCoords = coords;
+          this.emit('mouseMove', { event: e, ...coords });
+        }
+      };
+      const onPointerUp = (e) => {
+        activePointers.delete(e.pointerId);
+        if (activePointers.size < 2) { pinchStartDist = null; pinchLastCenter = null; isPinchZooming = false; }
+        if (e.isPrimary !== false && !isPinchZooming) {
+          const coords = getMouseCoords(e);
+          lastPrimaryCoords = coords;
+          this.emit('mouseUp', { event: e, ...coords });
+        }
+        if (e.cancelable) e.preventDefault();
+      };
+      const onClick = (e) => {
+        if (isPinchZooming) return; // Ignore clicks that may fire after pinch gestures
+        const coords = getMouseCoords(e);
+        this.emit('click', { event: e, ...coords });
+      };
+      this.canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+      this.canvas.addEventListener('pointermove', onPointerMove, { passive: false });
+      this.canvas.addEventListener('pointerup', onPointerUp, { passive: false });
+      this.canvas.addEventListener('pointercancel', onPointerUp, { passive: false });
+      this.canvas.addEventListener('click', onClick);
+      // Wheel zoom still useful on trackpads/mice
+      this.canvas.addEventListener('wheel', (e) => {
+        const coords = getMouseCoords(e);
+        this.emit('wheel', { event: e, deltaY: e.deltaY, ...coords });
+      }, { passive: false });
+    } else {
+      // Mouse fallback
+      // Mouse down
+      this.canvas.addEventListener('mousedown', (e) => {
+        const coords = getMouseCoords(e);
+        this.emit('mouseDown', { event: e, ...coords });
+      });
 
-    // Mouse wheel (zoom)
-    this.canvas.addEventListener('wheel', (e) => {
-      const coords = getMouseCoords(e);
-      this.emit('wheel', { event: e, deltaY: e.deltaY, ...coords });
-    }, { passive: false });
+      // Mouse move
+      this.canvas.addEventListener('mousemove', (e) => {
+        const coords = getMouseCoords(e);
+        this.emit('mouseMove', { event: e, ...coords });
+      });
+
+      // Mouse up
+      this.canvas.addEventListener('mouseup', (e) => {
+        const coords = getMouseCoords(e);
+        this.emit('mouseUp', { event: e, ...coords });
+      });
+
+      // Mouse click
+      this.canvas.addEventListener('click', (e) => {
+        const coords = getMouseCoords(e);
+        this.emit('click', { event: e, ...coords });
+      });
+
+      // Touch fallback with basic pinch-zoom support
+  let activeTouchId = null;
+  let pinchStartDist = null;
+  let touchLastCenter = null;
+      const getTouchCoords = (touchEvent) => {
+        const rect = (typeof this.canvas.getBoundingClientRect === 'function')
+          ? this.canvas.getBoundingClientRect()
+          : { left: 0, top: 0 };
+        const t = activeTouchId != null
+          ? Array.from(touchEvent.touches).find(tt => tt.identifier === activeTouchId) || touchEvent.changedTouches[0]
+          : touchEvent.changedTouches[0];
+        const screenX = t.clientX - rect.left;
+        const screenY = t.clientY - rect.top;
+        const cellCoords = this.screenToCell(screenX, screenY);
+        return { screenX, screenY, cellCoords };
+      };
+      const touchDistance = (touches) => {
+        if (!touches || touches.length < 2) return 0;
+        const [a, b] = [touches[0], touches[1]];
+        return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      };
+      this.canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1 && e.changedTouches && e.changedTouches.length > 0) {
+          activeTouchId = e.changedTouches[0].identifier;
+          const coords = getTouchCoords(e);
+          this.emit('mouseDown', { event: e, ...coords });
+        } else if (e.touches.length === 2) {
+          // If we were drawing, end the stroke before entering pinch-zoom
+          if (activeTouchId != null) {
+            const coords = getTouchCoords(e);
+            this.emit('mouseUp', { event: e, ...coords });
+          }
+          pinchStartDist = touchDistance(e.touches);
+          activeTouchId = null; // suspend drawing while pinching
+        }
+        if (e.cancelable) e.preventDefault();
+      }, { passive: false });
+      this.canvas.addEventListener('touchmove', (e) => {
+        if (e.touches.length >= 2 && pinchStartDist) {
+          const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+          const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+          if (touchLastCenter) {
+            const dx = cx - touchLastCenter.x;
+            const dy = cy - touchLastCenter.y;
+            if (Math.abs(dx) + Math.abs(dy) > 0.5) {
+              this.emit('gesturePan', { dx, dy });
+            }
+          }
+          touchLastCenter = { x: cx, y: cy };
+          const newDist = touchDistance(e.touches);
+          if (newDist > 0) {
+            const ratio = newDist / pinchStartDist;
+            const threshold = 1.02;
+            if (ratio > threshold || ratio < (1 / threshold)) {
+              const deltaY = ratio > 1 ? -100 : 100;
+              this.emit('wheel', { event: { cancelable: false }, deltaY });
+              pinchStartDist = newDist;
+            }
+          }
+          if (e.cancelable) e.preventDefault();
+          return;
+        }
+        if (activeTouchId != null) {
+          const coords = getTouchCoords(e);
+          this.emit('mouseMove', { event: e, ...coords });
+          if (e.cancelable) e.preventDefault();
+        }
+      }, { passive: false });
+      this.canvas.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) { pinchStartDist = null; touchLastCenter = null; }
+        if (activeTouchId != null) {
+          const coords = getTouchCoords(e);
+          this.emit('mouseUp', { event: e, ...coords });
+          activeTouchId = null;
+        }
+        if (e.cancelable) e.preventDefault();
+      }, { passive: false });
+
+      // Mouse wheel (zoom)
+      this.canvas.addEventListener('wheel', (e) => {
+        const coords = getMouseCoords(e);
+        this.emit('wheel', { event: e, deltaY: e.deltaY, ...coords });
+      }, { passive: false });
+    }
 
     // Context menu
     this.canvas.addEventListener('contextmenu', (e) => {
