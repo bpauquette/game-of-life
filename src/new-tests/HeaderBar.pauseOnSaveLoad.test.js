@@ -1,11 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-// Mock the grid file manager hook to avoid network and heavy UI
-jest.mock('../view/hooks/useGridFileManager', () => ({ __esModule: true, default: jest.fn() }));
 
 import HeaderBar from '../view/HeaderBar';
 import useGridFileManager from '../view/hooks/useGridFileManager';
+// Mock the grid file manager hook to avoid network and heavy UI
+jest.mock('../view/hooks/useGridFileManager', () => ({ __esModule: true, default: jest.fn() }));
 
 beforeEach(() => {
   jest.clearAllMocks();

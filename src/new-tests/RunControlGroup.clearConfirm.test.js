@@ -1,11 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import useGridFileManager from '../view/hooks/useGridFileManager';
+import HeaderBar from '../view/HeaderBar';
 
 // Mock grid file manager used by HeaderBar so we don't open dialogs or hit network
 jest.mock('../view/hooks/useGridFileManager', () => ({ __esModule: true, default: jest.fn() }));
-import useGridFileManager from '../view/hooks/useGridFileManager';
-import HeaderBar from '../view/HeaderBar';
 
 function makeProps(overrides = {}) {
   return {
