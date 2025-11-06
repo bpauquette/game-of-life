@@ -2,6 +2,14 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import Dialog from '@mui/material/Dialog';
 import logger from '../controller/utils/logger';
+import {
+  getBaseUrl,
+  fetchShapes,
+  fetchShapeById,
+  deleteShapeById,
+  createShape,
+  checkBackendHealth
+} from '../utils/backendApi';
 import { BUTTONS } from '../utils/Constants';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -17,13 +25,67 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DialogActions from '@mui/material/DialogActions';
-// IconButton/Delete icons were removed as we no longer render delete in metadata list
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Slide from '@mui/material/Slide';
 import CloseIcon from '@mui/icons-material/Close';
 import UndoIcon from '@mui/icons-material/Undo';
 import Typography from '@mui/material/Typography';
+
+// PropTypes for internal components
+ShapeListItem.propTypes = {
+  s: PropTypes.object.isRequired,
+  idx: PropTypes.number.isRequired,
+  colorScheme: PropTypes.object,
+  onSelect: PropTypes.func,
+  onRequestDelete: PropTypes.func
+};
+BackendServerDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  backendError: PropTypes.string,
+  backendStarting: PropTypes.bool,
+  onRetry: PropTypes.func,
+  onShowInstructions: PropTypes.func
+};
+
+ShapesList.propTypes = {
+  items: PropTypes.array.isRequired,
+  colorScheme: PropTypes.object,
+  loading: PropTypes.bool,
+  onSelect: PropTypes.func,
+  onDeleteRequest: PropTypes.func,
+};
+
+FooterControls.propTypes = {
+  total: PropTypes.number.isRequired,
+  threshold: PropTypes.number.isRequired,
+  canLoadMore: PropTypes.bool,
+  onLoadMore: PropTypes.func,
+  onClose: PropTypes.func,
+  loading: PropTypes.bool
+};
+
+DeleteConfirmDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  shape: PropTypes.object,
+  onCancel: PropTypes.func,
+  onConfirm: PropTypes.func
+};
+
+SnackMessage.propTypes = {
+  open: PropTypes.bool.isRequired,
+  message: PropTypes.string,
+  details: PropTypes.string,
+  canUndo: PropTypes.bool,
+  onUndo: PropTypes.func,
+};
+
+SearchBar.propTypes = {
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  loading: PropTypes.bool
+};
 
 // UI Constants
 const PREVIEW_BOX_SIZE = 72;
@@ -34,25 +96,6 @@ const GRID_LINE_OFFSET = 0.5;
 
 // Transition component for Snackbar - moved outside to avoid recreation on each render
 const SlideUpTransition = (props) => <Slide {...props} direction="up" />;
-
-// Helper function to resolve base URL consistently
-const getBaseUrl = (backendBase) => {
-  if (typeof backendBase === 'string' && backendBase.length > 0) {
-    return backendBase;
-  }
-  return globalThis.window?.location?.origin 
-    ? String(globalThis.window.location.origin) 
-    : 'http://localhost';
-}
-
-// Build catalog URL
-const buildShapesUrl = (base, q, limit, offset) => {
-  const url = new URL('/v1/shapes', base);
-  url.searchParams.set('q', q);
-  url.searchParams.set('limit', String(limit));
-  url.searchParams.set('offset', String(offset));
-  return url.toString();
-};
 
 // Detect typical connection errors
 const looksLikeConnectionError = (err) => {
@@ -65,22 +108,7 @@ const looksLikeConnectionError = (err) => {
   );
 };
 
-// Fetch shapes with safe JSON parsing
-async function fetchShapes(base, q, limit, offset) {
-  const res = await fetch(buildShapesUrl(base, q, limit, offset));
-  if (!res.ok) {
-    return { ok: false, status: res.status, items: [], total: 0 };
-  }
-  try {
-    const data = await res.json();
-    const items = Array.isArray(data.items) ? data.items : [];
-    const total = Number(data.total) || 0;
-    return { ok: true, items, total };
-  } catch (e) {
-    logger.warn('Failed to parse JSON response:', e?.message);
-    return { ok: true, items: [], total: 0 };
-  }
-}
+// fetchShapes now imported from backendApi.js
 
 async function maybeHandleBackendDown(err, { checkBackendHealth, cancelRef, setLoading, setShowBackendDialog }) {
   if (!looksLikeConnectionError(err)) return false;
@@ -136,24 +164,45 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete }) {
   const h = Math.max(1, s.height || 1);
   const keyBase = s.id || 'shape';
   return (
-    <Tooltip key={`tt-${keyBase}-${idx}`} title={s.description || ''} arrow placement="right" enterDelay={300}>
       <ListItem key={`${keyBase}-${idx}`} disablePadding>
-        <ListItemButton onClick={() => onSelect(s)}>
-          <ListItemText
-            primary={s.name || '(unnamed)'}
-            secondary={
-              <>
-                {s.description && (
-                  <Typography variant="body2" color="text.secondary" sx={{ display: 'block' }}>
-                    {s.description}
-                  </Typography>
-                )}
-                <Typography variant="caption" color="text.secondary">
-                  {`${w}×${h} — ${s.cellsCount || 0} cells`}
-                </Typography>
-              </>
-            }
-          />
+        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+          <IconButton
+            aria-label="Add to Recent"
+            size="small"
+            sx={{ mr: 1, color: '#388e3c', bgcolor: 'rgba(56,142,60,0.08)', borderRadius: 1 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(s);
+            }}
+            data-testid={`add-recent-btn-${keyBase}`}
+          >
+            <Tooltip title="Add to Recent Shapes" placement="left">
+              <span>
+                <svg width={20} height={20} viewBox="0 0 20 20" style={{ verticalAlign: 'middle' }}>
+                  <circle cx={10} cy={10} r={9} fill="#388e3c" opacity={0.15} />
+                  <path d="M6 10h8M10 6v8" stroke="#388e3c" strokeWidth={2} strokeLinecap="round" />
+                </svg>
+              </span>
+            </Tooltip>
+          </IconButton>
+          <ListItemButton onClick={() => onSelect(s)} sx={{ flex: 1 }}>
+            <Box sx={{ flex: 1 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{ fontWeight: 700, color: '#1976d2', mb: 0.5, fontFamily: 'monospace' }}
+              data-testid="shape-label"
+            >
+              {s.name || '(unnamed)'}
+            </Typography>
+            {s.description && (
+              <Typography variant="body2" color="text.secondary" sx={{ display: 'block', mb: 0.5 }} data-testid="shape-description">
+                {s.description}
+              </Typography>
+            )}
+            <Typography variant="caption" color="text.secondary">
+              {`${w}×${h} — ${s.cellsCount || 0} cells`}
+            </Typography>
+          </Box>
           <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg
               width={PREVIEW_SVG_SIZE}
@@ -163,15 +212,8 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete }) {
               style={{ background: colorScheme.background || 'transparent', border: `1px solid rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`, borderRadius: PREVIEW_BORDER_RADIUS }}
             >
               {Array.isArray(s.cells) && s.cells.length > 0 ? (
-                // Performance: for very large shapes, draw a single bounding box preview
-                (s.cells.length > 800 ? (
-                  <g>
-                    <rect x={0} y={0} width={w} height={h} fill="rgba(76,175,80,0.35)" stroke={`rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`} />
-                  </g>
-                ) : (
-                  s.cells.map((c) => (
-                    <rect key={`${keyBase}-${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
-                  ))
+                s.cells.map((c) => (
+                  <rect key={`${keyBase}-${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
                 ))
               ) : (
                 <g stroke={`rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`} fill="none">
@@ -196,8 +238,8 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete }) {
             <DeleteIcon />
           </IconButton>
         </ListItemButton>
+        </Box>
       </ListItem>
-    </Tooltip>
   );
 }
 
@@ -371,34 +413,8 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   // color helper handled inside ShapeListItem
 
   // Check if backend is reachable
-  const checkBackendHealth = useCallback(async () => {
-    try {
-      const base = getBaseUrl(backendBase);
-      const healthUrl = new URL('/v1/health', base);
-      const response = await fetch(healthUrl.toString(), {
-        method: 'GET',
-        timeout: 3000 // 3 second timeout
-      });
-      return response.ok;
-    } catch (error) {
-      logger.warn('Backend health check failed:', error);
-      return false;
-    }
-  }, [backendBase]);
-
-  // --- Extracted small helpers to keep event handlers simple and reduce complexity ---
-  const fetchShapeById = useCallback(async (id) => {
-    const base = getBaseUrl(backendBase);
-    const url = new URL(`/v1/shapes/${encodeURIComponent(id)}`, base);
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-      let body = '';
-      try { body = await res.text(); } catch { /* ignore */ }
-      return { ok: false, data: null, status: res.status, body };
-    }
-    let data = null;
-    try { data = await res.json(); } catch { data = null; }
-    return { ok: true, data };
+  const checkBackendHealthCb = useCallback(async () => {
+    return await checkBackendHealth(backendBase);
   }, [backendBase]);
 
   const handleShapeSelect = useCallback(async (shape) => {
@@ -409,7 +425,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       return;
     }
     try {
-      const res = await fetchShapeById(shape.id);
+      const res = await fetchShapeById(shape.id, backendBase);
       if (res.ok && res.data) {
         logger.info('[ShapePaletteDialog] Fetched full shape data:', res.data);
         onSelectShape?.(res.data);
@@ -423,7 +439,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     } finally {
       onClose?.();
     }
-  }, [fetchShapeById, onSelectShape, onClose]);
+  }, [backendBase, onSelectShape, onClose]);
 
   const deleteShapeById = useCallback(async (id) => {
     const base = getBaseUrl(backendBase);
@@ -447,7 +463,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     setConfirmOpen(false);
     setToDelete(null);
     try {
-      const outcome = await deleteShapeById(id);
+      const outcome = await deleteShapeById(id, backendBase);
       if (outcome.ok) {
         setSnackMsg('Shape deleted');
         setSnackUndoShape(old.find(x => x.id === id) || null);
@@ -468,24 +484,17 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       setSnackDetails(err?.stack ?? String(err));
       setSnackOpen(true);
     }
-  }, [results, deleteShapeById]);
+  }, [results, backendBase]);
 
-  const createShape = useCallback(async (shape) => {
-    const base = getBaseUrl(backendBase);
-    const url = new URL('/v1/shapes', base);
-    const res = await fetch(url.toString(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(shape)
-    });
-    return res.ok;
+  const createShapeCb = useCallback(async (shape) => {
+    return await createShape(shape, backendBase);
   }, [backendBase]);
 
   const handleUndo = useCallback(async () => {
     const shape = snackUndoShape;
     if (!shape) return;
     try {
-      const ok = await createShape(shape);
+      const ok = await createShapeCb(shape);
       if (ok) {
         setResults(prev => [shape, ...prev]);
         setSnackMsg('Restored');
@@ -497,7 +506,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       logger.error('Restore error:', err);
       setSnackMsg('Restore error');
     }
-  }, [snackUndoShape, createShape]);
+  }, [snackUndoShape, createShapeCb]);
 
   // Start the backend server
   const startBackendServer = async () => {
@@ -530,7 +539,7 @@ The backend will start on port ${backendPort}.`);
     setBackendError('');
     
     try {
-      const isHealthy = await checkBackendHealth();
+      const isHealthy = await checkBackendHealth(backendBase);
       if (isHealthy) {
         setShowBackendDialog(false);
         // Retry the original search
@@ -584,6 +593,7 @@ The backend will start on port ${backendPort}.`);
             loading={loading}
             onSelect={handleShapeSelect}
             onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
+            selectShape={onSelectShape}
           />
           <FooterControls
             total={total}
@@ -628,7 +638,7 @@ ShapePaletteDialog.propTypes = {
   onClose: PropTypes.func,
   onSelectShape: PropTypes.func,
   backendBase: PropTypes.string,
-  colorScheme: PropTypes.object
+  colorScheme: PropTypes.object,
 };
 
 ShapePaletteDialog.defaultProps = {
