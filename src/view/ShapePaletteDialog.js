@@ -99,21 +99,30 @@ const GRID_LINE_OFFSET = 0.5;
 // Transition component for Snackbar - moved outside to avoid recreation on each render
 const SlideUpTransition = (props) => <Slide {...props} direction="up" />;
 
-// Detect typical connection errors
-const looksLikeConnectionError = (err) => {
+// Enhanced: always check backend health if fetch error or status >= 500
+const looksLikeConnectionError = async (err, checkBackendHealth) => {
   const msg = String(err?.message || err || '');
-  return (
+  if (
     msg.includes('fetch') ||
     msg.includes('NetworkError') ||
     msg.includes('ECONNREFUSED') ||
-    err?.code === 'ECONNREFUSED'
-  );
+    err?.code === 'ECONNREFUSED' ||
+    (err?.status && err.status >= 500)
+  ) {
+    return true;
+  }
+  // If error is ambiguous, do a backend health check
+  if (typeof checkBackendHealth === 'function') {
+    const healthy = await checkBackendHealth();
+    return !healthy;
+  }
+  return false;
 };
 
 // fetchShapes now imported from backendApi.js
 
 async function maybeHandleBackendDown(err, { checkBackendHealth, cancelRef, setLoading, setShowBackendDialog }) {
-  if (!looksLikeConnectionError(err)) return false;
+  if (!(await looksLikeConnectionError(err, checkBackendHealth))) return false;
   const healthy = await checkBackendHealth();
   if (healthy) return false;
   if (!cancelRef.cancelled) {
@@ -144,14 +153,26 @@ async function fetchAndUpdateShapes({
       logger.warn('Shape search returned non-OK status:', out.status);
       setResults([]);
       setTotal(0);
+      // Fallback: show backend dialog if status >= 500 or no response
+      if (out.status >= 500 || out.status === undefined) {
+        setShowBackendDialog(true);
+      }
       return;
     }
     setTotal(out.total);
     setResults((prev) => (offset > 0 ? [...prev, ...out.items] : out.items));
   } catch (err) {
     logger.error('Shape search error:', err);
-    if (await maybeHandleBackendDown(err, { checkBackendHealth, cancelRef, setLoading, setShowBackendDialog })) return;
-    if (!cancelRef.cancelled) setResults([]);
+    // Always log error and show a visible message if backend unreachable
+    if (await maybeHandleBackendDown(err, { checkBackendHealth, cancelRef, setLoading, setShowBackendDialog })) {
+      logger.error('Backend unreachable, showing dialog.');
+      return;
+    }
+    if (!cancelRef.cancelled) {
+      setResults([]);
+      setShowBackendDialog(true);
+      logger.error('Fallback: backend unreachable, dialog forced.');
+    }
   } finally {
     if (!cancelRef.cancelled) setLoading(false);
   }
@@ -411,12 +432,12 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [snackUndoShape, setSnackUndoShape] = useState(null);
   const [snackDetails, setSnackDetails] = useState(null); // temporary debug details
   const timerRef = useRef(null);
-  const handleAddRecent = useCallback(
-  (shape) => {
-    onAddRecent?.(shape);
-  },
-  [onAddRecent]
-);
+  //const handleAddRecent = useCallback(
+  //(shape) => {
+   // onAddRecent?.(shape);
+  //},
+  //[onAddRecent]
+//);
   const handleShapeSelect = useCallback(async (shape) => {
     logger.info('[ShapePaletteDialog] Shape selected:', shape);
     if (!shape?.id) {

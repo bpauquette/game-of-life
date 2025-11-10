@@ -14,7 +14,6 @@ import StatisticsPanel from '../view/StatisticsPanel';
 import ShapePaletteDialog from '../view/ShapePaletteDialog';
 import CaptureShapeDialog from '../view/CaptureShapeDialog';
 // RecentShapesStrip is used inside LeftSidebar component
-import LeftSidebar from '../view/LeftSidebar';
 import RecentShapesDrawer from '../view/RecentShapesDrawer';
 import { flushRandomRectBuffer, randomRectTool } from '../controller/tools/randomRectTool';
 import { useShapeManager } from '../view/hooks/useShapeManager';
@@ -441,24 +440,8 @@ function GameUILayout({
       />
       )}
 
-      { (uiState?.showChrome ?? true) && !isSmall && (
-        <LeftSidebar
-          recentShapes={recentShapes}
-          onSelectShape={onSelectShape}
-          drawWithOverlay={drawWithOverlay}
-          colorScheme={colorScheme}
-          selectedShape={selectedShapeForPanel}
-          onRotateShape={onRotateShape}
-          onSwitchToShapesTool={onSwitchToShapesTool}
-          openPalette={controlsProps?.openPalette}
-          selectedTool={selectedTool}
-          setSelectedTool={controlsProps?.setSelectedTool}
-          open={sidebarOpen}
-          topOffset={104}
-        />
-      )}
 
-  <div style={{ position: 'absolute', top: (uiState?.showChrome ?? true) ? 104 : 0, left: (!isSmall && sidebarOpen && (uiState?.showChrome ?? true)) ? 180 : 0, right: 0, bottom: 0, transition: 'left 200ms ease' }}>
+  <div style={{ position: 'absolute', top: (uiState?.showChrome ?? true) ? 104 : 0, left: 0, right: 0, bottom: 0, transition: 'left 200ms ease' }}>
   {/* Selected tool indicator overlay removed; current tool is displayed in the header toolbar */}
 
         <PalettePortal
