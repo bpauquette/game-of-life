@@ -69,7 +69,7 @@ describe('RunControlGroup - clear confirmation', () => {
 
     // Open confirm dialog via clear button
     const clearButton = screen.getByLabelText(/clear/i);
-  await userEvent.click(clearButton);
+  userEvent.click(clearButton);
 
     // Dialog appears
     const dialogTitle = await screen.findByText(/clear grid\?/i);
@@ -80,7 +80,7 @@ describe('RunControlGroup - clear confirmation', () => {
 
     // Confirm clear
     const confirmBtn = screen.getByRole('button', { name: /^Clear$/i });
-  await userEvent.click(confirmBtn);
+  userEvent.click(confirmBtn);
 
     expect(props.clear).toHaveBeenCalledTimes(1);
     expect(props.draw).toHaveBeenCalled();

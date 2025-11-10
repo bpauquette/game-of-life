@@ -190,7 +190,11 @@ const SaveGridDialog = ({
           variant="contained"
           startIcon={loading ? <CircularProgress size={18} /> : <SaveIcon />}
         >
-          {loading ? STATUS.SAVING : (isSmall ? BUTTONS.SAVE : `${BUTTONS.SAVE} Grid`)}
+          {(() => {
+            if (loading) return STATUS.SAVING;
+            if (isSmall) return BUTTONS.SAVE;
+            return `${BUTTONS.SAVE} Grid`;
+          })()}
         </Button>
       </DialogActions>
     </Dialog>

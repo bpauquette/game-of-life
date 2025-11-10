@@ -5,13 +5,13 @@ import { rotateShape } from '../model/shapeTransforms';
 // rotateShape(..., 270) implementation. Meanwhile, rotateShape(..., 90) uses
 // (x, y) -> (y, -x), which appears as 90° counterclockwise on screen.
 
+function sortCells(cells) {
+  return [...cells].map(([x, y]) => `${x},${y}`).sort((a, b) => a.localeCompare(b));
+}
+
 describe('shapeTransforms direction consistency', () => {
   // Small L-shape around origin
   const L = [ [0,0], [1,0], [0,1] ];
-
-  function sortCells(cells) {
-    return [...cells].map(([x, y]) => `${x},${y}`).sort();
-  }
 
   test('rotate 90 (math CW) appears CCW visually on y-down screen', () => {
     const r90 = rotateShape(L, 90);

@@ -26,7 +26,7 @@ const useGridFileManager = (config = {}) => {
     }
     const loc = globalThis.window?.location;
     const port = process.env.REACT_APP_BACKEND_PORT || '55000';
-    if (loc && loc.hostname) {
+    if (loc?.hostname) {
       const protocol = loc.protocol || 'http:';
       const host = loc.hostname; // works on phone: uses Windows LAN IP
       return `${protocol}//${host}:${port}`;
@@ -102,114 +102,129 @@ const useGridFileManager = (config = {}) => {
     }
   }, [getBaseUrl]);
 
-  // Save current grid state
-  const saveGrid = useCallback(async (name, description = '') => {
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      throw new Error('Grid name is required');
-    }
-
-    setLoading(true);
-    setError(null);
-
+  // Helper for error extraction from response
+  const extractErrorText = useCallback(async (response) => {
+    let errorText = `Failed to save grid: ${response.status}`;
     try {
-      const liveCells = getLiveCells();
-      const cells = serializeLiveCells(liveCells);
-      
-      const gridData = {
-        name: name.trim(),
-        description: description.trim(),
-        liveCells: cells,
-        generation: generation || 0
-      };
-
-  const base = getBaseUrl();
-  const url = new URL('/v1/grids', base);
-  url.searchParams.set('_ts', String(Date.now()));
-      
-      // Network robustness: retry on transient failures (connection closed, timeouts)
-      const doPostWithRetry = async (attempts = 3, perAttemptTimeoutMs = 30000) => {
-        let lastError;
-        for (let i = 1; i <= attempts; i++) {
-          // Abort previous attempt if still hanging
-          if (inFlightSaveRef.current) {
-            try { inFlightSaveRef.current.abort(); } catch (_) {}
-          }
-          const ac = new AbortController();
-          inFlightSaveRef.current = ac;
-
-          const timeoutId = setTimeout(() => {
-            try { ac.abort(); } catch (_) {}
-          }, perAttemptTimeoutMs);
-
-          try {
-            const response = await fetch(url.toString(), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-              body: JSON.stringify(gridData),
-              signal: ac.signal,
-              cache: 'no-store',
-            });
-            clearTimeout(timeoutId);
-            if (!response.ok) {
-              // Try to read JSON to surface server-provided error details
-              let errorText = `Failed to save grid: ${response.status}`;
-              try {
-                const data = await response.json();
-                if (data && data.error) errorText = data.error;
-                // Friendly message for payload-too-large
-                if (response.status === 413) {
-                  errorText = data?.error || 'Grid is too large to upload (413)';
-                }
-              } catch (_) {}
-              throw new Error(errorText);
-            }
-            return response;
-          } catch (e) {
-            clearTimeout(timeoutId);
-            lastError = e;
-            const isAbort = e?.name === 'AbortError';
-            const isNetwork = e && /Failed to fetch|NetworkError|TypeError/.test(String(e));
-            // On final attempt or non-transient error, rethrow
-            if (i === attempts || (!isAbort && !isNetwork)) {
-              throw e;
-            }
-            // Backoff before retry
-            const backoffMs = i * 500;
-            await new Promise(r => setTimeout(r, backoffMs));
-            continue;
-          }
-        }
-        // Should not reach here
-        throw lastError || new Error('Unknown error saving grid');
-      };
-
-      const response = await doPostWithRetry(3, 30000);
-
-      if (response.ok === false) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to save grid: ${response.status}`);
+      const data = await response.json();
+      if (data?.error) errorText = data.error;
+      if (response.status === 413) {
+        errorText = data?.error || 'Grid is too large to upload (413)';
       }
-
-      const savedGrid = await response.json();
-      logger.info('Grid saved successfully:', savedGrid.id);
-      
-      // Refresh the grids list
-      await loadGridsList();
-      
-      return savedGrid;
-    } catch (error_) {
-      logger.error('Failed to save grid:', error_.message);
-      setError('Failed to save grid: ' + error_.message);
-      throw error_;
-    } finally {
-      setLoading(false);
-      // Clear any in-flight controller
-      if (inFlightSaveRef.current) {
-        try { inFlightSaveRef.current.abort(); } catch (_) {}
-        inFlightSaveRef.current = null;
-      }
+    } catch (err) {
+      logger.error('Error extracting error text from response:', err);
     }
-  }, [getLiveCells, serializeLiveCells, generation, getBaseUrl, loadGridsList]);
+    return errorText;
+  }, []);
+
+  // Helper for performing a single POST request
+  const doPostGrid = useCallback(async (url, gridData, ac) => {
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      body: JSON.stringify(gridData),
+      signal: ac.signal,
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      throw new Error(await extractErrorText(response));
+    }
+    return response;
+  }, [extractErrorText]);
+
+  // Helper for retry logic
+  const postGridWithRetry = useCallback(
+    async (url, gridData, attempts = 3, perAttemptTimeoutMs = 30000) => {
+      let lastError;
+      for (let i = 1; i <= attempts; i++) {
+        if (inFlightSaveRef.current) {
+          try { inFlightSaveRef.current.abort(); } catch (err) { logger.error('AbortController abort failed1:', err); }
+        }
+        const ac = new AbortController();
+        inFlightSaveRef.current = ac;
+        const timeoutId = setTimeout(() => {
+          try { ac.abort(); } catch (err) { logger.error('AbortController abort failed:', err); }
+        }, perAttemptTimeoutMs);
+
+        try {
+          const response = await doPostGrid(url, gridData, ac);
+          clearTimeout(timeoutId);
+          return response;
+        } catch (e) {
+          clearTimeout(timeoutId);
+          lastError = e;
+          const isAbort = e?.name === 'AbortError';
+          const isNetwork = e && /Failed to fetch|NetworkError|TypeError/.test(String(e));
+          if (i === attempts || (!isAbort && !isNetwork)) {
+            throw e;
+          }
+          await new Promise(r => setTimeout(r, i * 500));
+        }
+      }
+      throw lastError || new Error('Unknown error saving grid');
+    },
+    [inFlightSaveRef, doPostGrid]
+  );
+
+  // Helper to abort and clear inFlightSaveRef
+  const clearInFlightSave = useCallback(() => {
+    if (inFlightSaveRef.current) {
+      try { inFlightSaveRef.current.abort(); } catch (err) { logger.error('AbortController abort failed2:', err); }
+      inFlightSaveRef.current = null;
+    }
+  }, []);
+
+  const saveGrid = useCallback(
+    async (name, description = '') => {
+      if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        throw new Error('Grid name is required');
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const liveCells = getLiveCells();
+        const cells = serializeLiveCells(liveCells);
+
+        const gridData = {
+          name: name.trim(),
+          description: description.trim(),
+          liveCells: cells,
+          generation: generation || 0,
+        };
+
+        const base = getBaseUrl();
+        const url = new URL('/v1/grids', base);
+        url.searchParams.set('_ts', String(Date.now()));
+
+        const response = await postGridWithRetry(url, gridData, 3, 30000);
+
+        const savedGrid = await response.json();
+        logger.info('Grid saved successfully:', savedGrid.id);
+
+        await loadGridsList();
+
+        return savedGrid;
+      } catch (error_) {
+        logger.error('Failed to save grid:', error_.message);
+        setError('Failed to save grid: ' + error_.message);
+        throw error_;
+      } finally {
+        setLoading(false);
+        clearInFlightSave();
+      }
+    },
+    [
+      getLiveCells,
+      serializeLiveCells,
+      generation,
+      getBaseUrl,
+      loadGridsList,
+      postGridWithRetry,
+      clearInFlightSave,
+    ]
+  );
 
   // Load a grid by ID
   const loadGrid = useCallback(async (gridId) => {

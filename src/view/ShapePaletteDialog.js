@@ -6,9 +6,8 @@ import {
   getBaseUrl,
   fetchShapes,
   fetchShapeById,
-  deleteShapeById,
   createShape,
-  checkBackendHealth
+  checkBackendHealth, deleteShapeById
 } from '../utils/backendApi';
 import { BUTTONS } from '../utils/Constants';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -38,7 +37,8 @@ ShapeListItem.propTypes = {
   idx: PropTypes.number.isRequired,
   colorScheme: PropTypes.object,
   onSelect: PropTypes.func,
-  onRequestDelete: PropTypes.func
+  onRequestDelete: PropTypes.func,
+  onAddRecent: PropTypes.func.isRequired
 };
 BackendServerDialog.propTypes = {
   open: PropTypes.bool.isRequired,
@@ -55,6 +55,7 @@ ShapesList.propTypes = {
   loading: PropTypes.bool,
   onSelect: PropTypes.func,
   onDeleteRequest: PropTypes.func,
+  onAddRecent: PropTypes.func.isRequired,
 };
 
 FooterControls.propTypes = {
@@ -79,6 +80,7 @@ SnackMessage.propTypes = {
   details: PropTypes.string,
   canUndo: PropTypes.bool,
   onUndo: PropTypes.func,
+  onClose: PropTypes.func,
 };
 
 SearchBar.propTypes = {
@@ -156,7 +158,7 @@ async function fetchAndUpdateShapes({
 }
 
 // Small presentational: per-shape list item with preview and delete affordance
-function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete }) {
+function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRecent }) {
   // Use a stable timestamp for animated schemes (e.g., Spectrum) to avoid flicker across rerenders
   const tRef = useRef(Date.now());
   const getCellColor = (x, y) => colorScheme?.getCellColor?.(x, y, tRef.current) ?? '#4a9';
@@ -172,7 +174,7 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete }) {
             sx={{ mr: 1, color: '#388e3c', bgcolor: 'rgba(56,142,60,0.08)', borderRadius: 1 }}
             onClick={(e) => {
               e.stopPropagation();
-              onSelect(s);
+              onAddRecent(s);
             }}
             data-testid={`add-recent-btn-${keyBase}`}
           >
@@ -308,7 +310,7 @@ function SearchBar({ value, onChange, loading }) {
 }
 
 // Presentational: list of shapes or empty state
-function ShapesList({ items, colorScheme, loading, onSelect, onDeleteRequest }) {
+function ShapesList({ items, colorScheme, loading, onSelect, onDeleteRequest, onAddRecent }) {
   return (
     <List dense>
       {items.map((s, idx) => (
@@ -319,6 +321,7 @@ function ShapesList({ items, colorScheme, loading, onSelect, onDeleteRequest }) 
           colorScheme={colorScheme}
           onSelect={onSelect}
           onRequestDelete={onDeleteRequest}
+          onAddRecent={onAddRecent}
         />
       ))}
       {(!loading && items.length === 0) && (
@@ -388,7 +391,7 @@ function SnackMessage({ open, message, details, canUndo, onUndo, onClose }) {
   );
 }
 
-export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {} }){
+export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {},onAddRecent  }){
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]); // metadata items
   const [loading, setLoading] = useState(false);
@@ -407,16 +410,13 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [snackMsg, setSnackMsg] = useState('');
   const [snackUndoShape, setSnackUndoShape] = useState(null);
   const [snackDetails, setSnackDetails] = useState(null); // temporary debug details
-  // deletingId removed; we track optimistic removal in local results
   const timerRef = useRef(null);
-
-  // color helper handled inside ShapeListItem
-
-  // Check if backend is reachable
-  const checkBackendHealthCb = useCallback(async () => {
-    return await checkBackendHealth(backendBase);
-  }, [backendBase]);
-
+  const handleAddRecent = useCallback(
+  (shape) => {
+    onAddRecent?.(shape);
+  },
+  [onAddRecent]
+);
   const handleShapeSelect = useCallback(async (shape) => {
     logger.info('[ShapePaletteDialog] Shape selected:', shape);
     if (!shape?.id) {
@@ -441,18 +441,6 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     }
   }, [backendBase, onSelectShape, onClose]);
 
-  const deleteShapeById = useCallback(async (id) => {
-    const base = getBaseUrl(backendBase);
-    const url = new URL(`/v1/shapes/${encodeURIComponent(id)}`, base);
-    const res = await fetch(url.toString(), { method: 'DELETE' });
-    let bodyText = '';
-    try { bodyText = await res.text(); } catch { /* ignore */ }
-    return {
-      ok: res.ok,
-      status: res.status,
-      details: `DELETE ${url.toString()}\nStatus: ${res.status}\nBody: ${bodyText}`
-    };
-  }, [backendBase]);
 
   const handleDelete = useCallback(async (shape) => {
     if (!shape) return;
@@ -579,7 +567,7 @@ The backend will start on port ${backendPort}.`);
       });
     }, 300);
     return () => { cancelRef.cancelled = true; if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [q, backendBase, offset, limit, checkBackendHealth]);
+  }, [q, backendBase, offset, limit]);
 
   return (
     <>
@@ -593,7 +581,7 @@ The backend will start on port ${backendPort}.`);
             loading={loading}
             onSelect={handleShapeSelect}
             onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
-            selectShape={onSelectShape}
+            onAddRecent={onAddRecent}
           />
           <FooterControls
             total={total}
@@ -639,6 +627,7 @@ ShapePaletteDialog.propTypes = {
   onSelectShape: PropTypes.func,
   backendBase: PropTypes.string,
   colorScheme: PropTypes.object,
+  onAddRecent: PropTypes.func
 };
 
 ShapePaletteDialog.defaultProps = {

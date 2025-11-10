@@ -69,7 +69,7 @@ describe('HeaderBar - pause on Save/Load click', () => {
     render(<HeaderBar {...props} />);
 
   const saveButton = screen.getByRole('button', { name: /save current grid state/i });
-    await userEvent.click(saveButton);
+  userEvent.click(saveButton);
 
     expect(props.setIsRunning).toHaveBeenCalledWith(false);
   });
@@ -79,7 +79,7 @@ describe('HeaderBar - pause on Save/Load click', () => {
     render(<HeaderBar {...props} />);
 
     const loadButton = screen.getByRole('button', { name: /load/i });
-    await userEvent.click(loadButton);
+  userEvent.click(loadButton);
 
     expect(props.setIsRunning).toHaveBeenCalledWith(false);
   });

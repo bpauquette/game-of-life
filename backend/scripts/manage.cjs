@@ -2,6 +2,7 @@
 const { spawn } = require('cross-spawn');
 const fs = require('node:fs');
 const path = require('node:path');
+const { default: logger } = require('../../src/controller/utils/logger');
 
 // Simple cross-platform process manager for the backend dev server.
 // Usage: node backend/scripts/manage.cjs <start|stop|status> [--foreground]
@@ -18,20 +19,20 @@ const root = path.resolve(__dirname, '..', '..');
 function loadDotEnv(envPath) {
   try {
     const raw = fs.readFileSync(envPath, 'utf8');
-    raw.split(/\r?\n/).forEach((line) => {
+    for (const line of raw.split(/\r?\n/)) {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) return;
+      if (!trimmed || trimmed.startsWith('#')) continue;
       const eq = trimmed.indexOf('=');
-      if (eq === -1) return;
+      if (eq === -1) continue;
       const key = trimmed.slice(0, eq).trim();
       let val = trimmed.slice(eq + 1).trim();
       if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
         val = val.slice(1, -1);
       }
-      if (!Object.prototype.hasOwnProperty.call(process.env, key)) {
+      if (!Object.hasOwn(process.env, key)) {
         process.env[key] = val;
       }
-    });
+    }
   } catch { /* ignore */ }
 }
 
@@ -51,7 +52,7 @@ function readPid(pidFile) {
     const pid = fs.readFileSync(pidFile, 'utf8').trim();
     return pid || null;
   } catch (e) {
-    return null;
+    logger.error(e.message);
   }
 }
 
@@ -66,7 +67,7 @@ function isRunning(pid) {
 }
 
 function waitForPort(host, port, timeoutMs) {
-  const net = require('net');
+  const net = require('node.net');
   const start = Date.now();
   return new Promise((resolve, reject) => {
     (function attempt() {
@@ -248,11 +249,11 @@ function stop() {
   try {
     process.kill(Number.parseInt(pid, 10));
   } catch (e) {
-    console.warn('Error sending SIGTERM, attempting kill -9');
+    console.error('Error sending SIGTERM, attempting kill -9');
     try { 
       process.kill(Number.parseInt(pid, 10), 'SIGKILL'); 
-    } catch (e2) { 
-      console.warn('Failed to kill process with SIGKILL:', e2.message); 
+    } catch (error) { 
+      console.error('Failed to kill process with SIGKILL:', error.message); 
     }
   }
   setTimeout(() => {
@@ -260,14 +261,14 @@ function stop() {
       try { 
         process.kill(Number.parseInt(pid, 10), 'SIGKILL'); 
       } catch (e) { 
-        console.warn('Failed to force kill process:', e.message); 
+        console.error('Failed to force kill process:', e.message); 
       }
     }
     if (fs.existsSync(config.pidFile)) {
       try { 
         fs.unlinkSync(config.pidFile); 
       } catch (e) { 
-        console.warn('Failed to remove PID file:', e.message); 
+        console.error('Failed to remove PID file:', e.message); 
       }
     }
     console.log(`backend stopped.`);

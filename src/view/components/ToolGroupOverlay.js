@@ -11,6 +11,7 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import CasinoIcon from '@mui/icons-material/Casino';
 import ColorizeIcon from '@mui/icons-material/Colorize';
 import OvalIcon from '../components/OvalIcon';
+import TOOL_DESCRIPTIONS from './toolDescriptions';
 
 // Top-center overlay grouping all draw/pick tools
 export default function ToolGroupOverlay({ selectedTool, setSelectedTool }) {
@@ -37,13 +38,13 @@ export default function ToolGroupOverlay({ selectedTool, setSelectedTool }) {
         size="small"
         onChange={(_, v) => v && setSelectedTool(v)}
       >
-        <ToggleButton value="draw" aria-label="draw"><Tooltip title="Freehand draw"><BrushIcon fontSize="small" /></Tooltip></ToggleButton>
-        <ToggleButton value="line" aria-label="line"><Tooltip title="Line tool"><LineAxisIcon fontSize="small" /></Tooltip></ToggleButton>
-        <ToggleButton value="rect" aria-label="rect"><Tooltip title="Rectangle tool"><CropSquareIcon fontSize="small" /></Tooltip></ToggleButton>
-        <ToggleButton value="circle" aria-label="circle"><Tooltip title="Circle tool"><RadioButtonUncheckedIcon fontSize="small" /></Tooltip></ToggleButton>
-        <ToggleButton value="oval" aria-label="oval"><Tooltip title="Oval tool"><OvalIcon fontSize="small" /></Tooltip></ToggleButton>
-        <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title="Random rect"><CasinoIcon fontSize="small" /></Tooltip></ToggleButton>
-        <ToggleButton value="capture" aria-label="capture"><Tooltip title="Capture area as shape"><ColorizeIcon fontSize="small" /></Tooltip></ToggleButton>
+  <ToggleButton value="draw" aria-label="draw"><Tooltip title={TOOL_DESCRIPTIONS.draw}><BrushIcon fontSize="small" /></Tooltip></ToggleButton>
+  <ToggleButton value="line" aria-label="line"><Tooltip title={TOOL_DESCRIPTIONS.line}><LineAxisIcon fontSize="small" /></Tooltip></ToggleButton>
+  <ToggleButton value="rect" aria-label="rect"><Tooltip title={TOOL_DESCRIPTIONS.rect}><CropSquareIcon fontSize="small" /></Tooltip></ToggleButton>
+  <ToggleButton value="circle" aria-label="circle"><Tooltip title={TOOL_DESCRIPTIONS.circle}><RadioButtonUncheckedIcon fontSize="small" /></Tooltip></ToggleButton>
+  <ToggleButton value="oval" aria-label="oval"><Tooltip title={TOOL_DESCRIPTIONS.oval}><OvalIcon fontSize="small" /></Tooltip></ToggleButton>
+  <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title={TOOL_DESCRIPTIONS.randomRect}><CasinoIcon fontSize="small" /></Tooltip></ToggleButton>
+  <ToggleButton value="capture" aria-label="capture"><Tooltip title={TOOL_DESCRIPTIONS.capture}><ColorizeIcon fontSize="small" /></Tooltip></ToggleButton>
       </ToggleButtonGroup>
     </Box>
   );

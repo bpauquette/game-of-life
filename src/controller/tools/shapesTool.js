@@ -83,7 +83,9 @@ export const shapesTool = {
       // Draw shape preview with enhanced visibility
       this.drawShapePreview(ctx, cells, last, cellSize, computedOffset);
       ctx.restore();
-    } catch (_) { /* noop */ }
+    } catch (error) {
+       console.log.error(error.message)
+    }
   },
 
   drawPlacementIndicator(ctx, position, cellSize, computedOffset) {

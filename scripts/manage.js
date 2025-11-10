@@ -216,7 +216,7 @@ function start() {
 }
 
 function waitForPort(host, port, timeoutMs) {
-  const net = require('net');
+  const net = require('node.net');
   const start = Date.now();
   return new Promise((resolve, reject) => {
     (function attempt() {
@@ -261,11 +261,11 @@ function stop() {
   try {
     process.kill(Number.parseInt(pid, 10));
   } catch (e) {
-    console.warn('Error sending SIGTERM, attempting kill -9');
+    console.error('Error sending SIGTERM, attempting kill -9');
     try { 
       process.kill(Number.parseInt(pid, 10), 'SIGKILL'); 
-    } catch (e2) { 
-      console.warn('Failed to kill process with SIGKILL:', e2.message); 
+    } catch (error) { 
+      console.error('Failed to kill process with SIGKILL:', error.message); 
     }
   }
   // wait briefly

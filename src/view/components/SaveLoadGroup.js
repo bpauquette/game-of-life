@@ -14,7 +14,7 @@ export default function SaveLoadGroup({ openSaveGrid, openLoadGrid, compact = fa
   return (
     <Box
       sx={{
-        px: compact ? 0.5 : 1.0,
+        px: compact ? 0.5 : 1,
         py: compact ? 0.25 : 0.75,
         borderRadius: compact ? 0.5 : 1,
         border: compact ? 'none' : '1px solid rgba(255,255,255,0.2)',

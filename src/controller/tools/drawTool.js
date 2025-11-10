@@ -4,43 +4,50 @@ export const drawTool = {
   onMouseDown(toolState, x, y) {
     toolState.start = { x, y };
     toolState.last = { x, y };
+    // Set cell alive on mouseDown for single cell draws
+    if (toolState.setCellAlive) {
+      toolState.setCellAlive(x, y, true);
+    }
   },
-
-  // Called on mouse move while pressing
   onMouseMove(toolState, x, y, setCellAlive, isCellAlive = () => false) {
-    if (!toolState.last) return;
-
-    const { x: lx, y: ly } = toolState.last;
-    // Draw a line from last to current (simple Bresenham could be added)
-    const dx = x - lx;
-    const dy = y - ly;
-    const steps = Math.max(Math.abs(dx), Math.abs(dy));
-    
-    if (steps === 0) {
-      // Same position - toggle the single cell
-      const alive = isCellAlive(x, y);
-      setCellAlive(x, y, !alive);
+    const drawToggleMode = JSON.parse(globalThis.localStorage.getItem('drawToggleMode') || 'false');
+    if (drawToggleMode) {
+      // Original toggle mode
+      const { x: lx, y: ly } = toolState.last || { x, y };
+      const dx = x - lx;
+      const dy = y - ly;
+      const steps = Math.max(Math.abs(dx), Math.abs(dy));
+      if (steps === 0) {
+        const alive = isCellAlive(x, y);
+        setCellAlive(x, y, !alive);
+      } else {
+        for (let i = 0; i <= steps; i++) {
+          const px = Math.round(lx + (dx * i) / steps);
+          const py = Math.round(ly + (dy * i) / steps);
+          const alive = isCellAlive(px, py);
+          setCellAlive(px, py, !alive);
+        }
+      }
+      toolState.last = { x, y };
     } else {
+      // New draw mode: always set cells alive as mouse moves, connected line
+      const { x: lx, y: ly } = toolState.last || { x, y };
+      const dx = x - lx;
+      const dy = y - ly;
+      const steps = Math.max(Math.abs(dx), Math.abs(dy));
       for (let i = 0; i <= steps; i++) {
         const px = Math.round(lx + (dx * i) / steps);
         const py = Math.round(ly + (dy * i) / steps);
-        const alive = isCellAlive(px, py);
-        setCellAlive(px, py, !alive);
+        setCellAlive(px, py, true);
       }
+      toolState.last = { x, y };
     }
-
-    toolState.last = { x, y };
   },
-
-  // Called when mouse is released
-  onMouseUp(toolState) {
+  onMouseUp(toolState, ...args) {
     toolState.start = null;
     toolState.last = null;
   },
-
-  // Optional: draw overlay (e.g., preview line)
-  drawOverlay(_ctx, _toolState, _cellSize, _offset) {
-    // Intentionally left blank to avoid drawing a persistent overlay line
-    // Overlay preview was removed because it caused an unwanted white line artifact.
+  drawOverlay() {
+    // No overlay for draw tool in either mode
   }
 };

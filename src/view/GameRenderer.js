@@ -78,31 +78,9 @@ export class GameRenderer {
         const cells = Array.isArray(overlay.cells) ? overlay.cells : [];
         const color = overlay.style?.color || '#4CAF50';
         const alpha = (typeof overlay.style?.alpha === 'number') ? overlay.style.alpha : 0.6;
-        const cellSize = Number(this.viewport.cellSize) || 8;
-
+        
         // Translate to absolute cells once
         const shapeCells = cells.map(({ x, y }) => ({ x: x + origin.x, y: y + origin.y }));
-
-        // Performance shortcut on mobile/small sizes/large shapes: draw as one translucent bounding box
-        if (shapeCells.length > 800 && cellSize < 7) {
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          for (const c of shapeCells) {
-            if (c.x < minX) minX = c.x; if (c.y < minY) minY = c.y;
-            if (c.x > maxX) maxX = c.x; if (c.y > maxY) maxY = c.y;
-          }
-          if (minX !== Infinity) {
-            const tl = this.cellToScreen(minX, minY);
-            const boxW = (maxX - minX + 1) * cellSize;
-            const boxH = (maxY - minY + 1) * cellSize;
-            const prevAlpha = this.ctx.globalAlpha;
-            this.ctx.globalAlpha = alpha;
-            this.ctx.fillStyle = color;
-            this.ctx.fillRect(tl.x, tl.y, boxW, boxH);
-            this.ctx.globalAlpha = prevAlpha;
-            return;
-          }
-        }
-
         // Default path: draw each cell (already fairly fast without strokes)
         const prevAlpha = this.ctx.globalAlpha;
         this.ctx.globalAlpha = alpha;
@@ -118,7 +96,7 @@ export class GameRenderer {
         this.drawCellArray(cells, color);
         this.ctx.globalAlpha = prevAlpha;
       }
-      // Unknown overlay type; ignore
+      
     }
 
   updateOptions(newOptions) {

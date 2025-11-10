@@ -4,6 +4,15 @@
 import { GameModel } from '../model/GameModel';
 import { GameView } from '../view/GameView';
 import { GameController } from './GameController';
+import { drawTool } from './tools/drawTool';
+import { eraserTool } from './tools/eraserTool';
+import { lineTool } from './tools/lineTool';
+import { rectTool } from './tools/rectTool';
+import { circleTool } from './tools/circleTool';
+import { ovalTool } from './tools/ovalTool';
+import { randomRectTool } from './tools/randomRectTool';
+import { shapesTool } from './tools/shapesTool';
+import { captureTool } from './tools/captureTool';
 import logger from './utils/logger';
 
 export class GameMVC {
@@ -27,6 +36,7 @@ export class GameMVC {
   getPopulationHistory() {
     return this.model.getPopulationHistory();
   }
+
   constructor(canvas, options = {}) {
     // Create MVC components
   this.model = new GameModel();
@@ -70,70 +80,38 @@ export class GameMVC {
   }
 
   registerDefaultTools() {
-    // Create promises for each tool import
-    const toolImports = [
-      import('./tools/drawTool').then(({ drawTool }) => {
-        this.controller.registerTool('draw', drawTool);
-      }),
-      
-      import('./tools/lineTool').then(({ lineTool }) => {
-        this.controller.registerTool('line', lineTool);
-      }),
-      
-      import('./tools/rectTool').then(({ rectTool }) => {
-        this.controller.registerTool('rect', rectTool);
-      }),
-      
-      import('./tools/circleTool').then(({ circleTool }) => {
-        this.controller.registerTool('circle', circleTool);
-      }),
-      
-      import('./tools/ovalTool').then(({ ovalTool }) => {
-        this.controller.registerTool('oval', ovalTool);
-      }),
-      
-      import('./tools/randomRectTool').then(({ randomRectTool }) => {
-        this.controller.registerTool('randomRect', randomRectTool);
-      }),
-      
-      import('./tools/shapesTool').then(({ shapesTool }) => {
-        this.controller.registerTool('shapes', shapesTool);
-      }),
-      
-      import('./tools/captureTool').then(({ captureTool }) => {
-        // Add callback to trigger capture dialog via observer event
-        const enhancedCaptureTool = {
-          ...captureTool,
-          onCaptureComplete: (captureData) => {
-            // Notify React layer to open the capture dialog with data
-            try {
-              this.model.notifyObservers('captureCompleted', captureData);
-            } catch (e) {
-              logger.error('Failed to notify captureCompleted:', e);
-            }
-          }
-        };
-        this.controller.registerTool('capture', enhancedCaptureTool);
-      })
-    ];
+  
+  try {
+    this.controller.registerTool('draw', drawTool);
+    this.controller.registerTool('erase', eraserTool);
+    this.controller.registerTool('line', lineTool);
+    this.controller.registerTool('rect', rectTool);
+    this.controller.registerTool('circle', circleTool);
+    this.controller.registerTool('oval', ovalTool);
+    this.controller.registerTool('randomRect', randomRectTool);
+    this.controller.registerTool('shapes', shapesTool);
 
-    // Wait for all tools to load
-    Promise.all(toolImports).then(() => {
-      this.toolsLoaded = true;
-    }).catch(error => {
-      logger.error('GameMVC: ❌ Error loading tools:', error);
-    });
-    
-    this.toolLoadPromises = toolImports;
-  }
+    // Enhanced capture tool with observer callback
+    const enhancedCaptureTool = {
+      ...captureTool,
+      onCaptureComplete: (captureData) => {
+        try {
+          this.model.notifyObservers('captureCompleted', captureData);
+        } catch (e) {
+          logger.error('Failed to notify captureCompleted:', e);
+        }
+      },
+    };
 
-  // Tool management
-  async waitForTools() {
-    if (this.toolsLoaded) {
-      return;
-    }
-    return Promise.all(this.toolLoadPromises);
+    this.controller.registerTool('capture', enhancedCaptureTool);
+
+    // Mark tools as loaded immediately
+    this.toolsLoaded = true;
+  } catch (error) {
+    logger.error('GameMVC: ❌ Error registering default tools:', error);
   }
+}
+
 
   // Public API - delegate to appropriate MVC component
 

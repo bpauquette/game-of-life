@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import useToolStateObserver from './hooks/useToolStateObserver';
 import PropTypes from 'prop-types';
+import TOOL_DESCRIPTIONS from './components/toolDescriptions';
 function fmt(cell) {
   return cell ? `${cell.x},${cell.y}` : '—';
 }
@@ -83,6 +84,7 @@ function ToolStatus({ selectedTool, toolStateRef, cursorCell, selectedShape, log
         borderRadius: '4px',
       }}
     >
+      <span style={{ fontWeight: 600, marginRight: 8 }}>{TOOL_DESCRIPTIONS[selectedTool] || selectedTool}</span>
       {statusContent}
     </div>
   );

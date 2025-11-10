@@ -55,14 +55,16 @@ export default function StatisticsPanel({
         anchor="bottom"
         open={open}
         onClose={onClose}
-        PaperProps={{
-          sx: {
-            height: '65vh',
-            bgcolor: 'rgba(0,0,0,0.9)',
-            color: '#fff',
-            borderTopLeftRadius: 1,
-            borderTopRightRadius: 1,
-            p: 1.5
+        slotProps={{
+          paper: {
+            sx: {
+              height: '65vh',
+              bgcolor: 'rgba(0,0,0,0.9)',
+              color: '#fff',
+              borderTopLeftRadius: 1,
+              borderTopRightRadius: 1,
+              p: 1.5
+            }
           }
         }}
       >

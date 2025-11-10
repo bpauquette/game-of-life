@@ -12,11 +12,12 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import SaveLoadGroup from './components/SaveLoadGroup';
 import RunControlGroup from './components/RunControlGroup';
 import ToolGroup from './components/ToolGroup';
+import RecentShapesStrip from './RecentShapesStrip';
 import Chip from '@mui/material/Chip';
+import TOOL_DESCRIPTIONS from './components/toolDescriptions';
 import OptionsPanel from './OptionsPanel';
 import HelpDialog from './HelpDialog';
 import AboutDialog from './AboutDialog';
-import ViewSidebarIcon from '@mui/icons-material/ViewSidebar';
 import SaveGridDialog from './SaveGridDialog';
 import LoadGridDialog from './LoadGridDialog';
 import useGridFileManager from './hooks/useGridFileManager';
@@ -41,6 +42,14 @@ AuxActions.propTypes = {
 };
 
 export default function HeaderBar({
+  recentShapes,
+  selectShape,
+  drawWithOverlay,
+  colorScheme,
+  selectedShape,
+  maxSlots = 10,
+  onRotateShape,
+  onSwitchToShapesTool,
   // game controls
   isRunning,
   setIsRunning,
@@ -75,7 +84,9 @@ export default function HeaderBar({
   // tools row
   selectedTool,
   setSelectedTool,
-  showToolsRow = true
+  showToolsRow = true,
+  detectStablePopulation = false,
+  setDetectStablePopulation
 }) {
   // dialogs
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -150,99 +161,66 @@ export default function HeaderBar({
 
   return (
     <>
-      <Box
-        className="header-bar"
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 48,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          px: 1,
-          gap: 0.5,
-          backgroundColor: 'rgba(0,0,0,0.35)',
-          borderBottom: '1px solid rgba(255,255,255,0.2)',
-          zIndex: 30,
-          overflowX: 'auto'
-        }}
-      >
-        <Stack direction="row" spacing={0.5} alignItems="center">
-          {isSmall && (
-            <IconButton size="small" onClick={onToggleSidebar} aria-label="toggle-sidebar">
-              <ViewSidebarIcon fontSize="small" />
-            </IconButton>
-          )}
-          <SaveLoadGroup compact={isSmall} openSaveGrid={openSaveDialogAndPause} openLoadGrid={openLoadDialogAndPause} />
-        </Stack>
-
-        {/* Centered Run controls overlayed in the header */}
-        <Box
-          sx={{
-            position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex',
-            alignItems: 'center',
-            pointerEvents: 'auto'
-          }}
-        >
-          <RunControlGroup
-            isRunning={isRunning}
-            setIsRunning={setIsRunning}
-            step={step}
-            draw={draw}
-            clear={clear}
-            snapshotsRef={snapshotsRef}
-            setSteadyInfo={setSteadyInfo}
-            confirmOnClear={confirmOnClear}
-          />
-        </Box>
-
-        <Stack direction="row" spacing={0.5} alignItems="center">
-          <AuxActions
-            onOpenChart={() => setShowChart(true)}
-            onOpenHelp={() => setHelpOpen(true)}
-            onOpenAbout={() => setAboutOpen(true)}
-            onOpenOptions={openOptions}
-          />
-        </Stack>
-      </Box>
-
-      {showToolsRow && (
-        <Box
-          className="tools-bar"
-          sx={{
-            position: 'fixed',
-            top: 48,
-            left: 0,
-            right: 0,
-            height: 56,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            px: 1,
-            backgroundColor: 'rgba(0,0,0,0.28)',
-            borderBottom: '1px solid rgba(255,255,255,0.18)',
-            zIndex: 40,
-            pointerEvents: 'auto',
-            overflowX: 'auto'
-          }}
-        >
-          <ToolGroup selectedTool={selectedTool} setSelectedTool={setSelectedTool} isSmall={isSmall} />
-          <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
-            <Chip
-              size={isSmall ? 'small' : 'medium'}
-              color="primary"
-              label={`Tool: ${String(selectedTool || '').toUpperCase()}`}
-              sx={{ fontWeight: 600 }}
-              data-testid="selected-tool-chip"
+      {/* Three-row header: RunControlGroup, ToolGroup, RecentShapesStrip */}
+      <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30, width: '100vw', backgroundColor: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+        {/* First row: Save/Load and Run controls */}
+        <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, gap: 0.5 }}>
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <SaveLoadGroup compact={isSmall} openSaveGrid={openSaveDialogAndPause} openLoadGrid={openLoadDialogAndPause} />
+          </Stack>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+            <RunControlGroup
+              isRunning={isRunning}
+              setIsRunning={setIsRunning}
+              step={step}
+              draw={draw}
+              clear={clear}
+              snapshotsRef={snapshotsRef}
+              setSteadyInfo={setSteadyInfo}
+              confirmOnClear={confirmOnClear}
             />
           </Box>
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <AuxActions
+              onOpenChart={() => setShowChart(true)}
+              onOpenHelp={() => setHelpOpen(true)}
+              onOpenAbout={() => setAboutOpen(true)}
+              onOpenOptions={openOptions}
+            />
+          </Stack>
         </Box>
-      )}
+        {/* Second row: ToolGroup */}
+        {showToolsRow && (
+          <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(0,0,0,0.28)', borderBottom: '1px solid rgba(255,255,255,0.18)', zIndex: 40, pointerEvents: 'auto', overflowX: 'auto' }}>
+            <ToolGroup selectedTool={selectedTool} setSelectedTool={setSelectedTool} isSmall={isSmall} />
+            {/* Only show chip if enough space for both chip and tool icons */}
+            {(!isSmall || (typeof globalThis.window !== 'undefined' && window.innerWidth > 520)) && (
+              <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
+                <Chip
+                  size={isSmall ? 'small' : 'medium'}
+                  color="primary"
+                  label={`Tool: ${TOOL_DESCRIPTIONS[selectedTool] || String(selectedTool || '').toUpperCase()}`}
+                  sx={{ fontWeight: 600 }}
+                  data-testid="selected-tool-chip"
+                />
+              </Box>
+            )}
+          </Box>
+        )}
+        {/* Third row: RecentShapesStrip */}
+        <Box sx={{ position: 'relative', left: 0, right: 0, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(30,30,40,0.85)', borderBottom: '1px solid rgba(255,255,255,0.12)', zIndex: 41, pointerEvents: 'auto', overflowX: 'auto' }}>
+          <RecentShapesStrip
+            recentShapes={recentShapes}
+            selectShape={selectShape}
+            drawWithOverlay={drawWithOverlay}
+            colorScheme={colorScheme}
+            selectedShape={selectedShape}
+            maxSlots={maxSlots}
+            onRotateShape={onRotateShape}
+            onSwitchToShapesTool={onSwitchToShapesTool}
+          />
+        </Box>
+      </Box>
 
       {optionsOpen && (
         <OptionsPanel
@@ -261,6 +239,8 @@ export default function HeaderBar({
           setMaxGPS={setMaxGPS}
           confirmOnClear={confirmOnClear}
           setConfirmOnClear={setConfirmOnClear}
+          detectStablePopulation={detectStablePopulation}
+          setDetectStablePopulation={setDetectStablePopulation}
           onOk={handleOk}
           onCancel={handleCancel}
           data-testid-ok="options-ok-button"
@@ -296,6 +276,19 @@ export default function HeaderBar({
 }
 
 HeaderBar.propTypes = {
+  recentShapes: PropTypes.array,
+  selectShape: PropTypes.func,
+  drawWithOverlay: PropTypes.func,
+  colorScheme: PropTypes.object,
+  selectedShape: PropTypes.object,
+  maxSlots: PropTypes.number,
+  onRotateShape: PropTypes.func,
+  onSwitchToShapesTool: PropTypes.func,
+  selectedTool: PropTypes.string,
+  setSelectedTool: PropTypes.func,
+  showToolsRow: PropTypes.bool,
+  detectStablePopulation: PropTypes.bool,
+  setDetectStablePopulation: PropTypes.func,
   isRunning: PropTypes.bool.isRequired,
   setIsRunning: PropTypes.func.isRequired,
   step: PropTypes.func.isRequired,

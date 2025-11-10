@@ -1,9 +1,92 @@
+import { eraserTool } from './tools/eraserTool';
 import logger from './utils/logger';
 const CONST_SHAPES = 'shapes';
 // GameController.js - Controller layer for Conway's Game of Life
 // Handles user interactions, game loop, and coordination between Model and View
 
 export class GameController {
+  constructor(model, view, options = {}) {
+    this.undoStack = [];
+    this.redoStack = [];
+    this.model = model;
+    this.view = view;
+    this.options = {
+      maxFPS: 60,
+      defaultSpeed: 30,
+      zoomFactor: 1.12,
+      keyboardPanAmount: 1,
+      keyboardPanAmountShift: 10,
+      ...options
+    };
+
+    // Controller state
+    this.toolMap = {};
+    this.toolState = {};
+    this.mouseState = { isDown: false };
+
+    // Undo/redo stacks
+    this.undoStack = [];
+    this.redoStack = [];
+
+    // Persistent buffer for randomRectTool double buffering
+    this.randomRectBuffer = null;
+
+    // Game loop state
+    this.animationId = null;
+    this.lastFrameTime = 0;
+    this.frameInterval = 1000 / this.options.defaultSpeed;
+
+    // Performance tracking
+    this.performanceCallbacks = [];
+
+    // Render coalescing flag to avoid redundant renders on bulk updates
+    this.renderScheduled = false;
+
+    this.init();
+    // Register eraser tool
+    this.registerTool('eraser', eraserTool);
+  }
+
+  // Helper to record a diff for undo
+  recordDiff(cells) {
+    // cells: Array of {x, y, prevAlive, newAlive}
+    if (!Array.isArray(cells) || cells.length === 0) return;
+    this.undoStack.push(cells);
+    this.redoStack = [];
+  }
+
+  // Undo: revert last diff
+  undo() {
+    if (this.undoStack.length === 0) return;
+    const diff = this.undoStack.pop();
+    const inverse = [];
+    for (const { x, y, prevAlive, newAlive } of diff) {
+      this.model.setCellAliveModel(x, y, prevAlive);
+      inverse.push({ x, y, prevAlive, newAlive });
+    }
+    this.redoStack.push(inverse);
+    this.requestRender();
+  }
+
+  // Redo: re-apply last undone diff
+  redo() {
+    if (this.redoStack.length === 0) return;
+    const diff = this.redoStack.pop();
+    const inverse = [];
+    for (const { x, y, prevAlive, newAlive } of diff) {
+      this.model.setCellAliveModel(x, y, newAlive);
+      inverse.push({ x, y, prevAlive, newAlive });
+    }
+    this.undoStack.push(inverse);
+    this.requestRender();
+  }
+  _getDrawWhileRunning() {
+    try {
+      return JSON.parse(globalThis.localStorage.getItem('drawWhileRunning') || 'false');
+    } catch {
+      return false;
+    }
+  }
   // Emit tool state changes through the model's observer mechanism
   emitToolStateChanged() {
     const snapshot = {
@@ -30,39 +113,6 @@ export class GameController {
   getCurrentOverlay() {
     // Overlay is now managed by the model
     return this.model.getOverlay();
-  }
-  constructor(model, view, options = {}) {
-    this.model = model;
-    this.view = view;
-    this.options = {
-      maxFPS: 60,
-      defaultSpeed: 30,
-      zoomFactor: 1.12,
-      keyboardPanAmount: 1,
-      keyboardPanAmountShift: 10,
-      ...options
-    };
-
-    // Controller state
-    this.toolMap = {};
-    this.toolState = {};
-    this.mouseState = { isDown: false };
-
-  // Persistent buffer for randomRectTool double buffering
-  this.randomRectBuffer = null;
-
-    // Game loop state
-    this.animationId = null;
-    this.lastFrameTime = 0;
-    this.frameInterval = 1000 / this.options.defaultSpeed;
-
-    // Performance tracking
-    this.performanceCallbacks = [];
-
-  // Render coalescing flag to avoid redundant renders on bulk updates
-  this.renderScheduled = false;
-
-    this.init();
   }
 
   init() {
@@ -151,6 +201,28 @@ export class GameController {
         this.handleToolMouseUp();
       }
     });
+
+    // Keyboard shortcuts for undo/redo
+    document.addEventListener('keydown', (e) => {
+      const isMac =
+        (navigator.userAgentData?.platform?.toUpperCase?.().includes('MAC')) ??
+        (navigator.userAgent?.toUpperCase?.includes('MAC')) ??
+        false;
+      const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
+      // Undo: Ctrl+Z or Cmd+Z
+      if (ctrlOrCmd && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        this.undo();
+      }
+      // Redo: Ctrl+Y or Ctrl+Shift+Z or Cmd+Shift+Z
+      if (
+        ctrlOrCmd &&
+        ((e.key.toLowerCase() === 'y') || (e.key.toLowerCase() === 'z' && e.shiftKey))
+      ) {
+        e.preventDefault();
+        this.redo();
+      }
+    });
   }
 
   // Tool management
@@ -158,22 +230,22 @@ export class GameController {
     if (typeof toolObject !== 'object' || !toolObject) {
       throw new Error(`Tool '${name}' must be an object`);
     }
-   
+
     this.toolMap[name] = toolObject;
   }
 
-   setSelectedTool(toolName) {
-  if (!this.toolMap[toolName]) return;
-  logger.debug(`[GameController] setSelectedTool: toolName=${toolName}`);
-  this.model.setSelectedToolModel(toolName);
-  // If user selects the capture (pick) tool, pause the simulation for precise selection
-  if (toolName === 'capture' && this.model.getIsRunning?.() === true) {
-    this.model.setRunningModel(false);
+  setSelectedTool(toolName) {
+    if (!this.toolMap[toolName]) return;
+    logger.debug(`[GameController] setSelectedTool: toolName=${toolName}`);
+    this.model.setSelectedToolModel(toolName);
+    // If user selects the capture (pick) tool, pause the simulation for precise selection
+    if (toolName === 'capture' && this.model.getIsRunning?.() === true) {
+      this.model.setRunningModel(false);
+    }
+    // Always update overlay after tool change
+    this.updateToolOverlay();
   }
-  // Always update overlay after tool change
-  this.updateToolOverlay();
-  }
- 
+
   getSelectedTool() {
     return this.model.getSelectedTool();
   }
@@ -199,12 +271,24 @@ export class GameController {
     const button = event && typeof event.button === 'number' ? event.button : 0;
     this.mouseState.isDown = true;
     this.mouseState.button = button;
+    // Start a new diff buffer for undo tracking
+    this._currentDiff = [];
     if (button !== 0) {
       // Do not start tool interactions for non-left clicks
       return;
     }
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
+    // Centralized draw-while-running logic
+    const drawWhileRunning = this._getDrawWhileRunning();
+    if (
+      this.model.getIsRunning?.() &&
+      !drawWhileRunning &&
+      ['draw', 'eraser', 'rect', 'line', 'circle', 'oval'].includes(selectedTool)
+    ) {
+      // Block drawing tools while running if option is off
+      return;
+    }
     // Ensure start/last/dragging set for two-point flows
     if (selectedTool === CONST_SHAPES) {
       const selectedShape = this.model.getSelectedShape();
@@ -221,6 +305,14 @@ export class GameController {
         dragging: true
       });
     }
+    // Wrap setCellAlive to collect diffs
+    this._setCellAliveForUndo = (x, y, alive) => {
+      const prevAlive = this.model.isCellAlive(x, y);
+      if (prevAlive !== alive) {
+        this._currentDiff.push({ x, y, prevAlive, newAlive: alive });
+      }
+      this.model.setCellAliveModel(x, y, alive);
+    };
     if (tool?.onMouseDown) {
       tool.onMouseDown(this.toolState, cellCoords.x, cellCoords.y);
       this._setToolState({}, { updateOverlay: true });
@@ -233,12 +325,20 @@ export class GameController {
     this.model.setCursorPositionModel(cellCoords);
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
+    // Centralized draw-while-running logic
+    const drawWhileRunning = this._getDrawWhileRunning();
+    if (
+      this.model.getIsRunning?.() &&
+      !drawWhileRunning &&
+      ['draw', 'eraser', 'rect', 'line', 'circle', 'oval'].includes(selectedTool)
+    ) {
+      // Block drawing tools while running if option is off
+      return;
+    }
     // Only process tool movement when left button is held from a prior mouseDown
     if (this.mouseState.isDown && this.mouseState.button === 0 && tool?.onMouseMove) {
-      const setCellAlive = (x, y, alive) => {
-        this.model.setCellAliveModel(x, y, alive);
-      };
-      // For most tools the 5th arg is isCellAlive; for capture we provide getLiveCells
+      // Use wrapped setCellAlive for undo tracking
+      const setCellAlive = this._setCellAliveForUndo || ((x, y, alive) => this.model.setCellAliveModel(x, y, alive));
       if (selectedTool === 'capture') {
         const getLiveCells = () => this.model.getLiveCells();
         tool.onMouseMove(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, getLiveCells);
@@ -262,36 +362,72 @@ export class GameController {
   handleToolMouseUp(cellCoords = null) {
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
-    if (tool?.onMouseUp) {
-      if (tool.onMouseUp.length === 1) {
-        tool.onMouseUp(this.toolState);
-      } else if (cellCoords) {
-        // Common callback for pixel-level cell placement
-        const setCellAlive = (x, y, alive) => {
-          this.model.setCellAliveModel(x, y, alive);
-        };
-        const setCellsAliveBulk = (updates) => {
-          return this.model.setCellsAliveBulk(updates);
-        };
-        if (selectedTool === 'shapes') {
-          // Provide placeShape callback to shapes tool
-          const placeShape = (x, y) => {
-            const shape = this.model.getSelectedShape();
-            if (shape) {
-              this.model.placeShape(x, y, shape);
-            }
-          };
-          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, placeShape, setCellsAliveBulk);
-        } else if (selectedTool === 'capture') {
-          // Provide getLiveCells and the tool itself for callback
-          const getLiveCells = () => this.model.getLiveCells();
-          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, getLiveCells, tool, setCellsAliveBulk);
-        } else {
-          tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, setCellsAliveBulk);
-        }
-      }
-      this.updateToolOverlay();
+    if (!tool?.onMouseUp) return;
+
+    if (tool.onMouseUp.length === 1) {
+      tool.onMouseUp(this.toolState);
+      this._finalizeToolMouseUp();
+      return;
     }
+
+    if (!cellCoords) {
+      this._finalizeToolMouseUp();
+      return;
+    }
+
+    const setCellAlive = this._setCellAliveForUndo || ((x, y, alive) => this.model.setCellAliveModel(x, y, alive));
+    const setCellsAliveBulk = this._createSetCellsAliveBulk(setCellAlive);
+
+    switch (selectedTool) {
+      case 'shapes':
+        this._handleShapesToolMouseUp(tool, cellCoords, setCellAlive, setCellsAliveBulk);
+        break;
+      case 'capture':
+        this._handleCaptureToolMouseUp(tool, cellCoords, setCellAlive, setCellsAliveBulk);
+        break;
+      default:
+        tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, setCellsAliveBulk);
+        break;
+    }
+
+    this._finalizeToolMouseUp();
+  }
+
+  _createSetCellsAliveBulk(setCellAlive) {
+    return (updates) => {
+      if (!Array.isArray(updates)) return;
+      for (const raw of updates) {
+        const upd = Array.isArray(raw)
+          ? { x: raw[0], y: raw[1], alive: raw.length > 2 ? !!raw[2] : true }
+          : raw;
+        if (!upd || typeof upd.x !== 'number' || typeof upd.y !== 'number') continue;
+        setCellAlive(upd.x, upd.y, upd.alive);
+      }
+    };
+  }
+
+  _handleShapesToolMouseUp(tool, cellCoords, setCellAlive, setCellsAliveBulk) {
+    const placeShape = (x, y) => {
+      const shape = this.model.getSelectedShape();
+      if (shape) {
+        this.model.placeShape(x, y, shape);
+      }
+    };
+    tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, placeShape, setCellsAliveBulk);
+  }
+
+  _handleCaptureToolMouseUp(tool, cellCoords, setCellAlive, setCellsAliveBulk) {
+    const getLiveCells = () => this.model.getLiveCells();
+    tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, getLiveCells, tool, setCellsAliveBulk);
+  }
+
+  _finalizeToolMouseUp() {
+    if (Array.isArray(this._currentDiff) && this._currentDiff.length > 0) {
+      this.recordDiff(this._currentDiff);
+    }
+    this._currentDiff = null;
+    this._setCellAliveForUndo = null;
+    this.updateToolOverlay();
   }
 
   handleClick(cellCoords, event) {
@@ -310,11 +446,11 @@ export class GameController {
   handleWheel(deltaY, event) {
     const viewport = this.model.getViewport();
     const newCellSize = this.calculateNewCellSize(viewport.cellSize, deltaY);
-    
+
     if (newCellSize !== viewport.cellSize) {
       this.model.setViewportModel(viewport.offsetX, viewport.offsetY, newCellSize);
     }
-    
+
     if (event.cancelable) {
       event.preventDefault();
     }
@@ -329,19 +465,19 @@ export class GameController {
     const prevDevice = currentSize * dpr;
     let newDevice = prevDevice * factor;
     const maxDevice = maxCellSize * dpr;
-    
+
     newDevice = Math.max(1, Math.min(maxDevice, newDevice));
     let snappedDevice;
-    
+
     if (newDevice > prevDevice) {
       snappedDevice = Math.ceil(newDevice);
     } else {
       snappedDevice = Math.floor(newDevice);
     }
-    
+
     snappedDevice = Math.max(1, Math.min(Math.round(maxDevice), snappedDevice));
     const snappedSize = Math.max(minCellSize, snappedDevice / dpr);
-    
+
     return snappedSize === currentSize ? currentSize : snappedSize;
   }
 
@@ -361,7 +497,7 @@ export class GameController {
   handleKeyDown(key, shiftKey, event) {
     const viewport = this.model.getViewport();
     const amount = shiftKey ? this.options.keyboardPanAmountShift : this.options.keyboardPanAmount;
-    
+
     let newOffsetX = viewport.offsetX;
     let newOffsetY = viewport.offsetY;
     let handled = false;
@@ -426,8 +562,8 @@ export class GameController {
   }
 
   clear() {
-  this.model.clear();
-  this.clearToolState();
+    this.model.clear();
+    this.clearToolState();
   }
 
   // Reset transient tool state and clear overlay
@@ -469,7 +605,7 @@ export class GameController {
   // Game loop
   startGameLoop() {
     if (this.animationId) return; // Already running
-    
+
     const loop = (timestamp) => {
       if (!this.model.getIsRunning()) {
         this.animationId = null;
@@ -479,13 +615,13 @@ export class GameController {
       // Throttle to desired speed
       if (timestamp - this.lastFrameTime >= this.frameInterval) {
         const frameStart = performance.now();
-        
+
         this.model.step();
         this.requestRender();
-        
+
         const frameTime = performance.now() - frameStart;
         this.notifyPerformance(frameTime);
-        
+
         this.lastFrameTime = timestamp;
       }
 

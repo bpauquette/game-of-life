@@ -1,9 +1,6 @@
 // colorSchemes.js
 
 // Color scheme animation and positioning constants
-const SPECTRUM_TIME_DIVISOR = 20;
-const SPECTRUM_X_MULTIPLIER = 10;
-const SPECTRUM_Y_MULTIPLIER = 5;
 const HUE_FULL_CIRCLE = 360;
 const NEON_X_MULTIPLIER = 50;
 const NEON_Y_MULTIPLIER = 90;
@@ -15,12 +12,6 @@ const LIGHTNESS_BRIGHT = 60;
 const SATURATION_EMBER = 90;
 
 export const colorSchemes = {
-  spectrum: {
-    name: "Spectrum Pulse",
-    background: "#000",
-    getCellColor: (x, y, t = Date.now()) => 
-      `hsl(${(t / SPECTRUM_TIME_DIVISOR + x * SPECTRUM_X_MULTIPLIER + y * SPECTRUM_Y_MULTIPLIER) % HUE_FULL_CIRCLE}, ${SATURATION_HIGH}%, ${LIGHTNESS_MEDIUM}%)`
-  },
   neon: {
     name: "Neon Grid",
     background: "#0a0a1a",

@@ -31,16 +31,27 @@ const OptionsPanel = ({
   // UX settings
   confirmOnClear = true,
   setConfirmOnClear,
+  detectStablePopulation = false,
+  setDetectStablePopulation,
   onOk,
   onCancel
 }) => {
-  const [localScheme, setLocalScheme] = useState(colorSchemeKey);
+  const [localScheme, setLocalScheme] = useState(colorSchemeKey || 'bio');
   const [localWindow, setLocalWindow] = useState(popWindowSize);
   const [localTolerance, setLocalTolerance] = useState(popTolerance);
   const [localShowSpeedGauge, setLocalShowSpeedGauge] = useState(showSpeedGauge);
   const [localMaxFPS, setLocalMaxFPS] = useState(maxFPS);
   const [localMaxGPS, setLocalMaxGPS] = useState(maxGPS);
   const [localConfirmOnClear, setLocalConfirmOnClear] = useState(confirmOnClear);
+  const [localDrawToggleMode, setLocalDrawToggleMode] = useState(false); // default to off
+  const [localDrawWhileRunning, setLocalDrawWhileRunning] = useState(() => {
+    try {
+      return JSON.parse(globalThis.localStorage.getItem('drawWhileRunning') || 'false');
+    } catch {
+      return false;
+    }
+  });
+  const [localDetectStablePopulation, setLocalDetectStablePopulation] = useState(detectStablePopulation);
 
   const handleOk = () => {
   try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
@@ -56,7 +67,10 @@ const OptionsPanel = ({
     try { setMaxFPS?.(Math.max(1, Math.min(120, Number(localMaxFPS) || 60))); } catch (err) { logger.debug('setMaxFPS failed:', err); }
     try { setMaxGPS?.(Math.max(1, Math.min(60, Number(localMaxGPS) || 30))); } catch (err) { logger.debug('setMaxGPS failed:', err); }
     try { setConfirmOnClear?.(!!localConfirmOnClear); } catch (err) { logger.debug('setConfirmOnClear failed:', err); }
-    onOk?.();
+  try { globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode)); } catch {}
+  try { globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning)); } catch {}
+  try { setDetectStablePopulation?.(!!localDetectStablePopulation); } catch {}
+  onOk?.();
   };
 
   const handleCancel = () => {
@@ -236,6 +250,42 @@ const OptionsPanel = ({
                 Confirm before clearing grid
               </label>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+              <input
+                type="checkbox"
+                checked={!!localDrawWhileRunning}
+                onChange={(e) => setLocalDrawWhileRunning(e.target.checked)}
+                style={{ marginRight: 8 }}
+                id="draw-while-running-checkbox"
+              />
+              <label htmlFor="draw-while-running-checkbox" style={{ margin: 0 }}>
+                Draw while running
+              </label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={!localDrawToggleMode}
+                onChange={(e) => setLocalDrawToggleMode(!e.target.checked)}
+                style={{ marginRight: 8 }}
+                id="toggle-draw-mode-checkbox"
+              />
+              <label htmlFor="toggle-draw-mode-checkbox" style={{ margin: 0 }}>
+                Toggle Draw Mode
+              </label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+              <input
+                type="checkbox"
+                checked={!!localDetectStablePopulation}
+                onChange={(e) => setLocalDetectStablePopulation(e.target.checked)}
+                style={{ marginRight: 8 }}
+                id="detect-stable-population-checkbox"
+              />
+              <label htmlFor="detect-stable-population-checkbox" style={{ margin: 0 }}>
+                Detect Stable Population
+              </label>
+            </div>
           </div>
         
         </Stack>
@@ -264,6 +314,8 @@ OptionsPanel.propTypes = {
   setMaxGPS: PropTypes.func.isRequired,
   confirmOnClear: PropTypes.bool,
   setConfirmOnClear: PropTypes.func,
+  detectStablePopulation: PropTypes.bool,
+  setDetectStablePopulation: PropTypes.func,
   onOk: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired
 };

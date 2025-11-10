@@ -1,15 +1,6 @@
-import React from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
 
-// Constants for recent shapes strip
-
-// Styling constants for enhanced appearance
-const CONTAINER_BACKGROUND = 'rgba(0,0,0,0.7)';
-const CONTAINER_BORDER = '1px solid rgba(255,255,255,0.1)';
-const CONTAINER_SHADOW = '0 4px 12px rgba(0,0,0,0.4)';
-const LABEL_COLOR = '#ffffff';
-const SHAPE_BORDER_RADIUS = 8;
 
 const RecentShapesStrip = ({ 
   recentShapes = [], 
@@ -58,55 +49,62 @@ const RecentShapesStrip = ({
   // Always show maxSlots slots, fill with empty boxes if needed
   const slots = Array.from({ length: maxSlots }, (_, i) => recentShapes[i] || null);
 
+ 
+ 
   return (
-    <div 
+    <div
       style={{
-        background: CONTAINER_BACKGROUND,
-        border: CONTAINER_BORDER,
-  borderRadius: SHAPE_BORDER_RADIUS,
-        boxShadow: CONTAINER_SHADOW,
-        padding: '12px 8px',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)'
+        position: 'relative',
+        left: 0,
+        width: '100vw',
+        zIndex: 41,
+        pointerEvents: 'auto',
+        opacity: 1,
+        background: '#222',
+        borderRadius: 0,
+        boxShadow: 'none',
+        padding: '10px 8px 6px 8px',
+        maxWidth: '100vw',
+        overflowX: 'auto',
+        display: 'flex',
+        alignItems: 'center',
       }}
     >
-      <div 
+      <div
         style={{
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: 'row',
           alignItems: 'center',
-          gap: 8,
+          gap: 12,
           width: '100%',
-          marginBottom: 8
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
-        <div 
-          style={{
-            fontSize: '12px',
-            color: LABEL_COLOR,
-            fontWeight: 500,
-            opacity: 0.8
-          }}
-        >
-          Recent Shapes
-        </div>
+        {slots.map((shape, index) => {
+          // Use a stable key: shape.id, shape.name, or fallback to 'empty-slot-index'
+          const slotKey = shape
+            ? (shape.id || shape.name || `shape-${index}`)
+            : `empty-slot-${index}`;
+          return (
+            <div key={slotKey} style={{ minWidth: 64, maxWidth: 96, flexShrink: 0 }}>
+              <ShapeSlot
+                shape={shape}
+                index={index}
+                colorScheme={colorScheme}
+                selected={isShapeSelected(shape)}
+                title={getShapeTitle(shape, index)}
+                onSelect={() => handleShapeClick(shape)}
+                onRotate={(rotatedShape, i) => {
+                  if (typeof onRotateShape === 'function') {
+                    onRotateShape(rotatedShape, i, { inPlace: true });
+                  }
+                }}
+              />
+            </div>
+          );
+        })}
       </div>
-      {slots.map((shape, index) => (
-        <ShapeSlot
-          key={(shape && (shape.id || shape.name)) ? `${shape.id || shape.name}-${index}` : `slot-${index}`}
-          shape={shape}
-          index={index}
-          colorScheme={colorScheme}
-          selected={isShapeSelected(shape)}
-          title={getShapeTitle(shape, index)}
-          onSelect={() => handleShapeClick(shape)}
-          onRotate={(rotatedShape, i) => {
-            if (typeof onRotateShape === 'function') {
-              onRotateShape(rotatedShape, i, { inPlace: true });
-            }
-          }}
-        />
-      ))}
     </div>
   );
 };
