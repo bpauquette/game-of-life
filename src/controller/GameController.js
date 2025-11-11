@@ -31,6 +31,10 @@ export class GameController {
     // Persistent buffer for randomRectTool double buffering
     this.randomRectBuffer = null;
 
+  // Timestamp of the last placement operation to avoid duplicate placements
+  // caused by both mouseup and click handlers firing for the same action.
+  this._lastPlacementAt = 0;
+
     // Game loop state
     this.animationId = null;
     this.lastFrameTime = 0;
@@ -411,6 +415,9 @@ export class GameController {
       const shape = this.model.getSelectedShape();
       if (shape) {
         this.model.placeShape(x, y, shape);
+        // record when a placement happened so a subsequent click event
+        // that fires immediately after mouseup doesn't duplicate it
+        this._lastPlacementAt = Date.now();
       }
     };
     tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, placeShape, setCellsAliveBulk);
@@ -438,6 +445,14 @@ export class GameController {
       const currentlyAlive = this.model.isCellAlive(cellCoords.x, cellCoords.y);
       this.model.setCellAliveModel(cellCoords.x, cellCoords.y, !currentlyAlive);
     } else if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape()) {
+      // Guard against duplicate placements: if we just placed via mouseup,
+      // the click event may fire immediately after. Ignore clicks within
+      // a short window after a placement.
+      const now = Date.now();
+      if (this._lastPlacementAt && (now - this._lastPlacementAt) < 350) {
+        // ignore duplicate click
+        return;
+      }
       this.model.placeShape(cellCoords.x, cellCoords.y, this.model.getSelectedShape());
     }
   }
