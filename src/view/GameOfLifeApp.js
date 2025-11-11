@@ -5,7 +5,7 @@ import useGridMousePosition from './hooks/useGridMousePosition';
 import { loadGridIntoGame, rotateAndApply } from './utils/gameUtils';
 import { colorSchemes } from '../model/colorSchemes';
 // tools are registered by GameMVC; no direct tool imports needed here
-import { saveCapturedShapeToBackend, resolveBackendBase } from '../utils/backendAPI';
+import { saveCapturedShapeToBackend, resolveBackendBase } from '../utils/backendApi';
 import GameUILayout from './GameUILayout';
 import './GameOfLife.css';
 import React, { useRef, useEffect, useCallback, useState, useLayoutEffect } from 'react';
@@ -91,7 +91,8 @@ function GameOfLifeApp(props) {
   const shapeManager = useShapeManager({
     toolStateRef,
     drawWithOverlay,
-    model: gameRef.current ? gameRef.current.model : null
+    // Pass a getter so the hook can access the model once GameMVC initializes
+    model: () => (gameRef.current ? gameRef.current.model : null)
   });
 
   // track cursor using the canvas DOM element

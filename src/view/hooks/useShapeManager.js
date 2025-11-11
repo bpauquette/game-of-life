@@ -66,8 +66,10 @@ export const useShapeManager = ({
     if (toolStateRef?.current) {
       debugLog('[useShapeManager] toolStateRef.current before:', toolStateRef.current);
     }
-    if (model && typeof model.setSelectedShapeModel === 'function') {
-      model.setSelectedShapeModel(shape);
+    // model may be a direct model object or a getter function (to handle late-binding)
+    const targetModel = (typeof model === 'function') ? model() : model;
+    if (targetModel && typeof targetModel.setSelectedShapeModel === 'function') {
+      targetModel.setSelectedShapeModel(shape);
     }
     // Back-compat: notify external setter if provided (tests expect this)
     if (typeof setSelectedShape === 'function') {
@@ -106,10 +108,11 @@ export const useShapeManager = ({
 
   // Open the shape palette and switch to shapes tool for previews
   const openPalette = useCallback(() => {
-    if (model && typeof model.getSelectedTool === 'function') {
-      prevToolRef.current = model.getSelectedTool();
-      if (typeof model.setSelectedToolModel === 'function') {
-        model.setSelectedToolModel('shapes');
+    const targetModel = (typeof model === 'function') ? model() : model;
+    if (targetModel && typeof targetModel.getSelectedTool === 'function') {
+      prevToolRef.current = targetModel.getSelectedTool();
+      if (typeof targetModel.setSelectedToolModel === 'function') {
+        targetModel.setSelectedToolModel('shapes');
       }
     }
     // Back-compat: mirror to external setter
@@ -122,8 +125,9 @@ export const useShapeManager = ({
   // Close the palette and optionally restore the previous tool
   const closePalette = useCallback((restorePrev = true) => {
     setPaletteOpen?.(false);
-    if (restorePrev && prevToolRef.current && model && typeof model.setSelectedToolModel === 'function') {
-      model.setSelectedToolModel(prevToolRef.current);
+    const targetModel = (typeof model === 'function') ? model() : model;
+    if (restorePrev && prevToolRef.current && targetModel && typeof targetModel.setSelectedToolModel === 'function') {
+      targetModel.setSelectedToolModel(prevToolRef.current);
     }
     if (restorePrev && prevToolRef.current && typeof setSelectedTool === 'function') {
       setSelectedTool(prevToolRef.current);
