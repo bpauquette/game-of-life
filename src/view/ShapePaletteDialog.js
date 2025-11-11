@@ -438,10 +438,21 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   //},
   //[onAddRecent]
 //);
+  // Safe wrapper to add a shape to recent list without throwing
+  const safeAddRecent = useCallback((s) => {
+    try {
+      onAddRecent?.(s);
+    } catch (e) {
+      logger.warn('onAddRecent failed:', e);
+    }
+  }, [onAddRecent]);
+
   const handleShapeSelect = useCallback(async (shape) => {
     logger.info('[ShapePaletteDialog] Shape selected:', shape);
     if (!shape?.id) {
       onSelectShape?.(shape);
+      // Also add to recent when selecting a local/unsaved shape
+      safeAddRecent(shape);
       onClose?.();
       return;
     }
@@ -450,17 +461,20 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       if (res.ok && res.data) {
         logger.info('[ShapePaletteDialog] Fetched full shape data:', res.data);
         onSelectShape?.(res.data);
+        safeAddRecent(res.data);
       } else {
         logger.warn('[ShapePaletteDialog] Fallback: onSelectShape called with metadata only');
         onSelectShape?.(shape);
+        safeAddRecent(shape);
       }
     } catch (err) {
       logger.warn('Failed to fetch full shape data, using metadata only:', err);
       onSelectShape?.(shape);
+      safeAddRecent(shape);
     } finally {
       onClose?.();
     }
-  }, [backendBase, onSelectShape, onClose]);
+  }, [backendBase, onSelectShape, onClose, safeAddRecent]);
 
 
   const handleDelete = useCallback(async (shape) => {
