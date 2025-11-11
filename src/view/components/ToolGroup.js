@@ -42,7 +42,9 @@ export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = fal
       }}
     >
       {/* Shapes tool first, to the left of Draw */}
-  <ToggleButton value="shapes" aria-label="shapes"><Tooltip title={TOOL_DESCRIPTIONS.shapes}><WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+  <ToggleButton value="shapes" aria-label="shapes" onClick={() => { if (selectedTool === 'shapes') setSelectedTool('shapes'); }}>
+    <Tooltip title={TOOL_DESCRIPTIONS.shapes}><WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip>
+  </ToggleButton>
   <ToggleButton value="draw" aria-label="draw"><Tooltip title={TOOL_DESCRIPTIONS.draw}><EditIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
   <ToggleButton value="eraser" aria-label="eraser"><Tooltip title={TOOL_DESCRIPTIONS.eraser}><BackspaceIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
       <ToggleButton value="line" aria-label="line"><Tooltip title={TOOL_DESCRIPTIONS.line}><HorizontalRuleIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
