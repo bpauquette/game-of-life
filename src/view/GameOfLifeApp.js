@@ -1,23 +1,29 @@
 import useMediaQuery from '@mui/material/useMediaQuery';
-import useCanvasManager from './hooks/useCanvasManager';
+// canvas manager removed in favor of single MVC renderer
 import { useShapeManager } from './hooks/useShapeManager';
 import useGridMousePosition from './hooks/useGridMousePosition';
 import { loadGridIntoGame, rotateAndApply } from './utils/gameUtils';
 import { colorSchemes } from '../model/colorSchemes';
-import { drawTool } from '../controller/tools/drawTool';
-import { lineTool } from '../controller/tools/lineTool';
-import { rectTool } from '../controller/tools/rectTool';
-import { circleTool } from '../controller/tools/circleTool';
-import { ovalTool } from '../controller/tools/ovalTool';
-import { shapesTool } from '../controller/tools/shapesTool';
-import { captureTool } from '../controller/tools/captureTool';
-import { randomRectTool } from '../controller/tools/randomRectTool';
+// tools are registered by GameMVC; no direct tool imports needed here
 import { saveCapturedShapeToBackend } from '../utils/backendAPI';
 import GameUILayout from './GameUILayout';
 import './GameOfLife.css';
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useCallback, useState, useLayoutEffect } from 'react';
 import PropTypes from 'prop-types';
+import { GameMVC } from '../controller/GameMVC';
 
+// tools are registered by GameMVC.controller during initialization
+function getColorSchemeFromKey(key) {
+  const base = colorSchemes[key] || {};
+  const copy = { ...base };
+  if (typeof Object.freeze === 'function') Object.freeze(copy);
+  return copy;
+}
+
+// The component has a slightly large body by necessity (many hooks/handlers).
+// Disable the cognitive-complexity rule here to keep the implementation readable
+// while we keep initialization logic small and well-factored above.
+// eslint-disable-next-line sonarjs/cognitive-complexity
 function GameOfLifeApp(props) {
 
   const defaultUIState = React.useMemo(() => ({
@@ -39,6 +45,7 @@ function GameOfLifeApp(props) {
   // persistent refs
   const snapshotsRef = useRef([]);
   const gameRef = useRef(null);
+  const pendingLoadRef = useRef(null);
   const toolStateRef = useRef({});
   const isSmall = useMediaQuery('(max-width:900px)');
   const [sidebarOpen, setSidebarOpen] = useState(!isSmall);
@@ -55,50 +62,33 @@ function GameOfLifeApp(props) {
   }, [gameRef]);
   const colorScheme = React.useMemo(() => getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio'), [uiState?.colorSchemeKey]);
 
-  const toolMap = {
-    draw: drawTool,
-    line: lineTool,
-    rect: rectTool,
-    circle: circleTool,
-    oval: ovalTool,
-    shapes: shapesTool,
-    capture: captureTool,
-    randomRect: randomRectTool
-  };
-  function getColorSchemeFromKey(key) {
-    const base = colorSchemes[key] || {};
-    const copy = { ...base };
-    if (typeof Object.freeze === 'function') Object.freeze(copy);
-    return copy;
-  }
+  
 
-  // Ensure offsetRef has the shape expected by useCanvasManager ({ current: { x, y, cellSize } })
+  // Ensure offsetRef has the shape expected by canvas logic ({ x, y, cellSize })
   const offsetRef = useRef({
     x: getViewport().offsetX ?? 0,
     y: getViewport().offsetY ?? 0,
     cellSize: getViewport().cellSize ?? 8
   });
+  // Keep a ref to the current color scheme key so the layout effect
+  // doesn't need to capture uiState in its dependency array.
+  const colorSchemeKeyRef = useRef(uiState?.colorSchemeKey || 'bio');
+  useEffect(() => { colorSchemeKeyRef.current = uiState?.colorSchemeKey || 'bio'; }, [uiState?.colorSchemeKey]);
+  // Canvas DOM ref (used by GameUILayout). The single renderer (GameMVC)
+  // will be instantiated when this ref's element is available.
+  const canvasRef = useRef(null);
 
-  const canvasManager = useCanvasManager({
-    getLiveCells,
-    cellSize: getViewport().cellSize,
-    offsetRef,
-    colorScheme,
-    selectedTool,
-    toolMap,
-    toolStateRef,
-    setCellAlive,
-    placeShape: (x, y, shape) => gameRef.current?.placeShape?.(x, y, shape),
-    logger: undefined // If you use logger, import it above
-  });
-  const canvasRef = canvasManager.canvasRef;
+  // drawWithOverlay delegates to the GameMVC controller to request a render
+  const drawWithOverlay = useCallback(() => {
+    try { gameRef.current?.controller?.requestRender?.(); } catch (e) { /* ignore */ }
+  }, [gameRef]);
   const shapeManager = useShapeManager({
     toolStateRef,
-    drawWithOverlay: canvasManager?.drawWithOverlay,
+    drawWithOverlay,
     model: gameRef.current ? gameRef.current.model : null
   });
 
-  // track cursor using the canvas managed by canvasManager
+  // track cursor using the canvas DOM element
   const cursorCell = useGridMousePosition({ canvasRef, cellSize });
 
   // --- Handlers ---
@@ -117,10 +107,10 @@ function GameOfLifeApp(props) {
     setUIState(prev => ({ ...prev, showChart: show }));
   }, []);
    useEffect(() => {
-        if (typeof canvasManager?.drawWithOverlay === 'function') {
-          canvasManager.drawWithOverlay();
+        if (typeof drawWithOverlay === 'function') {
+          drawWithOverlay();
         }
-      }, [canvasManager, getLiveCells, cellSize, colorScheme, selectedTool, uiState]);
+      }, [drawWithOverlay, getLiveCells, cellSize, colorScheme, selectedTool, uiState]);
   const setColorSchemeKey = useCallback((key) => {
     setUIState(prev => ({ ...prev, colorSchemeKey: key }));
     try {
@@ -193,8 +183,68 @@ function GameOfLifeApp(props) {
     return saved;
   }, [shapeManager]);
   const handleLoadGrid = useCallback((liveCells) => {
-    loadGridIntoGame(gameRef, liveCells);
+    if (gameRef.current) {
+      loadGridIntoGame(gameRef, liveCells);
+    } else {
+      // If the MVC isn't initialized yet, stash the load and apply once ready
+      pendingLoadRef.current = liveCells;
+    }
   }, []);
+
+  // Initialize the Game MVC synchronously after the component mounts and the
+  // canvas ref is attached. useLayoutEffect runs before paint so this avoids
+  // a visible flicker on first render.
+  // helpers to keep the layout effect small/clear and reduce cognitive complexity
+  const applyPendingLoad = useCallback((mvc) => {
+    if (pendingLoadRef.current) {
+      try { loadGridIntoGame(gameRef, pendingLoadRef.current); } catch (e) { /* swallow non-fatal */ }
+      pendingLoadRef.current = null;
+    }
+  }, []);
+
+  const syncOffsetFromMVC = useCallback((mvc) => {
+    if (mvc && typeof mvc.getViewport === 'function') {
+      const vp = mvc.getViewport();
+      if (vp) {
+        offsetRef.current.x = vp.offsetX ?? offsetRef.current.x;
+        offsetRef.current.y = vp.offsetY ?? offsetRef.current.y;
+        offsetRef.current.cellSize = vp.cellSize ?? offsetRef.current.cellSize;
+      }
+    }
+  }, []);
+
+  const applyInitialColorScheme = useCallback((mvc) => {
+    try {
+      const scheme = getColorSchemeFromKey(colorSchemeKeyRef.current || 'bio');
+      mvc.setColorScheme?.(scheme);
+      mvc.controller?.requestRender?.();
+    } catch (e) { /* non-fatal */ }
+  }, []);
+
+  useLayoutEffect(() => {
+    const canvasEl = canvasRef.current;
+    if (!canvasEl) return undefined;
+    if (gameRef.current) return undefined; // already initialized
+
+    try {
+      const mvc = new GameMVC(canvasEl, {});
+      gameRef.current = mvc;
+
+      applyPendingLoad(mvc);
+      syncOffsetFromMVC(mvc);
+      applyInitialColorScheme(mvc);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to initialize GameMVC:', err);
+    }
+
+    return () => {
+      if (gameRef.current && typeof gameRef.current.destroy === 'function') {
+        try { gameRef.current.destroy(); } catch (e) { /* ignore */ }
+        gameRef.current = null;
+      }
+    };
+  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme]);
 
   const setSelectedToolLocal = useCallback((tool) => {
       setSelectedTool(tool);
@@ -217,7 +267,7 @@ function GameOfLifeApp(props) {
     isRunning,
     setIsRunning: setRunningState,
     step,
-    draw: canvasManager.drawWithOverlay,
+  draw: drawWithOverlay,
     clear,
     snapshotsRef,
     setSteadyInfo,
@@ -233,7 +283,7 @@ function GameOfLifeApp(props) {
     popTolerance,
     setPopTolerance,
     selectShape: handleSelectShape,
-    drawWithOverlay: canvasManager.drawWithOverlay,
+  drawWithOverlay: drawWithOverlay,
     openPalette,
     steadyInfo,
     toolStateRef,
@@ -251,7 +301,7 @@ function GameOfLifeApp(props) {
   return (
     <GameUILayout
       onSelectShape={handleSelectShape}
-      drawWithOverlay={canvasManager.drawWithOverlay}
+  drawWithOverlay={drawWithOverlay}
       colorScheme={colorScheme}
       onRotateShape={handleRotateShape}
       onSwitchToShapesTool={() => gameRef.current?.setSelectedTool?.('shapes')}
@@ -264,7 +314,7 @@ function GameOfLifeApp(props) {
       onCloseCaptureDialog={() => setCaptureDialogOpen(false)}
       captureData={uiState.captureData}
       onSaveCapture={handleSaveCapturedShape}
-      canvasRef={canvasRef}
+  canvasRef={canvasRef}
       cursorCell={cursorCell}
       populationHistory={(gameRef.current && typeof gameRef.current.getPopulationHistory === 'function') ? gameRef.current.getPopulationHistory() : []}
       onCloseChart={() => setShowChart(false)}
