@@ -50,6 +50,9 @@ function GameUILayout({
     <div className="canvas-container" style={{ height: '100vh', backgroundColor: '#000' }}>
       {(uiState?.showChrome ?? true) && (
         <HeaderBar
+          recentShapes={recentShapes}
+          selectShape={onSelectShape}
+          drawWithOverlay={drawWithOverlay}
           isRunning={isRunning}
           setIsRunning={controlsProps?.setIsRunning}
           step={controlsProps?.step}
