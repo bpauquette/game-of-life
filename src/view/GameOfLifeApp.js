@@ -184,9 +184,12 @@ function GameOfLifeApp(props) {
   }, [shapeManager]);
   const handleLoadGrid = useCallback((liveCells) => {
     if (gameRef.current) {
+      // Clear existing cells first so the loaded grid replaces the world
+      try { gameRef.current.clear?.(); } catch (e) { /* ignore */ }
       loadGridIntoGame(gameRef, liveCells);
     } else {
       // If the MVC isn't initialized yet, stash the load and apply once ready
+      // We store the raw liveCells; applyPendingLoad will clear before applying.
       pendingLoadRef.current = liveCells;
     }
   }, []);
@@ -196,8 +199,16 @@ function GameOfLifeApp(props) {
   // a visible flicker on first render.
   // helpers to keep the layout effect small/clear and reduce cognitive complexity
   const applyPendingLoad = useCallback((mvc) => {
-    if (pendingLoadRef.current) {
-      try { loadGridIntoGame(gameRef, pendingLoadRef.current); } catch (e) { /* swallow non-fatal */ }
+    const pending = pendingLoadRef.current;
+    if (pending) {
+      try {
+        // Clear existing cells before applying the pending load so the load
+        // fully replaces the current world.
+        try { mvc.clear?.(); } catch (e) { /* ignore */ }
+        // pending may be the raw liveCells (Map/array) or an object with .liveCells
+  const toLoad = pending.liveCells !== undefined ? pending.liveCells : pending;
+        loadGridIntoGame(gameRef, toLoad);
+      } catch (e) { /* swallow non-fatal */ }
       pendingLoadRef.current = null;
     }
   }, []);
