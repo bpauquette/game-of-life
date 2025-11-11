@@ -80,7 +80,13 @@ function GameOfLifeApp(props) {
 
   // drawWithOverlay delegates to the GameMVC controller to request a render
   const drawWithOverlay = useCallback(() => {
-    try { gameRef.current?.controller?.requestRender?.(); } catch (e) { /* ignore */ }
+    try {
+      gameRef.current?.controller?.requestRender?.();
+    } catch (e) {
+      // Log render errors instead of silently ignoring them so issues are visible.
+      // eslint-disable-next-line no-console
+      console.error('drawWithOverlay error:', e);
+    }
   }, [gameRef]);
   const shapeManager = useShapeManager({
     toolStateRef,
@@ -185,7 +191,15 @@ function GameOfLifeApp(props) {
   const handleLoadGrid = useCallback((liveCells) => {
     if (gameRef.current) {
       // Clear existing cells first so the loaded grid replaces the world
-      try { gameRef.current.clear?.(); } catch (e) { /* ignore */ }
+      try {
+        if (typeof gameRef.current.clear === 'function') {
+          gameRef.current.clear();
+        }
+      } catch (e) {
+        // Log non-fatal errors when attempting to clear so issues are visible
+        // eslint-disable-next-line no-console
+        console.warn('handleLoadGrid: failed to clear existing grid before load', e);
+      }
       loadGridIntoGame(gameRef, liveCells);
     } else {
       // If the MVC isn't initialized yet, stash the load and apply once ready
@@ -204,11 +218,24 @@ function GameOfLifeApp(props) {
       try {
         // Clear existing cells before applying the pending load so the load
         // fully replaces the current world.
-        try { mvc.clear?.(); } catch (e) { /* ignore */ }
+        try {
+          if (typeof mvc.clear === 'function') {
+            mvc.clear();
+          }
+        } catch (e) {
+          // Log non-fatal errors when attempting to clear so issues are visible.
+          // eslint-disable-next-line no-console
+          console.warn('applyPendingLoad: mvc.clear threw an error', e);
+        }
         // pending may be the raw liveCells (Map/array) or an object with .liveCells
-  const toLoad = pending.liveCells !== undefined ? pending.liveCells : pending;
+  const toLoad = pending.liveCells === undefined ? pending : pending.liveCells;
         loadGridIntoGame(gameRef, toLoad);
-      } catch (e) { /* swallow non-fatal */ }
+      } catch (e) {
+        // Log non-fatal initialization errors to aid debugging without breaking
+        // runtime behavior. Do not rethrow to preserve current behavior.
+        // eslint-disable-next-line no-console
+        console.warn('applyPendingLoad: failed to load pending grid', e);
+      }
       pendingLoadRef.current = null;
     }
   }, []);
@@ -229,7 +256,11 @@ function GameOfLifeApp(props) {
       const scheme = getColorSchemeFromKey(colorSchemeKeyRef.current || 'bio');
       mvc.setColorScheme?.(scheme);
       mvc.controller?.requestRender?.();
-    } catch (e) { /* non-fatal */ }
+    } catch (e) {
+      // Log non-fatal initialization errors for diagnostics
+      // eslint-disable-next-line no-console
+      console.error('applyInitialColorScheme error:', e);
+    }
   }, []);
 
   useLayoutEffect(() => {
@@ -251,7 +282,13 @@ function GameOfLifeApp(props) {
 
     return () => {
       if (gameRef.current && typeof gameRef.current.destroy === 'function') {
-        try { gameRef.current.destroy(); } catch (e) { /* ignore */ }
+        try {
+          gameRef.current.destroy();
+        } catch (e) {
+          // Log destruction errors for diagnostics; cleanup should continue.
+          // eslint-disable-next-line no-console
+          console.error('Error destroying GameMVC instance during unmount:', e);
+        }
         gameRef.current = null;
       }
     };
@@ -264,7 +301,17 @@ function GameOfLifeApp(props) {
       } catch (e) {
         console.error('Error setting selected tool on gameRef:', e);
       }
-    }, []);
+      // If the shapes tool is selected, open the palette in the UI so the
+      // ShapePaletteDialog is shown. HeaderBar's ToolGroup doesn't itself
+      // open the palette, so mirror that behavior here.
+      if (tool === 'shapes') {
+        try {
+          openPalette();
+        } catch (e) {
+          console.error('Failed to open palette:', e);
+        }
+      }
+    }, [openPalette]);
 
   // --- Controls props ---
   const controlsProps = {
