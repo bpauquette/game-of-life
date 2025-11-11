@@ -159,6 +159,11 @@ export const useShapeManager = ({
         return next;
       });
     },
+    // Add a recent shape programmatically
+    addRecentShape: (shape) => {
+      if (!shape) return;
+      updateRecentShapesList(shape);
+    },
     
     // Internal utilities (exposed for testing)
     generateShapeKey,

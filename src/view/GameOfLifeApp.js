@@ -359,6 +359,7 @@ function GameOfLifeApp(props) {
   // --- Render ---
   return (
     <GameUILayout
+      recentShapes={shapeManager.recentShapes}
       onSelectShape={handleSelectShape}
   drawWithOverlay={drawWithOverlay}
       colorScheme={colorScheme}
