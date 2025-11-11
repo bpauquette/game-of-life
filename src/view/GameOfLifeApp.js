@@ -5,7 +5,7 @@ import useGridMousePosition from './hooks/useGridMousePosition';
 import { loadGridIntoGame, rotateAndApply } from './utils/gameUtils';
 import { colorSchemes } from '../model/colorSchemes';
 // tools are registered by GameMVC; no direct tool imports needed here
-import { saveCapturedShapeToBackend } from '../utils/backendAPI';
+import { saveCapturedShapeToBackend, resolveBackendBase } from '../utils/backendAPI';
 import GameUILayout from './GameUILayout';
 import './GameOfLife.css';
 import React, { useRef, useEffect, useCallback, useState, useLayoutEffect } from 'react';
@@ -351,7 +351,7 @@ function GameOfLifeApp(props) {
     setShowSpeedGauge,
     setMaxFPS,
     setMaxGPS,
-    backendBase: undefined, // Set if needed
+  backendBase: resolveBackendBase(),
     onAddRecent: handleAddRecent
   };
 
