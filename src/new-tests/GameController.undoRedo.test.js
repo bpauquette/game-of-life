@@ -4,6 +4,14 @@ import { GameModel } from '../model/GameModel';
 describe('GameController undo/redo', () => {
   let model, controller;
   const { drawTool } = require('../controller/tools/drawTool');
+  // Helper to create a setCellAlive wrapper that records diffs before mutating model
+  const makeSetCellAliveForUndo = (m, c) => (x, y, alive) => {
+    const prevAlive = m.isCellAlive(x, y);
+    if (prevAlive !== alive) {
+      c._currentDiff.push({ x, y, prevAlive, newAlive: alive });
+    }
+    m.setCellAliveModel(x, y, alive);
+  };
   beforeEach(() => {
     model = new GameModel();
     controller = new GameController(model, { on: () => {} });
@@ -28,16 +36,7 @@ describe('GameController undo/redo', () => {
     // Directly invoke drawTool logic and controller diff tracking
     controller._currentDiff = [];
     // Slightly different implementation for test uniqueness
-    controller._setCellAliveForUndo = (x, y, alive) => {
-      model.setCellAliveModel(x, y, alive); // Move this line before diff push
-      const prevAlive = model.isCellAlive(x, y) ? !alive : alive; // Change prevAlive calculation for uniqueness
-      if (model.isCellAlive(x, y) !== alive) {
-        controller._currentDiff.push({ x, y, prevAlive, newAlive: alive });
-      }
-      // Debug output
-      // eslint-disable-next-line no-console
-      console.log(`[multi-cell] setCellAlive called: (${x},${y}) alive=${alive} prevAlive=${prevAlive} now=${model.isCellAlive(x, y)}`);
-    };
+    controller._setCellAliveForUndo = makeSetCellAliveForUndo(model, controller);
     // Initialize toolState for drawTool
   controller.toolState = { start: { x: 1, y: 2 }, last: { x: 1, y: 2 }, setCellAlive: controller._setCellAliveForUndo };
   drawTool.onMouseDown(controller.toolState, 1, 2);
@@ -55,16 +54,7 @@ describe('GameController undo/redo', () => {
   it('undo/redo multi-cell draw stroke', () => {
     // Simulate drawing a line from (1,2) to (1,5)
     controller._currentDiff = [];
-    controller._setCellAliveForUndo = (x, y, alive) => {
-      const prevAlive = model.isCellAlive(x, y);
-      if (prevAlive !== alive) {
-        controller._currentDiff.push({ x, y, prevAlive, newAlive: alive });
-      }
-      model.setCellAliveModel(x, y, alive);
-      // Debug output
-      // eslint-disable-next-line no-console
-      console.log(`setCellAlive called: (${x},${y}) alive=${alive} prevAlive=${prevAlive} now=${model.isCellAlive(x, y)}`);
-    };
+    controller._setCellAliveForUndo = makeSetCellAliveForUndo(model, controller);
     // Initialize toolState for drawTool
     controller.toolState = { start: { x: 1, y: 2 }, last: { x: 1, y: 2 } };
     drawTool.onMouseDown(controller.toolState, 1, 2);

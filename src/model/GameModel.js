@@ -69,7 +69,7 @@ export class GameModel {
     this.maxTimestamps = 60; // Keep last 60 timestamps for averaging
     // Color scheme for rendering (not serialized)
     // Safe default comes from model; renderer should not guess/import
-    const defaultKey = 'spectrum';
+  const defaultKey = 'bio';
     const defaultFromKey = colorSchemes?.[defaultKey] || null;
     const firstKey = Object.keys(colorSchemes || {}).at(0);
     const fallback = firstKey ? colorSchemes[firstKey] : { background: '#000000', getCellColor: () => '#ffffff' };
