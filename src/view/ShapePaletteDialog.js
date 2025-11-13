@@ -12,7 +12,7 @@ import {
 import { BUTTONS } from '../utils/Constants';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
-import TextField from '@mui/material/TextField';
+// SearchBar provides TextField; moved to its own component
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -31,6 +31,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import UndoIcon from '@mui/icons-material/Undo';
 import Typography from '@mui/material/Typography';
 import ShapePreview from './components/ShapePreview';
+import SearchBar from './components/SearchBar';
 
 // PropTypes for internal components
 ShapeListItem.propTypes = {
@@ -95,7 +96,7 @@ const PREVIEW_BOX_SIZE = 72;
 const PREVIEW_SVG_SIZE = 64;
 const PREVIEW_BORDER_OPACITY = 0.06;
 const PREVIEW_BORDER_RADIUS = 6;
-const GRID_LINE_OFFSET = 0.5;
+// (previous GRID_LINE_OFFSET removed — unused in this module)
 
 // Transition component for Snackbar - moved outside to avoid recreation on each render
 const SlideUpTransition = (props) => <Slide {...props} direction="up" />;
@@ -319,22 +320,7 @@ function BackendServerDialog({
   );
 }
 
-// Presentational: search input + spinner
-function SearchBar({ value, onChange, loading }) {
-  return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-      <TextField
-        label="Search shapes"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        fullWidth
-        placeholder="Type 3+ chars to search"
-        size="small"
-      />
-      {loading && <CircularProgress size={24} />}
-    </div>
-  );
-}
+// SearchBar moved to its own component under ./components/SearchBar.js
 
 // Presentational: list of shapes or empty state
 function ShapesList({ items, colorScheme, loading, onSelect, onDeleteRequest, onAddRecent }) {
@@ -426,6 +412,9 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
   const LARGE_CATALOG_THRESHOLD = 1000; // UI hint threshold
+  const [cachedCatalog, setCachedCatalog] = useState(null);
+  const [caching, setCaching] = useState(false);
+  const CACHE_KEY = 'gol:shapesCatalog:v1';
   
   // Backend server management states
   const [showBackendDialog, setShowBackendDialog] = useState(false);
@@ -589,33 +578,120 @@ The backend will start on port ${backendPort}.`);
 
   useEffect(()=>{ if(!open){ setQ(''); setResults([]); setLoading(false); } }, [open]);
   
+  // On mount, try to read cached catalog from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.items)) setCachedCatalog(parsed.items);
+      }
+    } catch (e) {
+      logger.warn('Failed to read cached catalog from localStorage:', e?.message);
+    }
+  }, []);
+
+  // Download entire catalog and store in localStorage
+  const downloadCatalogToLocal = useCallback(async () => {
+    setCaching(true);
+    try {
+      const base = getBaseUrl(backendBase);
+      const page = 200;
+      let offsetLocal = 0;
+      let all = [];
+      while (true) {
+        const out = await fetchShapes(base, '', page, offsetLocal);
+        if (!out.ok) {
+          throw new Error(`Fetch shapes failed: ${out.status}`);
+        }
+        all = all.concat(out.items || []);
+        if (all.length >= (out.total || 0) || out.items.length === 0) break;
+        offsetLocal += page;
+      }
+      setCachedCatalog(all);
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ fetchedAt: Date.now(), items: all }));
+      } catch (e) {
+        logger.warn('Failed to write catalog to localStorage:', e?.message);
+      }
+      // update UI
+      setResults(all.slice(0, limit));
+      setTotal(all.length);
+      setOffset(0);
+    } catch (err) {
+      logger.error('Failed to download catalog:', err);
+      setSnackMsg('Failed to cache catalog');
+      setSnackDetails(String(err));
+      setSnackOpen(true);
+    } finally {
+      setCaching(false);
+      setLoading(false);
+    }
+  }, [backendBase, limit]);
+
   useEffect(()=>{
     const cancelRef = { cancelled: false };
     if (timerRef.current) clearTimeout(timerRef.current);
     setLoading(true);
+    const doSearch = async (cRef) => {
+      // If we have a cached catalog, perform client-side filtering and avoid network
+      if (Array.isArray(cachedCatalog) && cachedCatalog.length > 0) {
+        try {
+          const qLower = String(q || '').trim().toLowerCase();
+          let filtered = cachedCatalog;
+          if (qLower.length >= 1) {
+            filtered = cachedCatalog.filter(item => {
+              const name = String(item.name || '').toLowerCase();
+              const desc = String(item.description || item.meta?.description || '').toLowerCase();
+              return name.includes(qLower) || desc.includes(qLower);
+            });
+          }
+          const sliced = filtered.slice(offset, offset + limit);
+          setResults(sliced);
+          setTotal(filtered.length);
+        } catch (e) {
+          logger.warn('Local catalog filter failed, falling back to server:', e?.message);
+          await fetchAndUpdateShapes({
+            backendBase,
+            q,
+            limit,
+            offset,
+            setResults,
+            setTotal,
+            setLoading,
+            setShowBackendDialog,
+            checkBackendHealth,
+            cancelRef: cRef
+          });
+        }
+      } else {
+        await fetchAndUpdateShapes({
+          backendBase,
+          q,
+          limit,
+          offset,
+          setResults,
+          setTotal,
+          setLoading,
+          setShowBackendDialog,
+          checkBackendHealth,
+          cancelRef: cRef
+        });
+      }
+    };
+
     timerRef.current = setTimeout(() => {
-      fetchAndUpdateShapes({
-        backendBase,
-        q,
-        limit,
-        offset,
-        setResults,
-        setTotal,
-        setLoading,
-        setShowBackendDialog,
-        checkBackendHealth,
-        cancelRef
-      });
+      doSearch(cancelRef);
     }, 300);
     return () => { cancelRef.cancelled = true; if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [q, backendBase, offset, limit]);
+  }, [q, backendBase, offset, limit, cachedCatalog]);
 
   return (
     <>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth data-testid="shapes-palette">
         <DialogTitle>Insert shape from catalog</DialogTitle>
         <DialogContent>
-          <SearchBar value={q} onChange={setQ} loading={loading} />
+          <SearchBar value={q} onChange={setQ} loading={loading} onCache={downloadCatalogToLocal} caching={caching} />
           <ShapesList
             items={results}
             colorScheme={colorScheme}
