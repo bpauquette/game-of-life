@@ -14,11 +14,11 @@ html, body, #root {
   position: relative;
 }
 
-/* Legacy .controls overlay removed; controls now live in HeaderBar/LeftSidebar */
+/* Legacy .controls overlay removed; controls now live in HeaderBar */
 
 /* Steady-state indicator: placed top-right and isolated from the controls so
    frequent updates to the status bar or tool overlays won't cause layout
    reflows that make the indicator 'jitter'. */
 
 
-/* Legacy pan-controls and shapes-menu removed; superseded by HeaderBar/LeftSidebar components */
+/* Legacy pan-controls and shapes-menu removed; superseded by HeaderBar components */

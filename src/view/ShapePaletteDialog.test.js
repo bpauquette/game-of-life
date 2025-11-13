@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ShapePaletteDialog from './ShapePaletteDialog';
+import { colorSchemes } from '../model/colorSchemes';
 
 function mockFetchShapesFail() {
   return Promise.reject(new Error('NetworkError: Failed to fetch'));
@@ -19,7 +20,7 @@ describe('ShapePaletteDialog backend error handling', () => {
         onClose={() => {}}
         onSelectShape={() => {}}
         backendBase="/api"
-        colorScheme={{}}
+  colorScheme={colorSchemes.bio}
         // Inject failing fetchShapes and health check
         fetchShapes={mockFetchShapesFail}
         checkBackendHealth={mockCheckBackendHealthFail}
@@ -44,7 +45,7 @@ describe('ShapePaletteDialog backend error handling', () => {
         onClose={() => {}}
         onSelectShape={() => {}}
         backendBase="/api"
-        colorScheme={{}}
+  colorScheme={colorSchemes.bio}
         fetchShapes={mockFetchShapesOk}
         checkBackendHealth={mockCheckBackendHealthOk}
       />

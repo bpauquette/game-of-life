@@ -30,6 +30,7 @@ import Slide from '@mui/material/Slide';
 import CloseIcon from '@mui/icons-material/Close';
 import UndoIcon from '@mui/icons-material/Undo';
 import Typography from '@mui/material/Typography';
+import ShapePreview from './components/ShapePreview';
 
 // PropTypes for internal components
 ShapeListItem.propTypes = {
@@ -186,6 +187,24 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRe
   const w = Math.max(1, s.width || 1);
   const h = Math.max(1, s.height || 1);
   const keyBase = s.id || 'shape';
+  // Debug sample: log first cell color for palette preview
+  try {
+    const first = Array.isArray(s.cells) && s.cells.length > 0 ? s.cells[0] : null;
+    if (first) {
+      const fx = first.x ?? first[0];
+      const fy = first.y ?? first[1];
+      const sampleColor = getCellColor(fx, fy);
+      // Avoid spamming console in normal runs. Enable detailed preview
+      // diagnostics by setting globalThis.__GOL_PREVIEW_DEBUG__ = true in
+      // the dev console or test harness.
+      if (globalThis.__GOL_PREVIEW_DEBUG__) {
+        logger.debug('[ShapePaletteDialog] palette-sample', { id: s.id || s.name, x: fx, y: fy, color: sampleColor });
+      }
+    }
+  } catch (e) {
+    // Log the error instead of silently swallowing it so issues can be diagnosed.
+    logger.warn('[ShapePaletteDialog] preview sample failed:', e);
+  }
   return (
       <ListItem key={`${keyBase}-${idx}`} disablePadding>
         <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
@@ -227,28 +246,15 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRe
             </Typography>
           </Box>
           <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg
-              width={PREVIEW_SVG_SIZE}
-              height={PREVIEW_SVG_SIZE}
-              viewBox={`0 0 ${w} ${h}`}
-              preserveAspectRatio="xMidYMid meet"
-              style={{ background: colorScheme.background || 'transparent', border: `1px solid rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`, borderRadius: PREVIEW_BORDER_RADIUS }}
-            >
-              {Array.isArray(s.cells) && s.cells.length > 0 ? (
-                s.cells.map((c) => (
-                  <rect key={`${keyBase}-${c.x},${c.y}`} x={c.x} y={c.y} width={1} height={1} fill={getCellColor(c.x, c.y)} />
-                ))
-              ) : (
-                <g stroke={`rgba(0,0,0,${PREVIEW_BORDER_OPACITY})`} fill="none">
-                  {Array.from({ length: w }, (_, i) => (
-                    <line key={`v-${keyBase}-${i}`} x1={i + GRID_LINE_OFFSET} y1={0} x2={i + GRID_LINE_OFFSET} y2={h} />
-                  ))}
-                  {Array.from({ length: h }, (_, j) => (
-                    <line key={`h-${keyBase}-${j}`} x1={0} y1={j + GRID_LINE_OFFSET} x2={w} y2={j + GRID_LINE_OFFSET} />
-                  ))}
-                </g>
-              )}
-            </svg>
+            <ShapePreview
+              shape={s}
+              colorScheme={colorScheme}
+              boxSize={PREVIEW_SVG_SIZE}
+              borderRadius={PREVIEW_BORDER_RADIUS}
+              borderOpacity={PREVIEW_BORDER_OPACITY}
+              t={tRef.current}
+              source={'palette'}
+            />
           </Box>
           <IconButton
             edge="end"

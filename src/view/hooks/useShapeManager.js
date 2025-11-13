@@ -152,12 +152,50 @@ export const useShapeManager = ({
     closePalette,
     selectShapeAndClosePalette,
     replaceRecentShapeAt: (index, shape) => {
+      // Normalize shape cell coordinates so stored shapes use a top-left
+      // anchored coordinate system (minX/minY === 0). This ensures the
+      // visual preview (which normalizes for display) matches placement.
+      const normalizeShape = (s) => {
+        if (!s) return s;
+        const cells = Array.isArray(s.cells) ? s.cells : (Array.isArray(s.pattern) ? s.pattern : []);
+        if (!Array.isArray(cells) || cells.length === 0) return s;
+        let minX = Infinity; let minY = Infinity;
+        for (const c of cells) {
+          const x = Array.isArray(c) ? c[0] : (c?.x ?? 0);
+          const y = Array.isArray(c) ? c[1] : (c?.y ?? 0);
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+        }
+        if (!Number.isFinite(minX)) minX = 0;
+        if (!Number.isFinite(minY)) minY = 0;
+        const normalized = cells.map(c => {
+          const x = Array.isArray(c) ? c[0] : (c?.x ?? 0);
+          const y = Array.isArray(c) ? c[1] : (c?.y ?? 0);
+          return [x - minX, y - minY];
+        });
+        const next = { ...s, cells: normalized };
+        try {
+          const xs = normalized.map(c => c[0]);
+          const ys = normalized.map(c => c[1]);
+          next.width = Math.max(...xs) - Math.min(...xs) + 1;
+          next.height = Math.max(...ys) - Math.min(...ys) + 1;
+          if (next.meta) {
+            next.meta = { ...next.meta, width: next.width, height: next.height };
+          }
+        } catch (e) {
+          // ignore sizing errors
+        }
+        return next;
+      };
+
+      const normalized = normalizeShape(shape);
       setRecentShapes(prev => {
         if (index < 0 || index >= prev.length) return prev;
         const next = [...prev];
-        next[index] = shape;
+        next[index] = normalized;
         return next;
       });
+      return normalized;
     },
     // Add a recent shape programmatically
     addRecentShape: (shape) => {

@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useState, useLayoutEffect } from 'react';
 import PropTypes from 'prop-types';
 import HeaderBar from './HeaderBar';
 import PalettePortal from './PalettePortal';
@@ -11,7 +11,6 @@ import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/Fullscreen';
-
 function GameUILayout({
   recentShapes,
   onSelectShape,
@@ -45,14 +44,33 @@ function GameUILayout({
   isSmall,
   onToggleChrome
 }) {
-  // ...existing code from GameUILayout render...
+  // measure header height so content is positioned correctly under it
+  const headerRef = useRef(null);
+  const [headerTop, setHeaderTop] = useState((uiState?.showChrome ?? true) ? 104 : 0);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      try {
+        const h = headerRef.current ? headerRef.current.offsetHeight : 0;
+        setHeaderTop(h || ((uiState?.showChrome ?? true) ? 104 : 0));
+      } catch (e) {
+        setHeaderTop((uiState?.showChrome ?? true) ? 104 : 0);
+      }
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [uiState?.showChrome, isSmall]);
   return (
     <div className="canvas-container" style={{ height: '100vh', backgroundColor: '#000' }}>
       {(uiState?.showChrome ?? true) && (
         <HeaderBar
+          headerRef={headerRef}
           recentShapes={recentShapes}
           selectShape={onSelectShape}
           drawWithOverlay={drawWithOverlay}
+        onRotateShape={onRotateShape}
+        onSwitchToShapesTool={onSwitchToShapesTool}
           isRunning={isRunning}
           setIsRunning={controlsProps?.setIsRunning}
           step={controlsProps?.step}
@@ -61,6 +79,7 @@ function GameUILayout({
           snapshotsRef={controlsProps?.snapshotsRef}
           setSteadyInfo={controlsProps?.setSteadyInfo}
           colorSchemes={controlsProps?.colorSchemes}
+          colorScheme={colorScheme}
           colorSchemeKey={uiState?.colorSchemeKey || 'bio'}
           setColorSchemeKey={controlsProps?.setColorSchemeKey}
           popWindowSize={controlsProps?.popWindowSize}
@@ -85,7 +104,8 @@ function GameUILayout({
           showToolsRow={true}
         />
       )}
-      <div style={{ position: 'absolute', top: (uiState?.showChrome ?? true) ? 104 : 0, left: 0, right: 0, bottom: 0, transition: 'left 200ms ease' }}>
+  {/* main content: absolutely positioned below header and sized to fill remaining viewport */}
+  <div style={{ position: 'absolute', top: (uiState?.showChrome ?? true) ? (headerTop || 0) : 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
         <PalettePortal
           open={uiState?.paletteOpen ?? false}
           onClose={onClosePalette}

@@ -81,6 +81,7 @@ export default function HeaderBar({
   onToggleSidebar,
   isSidebarOpen,
   isSmall,
+  headerRef,
   // tools row
   selectedTool,
   setSelectedTool,
@@ -162,7 +163,7 @@ export default function HeaderBar({
   return (
     <>
       {/* Three-row header: RunControlGroup, ToolGroup, RecentShapesStrip */}
-      <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30, width: '100vw', backgroundColor: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+  <Box ref={headerRef} sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30, width: '100vw', backgroundColor: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
         {/* First row: Save/Load and Run controls */}
         <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, gap: 0.5 }}>
           <Stack direction="row" spacing={0.5} alignItems="center">
@@ -207,8 +208,8 @@ export default function HeaderBar({
             )}
           </Box>
         )}
-        {/* Third row: RecentShapesStrip */}
-        <Box sx={{ position: 'relative', left: 0, right: 0, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(30,30,40,0.85)', borderBottom: '1px solid rgba(255,255,255,0.12)', zIndex: 41, pointerEvents: 'auto', overflowX: 'auto' }}>
+  {/* Third row: RecentShapesStrip (increased height to fit thumbnails + controls) */}
+  <Box sx={{ position: 'relative', left: 0, right: 0, height: 120, minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(30,30,40,0.85)', borderBottom: '1px solid rgba(255,255,255,0.12)', zIndex: 41, pointerEvents: 'auto', overflowX: 'auto', overflowY: 'hidden' }}>
           <RecentShapesStrip
             recentShapes={recentShapes}
             selectShape={selectShape}
@@ -284,6 +285,7 @@ HeaderBar.propTypes = {
   maxSlots: PropTypes.number,
   onRotateShape: PropTypes.func,
   onSwitchToShapesTool: PropTypes.func,
+  headerRef: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
   selectedTool: PropTypes.string,
   setSelectedTool: PropTypes.func,
   showToolsRow: PropTypes.bool,

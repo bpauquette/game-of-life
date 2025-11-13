@@ -1,23 +1,18 @@
 import React, { useRef } from 'react';
 import PropTypes from 'prop-types';
 import { rotateShape } from '../../model/shapeTransforms';
+import ShapePreview from './ShapePreview';
 
-const RECENT_SHAPES_THUMBNAIL_SIZE = 48;
+const RECENT_SHAPES_THUMBNAIL_SIZE = 64; // match PREVIEW_SVG_SIZE used in ShapePaletteDialog
 const RECENT_SHAPES_BUTTON_WIDTH = 130; // Give label room to avoid ellipsis
 const SHAPE_MARGIN_BOTTOM = 12;
-const SHAPE_BORDER_RADIUS = 8;
-const SHAPE_BORDER_COLOR = 'rgba(255,255,255,0.15)';
+// Match palette preview styling: subtle dark border and modest radius
+const SHAPE_BORDER_RADIUS = 6; // match PREVIEW_BORDER_RADIUS in ShapePaletteDialog
+const SHAPE_BORDER_COLOR = 'rgba(0,0,0,0.06)'; // match PREVIEW_BORDER_OPACITY in ShapePaletteDialog
 const SHAPE_BORDER_HOVER_COLOR = 'rgba(255,255,255,0.3)';
-const GRID_STROKE_COLOR = 'rgba(255,255,255,0.02)';
 const DEFAULT_SHAPE_COLOR = '#222';
-const DEFAULT_SHAPE_SIZE = 8;
-const ARRAY_X_INDEX = 0;
-const ARRAY_Y_INDEX = 1;
 
 const SELECTED_BORDER_COLOR = '#00ff88';
-const SELECTED_BORDER_WIDTH = '3px';
-const SELECTED_BOX_SHADOW = '0 0 10px rgba(0, 255, 136, 0.6), inset 0 0 5px rgba(0, 255, 136, 0.2)';
-const SELECTED_BACKGROUND_OVERLAY = 'rgba(0, 255, 136, 0.1)';
 
 function getShapeCells(shape) {
   if (shape && Array.isArray(shape.cells)) return shape.cells;
@@ -25,59 +20,7 @@ function getShapeCells(shape) {
   return [];
 }
 
-function getShapeExtents(cells) {
-  if (!cells || cells.length === 0) {
-    return { minX: 0, minY: 0, maxX: DEFAULT_SHAPE_SIZE - 1, maxY: DEFAULT_SHAPE_SIZE - 1 };
-  }
-  // Initialize from first cell to avoid extra conditional checks
-  const first = cells[0];
-  let baseX = Array.isArray(first) ? first[ARRAY_X_INDEX] : (first.x ?? 0);
-  let baseY = Array.isArray(first) ? first[ARRAY_Y_INDEX] : (first.y ?? 0);
-  let minX = baseX;
-  let minY = baseY;
-  let maxX = baseX;
-  let maxY = baseY;
-  for (let i = 1; i < cells.length; i++) {
-    const c = cells[i];
-    const x = Array.isArray(c) ? c[ARRAY_X_INDEX] : (c.x ?? 0);
-    const y = Array.isArray(c) ? c[ARRAY_Y_INDEX] : (c.y ?? 0);
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x);
-    maxY = Math.max(maxY, y);
-  }
-  return { minX, minY, maxX, maxY };
-}
-
-function normalizeCellsForDisplay(cells) {
-  if (!cells || cells.length === 0) return [];
-  const { minX, minY } = getShapeExtents(cells);
-  return cells.map(c => {
-    const x = Array.isArray(c) ? c[ARRAY_X_INDEX] : (c.x ?? 0);
-    const y = Array.isArray(c) ? c[ARRAY_Y_INDEX] : (c.y ?? 0);
-    return { x: x - minX, y: y - minY };
-  });
-}
-
-function renderGridBackground(width, height, shapeKey) {
-  const rects = [];
-  for (let cx = 0; cx < width; cx++) {
-    for (let cy = 0; cy < height; cy++) {
-      rects.push(
-        <rect
-          key={`g-${shapeKey}-${cx}-${cy}`}
-          x={cx}
-          y={cy}
-          width={1}
-          height={1}
-          fill="transparent"
-          stroke={GRID_STROKE_COLOR}
-        />
-      );
-    }
-  }
-  return rects;
-}
+// helper functions left minimal: only getShapeCells is required by rotate
 
 function ShapeSlot({
   shape,
@@ -90,6 +33,38 @@ function ShapeSlot({
 }) {
   // Use a stable timestamp to avoid flicker with animated color schemes (e.g., Spectrum)
   const tRef = useRef(Date.now());
+  // Debug sample: log first cell color for recent-strip preview
+  try {
+    const first = getShapeCells(shape)[0];
+    if (first) {
+      const fx = Array.isArray(first) ? first[0] : (first.x ?? 0);
+      const fy = Array.isArray(first) ? first[1] : (first.y ?? 0);
+      // Use the provided colorScheme prop directly. Warn once if it's invalid.
+      const sampleColor = colorScheme?.getCellColor?.(fx, fy, tRef.current) ?? DEFAULT_SHAPE_COLOR;
+      // Log compact function identity and time for debugging parity with palette previews
+      const funcPreview = colorScheme?.getCellColor ? String(colorScheme.getCellColor).slice(0, 120) : 'no-getCellColor';
+      // Reduce log noise: only emit detailed debug logs when the global
+      // debug flag is enabled. Otherwise, warn once if the colorScheme is
+      // missing getCellColor so upstream callers can be fixed.
+      const DEBUG = Boolean(globalThis?.__GOL_PREVIEW_DEBUG__);
+      if (DEBUG) {
+        console.debug('[ShapeSlot] recent-sample', { id: shape?.id || shape?.name, x: fx, y: fy, color: sampleColor, time: tRef.current, funcPreview });
+      } else if (!colorScheme?.getCellColor) {
+        try {
+          if (!globalThis.__shapeSlot_warnedMissingScheme) globalThis.__shapeSlot_warnedMissingScheme = new Set();
+          const seenKey = shape?.id || shape?.name || `${index}`;
+          if (!globalThis.__shapeSlot_warnedMissingScheme.has(seenKey)) {
+            globalThis.__shapeSlot_warnedMissingScheme.add(seenKey);
+            console.warn('[ShapeSlot] missing or invalid colorScheme prop for shape', { id: seenKey, provided: colorScheme });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+  } catch (e) {
+    /* ignore */
+  }
   if (!shape) {
     const emptyKey = `empty-slot-${index}`;
     return (
@@ -122,14 +97,10 @@ function ShapeSlot({
   } else {
     key = `${index}`;
   }
-  const cells = getShapeCells(shape);
-  const { minX, minY, maxX, maxY } = getShapeExtents(cells);
-  const width = Math.max(1, (maxX - minX + 1));
-  const height = Math.max(1, (maxY - minY + 1));
-  const normalized = normalizeCellsForDisplay(cells);
+  
 
   return (
-  <div key={key} style={{ position: 'relative', marginBottom: SHAPE_MARGIN_BOTTOM, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+  <div key={key} style={{ position: 'relative', marginBottom: SHAPE_MARGIN_BOTTOM, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
       <button
         type="button"
         style={{
@@ -141,7 +112,9 @@ function ShapeSlot({
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'flex-start',
-          width: RECENT_SHAPES_BUTTON_WIDTH
+          width: RECENT_SHAPES_BUTTON_WIDTH,
+          // ensure button doesn't expand vertically and keeps thumbnail/title stacked
+          boxSizing: 'border-box'
         }}
         onClick={onSelect}
         title={title}
@@ -158,33 +131,17 @@ function ShapeSlot({
           }
         }}
       >
-        <svg
-          width={RECENT_SHAPES_THUMBNAIL_SIZE}
-          height={RECENT_SHAPES_THUMBNAIL_SIZE}
-          viewBox={`0 0 ${Math.max(1, width)} ${Math.max(1, height)}`}
-          preserveAspectRatio="xMidYMid meet"
-          style={{
-            background: selected
-              ? `linear-gradient(${SELECTED_BACKGROUND_OVERLAY}, ${SELECTED_BACKGROUND_OVERLAY}), ${colorScheme.background || '#1a1a1a'}`
-              : colorScheme.background || '#1a1a1a',
-            border: selected
-              ? `${SELECTED_BORDER_WIDTH} solid ${SELECTED_BORDER_COLOR}`
-              : `1px solid ${SHAPE_BORDER_COLOR}`,
-            borderRadius: SHAPE_BORDER_RADIUS,
-            boxShadow: selected ? SELECTED_BOX_SHADOW : 'none',
-            transition: 'all 0.3s ease'
-          }}
-        >
-          {renderGridBackground(width, height, key)}
-          {normalized.map((cell, i) => {
-            const x = cell.x;
-            const y = cell.y;
-            const fillColor = colorScheme?.getCellColor?.(x, y, tRef.current) ?? DEFAULT_SHAPE_COLOR;
-            return (
-              <rect key={`c-${key}-${i}`} x={x} y={y} width={1} height={1} fill={fillColor} />
-            );
-          })}
-        </svg>
+        <ShapePreview
+          shape={shape}
+          colorScheme={colorScheme}
+          boxSize={RECENT_SHAPES_THUMBNAIL_SIZE}
+          borderRadius={SHAPE_BORDER_RADIUS}
+          borderOpacity={0.06}
+          defaultCellColor={DEFAULT_SHAPE_COLOR}
+          t={tRef.current}
+          selected={selected}
+          source={'recent'}
+        />
         {selected && (
           <div
             style={{
@@ -222,30 +179,34 @@ function ShapeSlot({
           {title}
         </div>
       </button>
-      <button
-        key={`rotate-90-${key}`}
-        type="button"
-        style={{
-          fontSize: 12,
-          padding: '2px 6px',
-          borderRadius: 4,
-          border: '1px solid #444',
-          background: '#222',
-          color: '#fff',
-          cursor: 'pointer',
-          opacity: 0.8
-        }}
-        title="Rotate 90° (clockwise)"
-        onClick={(e) => {
-          e.stopPropagation();
-          // Use 270° math rotation to achieve 90° clockwise in screen (y-down) coords
-          const rotatedCells = rotateShape(getShapeCells(shape), 270);
-          const rotatedShape = { ...shape, cells: rotatedCells };
-          onRotate(rotatedShape, index);
-        }}
-      >
-        ⟳90
-      </button>
+      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+        <button
+          key={`rotate-90-${key}`}
+          type="button"
+          style={{
+            fontSize: 12,
+            padding: '4px 8px',
+            borderRadius: 6,
+            border: '1px solid rgba(255,255,255,0.06)',
+            background: '#111',
+            color: '#fff',
+            cursor: 'pointer',
+            opacity: 0.95,
+            minWidth: 46,
+            textAlign: 'center'
+          }}
+          title="Rotate 90° (clockwise)"
+          onClick={(e) => {
+            e.stopPropagation();
+            // Use 270° math rotation to achieve 90° clockwise in screen (y-down) coords
+            const rotatedCells = rotateShape(getShapeCells(shape), 270);
+            const rotatedShape = { ...shape, cells: rotatedCells };
+            onRotate(rotatedShape, index);
+          }}
+        >
+          ⟳90
+        </button>
+      </div>
     </div>
   );
 }

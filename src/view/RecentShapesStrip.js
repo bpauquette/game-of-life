@@ -1,11 +1,11 @@
+import React, { useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
 
-
-const RecentShapesStrip = ({ 
-  recentShapes = [], 
-  selectShape, 
-  drawWithOverlay, 
+const RecentShapesStrip = ({
+  recentShapes = [],
+  selectShape,
+  drawWithOverlay,
   colorScheme = {},
   selectedShape = null,
   maxSlots = 8,
@@ -18,93 +18,188 @@ const RecentShapesStrip = ({
 
   const isShapeSelected = (shape) => {
     if (!selectedShape || !shape) return false;
-    // Prefer direct id comparison when available
     if (shape.id && selectedShape.id) return shape.id === selectedShape.id;
     if (shape.name && selectedShape.name) return shape.name === selectedShape.name;
-    // Fallback to content comparison for robustness
     try {
       return JSON.stringify(shape) === JSON.stringify(selectedShape);
     } catch (e) {
-      // Log the error to aid debugging while safely returning a non-selected result
-      if (typeof console !== 'undefined' && console.warn) {
-        console.warn('Failed to compare shapes for selection check:', e);
-      }
+      if (typeof console !== 'undefined' && console.warn) console.warn('Failed to compare shapes for selection check:', e);
       return false;
     }
   };
 
   const handleShapeClick = (shape) => {
-    // Guarantee controller/model is updated for overlays
+    // Switch to shapes tool first so tool state/overlays are prepared
+    // to receive the selected shape (avoids race where selection is set
+    // but the tool isn't active yet).
+    if (typeof onSwitchToShapesTool === 'function') onSwitchToShapesTool();
     if (globalThis.gameController && typeof globalThis.gameController.setSelectedShape === 'function') {
       globalThis.gameController.setSelectedShape(shape);
     } else if (typeof selectShape === 'function') {
       selectShape(shape);
     }
-    drawWithOverlay();
-    if (typeof onSwitchToShapesTool === 'function') {
-      onSwitchToShapesTool();
-    }
+    if (typeof drawWithOverlay === 'function') drawWithOverlay();
   };
 
-  // Always show maxSlots slots, fill with empty boxes if needed
   const slots = Array.from({ length: maxSlots }, (_, i) => recentShapes[i] || null);
 
- 
- 
+  const bg = (colorScheme && (colorScheme.panelBackground || colorScheme.background)) || '#111217';
+  const panelBorder = '1px solid rgba(255,255,255,0.04)';
+  const cardBg = colorScheme?.cardBackground || 'rgba(255,255,255,0.02)';
+  const FLEX_START = 'flex-start';
+
+  /* Diagnostic helpers (inside component so hooks are valid) */
+  const svgToImageData = useCallback((svgEl) => {
+    try {
+      const xml = new XMLSerializer().serializeToString(svgEl);
+      const svg64 = btoa(unescape(encodeURIComponent(xml)));
+      const b64Start = 'data:image/svg+xml;base64,';
+      const img = new Image();
+      img.src = b64Start + svg64;
+      return new Promise((resolve, reject) => {
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width || svgEl.clientWidth || 64;
+            canvas.height = img.height || svgEl.clientHeight || 64;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            resolve({ data, width: canvas.width, height: canvas.height });
+          } catch (err) {
+            reject(err);
+          }
+        };
+        img.onerror = (e) => reject(e);
+      });
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }, []);
+
+  const compareSVGsAndLog = useCallback((shapeId) => {
+    try {
+      const pal = document.querySelector(`svg[data-shape-id="${shapeId}"][data-preview-source="palette"]`);
+      const rec = document.querySelector(`svg[data-shape-id="${shapeId}"][data-preview-source="recent"]`);
+      if (!pal || !rec) return;
+      Promise.all([svgToImageData(pal), svgToImageData(rec)])
+        .then(([a, b]) => {
+          const ax = Math.floor(a.width / 2); const ay = Math.floor(a.height / 2);
+          const bx = Math.floor(b.width / 2); const by = Math.floor(b.height / 2);
+          const aidx = (ay * a.width + ax) * 4;
+          const bidx = (by * b.width + bx) * 4;
+          const acol = `rgba(${a.data.data[aidx]},${a.data.data[aidx+1]},${a.data.data[aidx+2]},${a.data.data[aidx+3] / 255})`;
+          const bcol = `rgba(${b.data.data[bidx]},${b.data.data[bidx+1]},${b.data.data[bidx+2]},${b.data.data[bidx+3] / 255})`;
+          if (acol !== bcol) {
+            console.warn('[RecentShapesStrip] Pixel mismatch for', shapeId, { palette: acol, recent: bcol });
+          } else {
+            console.debug('[RecentShapesStrip] Pixel match for', shapeId, { color: acol });
+          }
+        })
+        .catch((err) => console.error('SVG compare error', err));
+    } catch (err) {
+      console.error('compareSVGsAndLog error', err);
+    }
+  }, [svgToImageData]);
+
+  // Delay compare until DOM paints
+  useEffect(() => {
+    const firstShape = recentShapes.find(s => !!s);
+    if (!firstShape) return;
+    const id = firstShape.id || firstShape.name;
+    if (!id) return;
+    const t = setTimeout(() => compareSVGsAndLog(id), 250);
+    return () => clearTimeout(t);
+  }, [recentShapes, compareSVGsAndLog]);
+
   return (
     <div
+      aria-label="Recent shapes"
       style={{
         position: 'relative',
         left: 0,
-        width: '100vw',
+        width: '100%',
         zIndex: 41,
         pointerEvents: 'auto',
         opacity: 1,
-        background: '#222',
-        borderRadius: 0,
-        boxShadow: 'none',
-        padding: '10px 8px 6px 8px',
-        maxWidth: '100vw',
-        overflowX: 'auto',
+        background: `linear-gradient(180deg, ${bg} 0%, rgba(0,0,0,0.45) 100%)`,
+        borderRadius: 8,
+        border: panelBorder,
+        padding: '10px 10px 14px 10px',
+        maxWidth: '100%',
+        overflow: 'visible',
+        overflowY: 'hidden',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: FLEX_START
       }}
     >
       <div
+        className="recent-shapes-scroll"
         style={{
           display: 'flex',
           flexDirection: 'row',
-          alignItems: 'center',
+          alignItems: FLEX_START,
           gap: 12,
           width: '100%',
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
+          paddingBottom: 12,
+          paddingTop: 8,
+          scrollSnapType: 'x mandatory',
+          paddingLeft: 4,
+          paddingRight: 6
         }}
       >
         {slots.map((shape, index) => {
-          // Use a stable key: shape.id, shape.name, or fallback to 'empty-slot-index'
-          const slotKey = shape
-            ? (shape.id || shape.name || `shape-${index}`)
-            : `empty-slot-${index}`;
+          // Ensure keys are unique per rendered slot. Some shapes may share the same
+          // `id` or `name` (for example when shapes are created from identical
+          // sources), which caused React warnings like
+          // "Encountered two children with the same key, `1-2-3`". Append the
+          // slot index so keys are always unique while remaining stable enough for
+          // reconciliation within this list.
+          let slotKey;
+          if (shape) {
+            const baseKey = shape.id || shape.name || 'shape';
+            slotKey = `${baseKey}-${index}`;
+          } else {
+            slotKey = `empty-slot-${index}`;
+          }
           return (
-            <div key={slotKey} style={{ minWidth: 64, maxWidth: 96, flexShrink: 0 }}>
-              <ShapeSlot
-                shape={shape}
-                index={index}
-                colorScheme={colorScheme}
-                selected={isShapeSelected(shape)}
-                title={getShapeTitle(shape, index)}
-                onSelect={() => handleShapeClick(shape)}
-                onRotate={(rotatedShape, i) => {
-                  if (typeof onRotateShape === 'function') {
-                    onRotateShape(rotatedShape, i, { inPlace: true });
-                  }
-                }}
-              />
+            <div
+              key={slotKey}
+              style={{
+                minWidth: 92,
+                maxWidth: 140,
+                flexShrink: 0,
+                scrollSnapAlign: 'center',
+                  display: 'flex',
+                  alignItems: FLEX_START,
+                justifyContent: 'center'
+              }}
+            >
+                <div style={{ padding: 6, borderRadius: 8, background: cardBg, display: 'flex', alignItems: FLEX_START, gap: 8 }}>
+                <ShapeSlot
+                  shape={shape}
+                  index={index}
+                  colorScheme={colorScheme}
+                  selected={isShapeSelected(shape)}
+                  title={getShapeTitle(shape, index)}
+                  onSelect={() => handleShapeClick(shape)}
+                  onRotate={(rotatedShape, i) => {
+                    if (typeof onRotateShape === 'function') onRotateShape(rotatedShape, i, { inPlace: true });
+                  }}
+                />
+              </div>
             </div>
           );
         })}
       </div>
+      <style>{`
+        .recent-shapes-scroll::-webkit-scrollbar { height: 8px; }
+        .recent-shapes-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 8px; }
+        .recent-shapes-scroll > div:focus-within { outline: 2px solid rgba(255,255,255,0.06); border-radius: 6px; }
+        .recent-shapes-scroll > div:hover { transform: translateY(-2px); }
+      `}</style>
     </div>
   );
 };

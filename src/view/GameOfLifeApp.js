@@ -106,10 +106,39 @@ function GameOfLifeApp(props) {
   const handleAddRecent = useCallback((shape) => {
     shapeManager.addRecentShape?.(shape);
   }, [shapeManager]);
-  const handleRotateShape = useCallback((rotatedShape, index) => {
-    // rotateAndApply is assumed to be imported or defined elsewhere
-    rotateAndApply(gameRef, shapeManager, rotatedShape, index);
-  }, [shapeManager]);
+  // normalization of rotated shapes is handled by the shape manager
+  // (useShapeManager.replaceRecentShapeAt) so it is not duplicated here.
+
+  const handleRotateShape = useCallback((rotatedShape, index, opts = {}) => {
+    // If caller requests an in-place replace of the recent slot, update the
+    // shape manager's recent list at that index without adding a new recent
+    // entry. Otherwise defer to rotateAndApply which handles selection+placement.
+    if (opts?.inPlace) {
+      try {
+        // replaceRecentShapeAt now returns the normalized shape we stored
+        const normalized = shapeManager?.replaceRecentShapeAt ? shapeManager.replaceRecentShapeAt(index, rotatedShape) : null;
+        // Make the rotated shape the active selection (without adding a new recent)
+        if (normalized && typeof shapeManager?.updateShapeState === 'function') {
+          shapeManager.updateShapeState(normalized);
+        }
+        if (typeof drawWithOverlay === 'function') drawWithOverlay();
+        return;
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('handleRotateShape in-place failed, fallback to rotateAndApply', e);
+        // fall through to default behavior
+      }
+    }
+
+    // Default: rotateAndApply selects and applies the rotated shape
+    try {
+      rotateAndApply(gameRef, shapeManager, rotatedShape, index);
+    } catch (e) {
+      // If rotateAndApply itself fails, log for diagnostics and avoid throwing.
+      // eslint-disable-next-line no-console
+      console.error('rotateAndApply failed in handleRotateShape:', e);
+    }
+  }, [shapeManager, drawWithOverlay]);
   const setShowChart = useCallback((show) => {
     setUIState(prev => ({ ...prev, showChart: show }));
   }, []);
