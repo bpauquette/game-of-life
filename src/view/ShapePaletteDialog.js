@@ -65,7 +65,6 @@ FooterControls.propTypes = {
   threshold: PropTypes.number.isRequired,
   canLoadMore: PropTypes.bool,
   onLoadMore: PropTypes.func,
-  onClose: PropTypes.func,
   loading: PropTypes.bool
 };
 
@@ -85,11 +84,7 @@ SnackMessage.propTypes = {
   onClose: PropTypes.func,
 };
 
-SearchBar.propTypes = {
-  value: PropTypes.string.isRequired,
-  onChange: PropTypes.func.isRequired,
-  loading: PropTypes.bool
-};
+// SearchBar propTypes are defined in its own component file.
 
 // UI Constants
 const PREVIEW_BOX_SIZE = 72;
@@ -178,6 +173,17 @@ async function fetchAndUpdateShapes({
   } finally {
     if (!cancelRef.cancelled) setLoading(false);
   }
+}
+
+// Helper: filter a cached catalog by query
+function filterCachedCatalogItems(catalog, q) {
+  const qLower = String(q || '').trim().toLowerCase();
+  if (!qLower) return catalog.slice();
+  return catalog.filter(item => {
+    const name = String(item.name || '').toLowerCase();
+    const desc = String(item.description || item.meta?.description || '').toLowerCase();
+    return name.includes(qLower) || desc.includes(qLower);
+  });
 }
 
 // Small presentational: per-shape list item with preview and delete affordance
@@ -345,7 +351,7 @@ function ShapesList({ items, colorScheme, loading, onSelect, onDeleteRequest, on
 }
 
 // Presentational: footer with load more and close
-function FooterControls({ total, threshold, canLoadMore, onLoadMore, onClose, loading }) {
+function FooterControls({ total, threshold, canLoadMore, onLoadMore, loading }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
       <div>
@@ -359,7 +365,6 @@ function FooterControls({ total, threshold, canLoadMore, onLoadMore, onClose, lo
         {canLoadMore && (
           <Button onClick={onLoadMore} disabled={loading}>{BUTTONS.LOAD_MORE}</Button>
         )}
-        <Button onClick={onClose}>Close</Button>
       </div>
     </div>
   );
@@ -637,15 +642,7 @@ The backend will start on port ${backendPort}.`);
       // If we have a cached catalog, perform client-side filtering and avoid network
       if (Array.isArray(cachedCatalog) && cachedCatalog.length > 0) {
         try {
-          const qLower = String(q || '').trim().toLowerCase();
-          let filtered = cachedCatalog;
-          if (qLower.length >= 1) {
-            filtered = cachedCatalog.filter(item => {
-              const name = String(item.name || '').toLowerCase();
-              const desc = String(item.description || item.meta?.description || '').toLowerCase();
-              return name.includes(qLower) || desc.includes(qLower);
-            });
-          }
+          const filtered = filterCachedCatalogItems(cachedCatalog, q);
           const sliced = filtered.slice(offset, offset + limit);
           setResults(sliced);
           setTotal(filtered.length);
@@ -690,24 +687,25 @@ The backend will start on port ${backendPort}.`);
     <>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth data-testid="shapes-palette">
         <DialogTitle>Insert shape from catalog</DialogTitle>
-        <DialogContent>
-          <SearchBar value={q} onChange={setQ} loading={loading} onCache={downloadCatalogToLocal} caching={caching} />
-          <ShapesList
-            items={results}
-            colorScheme={colorScheme}
-            loading={loading}
-            onSelect={handleShapeSelect}
-            onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
-            onAddRecent={onAddRecent}
-          />
-          <FooterControls
-            total={total}
-            threshold={LARGE_CATALOG_THRESHOLD}
-            canLoadMore={offset + results.length < total}
-            onLoadMore={() => { setOffset(prev => prev + limit); }}
-            onClose={onClose}
-            loading={loading}
-          />
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1, padding: 2 }}>
+          <SearchBar value={q} onChange={setQ} loading={loading} onCache={downloadCatalogToLocal} caching={caching} onClose={onClose} />
+          <div style={{ overflow: 'auto', flex: 1, minHeight: 120 }} data-testid="shapes-list-scroll">
+            <ShapesList
+              items={results}
+              colorScheme={colorScheme}
+              loading={loading}
+              onSelect={handleShapeSelect}
+              onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
+              onAddRecent={onAddRecent}
+            />
+            <FooterControls
+              total={total}
+              threshold={LARGE_CATALOG_THRESHOLD}
+              canLoadMore={offset + results.length < total}
+              onLoadMore={() => { setOffset(prev => prev + limit); }}
+              loading={loading}
+            />
+          </div>
           <DeleteConfirmDialog
             open={confirmOpen}
             shape={toDelete}

@@ -3,8 +3,10 @@ import PropTypes from 'prop-types';
 import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
 
-export default function SearchBar({ value, onChange, loading, onCache, caching }) {
+export default function SearchBar({ value, onChange, loading, onCache, caching, onClose }) {
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
       <TextField
@@ -20,6 +22,11 @@ export default function SearchBar({ value, onChange, loading, onCache, caching }
         <Button size="small" variant="outlined" onClick={onCache} disabled={caching}>
           {caching ? 'Caching…' : 'Cache Catalog'}
         </Button>
+      )}
+      {typeof onClose === 'function' && (
+        <IconButton aria-label="close" size="small" onClick={onClose}>
+          <CloseIcon />
+        </IconButton>
       )}
     </div>
   );
