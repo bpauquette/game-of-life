@@ -42,6 +42,8 @@ export const useCanvasManager = ({
 }) => {
   const canvasRef = useRef(null);
   const [ready, setReady] = useState(false);
+  // store last observed content rect from ResizeObserver (if available)
+  const observedSizeRef = useRef(null);
   
   // Panning state
   const isPanningRef = useRef(false);
@@ -51,7 +53,8 @@ export const useCanvasManager = ({
   // Draw function - renders the game state
   const draw = useCallback(() => {
     if (!canvasRef.current || !offsetRef) return;
-    const ctx = canvasRef.current.getContext('2d');
+    const ctx = canvasRef.current.getContext && canvasRef.current.getContext('2d');
+    if (!ctx) return;
     const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
 
     // Use the current color scheme
@@ -129,8 +132,9 @@ export const useCanvasManager = ({
     if (!canvas) return;
 
     const dpr = (globalThis.window?.devicePixelRatio) || 1;
-    const logicalWidth = globalThis.window?.innerWidth || DEFAULT_WINDOW_WIDTH;
-    const logicalHeight = globalThis.window?.innerHeight || DEFAULT_WINDOW_HEIGHT;
+  // Prefer observed container size when available (ResizeObserver); fall back to window size
+  const logicalWidth = (observedSizeRef.current && observedSizeRef.current.width) || globalThis.window?.innerWidth || DEFAULT_WINDOW_WIDTH;
+  const logicalHeight = (observedSizeRef.current && observedSizeRef.current.height) || globalThis.window?.innerHeight || DEFAULT_WINDOW_HEIGHT;
 
     // set CSS size (so canvas looks correct in layout)
     canvas.style.width = `${logicalWidth}px`;
@@ -310,7 +314,45 @@ export const useCanvasManager = ({
     // initial size and subscribe
     resizeCanvas();
     globalThis.window.addEventListener('resize', resizeCanvas);
-    return () => globalThis.window.removeEventListener('resize', resizeCanvas);
+
+    // Setup ResizeObserver on the canvas container to automatically resize when
+    // layout changes (e.g., header hide/show). If ResizeObserver is unavailable
+    // fall back to window resize events only.
+    let ro;
+    try {
+      if (typeof globalThis.ResizeObserver !== 'undefined') {
+        ro = new globalThis.ResizeObserver((entries) => {
+          try {
+            const entry = entries && entries[0];
+            const rect = entry && (entry.contentRect || (entry.borderBoxSize && entry.borderBoxSize[0]));
+            if (rect) {
+              // contentRect may provide width/height directly
+              const width = rect.width || (rect.inlineSize || 0);
+              const height = rect.height || (rect.blockSize || 0);
+              observedSizeRef.current = { width: Math.max(1, Math.floor(width)), height: Math.max(1, Math.floor(height)) };
+              // resizeCanvas will read observedSizeRef and redraw
+              resizeCanvas();
+            } else if (entry && entry.target) {
+              // fallback: read client rect of the observed element
+              const b = entry.target.getBoundingClientRect();
+              observedSizeRef.current = { width: Math.max(1, Math.floor(b.width)), height: Math.max(1, Math.floor(b.height)) };
+              resizeCanvas();
+            }
+          } catch (err) {
+            // swallow observer errors to avoid breaking the app
+          }
+        });
+        const el = canvasRef.current ? (canvasRef.current.parentElement || canvasRef.current) : null;
+        if (el) ro.observe(el);
+      }
+    } catch (err) {
+      // ignore
+    }
+
+    return () => {
+      globalThis.window.removeEventListener('resize', resizeCanvas);
+      try { if (ro) ro.disconnect(); } catch (e) { /* ignore */ }
+    };
   }, [ready, resizeCanvas]);
 
   return {

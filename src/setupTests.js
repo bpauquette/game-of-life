@@ -94,3 +94,33 @@ afterAll(() => {
   console.warn?.mockRestore?.();
   console.error?.mockRestore?.();
 });
+
+// Minimal ResizeObserver mock for jsdom environments used in tests.
+// Tests can trigger resize notifications by calling ResizeObserver.__trigger(entries)
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  (function () {
+    const instances = [];
+    class MockRO {
+      constructor(cb) {
+        this.cb = cb;
+        instances.push(this);
+      }
+      observe(_el) {
+        // no-op; tests will trigger callbacks manually
+      }
+      unobserve(_el) {
+        // no-op
+      }
+      disconnect() {
+        // no-op
+      }
+      // helper for tests to trigger observers
+      static __trigger(entries) {
+        for (const inst of instances) {
+          try { inst.cb(entries); } catch (e) { /* ignore */ }
+        }
+      }
+    }
+    globalThis.ResizeObserver = MockRO;
+  }());
+}
