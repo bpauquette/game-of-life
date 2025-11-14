@@ -83,6 +83,7 @@ export default function HeaderBar({
   isSidebarOpen,
   isSmall,
   headerRef,
+  shapesReady = false,
   // tools row
   selectedTool,
   setSelectedTool,
@@ -194,7 +195,7 @@ export default function HeaderBar({
         {/* Second row: ToolGroup */}
         {showToolsRow && (
           <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(0,0,0,0.28)', borderBottom: '1px solid rgba(255,255,255,0.18)', zIndex: 40, pointerEvents: 'auto', overflowX: 'auto' }}>
-            <ToolGroup selectedTool={selectedTool} setSelectedTool={setSelectedTool} isSmall={isSmall} />
+            <ToolGroup selectedTool={selectedTool} setSelectedTool={setSelectedTool} isSmall={isSmall} shapesEnabled={shapesReady} />
             {/* Only show chip if enough space for both chip and tool icons */}
             {(!isSmall || (globalThis.window !== undefined && window.innerWidth > 520)) && (
               <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
@@ -296,6 +297,7 @@ HeaderBar.propTypes = {
   headerRef: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
   selectedTool: PropTypes.string,
   setSelectedTool: PropTypes.func,
+  shapesReady: PropTypes.bool,
   showToolsRow: PropTypes.bool,
   detectStablePopulation: PropTypes.bool,
   setDetectStablePopulation: PropTypes.func,

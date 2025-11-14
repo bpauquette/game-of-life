@@ -237,7 +237,9 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRe
             sx={{ mr: 1, color: '#388e3c', bgcolor: 'rgba(56,142,60,0.08)', borderRadius: 1 }}
             onClick={(e) => {
               e.stopPropagation();
-              onAddRecent(s);
+              // Defer the onAddRecent call to a microtask so the click handler
+              // returns immediately and any heavier work runs asynchronously.
+              Promise.resolve().then(() => onAddRecent(s));
             }}
             data-testid={`add-recent-btn-${keyBase}`}
           >
@@ -829,6 +831,10 @@ The backend will start on port ${backendPort}.`);
           // Use the full filtered catalog so the palette shows everything immediately
           setResults(filtered);
           setTotal(filtered.length);
+          // We performed a local, synchronous filter so ensure loading is
+          // cleared. Previously this branch neglected to call setLoading(false)
+          // which left the SearchBar/loader in a perpetual spinning state.
+          setLoading(false);
         } catch (e) {
           logger.warn('Local catalog filter failed, falling back to server:', e?.message);
           await fetchAndUpdateShapes({
@@ -898,7 +904,10 @@ The backend will start on port ${backendPort}.`);
       >
         <DialogTitle>Insert shape from catalog</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1, padding: 2 }}>
-          <SearchBar value={q} onChange={setQ} loading={loading} onClose={onClose} onClear={handleClearCache} />
+      {/* Hide the inline spinner to avoid a distracting persistent progress indicator.
+        Loading state still controls network/cache behavior but we don't show
+        the small spinner in the SearchBar to keep the UI calm. */}
+      <SearchBar value={q} onChange={setQ} loading={false} onClose={onClose} onClear={handleClearCache} />
           {useIndexedDB && caching && cacheProgress?.total > 0 && (
             <div style={{ marginTop: 8 }}>
               <LinearProgress variant="determinate" value={(cacheProgress.done / Math.max(1, cacheProgress.total)) * 100} />

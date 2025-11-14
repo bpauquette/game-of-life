@@ -3,6 +3,8 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useShapeManager } from './hooks/useShapeManager';
 import useGridMousePosition from './hooks/useGridMousePosition';
 import useInitialShapeLoader from '../hooks/useInitialShapeLoader';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import LoadingShapesOverlay from './LoadingShapesOverlay';
 import { loadGridIntoGame, rotateAndApply } from './utils/gameUtils';
 import { colorSchemes } from '../model/colorSchemes';
@@ -100,7 +102,15 @@ function GameOfLifeApp(props) {
   // Preload shapes into IndexedDB on startup. Strategy can be configured
   // via window.GOL_PRELOAD_STRATEGY or REACT_APP_PRELOAD_SHAPES; default is 'background'.
   const preloadStrategy = (typeof window !== 'undefined' && window.GOL_PRELOAD_STRATEGY) || process.env.REACT_APP_PRELOAD_SHAPES || 'background';
-  const { loading: shapesLoading, progress: shapesProgress, error: shapesError, start: shapesStart } = useInitialShapeLoader({ strategy: preloadStrategy, autoStart: true });
+  const { loading: shapesLoading, progress: shapesProgress, error: shapesError, ready: shapesReady, start: shapesStart } = useInitialShapeLoader({ strategy: preloadStrategy, autoStart: true });
+
+  // Notification snackbar when shapes catalog becomes ready
+  const [shapesNotifOpen, setShapesNotifOpen] = useState(false);
+  useEffect(() => {
+    if (shapesReady) {
+      setShapesNotifOpen(true);
+    }
+  }, [shapesReady]);
 
   // track cursor using the canvas DOM element
   const cursorCell = useGridMousePosition({ canvasRef, cellSize });
@@ -314,6 +324,32 @@ function GameOfLifeApp(props) {
       const mvc = new GameMVC(canvasEl, {});
       gameRef.current = mvc;
 
+      // Sync the React `selectedTool` state with the MVC model's selectedTool
+      // so the ToolGroup reflects the current tool on initial load and when
+      // the model updates (for example after importing state or restoring
+      // from a saved session). We add a lightweight observer that updates
+      // the React state when the model notifies a `selectedToolChanged`.
+      try {
+        const model = mvc.model;
+        if (model && typeof model.getSelectedTool === 'function') {
+          // Initialize local selection from model
+          setSelectedTool(model.getSelectedTool());
+        }
+        const observer = (event, data) => {
+          if (event === 'selectedToolChanged') {
+            try { setSelectedTool(data); } catch (e) { /* ignore */ }
+          }
+        };
+        model.addObserver(observer);
+        // Ensure we remove the observer when the MVC instance is destroyed
+        // by capturing the observer reference in the mvc instance for cleanup.
+        mvc._reactSelectedToolObserver = observer;
+      } catch (e) {
+        // Non-fatal; continue initialization
+        // eslint-disable-next-line no-console
+        console.warn('Failed to sync selectedTool from MVC model:', e);
+      }
+
       applyPendingLoad(mvc);
       syncOffsetFromMVC(mvc);
       applyInitialColorScheme(mvc);
@@ -323,9 +359,20 @@ function GameOfLifeApp(props) {
     }
 
     return () => {
-      if (gameRef.current && typeof gameRef.current.destroy === 'function') {
+      if (gameRef.current) {
         try {
-          gameRef.current.destroy();
+          // Remove any observer we registered on the model
+          try {
+            const obs = gameRef.current._reactSelectedToolObserver;
+            if (obs && gameRef.current.model && typeof gameRef.current.model.removeObserver === 'function') {
+              gameRef.current.model.removeObserver(obs);
+            }
+          } catch (e) {
+            // ignore
+          }
+          if (typeof gameRef.current.destroy === 'function') {
+            gameRef.current.destroy();
+          }
         } catch (e) {
           // Log destruction errors for diagnostics; cleanup should continue.
           // eslint-disable-next-line no-console
@@ -401,7 +448,7 @@ function GameOfLifeApp(props) {
   return (
     <>
   <LoadingShapesOverlay loading={shapesLoading} progress={shapesProgress} error={shapesError} onRetry={shapesStart} />
-      <GameUILayout
+    <GameUILayout
       recentShapes={shapeManager.recentShapes}
       onSelectShape={handleSelectShape}
   drawWithOverlay={drawWithOverlay}
@@ -410,6 +457,7 @@ function GameOfLifeApp(props) {
       onSwitchToShapesTool={() => gameRef.current?.setSelectedTool?.('shapes')}
       controlsProps={controlsProps}
       selectedTool={selectedTool}
+    shapesReady={shapesReady}
       uiState={uiState}
       onClosePalette={closePalette}
       onPaletteSelect={(shape) => { gameRef.current?.setSelectedShape?.(shape); shapeManager.selectShapeAndClosePalette(shape); }}
@@ -432,6 +480,11 @@ function GameOfLifeApp(props) {
       isSmall={isSmall}
       onToggleChrome={toggleChrome}
     />
+      <Snackbar open={shapesNotifOpen} autoHideDuration={4000} onClose={() => setShapesNotifOpen(false)}>
+        <Alert severity="success" onClose={() => setShapesNotifOpen(false)} sx={{ width: '100%' }}>
+          Shapes catalog loaded
+        </Alert>
+      </Snackbar>
     </>
   );
 }

@@ -226,7 +226,33 @@ export const useShapeManager = ({
     // Add a recent shape programmatically
     addRecentShape: (shape) => {
       if (!shape) return;
-      updateRecentShapesList(shape);
+      try {
+        // Fast optimistic update: insert a small stub immediately so the UI
+        // responds without waiting for any heavier processing. The full
+        // shape (with cells) is reconciled on the next microtask.
+        const stub = {
+          id: shape.id,
+          name: shape.name || shape.meta?.name,
+          width: shape.width || shape.meta?.width,
+          height: shape.height || shape.meta?.height,
+          // preserve a minimal preview-friendly meta so RecentShapesStrip can render quickly
+          meta: shape.meta ? { width: shape.meta.width, height: shape.meta.height } : undefined
+        };
+        setRecentShapes(prev => {
+          const newKey = generateShapeKey(stub);
+          const filtered = prev.filter(s => generateShapeKey(s) !== newKey);
+          return [stub, ...filtered].slice(0, MAX_RECENT_SHAPES);
+        });
+
+        // Defer the full update (which may be slightly heavier) to the next
+        // microtask so the click handler returns immediately.
+        Promise.resolve().then(() => {
+          try { updateRecentShapesList(shape); } catch (e) { /* swallow */ }
+        });
+      } catch (e) {
+        // Fallback to the original behavior on unexpected errors
+        updateRecentShapesList(shape);
+      }
     },
     
     // Internal utilities (exposed for testing)

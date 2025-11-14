@@ -15,7 +15,7 @@ import OvalIcon from '../components/OvalIcon';
 import HorizontalRuleIcon from '@mui/icons-material/HorizontalRule';
 
 // ToolGroup groups the primary tools into a single, reusable control
-export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = false }) {
+export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = false, shapesEnabled = true }) {
   return (
     <ToggleButtonGroup
       value={selectedTool}
@@ -42,8 +42,12 @@ export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = fal
       }}
     >
       {/* Shapes tool first, to the left of Draw */}
-  <ToggleButton value="shapes" aria-label="shapes" onClick={() => { if (selectedTool === 'shapes') setSelectedTool('shapes'); }}>
-    <Tooltip title={TOOL_DESCRIPTIONS.shapes}><WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip>
+  <ToggleButton value="shapes" aria-label="shapes" disabled={!shapesEnabled} onClick={() => { if (selectedTool === 'shapes') setSelectedTool('shapes'); }}>
+    <Tooltip title={shapesEnabled ? TOOL_DESCRIPTIONS.shapes : 'Shapes loading...'}>
+      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+        <WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} />
+      </span>
+    </Tooltip>
   </ToggleButton>
   <ToggleButton value="draw" aria-label="draw"><Tooltip title={TOOL_DESCRIPTIONS.draw}><EditIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
   <ToggleButton value="eraser" aria-label="eraser"><Tooltip title={TOOL_DESCRIPTIONS.eraser}><BackspaceIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>

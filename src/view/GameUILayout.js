@@ -43,6 +43,7 @@ function GameUILayout({
   onToggleSidebar,
   isSmall,
   onToggleChrome
+  , shapesReady
 }) {
   // measure header height so content is positioned correctly under it
   const headerRef = useRef(null);
@@ -170,6 +171,7 @@ function GameUILayout({
           isSmall={isSmall}
           selectedTool={selectedTool}
           setSelectedTool={controlsProps?.setSelectedTool}
+          shapesReady={shapesReady}
           showToolsRow={true}
         />
       )}
@@ -182,6 +184,7 @@ function GameUILayout({
           backendBase={controlsProps?.backendBase}
           colorScheme={colorScheme}
           onAddRecent={controlsProps?.onAddRecent}
+          prefetchOnMount={true}
         />
         <CaptureDialogPortal
           open={captureDialogOpen}

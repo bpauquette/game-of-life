@@ -1,32 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import logger from '../controller/utils/logger';
 import { putItems, getAllItems } from '../view/idbCatalog';
-import { shapes as bundledShapes } from '../model/shapes';
+import { fetchShapes, getBaseUrl } from '../utils/backendApi';
 
-function toShapeArray(shapesObj) {
-  // Convert the shapes map into an array of shape objects suitable for IDB
-  return Object.keys(shapesObj || {}).map((key) => {
-    const pattern = shapesObj[key];
-    const cells = Array.isArray(pattern) ? pattern.map(([x, y]) => ({ x, y })) : [];
-    return {
-      id: key,
-      name: key,
-      cells,
-      meta: { source: 'bundled', originalKey: key, cellCount: cells.length }
-    };
-  });
-}
-
-export default function useInitialShapeLoader({ strategy = 'background', batchSize = 200, autoStart = true } = {}) {
+// Fetch the full catalog from the backend in paged requests and write to IDB.
+export default function useInitialShapeLoader({ strategy = 'background', batchSize = 200, autoStart = true, backendBase } = {}) {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState(null);
+  const [ready, setReady] = useState(false);
   const aborted = useRef(false);
 
   const start = async () => {
     if (loading) return;
     setError(null);
     setLoading(true);
+    setReady(false);
     try {
       // If IDB is unavailable, getAllItems will reject; handle that gracefully
       let existing = [];
@@ -37,39 +26,43 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
         existing = null; // signal unavailable
       }
 
+      // If we already have items in IDB, treat that as ready
       if (Array.isArray(existing) && existing.length > 0) {
-        // Nothing to do
         setProgress({ done: existing.length, total: existing.length });
+        try { if (typeof globalThis !== 'undefined') globalThis.__GOL_SHAPES_CACHE__ = existing; } catch (e) {}
+        setReady(true);
         setLoading(false);
         return;
       }
 
-      // Prepare shapes from bundled source for insertion
-      const shapesArr = toShapeArray(bundledShapes);
-      // Expose an in-memory cache for fast sync access by UI components
-      try {
-        if (typeof globalThis !== 'undefined') {
-          globalThis.__GOL_SHAPES_CACHE__ = shapesArr;
-        }
-      } catch (e) {
-        logger.debug('Failed to set global shapes cache', e);
-      }
-      setProgress({ done: 0, total: shapesArr.length });
+      // Always fetch the full catalog from backend (one-time startup behavior)
+      const base = getBaseUrl(backendBase);
+      const page = batchSize || 200;
+      let offset = 0;
+      let all = [];
 
-      // Insert in batches using requestIdleCallback when available to avoid UI jank
-      for (let i = 0; i < shapesArr.length && !aborted.current; i += batchSize) {
-        const batch = shapesArr.slice(i, i + batchSize);
+      while (!aborted.current) {
+        const out = await fetchShapes(base, '', page, offset);
+        if (!out.ok) {
+          throw new Error(`Failed to fetch shapes: status ${out.status}`);
+        }
+        const items = out.items || [];
+        const total = out.total || 0;
+        if (offset === 0) setProgress({ done: 0, total: total });
+        if (!items.length) break;
+        all = all.concat(items);
+        // write batches to IDB as we go to avoid holding everything in memory
         try {
-          await putItems(batch, { batchSize: batch.length, progressCb: ({ done }) => {
-            // putItems reports cumulative done; we'll compute based on i
-            const cumulative = Math.min(shapesArr.length, i + done);
-            setProgress({ done: cumulative, total: shapesArr.length });
+          await putItems(items, { batchSize: items.length, progressCb: ({ done }) => {
+            // approximate cumulative done
+            setProgress({ done: Math.min(total, all.length), total });
           }});
         } catch (err) {
           logger.error('useInitialShapeLoader: failed to put batch into IDB', err);
           throw err;
         }
-
+        offset += items.length;
+        if (all.length >= total) break;
         // yield to browser so paint can happen
         await new Promise((resolve) => {
           if (typeof requestIdleCallback === 'function') return requestIdleCallback(resolve);
@@ -78,14 +71,9 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
       }
 
       if (!aborted.current) {
-        setProgress({ done: shapesArr.length, total: shapesArr.length });
-        try {
-          if (typeof globalThis !== 'undefined') {
-            globalThis.__GOL_SHAPES_CACHE__ = shapesArr;
-          }
-        } catch (e) {
-          logger.debug('Failed to set global shapes cache after insert', e);
-        }
+        setProgress({ done: all.length, total: all.length });
+        try { if (typeof globalThis !== 'undefined') globalThis.__GOL_SHAPES_CACHE__ = all; } catch (e) {}
+        setReady(true);
       }
     } catch (err) {
       logger.error('useInitialShapeLoader: initial load failed', err);
@@ -98,12 +86,12 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
   useEffect(() => {
     aborted.current = false;
     if (autoStart) {
-      // background strategy means we don't block anything; just start
+      // start fetching from backend at startup
       start();
     }
     return () => { aborted.current = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { loading, progress, error, start };
+  return { loading, progress, error, ready, start };
 }
