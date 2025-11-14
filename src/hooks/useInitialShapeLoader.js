@@ -26,8 +26,43 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
         existing = null; // signal unavailable
       }
 
-      // If we already have items in IDB, treat that as ready
+      // If we already have items in IDB, check for duplicates and
+      // deduplicate in-place. This avoids returning early when a prior
+      // double-fetch has left duplicate entries (observed as exactly
+      // double the expected catalog size).
       if (Array.isArray(existing) && existing.length > 0) {
+        // compute fingerprint (same logic used below)
+        const fingerprint = (s) => {
+          if (!s) return '';
+          if (s.id) return `id:${s.id}`;
+          const name = s.name || s.meta?.name || '';
+          const cells = s.cells || s.pattern || s.liveCells || [];
+          try { return `nm:${name}#c:${JSON.stringify(cells)}`; } catch (e) { return `nm:${name}#c:${cells.length||0}`; }
+        };
+        const seen = new Set();
+        const deduped = [];
+        for (let i = 0; i < existing.length; i++) {
+          const s = existing[i];
+          const key = fingerprint(s);
+          if (!seen.has(key)) { seen.add(key); deduped.push(s); }
+        }
+        if (deduped.length !== existing.length) {
+          // rewrite IDB with deduped list
+          try {
+            await clearStore();
+            await putItems(deduped, { batchSize: batchSize || 200, progressCb: ({ done, total: t }) => {
+              setProgress({ done: Math.min(deduped.length, done || 0), total: deduped.length });
+            }});
+          } catch (e) {
+            logger.warn('useInitialShapeLoader: failed to rewrite deduped existing catalog', e?.message);
+          }
+          try { if (typeof globalThis !== 'undefined') globalThis.__GOL_SHAPES_CACHE__ = deduped; } catch (e) {}
+          setProgress({ done: deduped.length, total: deduped.length });
+          setReady(true);
+          setLoading(false);
+          return;
+        }
+        // already deduped: set cache and report ready
         setProgress({ done: existing.length, total: existing.length });
         try { if (typeof globalThis !== 'undefined') globalThis.__GOL_SHAPES_CACHE__ = existing; } catch (e) {}
         setReady(true);
