@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import ShapePaletteDialog from './ShapePaletteDialog';
 
-function PalettePortal({ open, onClose, onSelectShape, backendBase, colorScheme, onAddRecent, prefetchOnMount = true }) {
+function PalettePortal({ open, onClose, onSelectShape, backendBase, colorScheme, onAddRecent, prefetchOnMount = false }) {
   // Always mount the ShapePaletteDialog so it can preload the catalog and
   // keep its cached state across open/close cycles. The `open` prop still
   // controls visibility; mounting once at app start avoids expensive remounts.
