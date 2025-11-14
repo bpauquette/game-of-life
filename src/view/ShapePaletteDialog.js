@@ -698,6 +698,7 @@ The backend will start on port ${backendPort}.`);
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setLoading(true);
+    // shorter debounce for more responsive typing
     timerRef.current = setTimeout(() => {
       if (Array.isArray(cachedCatalog) && cachedCatalog.length > 0) {
         try {
@@ -717,7 +718,7 @@ The backend will start on port ${backendPort}.`);
         setTotal(0);
       }
       setLoading(false);
-    }, 300);
+    }, 150);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [q, cachedCatalog]);
 
@@ -767,34 +768,30 @@ The backend will start on port ${backendPort}.`);
             </div>
           )}
           <div style={{ overflow: 'auto', flex: 1, minHeight: 120 }} data-testid="shapes-list-scroll">
-            {/* If the catalog is huge and the user hasn't typed 3+ characters,
-                only render the first MAX_RENDER_ITEMS to avoid UI jank. When
-                the user types 3+ characters the full filtered set will be
-                computed and usually be much smaller. */}
-            {Array.isArray(cachedCatalog) && cachedCatalog.length > MAX_RENDER_ITEMS && String(q || '').trim().length < 3 ? (
-              <>
-                <ShapesList
-                  items={results.slice(0, MAX_RENDER_ITEMS)}
-                  colorScheme={colorScheme}
-                  loading={loading}
-                  onSelect={handleShapeSelect}
-                  onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
-                  onAddRecent={onAddRecent}
-                />
-                <div style={{ padding: '8px 12px', fontSize: 12, color: 'rgba(0,0,0,0.6)' }}>
-                  Showing first {MAX_RENDER_ITEMS} of {cachedCatalog.length} shapes. Type 3+ characters to search the full catalog.
-                </div>
-              </>
-            ) : (
-              <ShapesList
-                items={results}
-                colorScheme={colorScheme}
-                loading={loading}
-                onSelect={handleShapeSelect}
-                onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
-                onAddRecent={onAddRecent}
-              />
-            )}
+            {/* Render only up to MAX_RENDER_ITEMS to avoid jank when the
+                filtered result set is large. Always show a brief hint when
+                results are capped and the user can refine their query. */}
+            {(() => {
+              const tooMany = Array.isArray(results) && results.length > MAX_RENDER_ITEMS;
+              const display = tooMany ? results.slice(0, MAX_RENDER_ITEMS) : results;
+              return (
+                <>
+                  <ShapesList
+                    items={display}
+                    colorScheme={colorScheme}
+                    loading={loading}
+                    onSelect={handleShapeSelect}
+                    onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
+                    onAddRecent={onAddRecent}
+                  />
+                  {tooMany && (
+                    <div style={{ padding: '8px 12px', fontSize: 12, color: 'rgba(0,0,0,0.6)' }}>
+                      Showing first {MAX_RENDER_ITEMS} of {results.length} matches. Refine your search to narrow results.
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             <FooterControls
               total={total}
               threshold={LARGE_CATALOG_THRESHOLD}
