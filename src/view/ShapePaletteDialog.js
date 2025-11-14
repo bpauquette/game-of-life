@@ -112,84 +112,35 @@ function getShapeCellCount(s) {
 // Transition component for Snackbar - moved outside to avoid recreation on each render
 const SlideUpTransition = (props) => <Slide {...props} direction="up" />;
 
-// Enhanced: always check backend health if fetch error or status >= 500
-const looksLikeConnectionError = async (err, checkBackendHealth) => {
-  const msg = String(err?.message || err || '');
-  if (
-    msg.includes('fetch') ||
-    msg.includes('NetworkError') ||
-    msg.includes('ECONNREFUSED') ||
-    err?.code === 'ECONNREFUSED' ||
-    (err?.status && err.status >= 500)
-  ) {
-    return true;
+// Helper: fetch all pages of shapes from the backend (used by the
+// full-catalog downloader). Returns { all, reqCount, totalReqTime }.
+async function fetchAllShapes(base, page) {
+  let offsetLocal = 0;
+  let all = [];
+  let reqCount = 0;
+  let totalReqTime = 0;
+  while (true) {
+    const reqStart = Date.now();
+    const out = await fetchShapes(base, '', page, offsetLocal);
+    const reqMs = Date.now() - reqStart;
+    reqCount += 1;
+    totalReqTime += reqMs;
+    if (!out.ok) {
+      throw new Error(`Fetch shapes failed: ${out.status}`);
+    }
+    all = all.concat(out.items || []);
+    if (all.length >= (out.total || 0) || (out.items || []).length === 0) break;
+    offsetLocal += page;
   }
-  // If error is ambiguous, do a backend health check
-  if (typeof checkBackendHealth === 'function') {
-    const healthy = await checkBackendHealth();
-    return !healthy;
-  }
-  return false;
-};
+  return { all, reqCount, totalReqTime };
+}
 
 // fetchShapes now imported from backendApi.js
 
-async function maybeHandleBackendDown(err, { checkBackendHealth, cancelRef, setLoading, setShowBackendDialog }) {
-  if (!(await looksLikeConnectionError(err, checkBackendHealth))) return false;
-  const healthy = await checkBackendHealth();
-  if (healthy) return false;
-  if (!cancelRef.cancelled) {
-    setLoading(false);
-    setShowBackendDialog(true);
-  }
-  return true;
-}
-
-// Orchestrate fetch + state updates with cancellation support
-async function fetchAndUpdateShapes({
-  backendBase,
-  q,
-  limit,
-  offset,
-  setResults,
-  setTotal,
-  setLoading,
-  setShowBackendDialog,
-  checkBackendHealth,
-  cancelRef
-}) {
-  try {
-    const base = getBaseUrl(backendBase);
-    const out = await fetchShapes(base, q, limit, offset);
-    if (cancelRef.cancelled) return;
-    if (!out.ok) {
-      logger.warn('Shape search returned non-OK status:', out.status);
-      setResults([]);
-      setTotal(0);
-      // Fallback: show backend dialog if status >= 500 or no response
-      if (out.status >= 500 || out.status === undefined) {
-        setShowBackendDialog(true);
-      }
-      return;
-    }
-    setTotal(out.total);
-    setResults((prev) => (offset > 0 ? [...prev, ...out.items] : out.items));
-  } catch (err) {
-    logger.error('Shape search error:', err);
-    // Always log error and show a visible message if backend unreachable
-    if (await maybeHandleBackendDown(err, { checkBackendHealth, cancelRef, setLoading, setShowBackendDialog })) {
-      logger.error('Backend unreachable, showing dialog.');
-      return;
-    }
-    if (!cancelRef.cancelled) {
-      setResults([]);
-      setShowBackendDialog(true);
-      logger.error('Fallback: backend unreachable, dialog forced.');
-    }
-  } finally {
-    if (!cancelRef.cancelled) setLoading(false);
-  }
-}
+// Note: network-driven search paths were removed. The UI assumes the
+// full catalog will be cached before the Shapes tool becomes active,
+// so all searching/filtering happens client-side against the cached
+// catalog. This keeps the dialog logic simple and predictable.
 
 // Helper: filter a cached catalog by query
 function filterCachedCatalogItems(catalog, q) {
@@ -639,63 +590,27 @@ The backend will start on port ${backendPort}.`);
   }, [open]);
   
   
-  // On mount, try to read cached catalog from IndexedDB (preferred).
+  // On mount, read any existing cached catalog (in-memory or IndexedDB).
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        // First, check for an in-memory cache preloaded at startup for instant availability
         const mem = (typeof globalThis !== 'undefined') ? globalThis.__GOL_SHAPES_CACHE__ : null;
         if (mounted && Array.isArray(mem) && mem.length > 0) {
           setCachedCatalog(mem);
-          // Show the full in-memory catalog immediately
           setResults(mem);
           setTotal(mem.length);
-          setOffset(0);
-          setInitialCacheLoaded(true);
-          // Log load time if we started timing when the dialog opened
-          try {
-            if (loadStartRef.current) {
-              const ms = Date.now() - loadStartRef.current;
-              logger.info(`[ShapePaletteDialog] Loaded ${mem.length} shapes from in-memory cache into palette in ${ms}ms`);
-              // Also surface a UI toast so it's visible without changing logger level
-              setSnackMsg(`Loaded ${mem.length} shapes in ${ms}ms`);
-              setSnackDetails(null);
-              setSnackOpen(true);
-            }
-          } catch (e) {
-            logger.debug('Failed to log shape palette load time (mem):', e);
-          }
           return;
         }
-
         const items = await idbCatalog.getAllItems();
         if (mounted && Array.isArray(items) && items.length > 0) {
-          // Use the full cached catalog so the palette appears instantly
           setCachedCatalog(items);
           setResults(items);
           setTotal(items.length);
-          setOffset(0);
-          // Log how long it took to load the cached catalog into the palette
-          try {
-            if (loadStartRef.current) {
-              const ms = Date.now() - loadStartRef.current;
-              logger.info(`[ShapePaletteDialog] Loaded ${items.length} shapes from IndexedDB into palette in ${ms}ms`);
-              // Also show a UI toast so it's visible to users immediately
-              setSnackMsg(`Loaded ${items.length} shapes in ${ms}ms`);
-              setSnackDetails(null);
-              setSnackOpen(true);
-            }
-          } catch (e) {
-            logger.debug('Failed to log shape palette load time (idb):', e);
-          }
         }
       } catch (e) {
-        // IndexedDB may not be available in some environments; that's OK.
-        // Demote to debug so normal runs/tests aren't noisy.
-        logger.debug('No IndexedDB cache available on mount:', e?.message);
-      }
-      finally {
+        logger.debug('No IndexedDB cache available on mount');
+      } finally {
         if (mounted) setInitialCacheLoaded(true);
       }
     })();
@@ -728,27 +643,12 @@ The backend will start on port ${backendPort}.`);
   const downloadCatalogToLocal = useCallback(async () => {
     setCaching(true);
     try {
-      const startTs = Date.now();
-      const base = getBaseUrl(backendBase);
-      const page = 200;
-      let offsetLocal = 0;
-      let all = [];
-      let reqCount = 0;
-      let totalReqTime = 0;
-      while (true) {
-        const reqStart = Date.now();
-        const out = await fetchShapes(base, '', page, offsetLocal);
-        const reqMs = Date.now() - reqStart;
-        reqCount += 1;
-        totalReqTime += reqMs;
-        if (!out.ok) {
-          throw new Error(`Fetch shapes failed: ${out.status}`);
-        }
-        all = all.concat(out.items || []);
-        if (all.length >= (out.total || 0) || out.items.length === 0) break;
-        offsetLocal += page;
-      }
-      setCachedCatalog(all);
+    const startTs = Date.now();
+    const base = getBaseUrl(backendBase);
+    const page = 200;
+    // Fetch all paged shapes via helper
+    const { all, reqCount, totalReqTime } = await fetchAllShapes(base, page);
+    setCachedCatalog(all);
       // If IndexedDB is available, write there in batches and report progress.
       if (useIndexedDB) {
         try {
@@ -766,7 +666,8 @@ The backend will start on port ${backendPort}.`);
       setSnackMsg(`Cached ${all.length} shapes in ${(totalMs / 1000).toFixed(1)}s`);
       setSnackDetails(`Requests: ${reqCount}, avg ${avgReqMs}ms`);
       setSnackOpen(true);
-  // update UI: show everything immediately after caching completes
+  // update UI: show the full cached catalog (the Shapes tool is
+  // disabled until the cache is ready, so we don't need partial states)
   setResults(all);
   setTotal(all.length);
   setOffset(0);
@@ -810,67 +711,34 @@ The backend will start on port ${backendPort}.`);
 
   // loader flow handled in the render below; do not early-return to keep hooks order stable
 
-  useEffect(()=>{
-    const cancelRef = { cancelled: false };
+  // Simplified search: the Shapes tool is disabled until the full
+  // catalog is cached, so only perform client-side filtering. This
+  // avoids partial/network-driven states and keeps the component lean.
+  useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setLoading(true);
-    const doSearch = async (cRef) => {
-      // If we've just finished a full-catalog cache and explicitly set
-      // `results` to the entire catalog, skip the very next local filter
-      // run so the UI remains showing all cached items. This flag is
-      // cleared immediately so normal paging/filtering resumes afterwards.
-      if (skipNextLocalFilterRef.current) {
-        skipNextLocalFilterRef.current = false;
-        setLoading(false);
-        return;
-      }
-      // If we have a cached catalog, perform client-side filtering and avoid network
+    timerRef.current = setTimeout(() => {
       if (Array.isArray(cachedCatalog) && cachedCatalog.length > 0) {
         try {
           const filtered = filterCachedCatalogItems(cachedCatalog, q);
-          // Use the full filtered catalog so the palette shows everything immediately
           setResults(filtered);
           setTotal(filtered.length);
-          // We performed a local, synchronous filter so ensure loading is
-          // cleared. Previously this branch neglected to call setLoading(false)
-          // which left the SearchBar/loader in a perpetual spinning state.
-          setLoading(false);
         } catch (e) {
-          logger.warn('Local catalog filter failed, falling back to server:', e?.message);
-          await fetchAndUpdateShapes({
-            backendBase,
-            q,
-            limit,
-            offset,
-            setResults,
-            setTotal,
-            setLoading,
-            setShowBackendDialog,
-            checkBackendHealth,
-            cancelRef: cRef
-          });
+          logger.warn('Local catalog filter failed:', e?.message);
+          setResults([]);
+          setTotal(0);
         }
       } else {
-        await fetchAndUpdateShapes({
-          backendBase,
-          q,
-          limit,
-          offset,
-          setResults,
-          setTotal,
-          setLoading,
-          setShowBackendDialog,
-          checkBackendHealth,
-          cancelRef: cRef
-        });
+        // No cached catalog yet; show empty results. The loader dialog
+        // (shown elsewhere) will fetch the full catalog before the
+        // shapes tool becomes clickable.
+        setResults([]);
+        setTotal(0);
       }
-    };
-
-    timerRef.current = setTimeout(() => {
-      doSearch(cancelRef);
+      setLoading(false);
     }, 300);
-    return () => { cancelRef.cancelled = true; if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [q, backendBase, offset, limit, cachedCatalog]);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [q, cachedCatalog]);
 
   return (
     <>
