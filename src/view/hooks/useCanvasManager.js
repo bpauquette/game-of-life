@@ -132,9 +132,28 @@ export const useCanvasManager = ({
     if (!canvas) return;
 
     const dpr = (globalThis.window?.devicePixelRatio) || 1;
-  // Prefer observed container size when available (ResizeObserver); fall back to window size
-  const logicalWidth = (observedSizeRef.current && observedSizeRef.current.width) || globalThis.window?.innerWidth || DEFAULT_WINDOW_WIDTH;
-  const logicalHeight = (observedSizeRef.current && observedSizeRef.current.height) || globalThis.window?.innerHeight || DEFAULT_WINDOW_HEIGHT;
+    // Prefer the canvas's actual layout rect when available (most robust across browsers)
+    // This avoids observing a parent element that may not reflect the canvas' final
+    // visual size (fixed positioning / stacking contexts can make parent sizes
+    // meaningless in some browsers like Chrome).
+    let logicalWidth = DEFAULT_WINDOW_WIDTH;
+    let logicalHeight = DEFAULT_WINDOW_HEIGHT;
+    try {
+      const rect = canvas.getBoundingClientRect();
+      if (rect && rect.width && rect.height) {
+        logicalWidth = Math.max(1, Math.floor(rect.width));
+        logicalHeight = Math.max(1, Math.floor(rect.height));
+      } else if (observedSizeRef.current) {
+        logicalWidth = observedSizeRef.current.width;
+        logicalHeight = observedSizeRef.current.height;
+      } else {
+        logicalWidth = globalThis.window?.innerWidth || DEFAULT_WINDOW_WIDTH;
+        logicalHeight = globalThis.window?.innerHeight || DEFAULT_WINDOW_HEIGHT;
+      }
+    } catch (err) {
+      logicalWidth = (observedSizeRef.current && observedSizeRef.current.width) || globalThis.window?.innerWidth || DEFAULT_WINDOW_WIDTH;
+      logicalHeight = (observedSizeRef.current && observedSizeRef.current.height) || globalThis.window?.innerHeight || DEFAULT_WINDOW_HEIGHT;
+    }
 
     // set CSS size (so canvas looks correct in layout)
     canvas.style.width = `${logicalWidth}px`;
@@ -323,26 +342,34 @@ export const useCanvasManager = ({
       if (typeof globalThis.ResizeObserver !== 'undefined') {
         ro = new globalThis.ResizeObserver((entries) => {
           try {
-            const entry = entries && entries[0];
-            const rect = entry && (entry.contentRect || (entry.borderBoxSize && entry.borderBoxSize[0]));
-            if (rect) {
-              // contentRect may provide width/height directly
-              const width = rect.width || (rect.inlineSize || 0);
-              const height = rect.height || (rect.blockSize || 0);
-              observedSizeRef.current = { width: Math.max(1, Math.floor(width)), height: Math.max(1, Math.floor(height)) };
-              // resizeCanvas will read observedSizeRef and redraw
-              resizeCanvas();
-            } else if (entry && entry.target) {
-              // fallback: read client rect of the observed element
-              const b = entry.target.getBoundingClientRect();
-              observedSizeRef.current = { width: Math.max(1, Math.floor(b.width)), height: Math.max(1, Math.floor(b.height)) };
-              resizeCanvas();
-            }
+            // Use requestAnimationFrame to ensure layout has stabilized in the
+            // browser before reading bounding rects. Some browsers (Chrome)
+            // may schedule RO callbacks before final layout is committed.
+            requestAnimationFrame(() => {
+              const entry = entries && entries[0];
+              let width = 0; let height = 0;
+              if (entry && entry.contentRect) {
+                width = entry.contentRect.width || 0;
+                height = entry.contentRect.height || 0;
+              }
+              // If contentRect isn't available (some RO implementations), prefer
+              // to read the canvas's own boundingClientRect which reflects the
+              // visual size we care about.
+              if ((!width || !height) && canvasRef.current) {
+                const b = canvasRef.current.getBoundingClientRect();
+                width = b.width || width;
+                height = b.height || height;
+              }
+              if (width && height) {
+                observedSizeRef.current = { width: Math.max(1, Math.floor(width)), height: Math.max(1, Math.floor(height)) };
+                resizeCanvas();
+              }
+            });
           } catch (err) {
             // swallow observer errors to avoid breaking the app
           }
         });
-        const el = canvasRef.current ? (canvasRef.current.parentElement || canvasRef.current) : null;
+        const el = canvasRef.current || null;
         if (el) ro.observe(el);
       }
     } catch (err) {
