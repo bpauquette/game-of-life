@@ -293,7 +293,17 @@ function GameOfLifeApp(props) {
       if (vp) {
         offsetRef.current.x = vp.offsetX ?? offsetRef.current.x;
         offsetRef.current.y = vp.offsetY ?? offsetRef.current.y;
-        offsetRef.current.cellSize = vp.cellSize ?? offsetRef.current.cellSize;
+        // Only adopt the MVC-provided cellSize when the UI doesn't
+        // already have a user-sized value. This avoids unexpectedly
+        // jumping the zoom when the MVC has a different default (for
+        // example stored session state) but the user already picked a
+        // preferred zoom in the current session. We treat 8 as the
+        // initial fallback cellSize (used before MVC exists) and only
+        // overwrite it when MVC reports a value.
+        const currentCellSize = offsetRef.current.cellSize;
+        if (!currentCellSize || currentCellSize === 8) {
+          offsetRef.current.cellSize = vp.cellSize ?? offsetRef.current.cellSize;
+        }
       }
     }
   }, []);
