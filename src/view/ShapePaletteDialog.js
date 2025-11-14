@@ -617,27 +617,7 @@ The backend will start on port ${backendPort}.`);
     return () => { mounted = false; };
   }, [limit]);
 
-  // Handler to clear local IndexedDB cache and reset dialog state.
-  const handleClearCache = useCallback(async () => {
-    try {
-      setCaching(true);
-      await idbCatalog.clearStore();
-      setCachedCatalog(null);
-      setResults([]);
-      setTotal(0);
-      setOffset(0);
-      setSnackMsg('Local cache cleared');
-      setSnackDetails(null);
-      setSnackOpen(true);
-    } catch (e) {
-      logger.error('Failed to clear local cache:', e);
-      setSnackMsg('Failed to clear local cache');
-      setSnackDetails(String(e));
-      setSnackOpen(true);
-    } finally {
-      setCaching(false);
-    }
-  }, []);
+  // (clear cache UI removed — caching is managed by the loader)
 
   // Download entire catalog and store in localStorage
   const downloadCatalogToLocal = useCallback(async () => {
@@ -775,7 +755,7 @@ The backend will start on port ${backendPort}.`);
       {/* Hide the inline spinner to avoid a distracting persistent progress indicator.
         Loading state still controls network/cache behavior but we don't show
         the small spinner in the SearchBar to keep the UI calm. */}
-      <SearchBar value={q} onChange={setQ} loading={false} onClose={onClose} onClear={handleClearCache} />
+  <SearchBar value={q} onChange={setQ} loading={false} onClose={onClose} />
           {useIndexedDB && caching && cacheProgress?.total > 0 && (
             <div style={{ marginTop: 8 }}>
               <LinearProgress variant="determinate" value={(cacheProgress.done / Math.max(1, cacheProgress.total)) * 100} />
