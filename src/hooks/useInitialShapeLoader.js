@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import logger from '../controller/utils/logger';
-import { putItems, getAllItems } from '../view/idbCatalog';
+import { putItems, getAllItems, clearStore } from '../view/idbCatalog';
 import { fetchShapes, getBaseUrl } from '../utils/backendApi';
 
 // Fetch the full catalog from the backend in paged requests and write to IDB.
@@ -41,6 +41,9 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
       let offset = 0;
       let all = [];
 
+      // Fetch all pages into memory first so we can deduplicate before
+      // writing to IndexedDB. The catalog size is modest in practice and
+      // this simplifies ensuring we don't end up with duplicates.
       while (!aborted.current) {
         const out = await fetchShapes(base, '', page, offset);
         if (!out.ok) {
@@ -51,16 +54,6 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
         if (offset === 0) setProgress({ done: 0, total: total });
         if (!items.length) break;
         all = all.concat(items);
-        // write batches to IDB as we go to avoid holding everything in memory
-        try {
-          await putItems(items, { batchSize: items.length, progressCb: ({ done }) => {
-            // approximate cumulative done
-            setProgress({ done: Math.min(total, all.length), total });
-          }});
-        } catch (err) {
-          logger.error('useInitialShapeLoader: failed to put batch into IDB', err);
-          throw err;
-        }
         offset += items.length;
         if (all.length >= total) break;
         // yield to browser so paint can happen
@@ -71,8 +64,46 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
       }
 
       if (!aborted.current) {
-        setProgress({ done: all.length, total: all.length });
-        try { if (typeof globalThis !== 'undefined') globalThis.__GOL_SHAPES_CACHE__ = all; } catch (e) {}
+        // Deduplicate: prefer canonical 'id' when present; otherwise fall
+        // back to a name+cells fingerprint to detect duplicates created by
+        // earlier caching passes that generated synthetic ids.
+        const seen = new Map();
+        const fingerprint = (s) => {
+          if (!s) return '';
+          if (s.id) return `id:${s.id}`;
+          const name = s.name || s.meta?.name || '';
+          const cells = s.cells || s.pattern || s.liveCells || [];
+          let cellsStr = '';
+          try { cellsStr = JSON.stringify(cells); } catch (e) { cellsStr = String(cells.length || ''); }
+          return `nm:${name}#c:${cellsStr}`;
+        };
+        const deduped = [];
+        for (let i = 0; i < all.length; i++) {
+          const s = all[i];
+          const key = fingerprint(s);
+          if (!seen.has(key)) {
+            seen.set(key, true);
+            deduped.push(s);
+          }
+        }
+
+        // Persist deduped catalog: clear existing store and write batches.
+        try {
+          await clearStore();
+        } catch (e) {
+          logger.debug('useInitialShapeLoader: clearStore failed (continuing):', e?.message);
+        }
+        try {
+          await putItems(deduped, { batchSize: page, progressCb: ({ done, total: t }) => {
+            setProgress({ done: Math.min(deduped.length, done || 0), total: deduped.length });
+          }});
+        } catch (err) {
+          logger.error('useInitialShapeLoader: failed to put deduped catalog into IDB', err);
+          // Don't throw here; fall back to using in-memory cache so the app can continue.
+        }
+
+        setProgress({ done: deduped.length, total: deduped.length });
+        try { if (typeof globalThis !== 'undefined') globalThis.__GOL_SHAPES_CACHE__ = deduped; } catch (e) {}
         setReady(true);
       }
     } catch (err) {
