@@ -106,10 +106,16 @@ const RecentShapesStrip = ({
 
   // Delay compare until DOM paints
   useEffect(() => {
+    // The SVG compare is a diagnostic-only task that can be moderately
+    // expensive (image decoding, canvas drawImage, getImageData). Disable
+    // it by default and only enable when the developer explicitly turns on
+    // the global flag `__GOL_RECENT_COMPARE_ENABLED__` to avoid introducing
+    // UI jank when recent shapes update (for example after clicking Add).
+    if (!(typeof globalThis !== 'undefined' && globalThis.__GOL_RECENT_COMPARE_ENABLED__)) return undefined;
     const firstShape = recentShapes.find(s => !!s);
-    if (!firstShape) return;
+    if (!firstShape) return undefined;
     const id = firstShape.id || firstShape.name;
-    if (!id) return;
+    if (!id) return undefined;
     const t = setTimeout(() => compareSVGsAndLog(id), 250);
     return () => clearTimeout(t);
   }, [recentShapes, compareSVGsAndLog]);

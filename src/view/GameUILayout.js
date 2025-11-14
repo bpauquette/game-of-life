@@ -184,7 +184,7 @@ function GameUILayout({
           backendBase={controlsProps?.backendBase}
           colorScheme={colorScheme}
           onAddRecent={controlsProps?.onAddRecent}
-          prefetchOnMount={true}
+          prefetchOnMount={false}
         />
         <CaptureDialogPortal
           open={captureDialogOpen}
