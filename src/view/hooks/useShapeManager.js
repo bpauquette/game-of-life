@@ -40,9 +40,33 @@ export const useShapeManager = ({
 
   // Generate a unique key for shape identification and deduplication
   const generateShapeKey = useCallback((shape) => {
+  // Prefer stable cheap keys: use id when available, fall back to name/meta and
+  // a compact sample of the cells. Avoid full JSON.stringify on the entire
+  // shape (which can be large) because that can block the main thread when
+  // shapes contain many cells. Keep keys small and fast to compute.
   if (shape?.id) return String(shape.id);
   if (typeof shape === 'string') return shape;
-  return JSON.stringify(shape);
+  let keyParts = [];
+  if (shape?.name) keyParts.push(`n:${String(shape.name)}`);
+  if (shape?.meta && (shape.meta.width || shape.meta.height || shape.meta.cellCount)) {
+    if (shape.meta.width) keyParts.push(`w:${shape.meta.width}`);
+    if (shape.meta.height) keyParts.push(`h:${shape.meta.height}`);
+    if (shape.meta.cellCount) keyParts.push(`c:${shape.meta.cellCount}`);
+  }
+  const cells = Array.isArray(shape.cells) ? shape.cells : (Array.isArray(shape.pattern) ? shape.pattern : []);
+  if (Array.isArray(cells) && cells.length > 0) {
+    keyParts.push(`len:${cells.length}`);
+    // include a small sample of first few cells to reduce collisions
+    const sampleCount = Math.min(4, cells.length);
+    for (let i = 0; i < sampleCount; i++) {
+      const c = cells[i];
+      const x = Array.isArray(c) ? c[0] : (c?.x ?? 0);
+      const y = Array.isArray(c) ? c[1] : (c?.y ?? 0);
+      keyParts.push(`${x},${y}`);
+    }
+  }
+  const key = keyParts.join('|');
+  return key || JSON.stringify({ name: shape?.name || '', len: (cells && cells.length) || 0 });
   }, []);
 
   // Update the recent shapes list, maintaining uniqueness and max length
