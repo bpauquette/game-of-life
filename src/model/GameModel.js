@@ -154,13 +154,13 @@ export class GameModel {
   }
 
   setRunningModel(isRunning) {
-  logger.info('[GameModel] setRunningModel called:', isRunning);
+  logger.debug('[GameModel] setRunningModel called:', isRunning);
   this.isRunning = isRunning;
   this.notifyObservers('runningStateChanged', { isRunning });
   }
 
   setColorSchemeModel(colorScheme) {
-    logger.info('[GameModel] setColorSchemeModel called:', colorScheme);
+    logger.debug('[GameModel] setColorSchemeModel called:', colorScheme);
     this.colorScheme = colorScheme;
     this.notifyObservers('colorSchemeChanged', colorScheme);
   }

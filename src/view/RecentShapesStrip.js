@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
 
@@ -8,7 +8,6 @@ const RecentShapesStrip = ({
   drawWithOverlay,
   colorScheme = {},
   selectedShape = null,
-  maxSlots = 8,
   onRotateShape,
   onSwitchToShapesTool
 }) => {
@@ -41,7 +40,10 @@ const RecentShapesStrip = ({
     if (typeof drawWithOverlay === 'function') drawWithOverlay();
   };
 
-  const slots = Array.from({ length: maxSlots }, (_, i) => recentShapes[i] || null);
+  // Render all recent shapes without an artificial slot limit so new shapes
+  // flow off to the right and can be scrolled into view. This allows the
+  // strip to grow indefinitely and rely on overflow + nav controls.
+  const slots = Array.isArray(recentShapes) ? recentShapes : [];
 
   const bg = (colorScheme && (colorScheme.panelBackground || colorScheme.background)) || '#111217';
   const panelBorder = '1px solid rgba(255,255,255,0.04)';
@@ -112,6 +114,65 @@ const RecentShapesStrip = ({
     return () => clearTimeout(t);
   }, [recentShapes, compareSVGsAndLog]);
 
+  // --- Netflix-style strip behavior ---
+  const scrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const holdIntervalRef = useRef(null);
+
+  const updateScrollButtons = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 2);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 2);
+  }, [setCanScrollLeft, setCanScrollRight]);
+
+  useEffect(() => {
+    updateScrollButtons();
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const onScroll = () => updateScrollButtons();
+    el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', updateScrollButtons);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', updateScrollButtons);
+    };
+  }, [updateScrollButtons]);
+
+  const scrollByAmount = useCallback((delta) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: delta, behavior: 'smooth' });
+  }, []);
+
+  const pageScroll = useCallback((direction = 1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amount = Math.round(el.clientWidth * 0.75) * direction;
+    scrollByAmount(amount);
+  }, [scrollByAmount]);
+
+  const startHoldScroll = useCallback((direction = 1) => {
+    if (holdIntervalRef.current) return;
+    // small incremental scroll for smooth continuous movement
+    holdIntervalRef.current = setInterval(() => {
+      scrollByAmount(direction * 24);
+    }, 50);
+  }, [scrollByAmount]);
+
+  const stopHoldScroll = useCallback(() => {
+    if (holdIntervalRef.current) {
+      clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
+  }, []);
+
   return (
     <div
       aria-label="Recent shapes"
@@ -133,23 +194,52 @@ const RecentShapesStrip = ({
         alignItems: FLEX_START
       }}
     >
-      <div
-        className="recent-shapes-scroll"
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: FLEX_START,
-          gap: 12,
-          width: '100%',
-          overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          paddingBottom: 12,
-          paddingTop: 8,
-          scrollSnapType: 'x mandatory',
-          paddingLeft: 4,
-          paddingRight: 6
-        }}
-      >
+      <div style={{ position: 'relative', width: '100%' }}>
+        {/* Left nav button */}
+        <button
+          aria-hidden={!canScrollLeft}
+          onClick={() => pageScroll(-1)}
+          onMouseDown={() => startHoldScroll(-1)}
+          onMouseUp={stopHoldScroll}
+          onMouseLeave={stopHoldScroll}
+          style={{
+            position: 'absolute',
+            left: 2,
+            top: 6,
+            zIndex: 50,
+            border: 'none',
+            background: 'linear-gradient(90deg, rgba(0,0,0,0.35), transparent)',
+            color: '#fff',
+            height: 64,
+            width: 36,
+            display: canScrollLeft ? 'flex' : 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 6,
+            cursor: 'pointer'
+          }}
+          data-testid="recent-left-btn"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+        <div
+          ref={scrollRef}
+          className="recent-shapes-scroll"
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: FLEX_START,
+            gap: 12,
+            width: '100%',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: 12,
+            paddingTop: 8,
+            scrollSnapType: 'x mandatory',
+            paddingLeft: 4,
+            paddingRight: 6
+          }}
+        >
         {slots.map((shape, index) => {
           // Ensure keys are unique per rendered slot. Some shapes may share the same
           // `id` or `name` (for example when shapes are created from identical
@@ -193,6 +283,34 @@ const RecentShapesStrip = ({
             </div>
           );
         })}
+        </div>
+        {/* Right nav button */}
+        <button
+          aria-hidden={!canScrollRight}
+          onClick={() => pageScroll(1)}
+          onMouseDown={() => startHoldScroll(1)}
+          onMouseUp={stopHoldScroll}
+          onMouseLeave={stopHoldScroll}
+          style={{
+            position: 'absolute',
+            right: 2,
+            top: 6,
+            zIndex: 50,
+            border: 'none',
+            background: 'linear-gradient(270deg, rgba(0,0,0,0.35), transparent)',
+            color: '#fff',
+            height: 64,
+            width: 36,
+            display: canScrollRight ? 'flex' : 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 6,
+            cursor: 'pointer'
+          }}
+          data-testid="recent-right-btn"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+        </button>
       </div>
       <style>{`
         .recent-shapes-scroll::-webkit-scrollbar { height: 8px; }
@@ -210,7 +328,6 @@ RecentShapesStrip.propTypes = {
   drawWithOverlay: PropTypes.func.isRequired,
   colorScheme: PropTypes.object,
   selectedShape: PropTypes.object,
-  maxSlots: PropTypes.number,
   onRotateShape: PropTypes.func,
   onSwitchToShapesTool: PropTypes.func
 };

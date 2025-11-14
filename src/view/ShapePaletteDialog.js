@@ -32,6 +32,8 @@ import UndoIcon from '@mui/icons-material/Undo';
 import Typography from '@mui/material/Typography';
 import ShapePreview from './components/ShapePreview';
 import SearchBar from './components/SearchBar';
+import * as idbCatalog from './idbCatalog';
+import LinearProgress from '@mui/material/LinearProgress';
 
 // PropTypes for internal components
 ShapeListItem.propTypes = {
@@ -91,6 +93,20 @@ const PREVIEW_BOX_SIZE = 72;
 const PREVIEW_SVG_SIZE = 64;
 const PREVIEW_BORDER_OPACITY = 0.06;
 const PREVIEW_BORDER_RADIUS = 6;
+const SPACE_BETWEEN = 'space-between';
+const FOOTER_ROW_STYLE = { display: 'flex', justifyContent: SPACE_BETWEEN, alignItems: 'center', marginTop: 8 };
+// Helper: derive a reliable cell count from a shape object. Some shapes
+// may include `cells` (array), `pattern` (array), or `liveCells`.
+// Older code used `cellsCount` which may be absent when shapes are
+// loaded/cached, so prefer actual arrays when available.
+function getShapeCellCount(s) {
+  if (!s) return 0;
+  if (Number.isInteger(s.cellsCount) && s.cellsCount > 0) return s.cellsCount;
+  if (Array.isArray(s.cells)) return s.cells.length;
+  if (Array.isArray(s.pattern)) return s.pattern.length;
+  if (Array.isArray(s.liveCells)) return s.liveCells.length;
+  return 0;
+}
 // (previous GRID_LINE_OFFSET removed — unused in this module)
 
 // Transition component for Snackbar - moved outside to avoid recreation on each render
@@ -179,10 +195,10 @@ async function fetchAndUpdateShapes({
 function filterCachedCatalogItems(catalog, q) {
   const qLower = String(q || '').trim().toLowerCase();
   if (!qLower) return catalog.slice();
+  // Search only on the shape's name (explicit requirement).
   return catalog.filter(item => {
     const name = String(item.name || '').toLowerCase();
-    const desc = String(item.description || item.meta?.description || '').toLowerCase();
-    return name.includes(qLower) || desc.includes(qLower);
+    return name.includes(qLower);
   });
 }
 
@@ -249,7 +265,7 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRe
               </Typography>
             )}
             <Typography variant="caption" color="text.secondary">
-              {`${w}×${h} — ${s.cellsCount || 0} cells`}
+              {`${w}×${h} — ${getShapeCellCount(s)} cells`}
             </Typography>
           </Box>
           <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -353,7 +369,7 @@ function ShapesList({ items, colorScheme, loading, onSelect, onDeleteRequest, on
 // Presentational: footer with load more and close
 function FooterControls({ total, threshold, canLoadMore, onLoadMore, loading }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+    <div style={FOOTER_ROW_STYLE}>
       <div>
         {total > 0 && (
           <small>
@@ -409,7 +425,7 @@ function SnackMessage({ open, message, details, canUndo, onUndo, onClose }) {
   );
 }
 
-export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {},onAddRecent  }){
+export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, onAddRecent, prefetchOnMount = false }){
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]); // metadata items
   const [loading, setLoading] = useState(false);
@@ -419,7 +435,32 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const LARGE_CATALOG_THRESHOLD = 1000; // UI hint threshold
   const [cachedCatalog, setCachedCatalog] = useState(null);
   const [caching, setCaching] = useState(false);
-  const CACHE_KEY = 'gol:shapesCatalog:v1';
+  // Consider IDB available if idbCatalog provides the API (allows tests to mock it)
+  const useIndexedDB = typeof idbCatalog?.putItems === 'function';
+  const [cacheProgress, setCacheProgress] = useState({ done: 0, total: 0 });
+  // When we finish a full catalog cache, briefly skip the next automatic
+  // client-side paging/filter run so the UI can show the full cached list
+  // (otherwise the useEffect paging logic will immediately slice it to the
+  // first page). This is intentionally short-lived and only suppresses the
+  // very next local filter run.
+  const skipNextLocalFilterRef = useRef(false);
+  // No localStorage usage; CACHE_KEY removed
+
+  // Helper to write the whole catalog into IDB with progress updates.
+  const writeCatalogToIDB = useCallback(async (items) => {
+    try {
+      await idbCatalog.clearStore();
+    } catch (e) {
+      logger.warn('IDB clear failed:', e?.message);
+    }
+    setCacheProgress({ done: 0, total: items.length });
+    await idbCatalog.putItems(items, {
+      batchSize: 200,
+      progressCb: ({ done, total: t }) => {
+        setCacheProgress({ done, total: t || items.length });
+      }
+    });
+  }, []);
   
   // Backend server management states
   const [showBackendDialog, setShowBackendDialog] = useState(false);
@@ -432,6 +473,8 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [snackUndoShape, setSnackUndoShape] = useState(null);
   const [snackDetails, setSnackDetails] = useState(null); // temporary debug details
   const timerRef = useRef(null);
+  const [initialCacheLoaded, setInitialCacheLoaded] = useState(false);
+  const loadStartRef = useRef(null);
   //const handleAddRecent = useCallback(
   //(shape) => {
    // onAddRecent?.(shape);
@@ -448,7 +491,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   }, [onAddRecent]);
 
   const handleShapeSelect = useCallback(async (shape) => {
-    logger.info('[ShapePaletteDialog] Shape selected:', shape);
+    logger.debug('[ShapePaletteDialog] Shape selected:', shape);
     if (!shape?.id) {
       onSelectShape?.(shape);
       // Also add to recent when selecting a local/unsaved shape
@@ -458,8 +501,8 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     }
     try {
       const res = await fetchShapeById(shape.id, backendBase);
-      if (res.ok && res.data) {
-        logger.info('[ShapePaletteDialog] Fetched full shape data:', res.data);
+  if (res.ok && res.data) {
+  logger.debug('[ShapePaletteDialog] Fetched full shape data:', res.data);
         onSelectShape?.(res.data);
         safeAddRecent(res.data);
       } else {
@@ -582,17 +625,100 @@ The backend will start on port ${backendPort}.`);
   };
 
   useEffect(()=>{ if(!open){ setQ(''); setResults([]); setLoading(false); } }, [open]);
-  
-  // On mount, try to read cached catalog from localStorage
+
+  // Track when the dialog is opened so we can time how long loading cached
+  // shapes into the palette takes. start time is set when `open` becomes true.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.items)) setCachedCatalog(parsed.items);
+    if (open) {
+      loadStartRef.current = Date.now();
+    } else {
+      loadStartRef.current = null;
+    }
+  }, [open]);
+  
+  
+  // On mount, try to read cached catalog from IndexedDB (preferred).
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        // First, check for an in-memory cache preloaded at startup for instant availability
+        const mem = (typeof globalThis !== 'undefined') ? globalThis.__GOL_SHAPES_CACHE__ : null;
+        if (mounted && Array.isArray(mem) && mem.length > 0) {
+          setCachedCatalog(mem);
+          // Show the full in-memory catalog immediately
+          setResults(mem);
+          setTotal(mem.length);
+          setOffset(0);
+          setInitialCacheLoaded(true);
+          // Log load time if we started timing when the dialog opened
+          try {
+            if (loadStartRef.current) {
+              const ms = Date.now() - loadStartRef.current;
+              logger.info(`[ShapePaletteDialog] Loaded ${mem.length} shapes from in-memory cache into palette in ${ms}ms`);
+              // Also surface a UI toast so it's visible without changing logger level
+              setSnackMsg(`Loaded ${mem.length} shapes in ${ms}ms`);
+              setSnackDetails(null);
+              setSnackOpen(true);
+            }
+          } catch (e) {
+            logger.debug('Failed to log shape palette load time (mem):', e);
+          }
+          return;
+        }
+
+        const items = await idbCatalog.getAllItems();
+        if (mounted && Array.isArray(items) && items.length > 0) {
+          // Use the full cached catalog so the palette appears instantly
+          setCachedCatalog(items);
+          setResults(items);
+          setTotal(items.length);
+          setOffset(0);
+          // Log how long it took to load the cached catalog into the palette
+          try {
+            if (loadStartRef.current) {
+              const ms = Date.now() - loadStartRef.current;
+              logger.info(`[ShapePaletteDialog] Loaded ${items.length} shapes from IndexedDB into palette in ${ms}ms`);
+              // Also show a UI toast so it's visible to users immediately
+              setSnackMsg(`Loaded ${items.length} shapes in ${ms}ms`);
+              setSnackDetails(null);
+              setSnackOpen(true);
+            }
+          } catch (e) {
+            logger.debug('Failed to log shape palette load time (idb):', e);
+          }
+        }
+      } catch (e) {
+        // IndexedDB may not be available in some environments; that's OK.
+        // Demote to debug so normal runs/tests aren't noisy.
+        logger.debug('No IndexedDB cache available on mount:', e?.message);
       }
+      finally {
+        if (mounted) setInitialCacheLoaded(true);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [limit]);
+
+  // Handler to clear local IndexedDB cache and reset dialog state.
+  const handleClearCache = useCallback(async () => {
+    try {
+      setCaching(true);
+      await idbCatalog.clearStore();
+      setCachedCatalog(null);
+      setResults([]);
+      setTotal(0);
+      setOffset(0);
+      setSnackMsg('Local cache cleared');
+      setSnackDetails(null);
+      setSnackOpen(true);
     } catch (e) {
-      logger.warn('Failed to read cached catalog from localStorage:', e?.message);
+      logger.error('Failed to clear local cache:', e);
+      setSnackMsg('Failed to clear local cache');
+      setSnackDetails(String(e));
+      setSnackOpen(true);
+    } finally {
+      setCaching(false);
     }
   }, []);
 
@@ -600,12 +726,19 @@ The backend will start on port ${backendPort}.`);
   const downloadCatalogToLocal = useCallback(async () => {
     setCaching(true);
     try {
+      const startTs = Date.now();
       const base = getBaseUrl(backendBase);
       const page = 200;
       let offsetLocal = 0;
       let all = [];
+      let reqCount = 0;
+      let totalReqTime = 0;
       while (true) {
+        const reqStart = Date.now();
         const out = await fetchShapes(base, '', page, offsetLocal);
+        const reqMs = Date.now() - reqStart;
+        reqCount += 1;
+        totalReqTime += reqMs;
         if (!out.ok) {
           throw new Error(`Fetch shapes failed: ${out.status}`);
         }
@@ -614,15 +747,31 @@ The backend will start on port ${backendPort}.`);
         offsetLocal += page;
       }
       setCachedCatalog(all);
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ fetchedAt: Date.now(), items: all }));
-      } catch (e) {
-        logger.warn('Failed to write catalog to localStorage:', e?.message);
+      // If IndexedDB is available, write there in batches and report progress.
+      if (useIndexedDB) {
+        try {
+          await writeCatalogToIDB(all);
+        } catch (e) {
+          logger.warn('IDB putItems failed:', e?.message);
+        }
       }
-      // update UI
-      setResults(all.slice(0, limit));
-      setTotal(all.length);
-      setOffset(0);
+        // No localStorage usage anymore; data is persisted to IndexedDB.
+      // Timing info
+      const totalMs = Date.now() - startTs;
+      const avgReqMs = reqCount > 0 ? Math.round(totalReqTime / reqCount) : 0;
+  // Cache completion is useful for debugging but noisy in regular runs — use debug
+  logger.debug(`[ShapePaletteDialog] Cached ${all.length} shapes in ${totalMs}ms (avg req ${avgReqMs}ms, ${reqCount} reqs)`);
+      setSnackMsg(`Cached ${all.length} shapes in ${(totalMs / 1000).toFixed(1)}s`);
+      setSnackDetails(`Requests: ${reqCount}, avg ${avgReqMs}ms`);
+      setSnackOpen(true);
+  // update UI: show everything immediately after caching completes
+  setResults(all);
+  setTotal(all.length);
+  setOffset(0);
+  // Prevent the automatic client-side paging/filter run (which would
+  // immediately slice results back to the first page) from running once
+  // after we've explicitly shown the full cached catalog.
+  skipNextLocalFilterRef.current = true;
     } catch (err) {
       logger.error('Failed to download catalog:', err);
       setSnackMsg('Failed to cache catalog');
@@ -632,19 +781,53 @@ The backend will start on port ${backendPort}.`);
       setCaching(false);
       setLoading(false);
     }
-  }, [backendBase, limit]);
+  }, [backendBase, useIndexedDB, writeCatalogToIDB]);
+
+  // If caller requests prefetch, start caching as soon as the component mounts
+  useEffect(() => {
+    if (prefetchOnMount && initialCacheLoaded && !cachedCatalog && !caching) {
+      // fire-and-forget; downloadCatalogToLocal will set caching state
+      downloadCatalogToLocal().catch((e) => logger.warn('Prefetch failed:', e?.message));
+    }
+  }, [prefetchOnMount, cachedCatalog, caching, downloadCatalogToLocal, initialCacheLoaded]);
+
+  // Auto-download entire catalog the first time the dialog is opened.
+  useEffect(() => {
+    // noop here; loading will be handled by the blocking loader dialog when necessary
+  }, [open, cachedCatalog, caching, downloadCatalogToLocal, initialCacheLoaded]);
+
+  // Show a blocking loader dialog when the component is opened and there's no cached catalog.
+  const showLoader = open && initialCacheLoaded && !cachedCatalog;
+
+  // Kick off download when loader dialog becomes visible.
+  useEffect(() => {
+    if (showLoader && !caching) {
+      downloadCatalogToLocal().catch((e) => logger.warn('Loader auto-download failed:', e?.message));
+    }
+  }, [showLoader, caching, downloadCatalogToLocal]);
+
+  // loader flow handled in the render below; do not early-return to keep hooks order stable
 
   useEffect(()=>{
     const cancelRef = { cancelled: false };
     if (timerRef.current) clearTimeout(timerRef.current);
     setLoading(true);
     const doSearch = async (cRef) => {
+      // If we've just finished a full-catalog cache and explicitly set
+      // `results` to the entire catalog, skip the very next local filter
+      // run so the UI remains showing all cached items. This flag is
+      // cleared immediately so normal paging/filtering resumes afterwards.
+      if (skipNextLocalFilterRef.current) {
+        skipNextLocalFilterRef.current = false;
+        setLoading(false);
+        return;
+      }
       // If we have a cached catalog, perform client-side filtering and avoid network
       if (Array.isArray(cachedCatalog) && cachedCatalog.length > 0) {
         try {
           const filtered = filterCachedCatalogItems(cachedCatalog, q);
-          const sliced = filtered.slice(offset, offset + limit);
-          setResults(sliced);
+          // Use the full filtered catalog so the palette shows everything immediately
+          setResults(filtered);
           setTotal(filtered.length);
         } catch (e) {
           logger.warn('Local catalog filter failed, falling back to server:', e?.message);
@@ -685,10 +868,46 @@ The backend will start on port ${backendPort}.`);
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth data-testid="shapes-palette">
+      {/* Loader dialog shown when opening and no cached catalog exists */}
+      {showLoader && (
+        <Dialog open={true} disableEscapeKeyDown maxWidth="sm" fullWidth data-testid="catalog-loader">
+          <DialogTitle>Downloading full catalog</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: 3 }}>
+            <div style={{ fontWeight: 600 }}>Downloading full shapes catalog…</div>
+            {cacheProgress?.total > 0 && (
+              <div style={{ width: '100%', marginTop: 8 }}>
+                <LinearProgress variant="determinate" value={(cacheProgress.done / Math.max(1, cacheProgress.total)) * 100} />
+                <div style={{ display: 'flex', justifyContent: SPACE_BETWEEN, marginTop: 6 }}>
+                  <small>{cacheProgress.done}/{cacheProgress.total}</small>
+                  <small>{Math.round((cacheProgress.done / Math.max(1, cacheProgress.total)) * 100)}%</small>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Intercept onClose to prevent closing while caching is in progress */}
+      <Dialog
+        open={open}
+        onClose={onClose}
+        disableEscapeKeyDown={false}
+        maxWidth="sm"
+        fullWidth
+        data-testid="shapes-palette"
+      >
         <DialogTitle>Insert shape from catalog</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1, padding: 2 }}>
-          <SearchBar value={q} onChange={setQ} loading={loading} onCache={downloadCatalogToLocal} caching={caching} onClose={onClose} />
+          <SearchBar value={q} onChange={setQ} loading={loading} onClose={onClose} onClear={handleClearCache} />
+          {useIndexedDB && caching && cacheProgress?.total > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <LinearProgress variant="determinate" value={(cacheProgress.done / Math.max(1, cacheProgress.total)) * 100} />
+              <div style={{ display: 'flex', justifyContent: SPACE_BETWEEN, fontSize: 12, marginTop: 4 }}>
+                <span>Caching to IndexedDB: {cacheProgress.done}/{cacheProgress.total}</span>
+                <span>{Math.round((cacheProgress.done / Math.max(1, cacheProgress.total)) * 100)}%</span>
+              </div>
+            </div>
+          )}
           <div style={{ overflow: 'auto', flex: 1, minHeight: 120 }} data-testid="shapes-list-scroll">
             <ShapesList
               items={results}
@@ -712,16 +931,19 @@ The backend will start on port ${backendPort}.`);
             onCancel={() => { setConfirmOpen(false); setToDelete(null); }}
             onConfirm={handleDelete}
           />
-          <SnackMessage
-            open={snackOpen}
-            message={snackMsg}
-            details={snackDetails}
-            canUndo={!!snackUndoShape}
-            onUndo={handleUndo}
-            onClose={() => { setSnackOpen(false); setSnackMsg(''); setSnackUndoShape(null); }}
-          />
         </DialogContent>
       </Dialog>
+
+      {/* Global snackbar so the user sees cache completion even if loader was shown */}
+      <SnackMessage
+        open={snackOpen}
+        message={snackMsg}
+        details={snackDetails}
+        canUndo={!!snackUndoShape}
+        onUndo={handleUndo}
+        onClose={() => { setSnackOpen(false); setSnackMsg(''); setSnackUndoShape(null); }}
+      />
+      
 
       {/* Backend Server Start Dialog */}
       <BackendServerDialog

@@ -6,7 +6,7 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 
-export default function SearchBar({ value, onChange, loading, onCache, caching, onClose }) {
+export default function SearchBar({ value, onChange, loading, onClose, onClear }) {
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
       <TextField
@@ -18,9 +18,9 @@ export default function SearchBar({ value, onChange, loading, onCache, caching, 
         size="small"
       />
       {loading && <CircularProgress size={24} />}
-      {typeof onCache === 'function' && (
-        <Button size="small" variant="outlined" onClick={onCache} disabled={caching}>
-          {caching ? 'Caching…' : 'Cache Catalog'}
+      {typeof onClear === 'function' && (
+        <Button size="small" variant="outlined" onClick={onClear} data-testid="clear-cache-btn">
+          Clear Cache
         </Button>
       )}
       {typeof onClose === 'function' && (
@@ -36,8 +36,7 @@ SearchBar.propTypes = {
   value: PropTypes.string.isRequired,
   onChange: PropTypes.func.isRequired,
   loading: PropTypes.bool,
-  onCache: PropTypes.func,
-  caching: PropTypes.bool
+  onClear: PropTypes.func
 };
 
 SearchBar.defaultProps = {

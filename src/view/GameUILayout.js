@@ -10,7 +10,7 @@ import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
-import FullscreenExitIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 function GameUILayout({
   recentShapes,
   onSelectShape,
@@ -97,6 +97,7 @@ function GameUILayout({
           generation={generation}
           setShowChart={controlsProps?.setShowChart}
           onToggleSidebar={onToggleSidebar}
+          onToggleChrome={onToggleChrome}
           isSidebarOpen={sidebarOpen}
           isSmall={isSmall}
           selectedTool={selectedTool}
@@ -127,7 +128,11 @@ function GameUILayout({
               drawWithOverlay();
             }
           }}
-          style={{ cursor: cursorStyle, display: 'block', width: '100%', height: '100%', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+          style={
+            !(uiState?.showChrome ?? true)
+              ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, cursor: cursorStyle, display: 'block', width: '100%', height: '100%', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }
+              : { cursor: cursorStyle, display: 'block', width: '100%', height: '100%', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }
+          }
         />
         {(uiState?.showChrome ?? true) && isSmall && (
           <RecentShapesDrawer
@@ -158,19 +163,23 @@ function GameUILayout({
             generation={generation}
           />
         )}
-        <Box sx={{ position: 'fixed', top: (uiState?.showChrome ?? true) ? 112 : 8, right: 8, zIndex: 50 }}>
-          <Tooltip title={(uiState?.showChrome ?? true) ? 'Hide controls' : 'Show controls'}>
-            <IconButton
-              size={isSmall ? 'small' : 'medium'}
-              color="default"
-              aria-label={(uiState?.showChrome ?? true) ? 'hide-controls' : 'show-controls'}
-              onClick={onToggleChrome}
-              sx={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
-            >
-              {(uiState?.showChrome ?? true) ? <FullscreenIcon fontSize="small" /> : <FullscreenExitIcon fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-        </Box>
+        {/* Floating "Show controls" button appears only when the chrome is hidden
+            so it sits over the canvas and lets the user bring the header back. */}
+        {!(uiState?.showChrome ?? true) && (
+          <Box sx={{ position: 'fixed', top: 64, right: 8, zIndex: 50 }}>
+            <Tooltip title="Show controls">
+              <IconButton
+                size={isSmall ? 'small' : 'medium'}
+                color="default"
+                aria-label="show-controls"
+                onClick={onToggleChrome}
+                sx={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+              >
+                <FullscreenExitIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
       </div>
     </div>
   );

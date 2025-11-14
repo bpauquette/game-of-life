@@ -1,6 +1,7 @@
 /* eslint-disable complexity */
 import React from 'react';
 import PropTypes from 'prop-types';
+import shapesCatalogStats from '../../config/shapesCatalogStats';
 
 const GRID_LINE_OFFSET = 0.5;
 
@@ -138,11 +139,17 @@ export default function ShapePreview({
     if (typeof console !== 'undefined' && console.error) console.error('ShapePreview debug error', err);
   }
 
+  // Normalize all previews to the catalog's maximum extents so thumbnails
+  // render at consistent scale relative to the largest shape. This ensures
+  // RecentShapesStrip thumbnails line up visually when compared side-by-side.
+  const viewW = Math.max(1, shapesCatalogStats?.maxW || w);
+  const viewH = Math.max(1, shapesCatalogStats?.maxH || h);
+
   return (
     <svg
       width={boxSize}
       height={boxSize}
-      viewBox={`0 0 ${Math.max(1, w)} ${Math.max(1, h)}`}
+      viewBox={`0 0 ${viewW} ${viewH}`}
       preserveAspectRatio="xMidYMid meet"
       data-shape-id={shape?.id || shape?.name}
       data-preview-source={source}

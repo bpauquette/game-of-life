@@ -178,7 +178,7 @@ export class GameMVC {
 
   // Color scheme operations
   setColorScheme(colorScheme) {
-    logger.info('[GameMVC] setColorScheme called:', colorScheme);
+    logger.debug('[GameMVC] setColorScheme called:', colorScheme);
     this.model.setColorSchemeModel(colorScheme);
   }
 

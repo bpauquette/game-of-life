@@ -114,7 +114,16 @@ export const captureTool = {
     toolState.capturedCells = [];
     
     // Trigger capture dialog if callback is available
-  tool?.onCaptureComplete?.(captureData) || logger.info('Captured shape:', captureData);
+    if (tool?.onCaptureComplete) {
+      try {
+        tool.onCaptureComplete(captureData);
+      } catch (e) {
+        logger.error('onCaptureComplete handler threw:', e);
+      }
+    } else {
+      // Demote to debug by default
+      logger.debug('Captured shape:', captureData);
+    }
   },
 
   drawOverlay(ctx, toolState, cellSize, offset) {

@@ -318,7 +318,7 @@ const useGridFileManager = (config = {}) => {
 
   // Open load dialog
   const openLoadDialog = useCallback(async () => {
-    logger.info('Opening load dialog and loading grids list...');
+    logger.debug('Opening load dialog and loading grids list...');
     setLoadDialogOpen(true);
     // Auto-load grids list when opening dialog
     await loadGridsList();

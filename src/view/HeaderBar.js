@@ -14,6 +14,7 @@ import RunControlGroup from './components/RunControlGroup';
 import ToolGroup from './components/ToolGroup';
 import RecentShapesStrip from './RecentShapesStrip';
 import Chip from '@mui/material/Chip';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import TOOL_DESCRIPTIONS from './components/toolDescriptions';
 import OptionsPanel from './OptionsPanel';
 import HelpDialog from './HelpDialog';
@@ -47,7 +48,6 @@ export default function HeaderBar({
   drawWithOverlay,
   colorScheme,
   selectedShape,
-  maxSlots = 10,
   onRotateShape,
   onSwitchToShapesTool,
   // game controls
@@ -79,6 +79,7 @@ export default function HeaderBar({
   // app actions
   setShowChart,
   onToggleSidebar,
+  onToggleChrome,
   isSidebarOpen,
   isSmall,
   headerRef,
@@ -195,7 +196,7 @@ export default function HeaderBar({
           <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(0,0,0,0.28)', borderBottom: '1px solid rgba(255,255,255,0.18)', zIndex: 40, pointerEvents: 'auto', overflowX: 'auto' }}>
             <ToolGroup selectedTool={selectedTool} setSelectedTool={setSelectedTool} isSmall={isSmall} />
             {/* Only show chip if enough space for both chip and tool icons */}
-            {(!isSmall || (typeof globalThis.window !== 'undefined' && window.innerWidth > 520)) && (
+            {(!isSmall || (globalThis.window !== undefined && window.innerWidth > 520)) && (
               <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
                 <Chip
                   size={isSmall ? 'small' : 'medium'}
@@ -206,6 +207,14 @@ export default function HeaderBar({
                 />
               </Box>
             )}
+            {/* Hide controls button - appears in Row 2 of the header when chrome is visible */}
+            <Box sx={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}>
+              <Tooltip title="Hide controls">
+                <IconButton size={isSmall ? 'small' : 'medium'} aria-label="hide-controls" onClick={onToggleChrome} sx={{ backgroundColor: 'rgba(0,0,0,0.35)' }}>
+                  <FullscreenExitIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
           </Box>
         )}
   {/* Third row: RecentShapesStrip (increased height to fit thumbnails + controls) */}
@@ -216,7 +225,6 @@ export default function HeaderBar({
             drawWithOverlay={drawWithOverlay}
             colorScheme={colorScheme}
             selectedShape={selectedShape}
-            maxSlots={maxSlots}
             onRotateShape={onRotateShape}
             onSwitchToShapesTool={onSwitchToShapesTool}
           />
@@ -282,9 +290,9 @@ HeaderBar.propTypes = {
   drawWithOverlay: PropTypes.func,
   colorScheme: PropTypes.object,
   selectedShape: PropTypes.object,
-  maxSlots: PropTypes.number,
   onRotateShape: PropTypes.func,
   onSwitchToShapesTool: PropTypes.func,
+  onToggleChrome: PropTypes.func,
   headerRef: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
   selectedTool: PropTypes.string,
   setSelectedTool: PropTypes.func,

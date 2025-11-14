@@ -2,6 +2,8 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 // canvas manager removed in favor of single MVC renderer
 import { useShapeManager } from './hooks/useShapeManager';
 import useGridMousePosition from './hooks/useGridMousePosition';
+import useInitialShapeLoader from '../hooks/useInitialShapeLoader';
+import LoadingShapesOverlay from './LoadingShapesOverlay';
 import { loadGridIntoGame, rotateAndApply } from './utils/gameUtils';
 import { colorSchemes } from '../model/colorSchemes';
 // tools are registered by GameMVC; no direct tool imports needed here
@@ -94,6 +96,11 @@ function GameOfLifeApp(props) {
     // Pass a getter so the hook can access the model once GameMVC initializes
     model: () => (gameRef.current ? gameRef.current.model : null)
   });
+
+  // Preload shapes into IndexedDB on startup. Strategy can be configured
+  // via window.GOL_PRELOAD_STRATEGY or REACT_APP_PRELOAD_SHAPES; default is 'background'.
+  const preloadStrategy = (typeof window !== 'undefined' && window.GOL_PRELOAD_STRATEGY) || process.env.REACT_APP_PRELOAD_SHAPES || 'background';
+  const { loading: shapesLoading, progress: shapesProgress, error: shapesError, start: shapesStart } = useInitialShapeLoader({ strategy: preloadStrategy, autoStart: true });
 
   // track cursor using the canvas DOM element
   const cursorCell = useGridMousePosition({ canvasRef, cellSize });
@@ -296,6 +303,11 @@ function GameOfLifeApp(props) {
   useLayoutEffect(() => {
     const canvasEl = canvasRef.current;
     if (!canvasEl) return undefined;
+    // If preload strategy is blocking, delay MVC initialization until shapes finish loading
+    if (preloadStrategy === 'blocking') {
+      if (shapesLoading) return undefined; // wait for loader to finish
+      if (shapesError) return undefined; // loader failed; do not initialize in blocking mode
+    }
     if (gameRef.current) return undefined; // already initialized
 
     try {
@@ -322,7 +334,7 @@ function GameOfLifeApp(props) {
         gameRef.current = null;
       }
     };
-  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme]);
+  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme, preloadStrategy, shapesLoading, shapesError]);
 
   const setSelectedToolLocal = useCallback((tool) => {
       setSelectedTool(tool);
@@ -387,7 +399,9 @@ function GameOfLifeApp(props) {
 
   // --- Render ---
   return (
-    <GameUILayout
+    <>
+      <LoadingShapesOverlay loading={shapesLoading} progress={shapesProgress} error={shapesError} onRetry={shapesStart} />
+      <GameUILayout
       recentShapes={shapeManager.recentShapes}
       onSelectShape={handleSelectShape}
   drawWithOverlay={drawWithOverlay}
@@ -418,6 +432,7 @@ function GameOfLifeApp(props) {
       isSmall={isSmall}
       onToggleChrome={toggleChrome}
     />
+    </>
   );
 }
 

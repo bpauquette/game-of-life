@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import logger from '../../controller/utils/logger';
 
 const MAX_RECENT_SHAPES = 20;
 
@@ -56,8 +57,9 @@ export const useShapeManager = ({
   // Update shape state in both game state and tool state
   // Helper for debug logging to reduce cognitive complexity
   const debugLog = useCallback((...args) => {
-    if (typeof globalThis !== 'undefined' && globalThis.window && globalThis.console) {
-      console.debug(...args);
+    // Route debug logging through the centralized logger so it's gated by log level
+    if (logger && typeof logger.debug === 'function') {
+      logger.debug(...args);
     }
   }, []);
 

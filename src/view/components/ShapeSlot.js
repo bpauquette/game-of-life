@@ -101,6 +101,7 @@ function ShapeSlot({
 
   return (
   <div key={key} style={{ position: 'relative', marginBottom: SHAPE_MARGIN_BOTTOM, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+      {/* Rotate button positioned to the right of the thumbnail, vertically centered */}
       <button
         type="button"
         style={{
@@ -179,34 +180,38 @@ function ShapeSlot({
           {title}
         </div>
       </button>
-      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-        <button
-          key={`rotate-90-${key}`}
-          type="button"
-          style={{
-            fontSize: 12,
-            padding: '4px 8px',
-            borderRadius: 6,
-            border: '1px solid rgba(255,255,255,0.06)',
-            background: '#111',
-            color: '#fff',
-            cursor: 'pointer',
-            opacity: 0.95,
-            minWidth: 46,
-            textAlign: 'center'
-          }}
-          title="Rotate 90° (clockwise)"
-          onClick={(e) => {
-            e.stopPropagation();
-            // Use 270° math rotation to achieve 90° clockwise in screen (y-down) coords
-            const rotatedCells = rotateShape(getShapeCells(shape), 270);
-            const rotatedShape = { ...shape, cells: rotatedCells };
-            onRotate(rotatedShape, index);
-          }}
-        >
-          ⟳90
-        </button>
-      </div>
+      {/* Absolute-placed rotate button */}
+      <button
+        key={`rotate-90-${key}`}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          // Use 270° math rotation to achieve 90° clockwise in screen (y-down) coords
+          const rotatedCells = rotateShape(getShapeCells(shape), 270);
+          const rotatedShape = { ...shape, cells: rotatedCells };
+          onRotate(rotatedShape, index);
+        }}
+        title="Rotate 90° (clockwise)"
+        style={{
+          position: 'absolute',
+          right: 8,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          fontSize: 12,
+          padding: '6px 8px',
+          borderRadius: 6,
+          border: '1px solid rgba(255,255,255,0.06)',
+          background: '#111',
+          color: '#fff',
+          cursor: 'pointer',
+          opacity: 0.95,
+          zIndex: 20,
+          minWidth: 46,
+          textAlign: 'center'
+        }}
+      >
+        ⟳90
+      </button>
     </div>
   );
 }
