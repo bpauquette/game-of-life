@@ -40,6 +40,31 @@ export const useCanvasManager = ({
   placeShape,
   logger
 }) => {
+  // Small helper to push debug messages into an on-page overlay buffer
+  const pushDebug = (msg) => {
+    try {
+      const text = typeof msg === 'string' ? msg : JSON.stringify(msg);
+      // If a global push function exists (overlay mounted), use it and return its result
+      if (globalThis.__GOL_PUSH_CANVAS_LOG__) {
+        try {
+          const res = globalThis.__GOL_PUSH_CANVAS_LOG__(text);
+          return res ?? { ts: Date.now(), text };
+        } catch (e) {
+          // if the global push throws, fall back to buffer
+        }
+      }
+      // Fallback: maintain a simple buffer and emit a global event that the overlay listens for
+      const entry = { ts: Date.now(), text };
+      globalThis.__GOL_CANVAS_LOGS__ = globalThis.__GOL_CANVAS_LOGS__ || [];
+      globalThis.__GOL_CANVAS_LOGS__.push(entry);
+      try { globalThis.dispatchEvent && globalThis.dispatchEvent(new CustomEvent('__GOL_CANVAS_LOG_UPDATE')); } catch (e) {}
+      return entry;
+    } catch (e) {
+      // swallow and return null to indicate failure
+      return null;
+    }
+  };
+
   const canvasRef = useRef(null);
   const [ready, setReady] = useState(false);
   // store last observed content rect from ResizeObserver (if available)
@@ -130,6 +155,14 @@ export const useCanvasManager = ({
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // Diagnostic logging only when enabled via global flag to avoid spamming
+    try {
+      const DBG = Boolean(globalThis.__GOL_DEBUG_CANVAS__ || globalThis.GOL_DEBUG_CANVAS);
+      if (DBG) {
+        console?.warn?.('[useCanvasManager] resizeCanvas invoked');
+        if (typeof pushDebug === 'function') pushDebug('[useCanvasManager] resizeCanvas invoked');
+      }
+    } catch (e) {}
 
     const dpr = (globalThis.window?.devicePixelRatio) || 1;
     // Prefer the canvas's actual layout rect when available (most robust across browsers)
@@ -155,6 +188,28 @@ export const useCanvasManager = ({
       logicalHeight = (observedSizeRef.current && observedSizeRef.current.height) || globalThis.window?.innerHeight || DEFAULT_WINDOW_HEIGHT;
     }
 
+    // Debugging: print layout and sizing information when enabled at runtime.
+    try {
+      const DBG = Boolean(globalThis.__GOL_DEBUG_CANVAS__ || globalThis.GOL_DEBUG_CANVAS);
+      if (DBG) {
+        const dpr = (globalThis.window?.devicePixelRatio) || 1;
+        // canvas.clientWidth/Height may be fractional; getBoundingClientRect used above
+        const clientRect = canvas.getBoundingClientRect();
+        // Use info level to ensure visibility in Chrome DevTools (debug may be filtered)
+        const info = {
+          dpr,
+          clientWidth: clientRect?.width,
+          clientHeight: clientRect?.height,
+          observedSize: observedSizeRef.current,
+          chosenLogical: { logicalWidth, logicalHeight }
+        };
+        console.info('[useCanvasManager] resizeCanvas', info);
+        pushDebug && pushDebug('[useCanvasManager] resizeCanvas ' + JSON.stringify(info));
+      }
+    } catch (err) {
+      // ignore debug logging errors
+    }
+
     // set CSS size (so canvas looks correct in layout)
     canvas.style.width = `${logicalWidth}px`;
     canvas.style.height = `${logicalHeight}px`;
@@ -163,7 +218,7 @@ export const useCanvasManager = ({
     canvas.width = Math.max(1, Math.floor(logicalWidth * dpr));
     canvas.height = Math.max(1, Math.floor(logicalHeight * dpr));
 
-    const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d');
     // Reset transform and scale to logical coordinate system if available.
     // Some test environments (jsdom) provide a mock context without setTransform.
     if (ctx?.setTransform) {
@@ -174,7 +229,21 @@ export const useCanvasManager = ({
     }
 
     // Redraw after resize
-    drawWithOverlay();
+    try {
+      const DBG = Boolean(globalThis.__GOL_DEBUG_CANVAS__ || globalThis.GOL_DEBUG_CANVAS);
+      if (DBG) {
+        const before = { width: canvas.width, height: canvas.height };
+        drawWithOverlay();
+        const after = { width: canvas.width, height: canvas.height };
+        console.info('[useCanvasManager] drawWithOverlay after resize', { before, after });
+        pushDebug && pushDebug('[useCanvasManager] drawWithOverlay after resize: ' + JSON.stringify({ before, after }));
+      } else {
+        drawWithOverlay();
+      }
+    } catch (err) {
+      // don't let drawing errors bubble
+      try { console.error && console.error('drawWithOverlay failed after resize', err); } catch (e) {}
+    }
   }, [drawWithOverlay]);
 
   // Helper to convert mouse event to cell coordinates
@@ -342,6 +411,14 @@ export const useCanvasManager = ({
       if (typeof globalThis.ResizeObserver !== 'undefined') {
         ro = new globalThis.ResizeObserver((entries) => {
           try {
+                // ResizeObserver log only when debug flag is set
+                try {
+                  const DBG = Boolean(globalThis.__GOL_DEBUG_CANVAS__ || globalThis.GOL_DEBUG_CANVAS);
+                  if (DBG) {
+                    console.warn && console.warn('[useCanvasManager] ResizeObserver callback', entries && entries[0] ? Object.keys(entries[0]) : entries);
+                    pushDebug && pushDebug('[useCanvasManager] ResizeObserver callback');
+                  }
+                } catch (e) {}
             // Use requestAnimationFrame to ensure layout has stabilized in the
             // browser before reading bounding rects. Some browsers (Chrome)
             // may schedule RO callbacks before final layout is committed.
@@ -362,7 +439,14 @@ export const useCanvasManager = ({
               }
               if (width && height) {
                 observedSizeRef.current = { width: Math.max(1, Math.floor(width)), height: Math.max(1, Math.floor(height)) };
+                if (Boolean(globalThis.__GOL_DEBUG_CANVAS__ || globalThis.GOL_DEBUG_CANVAS)) pushDebug && pushDebug('[useCanvasManager] ResizeObserver observed size ' + JSON.stringify(observedSizeRef.current));
                 resizeCanvas();
+              } else {
+                try {
+                  const DBG = Boolean(globalThis.__GOL_DEBUG_CANVAS__ || globalThis.GOL_DEBUG_CANVAS);
+                  if (DBG) console.warn && console.warn('[useCanvasManager] ResizeObserver produced empty rect, canvas rect:', canvasRef.current && canvasRef.current.getBoundingClientRect());
+                  if (DBG) pushDebug && pushDebug('[useCanvasManager] ResizeObserver produced empty rect');
+                } catch (e) {}
               }
             });
           } catch (err) {

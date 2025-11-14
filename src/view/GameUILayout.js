@@ -48,6 +48,74 @@ function GameUILayout({
   const headerRef = useRef(null);
   const [headerTop, setHeaderTop] = useState((uiState?.showChrome ?? true) ? 104 : 0);
 
+  // helper to push small debug messages into the overlay buffer (if present)
+  const pushDebug = (obj) => {
+    try {
+      const text = typeof obj === 'string' ? obj : JSON.stringify(obj);
+      if (globalThis.__GOL_PUSH_CANVAS_LOG__) {
+        try { globalThis.__GOL_PUSH_CANVAS_LOG__(text); } catch (e) {}
+      } else {
+        globalThis.__GOL_CANVAS_LOGS__ = globalThis.__GOL_CANVAS_LOGS__ || [];
+        globalThis.__GOL_CANVAS_LOGS__.push({ ts: Date.now(), text });
+        try { globalThis.dispatchEvent && globalThis.dispatchEvent(new CustomEvent('__GOL_CANVAS_LOG_UPDATE')); } catch (e) {}
+      }
+    } catch (e) { /* ignore */ }
+  };
+
+  // Wrap the provided onToggleChrome so we automatically capture diagnostics
+  // before and after the UI chrome toggles. This reduces manual console work.
+  /* eslint-disable complexity */
+  const handleToggleChrome = useCallback(() => {
+    try {
+      const before = (globalThis.__GOL_DUMP_CANVAS_STATE__ && globalThis.__GOL_DUMP_CANVAS_STATE__()) || null;
+      pushDebug({ event: 'toggleChrome.before', before });
+    } catch (e) { pushDebug({ event: 'toggleChrome.before.error', error: String(e) }); }
+
+    try {
+      if (typeof onToggleChrome === 'function') onToggleChrome();
+    } catch (e) { pushDebug({ event: 'toggleChrome.invoke.error', error: String(e) }); }
+
+    // After layout change give the browser a frame or two and record the new state.
+    // Use double rAF to wait for layout & paint, then force an immediate resize
+    // and schedule a render to avoid intermediate paints at the wrong size.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        try {
+          const after = (globalThis.__GOL_DUMP_CANVAS_STATE__ && globalThis.__GOL_DUMP_CANVAS_STATE__()) || null;
+          pushDebug({ event: 'toggleChrome.after', after });
+        } catch (e) { pushDebug({ event: 'toggleChrome.after.error', error: String(e) }); }
+
+        // Also dispatch a resize event to make sure any listeners run
+        try { globalThis.dispatchEvent && globalThis.dispatchEvent(new Event('resize')); } catch (e) {}
+
+        // Compute final viewport size
+        let w = document.documentElement.clientWidth || document.body.clientWidth;
+        let h = document.documentElement.clientHeight || document.body.clientHeight;
+
+        // Preferred path: call renderer.forceResize then controller.requestRender
+        try {
+          const renderer = gameRef && gameRef.current && gameRef.current.view && gameRef.current.view.renderer;
+          const controller = gameRef && gameRef.current && gameRef.current.controller;
+          if (renderer && typeof renderer.forceResize === 'function') {
+            try { renderer.forceResize(w, h); } catch (e) { /* ignore */ }
+          } else if (globalThis.__GOL_FORCE_RESIZE__) {
+            try { globalThis.__GOL_FORCE_RESIZE__(); } catch (e) { /* ignore */ }
+          } else if (gameRef && gameRef.current && gameRef.current.view && typeof gameRef.current.view.resize === 'function') {
+            try { gameRef.current.view.resize(w, h); } catch (e) { /* ignore */ }
+          }
+
+          if (controller && typeof controller.requestRender === 'function') {
+            try { controller.requestRender(); } catch (e) { /* ignore */ }
+          } else {
+            // fallback: try a global helper that may trigger a render
+            try { if (globalThis.__GOL_REQUEST_RENDER__) globalThis.__GOL_REQUEST_RENDER__(); } catch (e) {}
+          }
+        } catch (e) {}
+      });
+    });
+  }, [onToggleChrome, gameRef]);
+  /* eslint-enable complexity */
+
   useLayoutEffect(() => {
     const measure = () => {
       try {
@@ -97,7 +165,7 @@ function GameUILayout({
           generation={generation}
           setShowChart={controlsProps?.setShowChart}
           onToggleSidebar={onToggleSidebar}
-          onToggleChrome={onToggleChrome}
+          onToggleChrome={handleToggleChrome}
           isSidebarOpen={sidebarOpen}
           isSmall={isSmall}
           selectedTool={selectedTool}
@@ -130,8 +198,8 @@ function GameUILayout({
           }}
           style={
             !(uiState?.showChrome ?? true)
-              ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, cursor: cursorStyle, display: 'block', width: '100%', height: '100%', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }
-              : { cursor: cursorStyle, display: 'block', width: '100%', height: '100%', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }
+              ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, cursor: cursorStyle, display: 'block', width: '100vw', height: '100vh', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', boxSizing: 'border-box', zIndex: 9999 }
+              : { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: cursorStyle, display: 'block', width: '100%', height: '100%', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', boxSizing: 'border-box' }
           }
         />
         {(uiState?.showChrome ?? true) && isSmall && (
@@ -166,7 +234,12 @@ function GameUILayout({
         {/* Floating "Show controls" button appears only when the chrome is hidden
             so it sits over the canvas and lets the user bring the header back. */}
         {!(uiState?.showChrome ?? true) && (
-          <Box sx={{ position: 'fixed', top: 64, right: 8, zIndex: 50 }}>
+          // Ensure the floating "Show controls" button sits above the canvas
+          // when chrome is hidden. The canvas uses a very large z-index
+          // (9999) in the fullscreen-hidden style, so give this button a
+          // higher z-index and tuck it into the top-right corner of the
+          // viewport so it hovers over the canvas.
+          <Box sx={{ position: 'fixed', top: 8, right: 8, zIndex: 11000 }}>
             <Tooltip title="Show controls">
               <IconButton
                 size={isSmall ? 'small' : 'medium'}

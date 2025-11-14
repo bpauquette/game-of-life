@@ -208,10 +208,17 @@ export class GameController {
 
     // Keyboard shortcuts for undo/redo
     document.addEventListener('keydown', (e) => {
-      const isMac =
-        (navigator.userAgentData?.platform?.toUpperCase?.().includes('MAC')) ??
-        (navigator.userAgent?.toUpperCase?.includes('MAC')) ??
-        false;
+      const isMac = (() => {
+        try {
+          const p = navigator.userAgentData && navigator.userAgentData.platform;
+          if (typeof p === 'string') return p.toUpperCase().includes('MAC');
+          const ua = navigator.userAgent;
+          if (typeof ua === 'string') return ua.toUpperCase().includes('MAC');
+        } catch (err) {
+          // fallback to false on any unexpected value
+        }
+        return false;
+      })();
       const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
       // Undo: Ctrl+Z or Cmd+Z
       if (ctrlOrCmd && !e.shiftKey && e.key.toLowerCase() === 'z') {
@@ -240,6 +247,13 @@ export class GameController {
 
   setSelectedTool(toolName) {
     if (!this.toolMap[toolName]) return;
+    // Temporary instrumentation: record tool selection into the on-page
+    // debug buffer so it's visible when diagnosing rendering regressions.
+    try {
+      const before = this.model && typeof this.model.getSelectedTool === 'function' ? this.model.getSelectedTool() : null;
+      const info = { event: 'controller.setSelectedTool.before', toolName, before, ts: Date.now() };
+      try { globalThis.__GOL_PUSH_CANVAS_LOG__ && globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info)); } catch (e) {}
+    } catch (e) {}
     logger.debug(`[GameController] setSelectedTool: toolName=${toolName}`);
     this.model.setSelectedToolModel(toolName);
     // If user selects the capture (pick) tool, pause the simulation for precise selection
@@ -248,6 +262,12 @@ export class GameController {
     }
     // Always update overlay after tool change
     this.updateToolOverlay();
+
+    try {
+      const after = this.model && typeof this.model.getSelectedTool === 'function' ? this.model.getSelectedTool() : null;
+      const info2 = { event: 'controller.setSelectedTool.after', toolName, after, ts: Date.now() };
+      try { globalThis.__GOL_PUSH_CANVAS_LOG__ && globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info2)); } catch (e) {}
+    } catch (e) {}
   }
 
   getSelectedTool() {
@@ -660,7 +680,14 @@ export class GameController {
   // Rendering
   requestRender() {
     // Coalesce multiple requestRender calls into a single animation frame
+    // Instrument the moment a new render is scheduled (only when scheduling,
+    // not on subsequent coalesced calls) so we can trace interactive tool
+    // selections that should cause a render.
     if (this.renderScheduled) return;
+    try {
+      const info = { event: 'controller.requestRender.scheduled', ts: Date.now(), selectedTool: this.model?.getSelectedTool?.() };
+      try { globalThis.__GOL_PUSH_CANVAS_LOG__ && globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info)); } catch (e) {}
+    } catch (e) {}
     this.renderScheduled = true;
 
     const doRender = () => {

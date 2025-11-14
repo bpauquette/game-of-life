@@ -400,7 +400,7 @@ function GameOfLifeApp(props) {
   // --- Render ---
   return (
     <>
-      <LoadingShapesOverlay loading={shapesLoading} progress={shapesProgress} error={shapesError} onRetry={shapesStart} />
+  <LoadingShapesOverlay loading={shapesLoading} progress={shapesProgress} error={shapesError} onRetry={shapesStart} />
       <GameUILayout
       recentShapes={shapeManager.recentShapes}
       onSelectShape={handleSelectShape}
