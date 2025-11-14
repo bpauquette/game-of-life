@@ -55,7 +55,7 @@ function normalizeCellsForDisplay(cells) {
 // Inline grid rendering is done directly in the component return; helper removed to avoid unused symbol
 
 /* eslint-disable-next-line complexity */
-export default function ShapePreview({
+function ShapePreviewComponent({
   shape,
   colorScheme = {},
   boxSize = 72,
@@ -190,6 +190,18 @@ export default function ShapePreview({
   );
 }
 
+const ShapePreview = React.memo(ShapePreviewComponent, (prev, next) => {
+  // shallow compare by stable identifiers to avoid expensive re-renders.
+  const idPrev = prev.shape?.id || prev.shape?.name;
+  const idNext = next.shape?.id || next.shape?.name;
+  if (idPrev !== idNext) return false;
+  if (prev.colorScheme !== next.colorScheme) return false;
+  if (prev.boxSize !== next.boxSize) return false;
+  if ((prev.selected || false) !== (next.selected || false)) return false;
+  // t is time-based; avoid re-render when t changes frequently for palette previews.
+  return true;
+});
+
 ShapePreview.propTypes = {
   shape: PropTypes.oneOfType([PropTypes.array, PropTypes.object]),
   colorScheme: PropTypes.object,
@@ -201,3 +213,5 @@ ShapePreview.propTypes = {
   t: PropTypes.number,
   selected: PropTypes.bool
 };
+
+export default ShapePreview;

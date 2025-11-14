@@ -184,15 +184,17 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRe
   return (
       <ListItem key={`${keyBase}-${idx}`} disablePadding>
         <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-          <IconButton
+              <IconButton
             aria-label="Add to Recent"
             size="small"
             sx={{ mr: 1, color: '#388e3c', bgcolor: 'rgba(56,142,60,0.08)', borderRadius: 1 }}
             onClick={(e) => {
               e.stopPropagation();
-              // Defer the onAddRecent call to a microtask so the click handler
-              // returns immediately and any heavier work runs asynchronously.
-              Promise.resolve().then(() => onAddRecent(s));
+              // Defer the onAddRecent call to the next macrotask so the click
+              // handler returns immediately and any heavier work runs asynchronously.
+              // Using setTimeout 0 avoids running heavy work in the current
+              // microtask checkpoint which can still block paint.
+              setTimeout(() => onAddRecent(s), 0);
             }}
             data-testid={`add-recent-btn-${keyBase}`}
           >

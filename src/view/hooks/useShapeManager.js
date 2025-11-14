@@ -245,10 +245,12 @@ export const useShapeManager = ({
         });
 
         // Defer the full update (which may be slightly heavier) to the next
-        // microtask so the click handler returns immediately.
-        Promise.resolve().then(() => {
+        // macrotask so the click handler returns immediately and the
+        // browser has a chance to paint. Using setTimeout avoids blocking
+        // the current microtask checkpoint which can still delay paint.
+        setTimeout(() => {
           try { updateRecentShapesList(shape); } catch (e) { /* swallow */ }
-        });
+        }, 0);
       } catch (e) {
         // Fallback to the original behavior on unexpected errors
         updateRecentShapesList(shape);
