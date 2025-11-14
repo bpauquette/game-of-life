@@ -95,6 +95,8 @@ const PREVIEW_BORDER_OPACITY = 0.06;
 const PREVIEW_BORDER_RADIUS = 6;
 const SPACE_BETWEEN = 'space-between';
 const FOOTER_ROW_STYLE = { display: 'flex', justifyContent: SPACE_BETWEEN, alignItems: 'center', marginTop: 8 };
+// When the full catalog is large, avoid rendering thousands of items at once.
+const MAX_RENDER_ITEMS = 200;
 // Helper: derive a reliable cell count from a shape object. Some shapes
 // may include `cells` (array), `pattern` (array), or `liveCells`.
 // Older code used `cellsCount` which may be absent when shapes are
@@ -690,7 +692,6 @@ The backend will start on port ${backendPort}.`);
   }, [showLoader, caching, downloadCatalogToLocal]);
 
   // loader flow handled in the render below; do not early-return to keep hooks order stable
-
   // Simplified search: the Shapes tool is disabled until the full
   // catalog is cached, so only perform client-side filtering. This
   // avoids partial/network-driven states and keeps the component lean.
@@ -766,14 +767,34 @@ The backend will start on port ${backendPort}.`);
             </div>
           )}
           <div style={{ overflow: 'auto', flex: 1, minHeight: 120 }} data-testid="shapes-list-scroll">
-            <ShapesList
-              items={results}
-              colorScheme={colorScheme}
-              loading={loading}
-              onSelect={handleShapeSelect}
-              onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
-              onAddRecent={onAddRecent}
-            />
+            {/* If the catalog is huge and the user hasn't typed 3+ characters,
+                only render the first MAX_RENDER_ITEMS to avoid UI jank. When
+                the user types 3+ characters the full filtered set will be
+                computed and usually be much smaller. */}
+            {Array.isArray(cachedCatalog) && cachedCatalog.length > MAX_RENDER_ITEMS && String(q || '').trim().length < 3 ? (
+              <>
+                <ShapesList
+                  items={results.slice(0, MAX_RENDER_ITEMS)}
+                  colorScheme={colorScheme}
+                  loading={loading}
+                  onSelect={handleShapeSelect}
+                  onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
+                  onAddRecent={onAddRecent}
+                />
+                <div style={{ padding: '8px 12px', fontSize: 12, color: 'rgba(0,0,0,0.6)' }}>
+                  Showing first {MAX_RENDER_ITEMS} of {cachedCatalog.length} shapes. Type 3+ characters to search the full catalog.
+                </div>
+              </>
+            ) : (
+              <ShapesList
+                items={results}
+                colorScheme={colorScheme}
+                loading={loading}
+                onSelect={handleShapeSelect}
+                onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
+                onAddRecent={onAddRecent}
+              />
+            )}
             <FooterControls
               total={total}
               threshold={LARGE_CATALOG_THRESHOLD}
