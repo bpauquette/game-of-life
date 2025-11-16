@@ -4,8 +4,8 @@ import Dialog from '@mui/material/Dialog';
 import logger from '../controller/utils/logger';
 import {
   getBaseUrl,
-  fetchShapes,
   fetchShapeById,
+  fetchShapeNames,
   createShape,
   checkBackendHealth, deleteShapeById
 } from '../utils/backendApi';
@@ -30,7 +30,7 @@ import Slide from '@mui/material/Slide';
 import CloseIcon from '@mui/icons-material/Close';
 import UndoIcon from '@mui/icons-material/Undo';
 import Typography from '@mui/material/Typography';
-import ShapePreview from './components/ShapePreview';
+// Name-only palette: do not render previews or descriptions in the dialog
 import SearchBar from './components/SearchBar';
 
 // PropTypes for internal components
@@ -87,10 +87,7 @@ SnackMessage.propTypes = {
 // SearchBar propTypes are defined in its own component file.
 
 // UI Constants
-const PREVIEW_BOX_SIZE = 72;
-const PREVIEW_SVG_SIZE = 64;
-const PREVIEW_BORDER_OPACITY = 0.06;
-const PREVIEW_BORDER_RADIUS = 6;
+// No preview rendering in the name-only palette
 const SPACE_BETWEEN = 'space-between';
 const FOOTER_ROW_STYLE = { display: 'flex', justifyContent: SPACE_BETWEEN, alignItems: 'center', marginTop: 8 };
 // When the full catalog is large, avoid rendering thousands of items at once.
@@ -99,14 +96,7 @@ const MAX_RENDER_ITEMS = 200;
 // may include `cells` (array), `pattern` (array), or `liveCells`.
 // Older code used `cellsCount` which may be absent when shapes are
 // loaded/cached, so prefer actual arrays when available.
-function getShapeCellCount(s) {
-  if (!s) return 0;
-  if (Number.isInteger(s.cellsCount) && s.cellsCount > 0) return s.cellsCount;
-  if (Array.isArray(s.cells)) return s.cells.length;
-  if (Array.isArray(s.pattern)) return s.pattern.length;
-  if (Array.isArray(s.liveCells)) return s.liveCells.length;
-  return 0;
-}
+// Not needed for name-only dialog
 // (previous GRID_LINE_OFFSET removed — unused in this module)
 
 // Transition component for Snackbar - moved outside to avoid recreation on each render
@@ -118,11 +108,9 @@ const SlideUpTransition = (props) => <Slide {...props} direction="up" />;
 
 // Small presentational: per-shape list item with preview and delete affordance
 function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRecent }) {
-  // Use a stable timestamp for animated schemes (e.g., Spectrum) to avoid flicker across rerenders
+  // Use a stable timestamp for any debug color sampling
   const tRef = useRef(Date.now());
   const getCellColor = (x, y) => colorScheme?.getCellColor?.(x, y, tRef.current) ?? '#4a9';
-  const w = Math.max(1, s.width || 1);
-  const h = Math.max(1, s.height || 1);
   const keyBase = s.id || 'shape';
   // Debug sample: log first cell color for palette preview
   try {
@@ -177,25 +165,7 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRe
             >
               {s.name || '(unnamed)'}
             </Typography>
-            {s.description && (
-              <Typography variant="body2" color="text.secondary" sx={{ display: 'block', mb: 0.5 }} data-testid="shape-description">
-                {s.description}
-              </Typography>
-            )}
-            <Typography variant="caption" color="text.secondary">
-              {`${w}×${h} — ${getShapeCellCount(s)} cells`}
-            </Typography>
-          </Box>
-          <Box sx={{ ml: 1, width: PREVIEW_BOX_SIZE, height: PREVIEW_BOX_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ShapePreview
-              shape={s}
-              colorScheme={colorScheme}
-              boxSize={PREVIEW_SVG_SIZE}
-              borderRadius={PREVIEW_BORDER_RADIUS}
-              borderOpacity={PREVIEW_BORDER_OPACITY}
-              t={tRef.current}
-              source={'palette'}
-            />
+            {/* Name-only dialog: no description or preview shown here */}
           </Box>
           <IconButton
             edge="end"
@@ -345,9 +315,10 @@ function SnackMessage({ open, message, details, canUndo, onUndo, onClose }) {
 
 export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, onAddRecent, prefetchOnMount = false }){
   const [q, setQ] = useState('');
-  const [results, setResults] = useState([]); // metadata items
+  const [results, setResults] = useState([]); // metadata items (id + name)
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
+  const [namesCatalog, setNamesCatalog] = useState(null);
   const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
   const LARGE_CATALOG_THRESHOLD = 1000; // UI hint threshold
@@ -523,27 +494,62 @@ The backend will start on port ${backendPort}.`);
   }, [open]);
   
   
-  // Network-driven search: always query backend for results. Debounced to
-  // avoid excessive network calls while typing.
+  // On open: fetch the full list of names in a single call, then do
+  // client-side, name-only filtering. This avoids fetching previews or
+  // descriptions up-front and satisfies the "names only in a single call" requirement.
+  const mountedRef = useRef(false);
+  async function fetchAndSetNames(base) {
+    setLoading(true);
+    try {
+      const out = await fetchShapeNames(base);
+      if (!mountedRef.current) return;
+      if (!out || !out.ok) {
+        setNamesCatalog([]);
+        setResults([]);
+        setTotal(0);
+      } else {
+        setNamesCatalog(out.items || []);
+        setResults(out.items || []);
+        setTotal(out.total || (out.items || []).length);
+      }
+    } catch (err) {
+      logger.warn('fetchShapeNames failed:', err?.message || err);
+      if (!mountedRef.current) return;
+      setNamesCatalog([]);
+      setResults([]);
+      setTotal(0);
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!open) return undefined;
+    mountedRef.current = true;
+    const base = getBaseUrl(backendBase);
+    fetchAndSetNames(base);
+    return () => { mountedRef.current = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, backendBase]);
+
+  // Debounced client-side filter against the names catalog
+  useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    if (!namesCatalog) return undefined;
     setLoading(true);
-    // network-driven search / paging
-    timerRef.current = setTimeout(async () => {
+    timerRef.current = setTimeout(() => {
       try {
-        const base = getBaseUrl(backendBase);
-        const out = await fetchShapes(base, q || '', limit, offset);
-        if (!out || !out.ok) {
-          setResults([]);
-          setTotal(0);
+        const qLower = String(q || '').trim().toLowerCase();
+        if (!qLower) {
+          setResults(namesCatalog.slice());
+          setTotal(namesCatalog.length);
         } else {
-          setResults(out.items || []);
-          setTotal(out.total || (out.items || []).length);
+          const filtered = namesCatalog.filter(item => (String(item.name || '').toLowerCase()).includes(qLower));
+          setResults(filtered);
+          setTotal(filtered.length);
         }
       } catch (e) {
-        logger.warn('fetchShapes failed:', e?.message || e);
+        logger.warn('Local name filter failed:', e?.message || e);
         setResults([]);
         setTotal(0);
       } finally {
@@ -551,7 +557,7 @@ The backend will start on port ${backendPort}.`);
       }
     }, 150);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [open, q, offset, limit, backendBase]);
+  }, [q, namesCatalog]);
 
   return (
     <>

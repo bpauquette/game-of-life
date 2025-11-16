@@ -68,6 +68,19 @@ const start = async () => {
     }
   });
 
+  // Return only id and name for all shapes. This supports a lightweight
+  // client that needs only the catalog of names.
+  app.get('/v1/shapes/names', async (req, res) => {
+    try {
+      const shapes = await db.listShapes();
+      const items = shapes.map(s => ({ id: s.id, name: s.name }));
+      res.json({ items, total: items.length });
+    } catch (err) {
+      logger.error('shapes names error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get('/v1/shapes/:id', async (req,res)=>{
     const s = await db.getShape(req.params.id);
     if(!s) return res.status(404).json({error:'not found'});

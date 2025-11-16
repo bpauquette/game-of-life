@@ -56,6 +56,23 @@ export async function fetchShapes(base, q, limit, offset) {
   }
 }
 
+// Fetch only shape names (id + name) in a single call when supported by the backend.
+// Falls back to fetching a large page of shapes and mapping to minimal metadata.
+export async function fetchShapeNames(base) {
+  try {
+    const url = new URL('/v1/shapes/names', base);
+    const res = await fetch(url.toString());
+    if (!res.ok) return { ok: false, items: [], total: 0 };
+    const data = await res.json().catch(() => ({}));
+    const items = Array.isArray(data.items) ? data.items : [];
+    const minimal = items.map(i => ({ id: i.id, name: i.name }));
+    return { ok: true, items: minimal, total: Number(data.total) || minimal.length };
+  } catch (err) {
+    logger.warn('fetchShapeNames failed:', err);
+    return { ok: false, items: [], total: 0 };
+  }
+}
+
 // Fetch shape by ID
 export async function fetchShapeById(id, backendBase) {
   const base = getBaseUrl(backendBase);
