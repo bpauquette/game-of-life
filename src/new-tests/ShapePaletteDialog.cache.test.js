@@ -15,13 +15,6 @@ jest.mock('../view/../utils/backendApi', () => {
   };
 });
 
-// Mock idbCatalog so tests can run without real IndexedDB
-jest.mock('../view/idbCatalog', () => ({
-  putItems: jest.fn().mockResolvedValue(undefined),
-  getAllItems: jest.fn().mockResolvedValue([]),
-  clearStore: jest.fn().mockResolvedValue(undefined)
-}));
-
 // The module under test must be imported after the mocked module is declared.
 /* eslint-disable import/first */
 import ShapePaletteDialog from '../view/ShapePaletteDialog';
@@ -33,34 +26,24 @@ import { fetchShapes } from '../utils/backendApi';
 describe('ShapePaletteDialog caching behavior', () => {
   beforeEach(() => {
     fetchShapes.mockReset();
-    const idb = require('../view/idbCatalog');
-    idb.putItems.mockReset();
-    idb.getAllItems.mockReset();
-    idb.clearStore.mockReset();
+    // ensure no stale global cache is present
+    try { delete globalThis.__GOL_SHAPES_CACHE__; } catch (e) {}
   });
 
   it('downloads and stores the full catalog in localStorage when Cache Catalog is clicked', async () => {
     // Mock a single-page catalog
     fetchShapes.mockResolvedValueOnce({ ok: true, items: [{ id: 's1', name: 'Alpha' }], total: 1 });
-    const idb = require('../view/idbCatalog');
-    idb.getAllItems.mockResolvedValueOnce([]);
-
     render(
       <ShapePaletteDialog open={true} onClose={() => {}} onSelectShape={() => {}} backendBase="/api" />
     );
-    // Wait for the auto-download to trigger on first open
+    // Wait for the auto-download to trigger on first open and the item to appear
     await waitFor(() => expect(fetchShapes).toHaveBeenCalled());
-    expect(idb.putItems).toHaveBeenCalled();
+    expect(await screen.findByText(/Alpha/)).toBeInTheDocument();
   });
 
-  it('uses cached catalog for subsequent searches and avoids server calls', async () => {
-    // Pre-seed the mocked idb with items
-    const cached = [{ id: 's1', name: 'Alpha' }, { id: 's2', name: 'Beta' }];
-    const idb = require('../view/idbCatalog');
-    idb.getAllItems.mockResolvedValueOnce(cached);
-
-    // Ensure fetchShapes is a mock that would fail if called
-    fetchShapes.mockResolvedValue({ ok: true, items: [], total: 0 });
+  it('queries backend when typing a search and displays results', async () => {
+    // Mock backend search response for 'Alpha'
+    fetchShapes.mockResolvedValueOnce({ ok: true, items: [{ id: 's1', name: 'Alpha' }], total: 1 });
 
     render(
       <ShapePaletteDialog open={true} onClose={() => {}} onSelectShape={() => {}} backendBase="/api" />
@@ -73,13 +56,8 @@ describe('ShapePaletteDialog caching behavior', () => {
     const input = await screen.findByLabelText(/search shapes/i);
     await userEvent.type(input, 'Alpha');
 
-    // Wait a bit for the debounced search to run
-    await waitFor(() => {
-      // No network call should have been made because cached catalog should be used
-      expect(fetchShapes).not.toHaveBeenCalled();
-    });
-
-    // The results should show the matching item
-    expect(screen.getByText(/Alpha/)).toBeInTheDocument();
+    // Wait for the debounced search to trigger and the result to appear
+    await waitFor(() => expect(fetchShapes).toHaveBeenCalled());
+    expect(await screen.findByText(/Alpha/)).toBeInTheDocument();
   });
 });

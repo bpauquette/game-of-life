@@ -32,7 +32,6 @@ import UndoIcon from '@mui/icons-material/Undo';
 import Typography from '@mui/material/Typography';
 import ShapePreview from './components/ShapePreview';
 import SearchBar from './components/SearchBar';
-import LinearProgress from '@mui/material/LinearProgress';
 
 // PropTypes for internal components
 ShapeListItem.propTypes = {
@@ -113,46 +112,9 @@ function getShapeCellCount(s) {
 // Transition component for Snackbar - moved outside to avoid recreation on each render
 const SlideUpTransition = (props) => <Slide {...props} direction="up" />;
 
-// Helper: fetch all pages of shapes from the backend (used by the
-// full-catalog downloader). Returns { all, reqCount, totalReqTime }.
-async function fetchAllShapes(base, page) {
-  let offsetLocal = 0;
-  let all = [];
-  let reqCount = 0;
-  let totalReqTime = 0;
-  while (true) {
-    const reqStart = Date.now();
-    const out = await fetchShapes(base, '', page, offsetLocal);
-    const reqMs = Date.now() - reqStart;
-    reqCount += 1;
-    totalReqTime += reqMs;
-    if (!out.ok) {
-      throw new Error(`Fetch shapes failed: ${out.status}`);
-    }
-    all = all.concat(out.items || []);
-    if (all.length >= (out.total || 0) || (out.items || []).length === 0) break;
-    offsetLocal += page;
-  }
-  return { all, reqCount, totalReqTime };
-}
-
-// fetchShapes now imported from backendApi.js
-
-// Note: network-driven search paths were removed. The UI assumes the
-// full catalog will be cached before the Shapes tool becomes active,
-// so all searching/filtering happens client-side against the cached
-// catalog. This keeps the dialog logic simple and predictable.
-
-// Helper: filter a cached catalog by query
-function filterCachedCatalogItems(catalog, q) {
-  const qLower = String(q || '').trim().toLowerCase();
-  if (!qLower) return catalog.slice();
-  // Search only on the shape's name (explicit requirement).
-  return catalog.filter(item => {
-    const name = String(item.name || '').toLowerCase();
-    return name.includes(qLower);
-  });
-}
+// fetchShapes is imported from backendApi.js and used to query the
+// backend for paged search results. We perform network-driven search
+// and paging rather than relying on any client-side cached catalog.
 
 // Small presentational: per-shape list item with preview and delete affordance
 function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRecent }) {
@@ -389,23 +351,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
   const LARGE_CATALOG_THRESHOLD = 1000; // UI hint threshold
-  const [cachedCatalog, setCachedCatalog] = useState(null);
-  const [caching, setCaching] = useState(false);
-  // Consider IDB available if idbCatalog provides the API (allows tests to mock it)
-  // No IndexedDB usage in the frontend; we rely on the backend and an in-memory cache.
-  // We no longer persist the catalog to IndexedDB; keep a lightweight
-  // in-memory progress state for UI feedback during network fetches.
-  const [cacheProgress, setCacheProgress] = useState({ done: 0, total: 0 });
-  // When we finish a full catalog cache, briefly skip the next automatic
-  // client-side paging/filter run so the UI can show the full cached list
-  // (otherwise the useEffect paging logic will immediately slice it to the
-  // first page). This is intentionally short-lived and only suppresses the
-  // very next local filter run.
-  const skipNextLocalFilterRef = useRef(false);
-  // No localStorage usage; CACHE_KEY removed
-
-  // No IndexedDB persistence: the download helper will fetch and populate
-  // the in-memory cachedCatalog only.
+  // No in-memory or IndexedDB caching: always fetch from backend for results.
   
   // Backend server management states
   const [showBackendDialog, setShowBackendDialog] = useState(false);
@@ -418,7 +364,6 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [snackUndoShape, setSnackUndoShape] = useState(null);
   const [snackDetails, setSnackDetails] = useState(null); // temporary debug details
   const timerRef = useRef(null);
-  const [initialCacheLoaded, setInitialCacheLoaded] = useState(false);
   const loadStartRef = useRef(null);
   //const handleAddRecent = useCallback(
   //(shape) => {
@@ -574,152 +519,42 @@ The backend will start on port ${backendPort}.`);
   // Track when the dialog is opened so we can time how long loading cached
   // shapes into the palette takes. start time is set when `open` becomes true.
   useEffect(() => {
-    if (open) {
-      loadStartRef.current = Date.now();
-    } else {
-      loadStartRef.current = null;
-    }
+    if (open) loadStartRef.current = Date.now(); else loadStartRef.current = null;
   }, [open]);
   
   
-  // On mount, read any existing cached catalog (in-memory or IndexedDB).
+  // Network-driven search: always query backend for results. Debounced to
+  // avoid excessive network calls while typing.
+
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const mem = (typeof globalThis !== 'undefined') ? globalThis.__GOL_SHAPES_CACHE__ : null;
-        if (mounted && Array.isArray(mem) && mem.length > 0) {
-          setCachedCatalog(mem);
-          setResults(mem);
-          setTotal(mem.length);
-          return;
-        }
-        // If no global cache is present, initialCacheLoaded is still true
-        // so the loader can kick off a fetch when the palette opens.
-      } catch (e) {
-        logger.debug('Error reading in-memory cache on mount', e);
-      } finally {
-        if (mounted) setInitialCacheLoaded(true);
-      }
-    })();
-    return () => { mounted = false; };
-  }, [limit]);
-
-  // (clear cache UI removed — caching is managed by the loader)
-
-  // Download entire catalog and store in localStorage
-  const downloadCatalogToLocal = useCallback(async () => {
-    setCaching(true);
-    try {
-    const startTs = Date.now();
-    const base = getBaseUrl(backendBase);
-    const page = 200;
-    // Fetch all paged shapes via helper
-    const { all, reqCount, totalReqTime } = await fetchAllShapes(base, page);
-    setCachedCatalog(all);
-      // No IndexedDB persistence: the catalog is kept in-memory only.
-      // Timing info
-      const totalMs = Date.now() - startTs;
-      const avgReqMs = reqCount > 0 ? Math.round(totalReqTime / reqCount) : 0;
-  // Cache completion is useful for debugging but noisy in regular runs — use debug
-  logger.debug(`[ShapePaletteDialog] Cached ${all.length} shapes in ${totalMs}ms (avg req ${avgReqMs}ms, ${reqCount} reqs)`);
-      setSnackMsg(`Cached ${all.length} shapes in ${(totalMs / 1000).toFixed(1)}s`);
-      setSnackDetails(`Requests: ${reqCount}, avg ${avgReqMs}ms`);
-      setSnackOpen(true);
-  // update UI: show the full cached catalog (the Shapes tool is
-  // disabled until the cache is ready, so we don't need partial states)
-  setResults(all);
-  setTotal(all.length);
-  setOffset(0);
-  // Prevent the automatic client-side paging/filter run (which would
-  // immediately slice results back to the first page) from running once
-  // after we've explicitly shown the full cached catalog.
-  skipNextLocalFilterRef.current = true;
-    } catch (err) {
-      logger.error('Failed to download catalog:', err);
-      setSnackMsg('Failed to cache catalog');
-      setSnackDetails(String(err));
-      setSnackOpen(true);
-    } finally {
-      setCaching(false);
-      setLoading(false);
-    }
-  }, [backendBase]);
-
-  // If caller requests prefetch, start caching as soon as the component mounts
-  useEffect(() => {
-    if (prefetchOnMount && initialCacheLoaded && !cachedCatalog && !caching) {
-      // fire-and-forget; downloadCatalogToLocal will set caching state
-      downloadCatalogToLocal().catch((e) => logger.warn('Prefetch failed:', e?.message));
-    }
-  }, [prefetchOnMount, cachedCatalog, caching, downloadCatalogToLocal, initialCacheLoaded]);
-
-  // Auto-download entire catalog the first time the dialog is opened.
-  useEffect(() => {
-    // noop here; loading will be handled by the blocking loader dialog when necessary
-  }, [open, cachedCatalog, caching, downloadCatalogToLocal, initialCacheLoaded]);
-
-  // Show a blocking loader dialog when the component is opened and there's no cached catalog.
-  const showLoader = open && initialCacheLoaded && !cachedCatalog;
-
-  // Kick off download when loader dialog becomes visible.
-  useEffect(() => {
-    if (showLoader && !caching) {
-      downloadCatalogToLocal().catch((e) => logger.warn('Loader auto-download failed:', e?.message));
-    }
-  }, [showLoader, caching, downloadCatalogToLocal]);
-
-  // loader flow handled in the render below; do not early-return to keep hooks order stable
-  // Simplified search: the Shapes tool is disabled until the full
-  // catalog is cached, so only perform client-side filtering. This
-  // avoids partial/network-driven states and keeps the component lean.
-  useEffect(() => {
+    if (!open) return undefined;
     if (timerRef.current) clearTimeout(timerRef.current);
     setLoading(true);
-    // shorter debounce for more responsive typing
-    timerRef.current = setTimeout(() => {
-      if (Array.isArray(cachedCatalog) && cachedCatalog.length > 0) {
-        try {
-          const filtered = filterCachedCatalogItems(cachedCatalog, q);
-          setResults(filtered);
-          setTotal(filtered.length);
-        } catch (e) {
-          logger.warn('Local catalog filter failed:', e?.message);
+    // network-driven search / paging
+    timerRef.current = setTimeout(async () => {
+      try {
+        const base = getBaseUrl(backendBase);
+        const out = await fetchShapes(base, q || '', limit, offset);
+        if (!out || !out.ok) {
           setResults([]);
           setTotal(0);
+        } else {
+          setResults(out.items || []);
+          setTotal(out.total || (out.items || []).length);
         }
-      } else {
-        // No cached catalog yet; show empty results. The loader dialog
-        // (shown elsewhere) will fetch the full catalog before the
-        // shapes tool becomes clickable.
+      } catch (e) {
+        logger.warn('fetchShapes failed:', e?.message || e);
         setResults([]);
         setTotal(0);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }, 150);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [q, cachedCatalog]);
+  }, [open, q, offset, limit, backendBase]);
 
   return (
     <>
-      {/* Loader dialog shown when opening and no cached catalog exists */}
-      {showLoader && (
-        <Dialog open={true} disableEscapeKeyDown maxWidth="sm" fullWidth data-testid="catalog-loader">
-          <DialogTitle>Downloading full catalog</DialogTitle>
-          <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: 3 }}>
-            <div style={{ fontWeight: 600 }}>Downloading full shapes catalog…</div>
-            {cacheProgress?.total > 0 && (
-              <div style={{ width: '100%', marginTop: 8 }}>
-                <LinearProgress variant="determinate" value={(cacheProgress.done / Math.max(1, cacheProgress.total)) * 100} />
-                <div style={{ display: 'flex', justifyContent: SPACE_BETWEEN, marginTop: 6 }}>
-                  <small>{cacheProgress.done}/{cacheProgress.total}</small>
-                  <small>{Math.round((cacheProgress.done / Math.max(1, cacheProgress.total)) * 100)}%</small>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      )}
 
       {/* Intercept onClose to prevent closing while caching is in progress */}
       <Dialog
@@ -736,15 +571,7 @@ The backend will start on port ${backendPort}.`);
         Loading state still controls network/cache behavior but we don't show
         the small spinner in the SearchBar to keep the UI calm. */}
   <SearchBar value={q} onChange={setQ} loading={false} onClose={onClose} />
-          {caching && cacheProgress?.total > 0 && (
-            <div style={{ marginTop: 8 }}>
-              <LinearProgress variant="determinate" value={(cacheProgress.done / Math.max(1, cacheProgress.total)) * 100} />
-              <div style={{ display: 'flex', justifyContent: SPACE_BETWEEN, fontSize: 12, marginTop: 4 }}>
-                <span>Downloading catalog: {cacheProgress.done}/{cacheProgress.total}</span>
-                <span>{Math.round((cacheProgress.done / Math.max(1, cacheProgress.total)) * 100)}%</span>
-              </div>
-            </div>
-          )}
+          {/* Network-driven loading indicator is not shown inline; SearchBar shows minimal UI */}
           <div style={{ overflow: 'auto', flex: 1, minHeight: 120 }} data-testid="shapes-list-scroll">
             {/* Render only up to MAX_RENDER_ITEMS to avoid jank when the
                 filtered result set is large. Always show a brief hint when

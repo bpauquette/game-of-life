@@ -194,12 +194,13 @@ const ShapePreview = React.memo(ShapePreviewComponent, (prev, next) => {
   // shallow compare by stable identifiers to avoid expensive re-renders.
   const idPrev = prev.shape?.id || prev.shape?.name;
   const idNext = next.shape?.id || next.shape?.name;
-  if (idPrev !== idNext) return false;
-  if (prev.colorScheme !== next.colorScheme) return false;
-  if (prev.boxSize !== next.boxSize) return false;
-  if ((prev.selected || false) !== (next.selected || false)) return false;
-  // t is time-based; avoid re-render when t changes frequently for palette previews.
-  return true;
+  // Return true when all relevant props are equal (skip re-render), false otherwise.
+  return (
+    idPrev === idNext &&
+    prev.colorScheme === next.colorScheme &&
+    prev.boxSize === next.boxSize &&
+    ((prev.selected || false) === (next.selected || false))
+  );
 });
 
 ShapePreview.propTypes = {

@@ -16,68 +16,14 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
     setLoading(true);
     setReady(false);
     try {
-      // Always fetch the authoritative catalog from the backend at startup.
-      // We no longer persist to IndexedDB — the app relies on an in-memory
-      // global cache for the catalog so we avoid IndexedDB-related duplication
-      // and platform-specific consistency issues.
-
-      // Always fetch the full catalog from backend (one-time startup behavior)
       const base = getBaseUrl(backendBase);
       const page = batchSize || 200;
-      let offset = 0;
-      let all = [];
-
-      // Fetch all pages into memory first so we can deduplicate before
-      // writing to IndexedDB. The catalog size is modest in practice and
-      // this simplifies ensuring we don't end up with duplicates.
-      while (!aborted.current) {
-        const out = await fetchShapes(base, '', page, offset);
-        if (!out.ok) {
-          throw new Error(`Failed to fetch shapes: status ${out.status}`);
-        }
-        const items = out.items || [];
-        const total = out.total || 0;
-        if (offset === 0) setProgress({ done: 0, total: total });
-        if (!items.length) break;
-        all = all.concat(items);
-        offset += items.length;
-        if (all.length >= total) break;
-        // yield to browser so paint can happen
-        await new Promise((resolve) => {
-          if (typeof requestIdleCallback === 'function') return requestIdleCallback(resolve);
-          return setTimeout(resolve, 0);
-        });
-      }
-
+      const all = await fetchAllPages(base, page, aborted, setProgress);
       if (!aborted.current) {
-        // Deduplicate: prefer canonical 'id' when present; otherwise fall
-        // back to a name+cells fingerprint to detect duplicates created by
-        // earlier caching passes that generated synthetic ids.
-        const seen = new Map();
-        const fingerprint = (s) => {
-          if (!s) return '';
-          if (s.id) return `id:${s.id}`;
-          const name = s.name || s.meta?.name || '';
-          const cells = s.cells || s.pattern || s.liveCells || [];
-          let cellsStr = '';
-          try { cellsStr = JSON.stringify(cells); } catch (e) { cellsStr = String(cells.length || ''); }
-          return `nm:${name}#c:${cellsStr}`;
-        };
-        const deduped = [];
-        for (let i = 0; i < all.length; i++) {
-          const s = all[i];
-          const key = fingerprint(s);
-          if (!seen.has(key)) {
-            seen.set(key, true);
-            deduped.push(s);
-          }
-        }
-
-        // Store deduped catalog in-memory only (global cache). We intentionally
-        // avoid persisting to IndexedDB to keep client-side state simple and
-        // avoid previous duplication bugs caused by multiple writers.
+        const deduped = dedupeItems(all);
         setProgress({ done: deduped.length, total: deduped.length });
-        try { if (typeof globalThis !== 'undefined') globalThis.__GOL_SHAPES_CACHE__ = deduped; } catch (e) {}
+        // Do not keep an in-memory global cache here; the app should always
+        // fetch the catalog from the backend when needed.
         setReady(true);
       }
     } catch (err) {
@@ -87,6 +33,50 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
       if (!aborted.current) setLoading(false);
     }
   };
+
+  // helper: yield to browser to allow paints
+  function yieldToBrowser() {
+    return new Promise((resolve) => {
+      if (typeof requestIdleCallback === 'function') return requestIdleCallback(resolve);
+      return setTimeout(resolve, 0);
+    });
+  }
+
+  async function fetchAllPages(base, page, abortedRef, progressCb) {
+    let offset = 0;
+    const all = [];
+    while (!abortedRef.current) {
+      const out = await fetchShapes(base, '', page, offset);
+      if (!out.ok) throw new Error(`Failed to fetch shapes: status ${out.status}`);
+      const items = out.items || [];
+      const total = out.total || 0;
+      if (offset === 0 && typeof progressCb === 'function') progressCb({ done: 0, total });
+      if (!items.length) break;
+      all.push(...items);
+      offset += items.length;
+      if (all.length >= total) break;
+      await yieldToBrowser();
+    }
+    return all;
+  }
+
+  function dedupeItems(all) {
+    const seen = new Set();
+    const deduped = [];
+    for (let i = 0; i < (all || []).length; i++) {
+      const s = all[i];
+      let key = '';
+      if (!s) key = '';
+      else if (s.id) key = `id:${s.id}`;
+      else {
+        const name = s.name || s.meta?.name || '';
+        const cells = s.cells || s.pattern || s.liveCells || [];
+        try { key = `nm:${name}#c:${JSON.stringify(cells)}`; } catch (e) { key = `nm:${name}#c:${cells.length||0}`; }
+      }
+      if (!seen.has(key)) { seen.add(key); deduped.push(s); }
+    }
+    return deduped;
+  }
 
   useEffect(() => {
     aborted.current = false;

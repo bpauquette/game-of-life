@@ -25,9 +25,9 @@ describe('ShapePaletteDialog backend error handling', () => {
         checkBackendHealth={mockCheckBackendHealthFail}
       />
     );
-    // Wait for dialog to appear
+    // With the backend down we expect no results to be displayed and no crash
     await waitFor(() => {
-      expect(screen.getByText(/backend server not found/i)).toBeInTheDocument();
+      expect(screen.getByText(/no shapes found/i)).toBeInTheDocument();
     });
   });
 
@@ -50,7 +50,9 @@ describe('ShapePaletteDialog backend error handling', () => {
       />
     );
     await waitFor(() => {
-      expect(screen.queryByText(/backend server not found/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/backend server not found|failed to cache catalog/i)
+      ).not.toBeInTheDocument();
     });
   });
 });
