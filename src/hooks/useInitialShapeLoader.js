@@ -3,7 +3,7 @@ import logger from '../controller/utils/logger';
 import { fetchShapes, getBaseUrl } from '../utils/backendApi';
 
 // Fetch the full catalog from the backend in paged requests and write to IDB.
-export default function useInitialShapeLoader({ strategy = 'background', batchSize = 200, autoStart = true, backendBase } = {}) {
+export default function useInitialShapeLoader({ strategy = 'background', batchSize = 200, autoStart = false, backendBase } = {}) {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState(null);
@@ -81,12 +81,12 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
   useEffect(() => {
     aborted.current = false;
     if (autoStart) {
-      // start fetching from backend at startup
+      // start fetching from backend (only when explicitly requested via autoStart)
       start();
     }
     return () => { aborted.current = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [autoStart]);
 
   return { loading, progress, error, ready, start };
 }

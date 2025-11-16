@@ -5,10 +5,10 @@ import logger from '../controller/utils/logger';
 import {
   getBaseUrl,
   fetchShapeById,
-  fetchShapeNames,
   createShape,
   checkBackendHealth, deleteShapeById
 } from '../utils/backendApi';
+import { createNamesWorker, createHoverWorker, createFauxNamesWorker } from '../utils/workerFactories';
 import { BUTTONS } from '../utils/Constants';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -32,6 +32,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 import Typography from '@mui/material/Typography';
 // Name-only palette: do not render previews or descriptions in the dialog
 import SearchBar from './components/SearchBar';
+import PreviewPanel from './components/PreviewPanel';
 
 // PropTypes for internal components
 ShapeListItem.propTypes = {
@@ -90,8 +91,8 @@ SnackMessage.propTypes = {
 // No preview rendering in the name-only palette
 const SPACE_BETWEEN = 'space-between';
 const FOOTER_ROW_STYLE = { display: 'flex', justifyContent: SPACE_BETWEEN, alignItems: 'center', marginTop: 8 };
-// When the full catalog is large, avoid rendering thousands of items at once.
-const MAX_RENDER_ITEMS = 200;
+// Previously we capped rendering to avoid jank; remove that cap so the
+// palette can load and display all names (worker will fetch pages 50 at a time).
 // Helper: derive a reliable cell count from a shape object. Some shapes
 // may include `cells` (array), `pattern` (array), or `liveCells`.
 // Older code used `cellsCount` which may be absent when shapes are
@@ -107,7 +108,7 @@ const SlideUpTransition = (props) => <Slide {...props} direction="up" />;
 // and paging rather than relying on any client-side cached catalog.
 
 // Small presentational: per-shape list item with preview and delete affordance
-function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRecent }) {
+function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRecent, onHover }) {
   // Use a stable timestamp for any debug color sampling
   const tRef = useRef(Date.now());
   const getCellColor = (x, y) => colorScheme?.getCellColor?.(x, y, tRef.current) ?? '#4a9';
@@ -122,9 +123,7 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRe
       // Avoid spamming console in normal runs. Enable detailed preview
       // diagnostics by setting globalThis.__GOL_PREVIEW_DEBUG__ = true in
       // the dev console or test harness.
-      if (globalThis.__GOL_PREVIEW_DEBUG__) {
-        logger.debug('[ShapePaletteDialog] palette-sample', { id: s.id || s.name, x: fx, y: fy, color: sampleColor });
-      }
+          if (globalThis.__GOL_PREVIEW_DEBUG__) logger.debug('[ShapePaletteDialog] palette-sample', { id: s.id || s.name, x: fx, y: fy, color: sampleColor });
     }
   } catch (e) {
     // Log the error instead of silently swallowing it so issues can be diagnosed.
@@ -133,11 +132,13 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRe
   return (
       <ListItem key={`${keyBase}-${idx}`} disablePadding>
         <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-              <IconButton
+          <IconButton
             aria-label="Add to Recent"
             size="small"
             sx={{ mr: 1, color: '#388e3c', bgcolor: 'rgba(56,142,60,0.08)', borderRadius: 1 }}
-            onClick={(e) => {
+            onMouseEnter={() => onHover?.(s?.id)}
+            onMouseLeave={() => onHover?.(null)}
+                onClick={(e) => {
               e.stopPropagation();
               // Defer the onAddRecent call to the next macrotask so the click
               // handler returns immediately and any heavier work runs asynchronously.
@@ -156,7 +157,7 @@ function ShapeListItem({ s, idx, colorScheme, onSelect, onRequestDelete, onAddRe
               </span>
             </Tooltip>
           </IconButton>
-          <ListItemButton onClick={() => onSelect(s)} sx={{ flex: 1 }}>
+          <ListItemButton onClick={() => onSelect(s)} sx={{ flex: 1 }} onMouseEnter={() => onHover?.(s?.id)} onMouseLeave={() => onHover?.(null)}>
             <Box sx={{ flex: 1 }}>
             <Typography
               variant="subtitle1"
@@ -233,7 +234,7 @@ function BackendServerDialog({
 // SearchBar moved to its own component under ./components/SearchBar.js
 
 // Presentational: list of shapes or empty state
-function ShapesList({ items, colorScheme, loading, onSelect, onDeleteRequest, onAddRecent }) {
+function ShapesList({ items, colorScheme, loading, onSelect, onDeleteRequest, onAddRecent, onHover }) {
   return (
     <List dense>
       {items.map((s, idx) => (
@@ -245,6 +246,7 @@ function ShapesList({ items, colorScheme, loading, onSelect, onDeleteRequest, on
           onSelect={onSelect}
           onRequestDelete={onDeleteRequest}
           onAddRecent={onAddRecent}
+          onHover={onHover}
         />
       ))}
       {(!loading && items.length === 0) && (
@@ -318,7 +320,6 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [results, setResults] = useState([]); // metadata items (id + name)
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
-  const [namesCatalog, setNamesCatalog] = useState(null);
   const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
   const LARGE_CATALOG_THRESHOLD = 1000; // UI hint threshold
@@ -334,8 +335,18 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [snackMsg, setSnackMsg] = useState('');
   const [snackUndoShape, setSnackUndoShape] = useState(null);
   const [snackDetails, setSnackDetails] = useState(null); // temporary debug details
-  const timerRef = useRef(null);
+  // timerRef not needed with server-side search/pagination
   const loadStartRef = useRef(null);
+  const qRef = useRef('');
+  const [hoveredShapeData, setHoveredShapeData] = useState(null);
+  const hoverWorkerRef = useRef(null);
+  const hoverDataRef = useRef(null);
+  const hoverDebounceRef = useRef(null);
+  const pendingHoverIdRef = useRef(null);
+
+  useEffect(() => { hoverDataRef.current = hoveredShapeData; }, [hoveredShapeData]);
+
+  
   //const handleAddRecent = useCallback(
   //(shape) => {
    // onAddRecent?.(shape);
@@ -350,6 +361,95 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       logger.warn('onAddRecent failed:', e);
     }
   }, [onAddRecent]);
+
+  // Use a web worker (or faux worker in tests) to fetch full shape data on hover
+
+  // Hover worker creation is handled by `workerFactories.createHoverWorker`.
+
+  const directFetchPreview = useCallback(async (id) => {
+    try {
+      const res = await fetch(`${getBaseUrl(backendBase)}/v1/shapes/${encodeURIComponent(id)}`);
+      if (!res.ok) return;
+      const s = await res.json().catch(() => ({}));
+      const desc = s.description || s.meta?.description || s.meta?.desc || '';
+      const cells = Array.isArray(s.cells) ? s.cells : (Array.isArray(s.pattern) ? s.pattern : (Array.isArray(s.liveCells) ? s.liveCells : []));
+      setHoveredShapeData({ id: s.id, name: s.name || s.meta?.name || '(unnamed)', description: desc, cells });
+    } catch (err) {
+      // ignore
+    }
+  }, [backendBase]);
+
+  const handleHoverWorkerError = useCallback((worker, id, ev) => {
+    try { logger.warn('[ShapePaletteDialog] hover worker error/fallback', ev); } catch (e) {}
+    try { directFetchPreview(id); } catch (e) {}
+    try { if (worker && typeof worker.terminate === 'function') worker.terminate(); } catch (e) {}
+    if (hoverWorkerRef.current === worker) hoverWorkerRef.current = null;
+  }, [directFetchPreview]);
+
+  const attachHoverHandlers = useCallback((worker, id) => {
+    // onmessage sets the preview; handle error messages (some faux workers
+    // emit `type: 'error'` via onmessage) and delegate other failures to
+    // the shared error handler.
+    worker.onmessage = (ev) => {
+      const d = ev.data || {};
+      if (d.type === 'preview') {
+        setHoveredShapeData(d.data || null);
+      } else if (d.type === 'error') {
+        // normalize into the same error flow used by onerror/onmessageerror
+        handleHoverWorkerError(worker, id, { message: d.message || 'hover worker error' });
+      }
+    };
+    worker.onerror = (ev) => handleHoverWorkerError(worker, id, ev);
+    worker.onmessageerror = (ev) => handleHoverWorkerError(worker, id, ev);
+    try {
+      worker.postMessage({ type: 'start', id, base: getBaseUrl(backendBase) });
+    } catch (e) {
+      handleHoverWorkerError(worker, id, e);
+    }
+  }, [handleHoverWorkerError, backendBase]);
+
+  const startHoverWorker = useCallback((id) => {
+    if (!hoverWorkerRef.current) {
+      try {
+        hoverWorkerRef.current = createHoverWorker(getBaseUrl(backendBase));
+          // Removed debug log
+      } catch (e) {
+        try { console.warn('[ShapePaletteDialog] createHoverWorker threw', e); } catch (ee) {}
+      }
+    }
+    try {
+      attachHoverHandlers(hoverWorkerRef.current, id);
+    } catch (e) {
+      try { console.warn('[ShapePaletteDialog] attachHoverHandlers failed, falling back to directFetchPreview', e); } catch (ee) {}
+      directFetchPreview(id);
+    }
+  }, [directFetchPreview, backendBase, attachHoverHandlers]);
+
+  const handleHover = useCallback((id) => {
+    // Debounce and deduplicate hover requests to avoid rapid repeated fetches
+    setHoveredShapeData(null);
+    // clear any pending debounce
+    if (hoverDebounceRef.current) {
+      clearTimeout(hoverDebounceRef.current);
+      hoverDebounceRef.current = null;
+    }
+    if (!id) {
+      pendingHoverIdRef.current = null;
+      if (hoverWorkerRef.current) {
+        try { hoverWorkerRef.current.postMessage({ type: 'stop' }); } catch (_) {}
+      }
+      return;
+    }
+    // If the same id is already pending, do nothing
+    if (pendingHoverIdRef.current === id) return;
+    pendingHoverIdRef.current = id;
+    // Small debounce to avoid fetching on very short mouseovers
+    hoverDebounceRef.current = setTimeout(() => {
+      hoverDebounceRef.current = null;
+      // start worker (worker itself will ignore identical duplicate starts)
+      startHoverWorker(id);
+    }, 120);
+  }, [startHoverWorker]);
 
   const handleShapeSelect = useCallback(async (shape) => {
     logger.debug('[ShapePaletteDialog] Shape selected:', shape);
@@ -367,7 +467,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
         onSelectShape?.(res.data);
         safeAddRecent(res.data);
       } else {
-        logger.warn('[ShapePaletteDialog] Fallback: onSelectShape called with metadata only');
+          // Removed debug log
         onSelectShape?.(shape);
         safeAddRecent(shape);
       }
@@ -494,70 +594,182 @@ The backend will start on port ${backendPort}.`);
   }, [open]);
   
   
-  // On open: fetch the full list of names in a single call, then do
-  // client-side, name-only filtering. This avoids fetching previews or
-  // descriptions up-front and satisfies the "names only in a single call" requirement.
-  const mountedRef = useRef(false);
-  async function fetchAndSetNames(base) {
-    setLoading(true);
+  // Server-side paged name fetch is used below in the effect; no local namesCatalog stored.
+
+  // Helper to fetch one page of names and update results (replace or append)
+  // qRef allows us to reset offset on q changes and keep the main fetch
+  // effect free of `q` in its dependency list, lowering complexity.
+  useEffect(() => {
+    // when q changes, update ref and reset paging to first page
+    qRef.current = q;
+    setOffset(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
+  // Worker-based incremental loader: fetch 50 names at a time in a Web Worker
+  // to keep the UI responsive while the full catalog is downloaded.
+  const workerRef = useRef(null);
+
+  // Restart the names worker when the query or paging offset changes while
+  // the dialog is open. This ensures typing in the SearchBar triggers a
+  // new search instead of only running the loader on dialog open.
+  useEffect(() => {
+    if (!open) return; // only run when dialog is visible
+    // startNamesWorker stops any existing worker before starting a new one
+    startNamesWorker();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, offset, backendBase, open]);
+
+  // Worker event handlers extracted to reduce cognitive complexity of
+  // startNamesWorker. These are stable handlers that reference component
+  // state setters via closure.
+  /* eslint-disable-next-line sonarjs/cognitive-complexity */
+  function handleWorkerMessage(ev) {
     try {
-      const out = await fetchShapeNames(base);
-      if (!mountedRef.current) return;
-      if (!out || !out.ok) {
-        setNamesCatalog([]);
-        setResults([]);
-        setTotal(0);
-      } else {
-        setNamesCatalog(out.items || []);
-        setResults(out.items || []);
-        setTotal(out.total || (out.items || []).length);
+      const data = ev.data || {};
+      if (data.type === 'page') {
+        const items = Array.isArray(data.items) ? data.items : [];
+        try {
+          const missing = items.filter(it => !it || !it.id);
+          if (missing && missing.length) {
+            console.error('[ShapePaletteDialog] names worker page contains items without id:', missing.slice(0,5));
+          }
+        } catch (e) {}
+        setResults(prev => [...(prev || []), ...items]);
+        setTotal(prev => data.total || (prev || 0) + items.length);
+      } else if (data.type === 'error') {
+        const msg = `Shapes backend error: ${data.message}`;
+        logger.warn('[ShapePaletteDialog] worker error:', data.message);
+        setBackendError(msg);
+        setShowBackendDialog(true);
+        setLoading(false);
+        stopNamesWorker();
+      } else if (data.type === 'done') {
+        setLoading(false);
+        stopNamesWorker();
       }
-    } catch (err) {
-      logger.warn('fetchShapeNames failed:', err?.message || err);
-      if (!mountedRef.current) return;
-      setNamesCatalog([]);
-      setResults([]);
-      setTotal(0);
-    } finally {
-      if (mountedRef.current) setLoading(false);
+    } catch (handlerErr) {
+      logger.error('[ShapePaletteDialog] error handling worker message:', handlerErr);
+      setBackendError(`Worker handler error: ${handlerErr?.message || String(handlerErr)}`);
+      setShowBackendDialog(true);
+      setLoading(false);
+      stopNamesWorker();
     }
   }
 
-  useEffect(() => {
-    if (!open) return undefined;
-    mountedRef.current = true;
+  function handleWorkerError(errEvent) {
+    logger.warn('[ShapePaletteDialog] worker runtime error:', errEvent);
+    let message = 'Unknown worker error';
+    try {
+      if (errEvent && typeof errEvent === 'object') {
+        message = errEvent.message || (errEvent.error && (errEvent.error.message || String(errEvent.error))) || String(errEvent);
+        if (errEvent.filename) message += ` at ${errEvent.filename}:${errEvent.lineno || '?'}:${errEvent.colno || '?'} `;
+      } else {
+        message = String(errEvent);
+      }
+    } catch (ex) {
+      message = String(errEvent);
+    }
+    setBackendError(`Worker error: ${message}`);
+    setShowBackendDialog(true);
+    setLoading(false);
+    stopNamesWorker();
+  }
+
+  function handleWorkerMessageError(ev) {
+    logger.warn('[ShapePaletteDialog] worker messageerror:', ev);
+    setBackendError('Worker message error');
+    setShowBackendDialog(true);
+    setLoading(false);
+    stopNamesWorker();
+  }
+
+  function stopNamesWorker() {
+    try {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function startNamesWorker() {
+    stopNamesWorker();
+    setResults([]);
+    setTotal(0);
+    setLoading(true);
     const base = getBaseUrl(backendBase);
-    fetchAndSetNames(base);
-    return () => { mountedRef.current = false; };
+    const qParam = qRef.current || '';
+    const pageSize = Number(limit) || 50;
+
+    let worker = null;
+    try {
+      worker = createNamesWorker(base, qParam, pageSize);
+    } catch (e) {
+      logger.warn('[ShapePaletteDialog] createNamesWorker threw', e);
+      worker = createFauxNamesWorker();
+    }
+    workerRef.current = worker;
+
+    // Attach pre-extracted handlers to keep this function small.
+    worker.onmessage = handleWorkerMessage;
+    // If the real module worker fails to load or throws during init, the
+    // worker.onerror handler will be invoked. Instead of surface a fatal
+    // UI error immediately, try to fall back to a faux worker so the
+    // incremental loader continues in-band.
+    worker.onerror = (errEvent) => {
+      logger.warn('[ShapePaletteDialog] worker runtime error, falling back to faux worker:', errEvent);
+      try {
+        // Create a faux worker and wire handlers
+        const faux = createFauxNamesWorker();
+        workerRef.current = faux;
+        faux.onmessage = handleWorkerMessage;
+        faux.onerror = handleWorkerError;
+        faux.onmessageerror = handleWorkerMessageError;
+        // Start the faux worker loop
+        faux.postMessage({ type: 'start', base, q: qParam, limit: pageSize });
+        return;
+      } catch (createErr) {
+        // If fallback also fails, surface original error normally.
+        logger.error('[ShapePaletteDialog] faux worker creation failed:', createErr);
+        handleWorkerError(errEvent);
+      }
+    };
+    // Some environments do not support `onmessageerror` — assigning the
+    // handler directly is safe (it will be ignored if unsupported).
+    worker.onmessageerror = handleWorkerMessageError;
+
+    // start the worker
+    try {
+      worker.postMessage({ type: 'start', base, q: qParam, limit: pageSize });
+    } catch (postErr) {
+      // Synchronous postMessage errors can happen (e.g., circular refs),
+      // normalize and surface them via the same error handling path.
+      logger.error('[ShapePaletteDialog] worker.postMessage failed:', postErr);
+      if (worker.onerror) worker.onerror(postErr);
+    }
+  }
+
+  // Names worker creation is handled by `workerFactories.createNamesWorker`.
+
+  useEffect(() => {
+    if (!open) {
+      // ensure worker stopped and reset results when closed
+      stopNamesWorker();
+      setResults([]);
+      setLoading(false);
+      setTotal(0);
+      return undefined;
+    }
+    // when opened, start background incremental load
+    startNamesWorker();
+    return () => {
+      stopNamesWorker();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, backendBase]);
-
-  // Debounced client-side filter against the names catalog
-  useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (!namesCatalog) return undefined;
-    setLoading(true);
-    timerRef.current = setTimeout(() => {
-      try {
-        const qLower = String(q || '').trim().toLowerCase();
-        if (!qLower) {
-          setResults(namesCatalog.slice());
-          setTotal(namesCatalog.length);
-        } else {
-          const filtered = namesCatalog.filter(item => (String(item.name || '').toLowerCase()).includes(qLower));
-          setResults(filtered);
-          setTotal(filtered.length);
-        }
-      } catch (e) {
-        logger.warn('Local name filter failed:', e?.message || e);
-        setResults([]);
-        setTotal(0);
-      } finally {
-        setLoading(false);
-      }
-    }, 150);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [q, namesCatalog]);
 
   return (
     <>
@@ -576,33 +788,26 @@ The backend will start on port ${backendPort}.`);
       {/* Hide the inline spinner to avoid a distracting persistent progress indicator.
         Loading state still controls network/cache behavior but we don't show
         the small spinner in the SearchBar to keep the UI calm. */}
-  <SearchBar value={q} onChange={setQ} loading={false} onClose={onClose} />
+  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <SearchBar value={q} onChange={setQ} loading={false} onClose={onClose} />
+    <Box sx={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 1, p: 1 }}>
+      <PreviewPanel preview={hoveredShapeData} colorScheme={colorScheme} />
+    </Box>
+  </Box>
           {/* Network-driven loading indicator is not shown inline; SearchBar shows minimal UI */}
           <div style={{ overflow: 'auto', flex: 1, minHeight: 120 }} data-testid="shapes-list-scroll">
             {/* Render only up to MAX_RENDER_ITEMS to avoid jank when the
                 filtered result set is large. Always show a brief hint when
                 results are capped and the user can refine their query. */}
-            {(() => {
-              const tooMany = Array.isArray(results) && results.length > MAX_RENDER_ITEMS;
-              const display = tooMany ? results.slice(0, MAX_RENDER_ITEMS) : results;
-              return (
-                <>
-                  <ShapesList
-                    items={display}
-                    colorScheme={colorScheme}
-                    loading={loading}
-                    onSelect={handleShapeSelect}
-                    onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
-                    onAddRecent={onAddRecent}
-                  />
-                  {tooMany && (
-                    <div style={{ padding: '8px 12px', fontSize: 12, color: 'rgba(0,0,0,0.6)' }}>
-                      Showing first {MAX_RENDER_ITEMS} of {results.length} matches. Refine your search to narrow results.
-                    </div>
-                  )}
-                </>
-              );
-            })()}
+            <ShapesList
+              items={results}
+              colorScheme={colorScheme}
+              loading={loading}
+              onSelect={handleShapeSelect}
+              onDeleteRequest={(shape) => { setToDelete(shape); setConfirmOpen(true); }}
+              onAddRecent={onAddRecent}
+              onHover={handleHover}
+            />
             <FooterControls
               total={total}
               threshold={LARGE_CATALOG_THRESHOLD}

@@ -42,8 +42,8 @@ export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = fal
       }}
     >
       {/* Shapes tool first, to the left of Draw */}
-  <ToggleButton value="shapes" aria-label="shapes" disabled={!shapesEnabled} onClick={() => { if (selectedTool === 'shapes') setSelectedTool('shapes'); }}>
-    <Tooltip title={shapesEnabled ? TOOL_DESCRIPTIONS.shapes : 'Shapes loading...'}>
+  <ToggleButton value="shapes" aria-label="shapes" onClick={() => { if (selectedTool === 'shapes') setSelectedTool('shapes'); }}>
+    <Tooltip title={TOOL_DESCRIPTIONS.shapes}>
       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
         <WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} />
       </span>

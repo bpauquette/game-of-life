@@ -5,6 +5,7 @@ import { parseRLE } from './rleParser.js';
 import db from './db.js';
 import logger from './logger.js';
 
+
 const makeId = () => {
   return uuidv4();
 };
@@ -68,13 +69,19 @@ const start = async () => {
     }
   });
 
-  // Return only id and name for all shapes. This supports a lightweight
-  // client that needs only the catalog of names.
+  // Return id and name for shapes with optional pagination and query.
+  // Query params: q (substring match), limit (max items), offset (start index)
   app.get('/v1/shapes/names', async (req, res) => {
     try {
+      const q = (req.query.q || '').toLowerCase();
+      const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 50));
+      const offset = Math.max(0, Number(req.query.offset) || 0);
       const shapes = await db.listShapes();
-      const items = shapes.map(s => ({ id: s.id, name: s.name }));
-      res.json({ items, total: items.length });
+      const filtered = q ? shapes.filter(s => (s.name || '').toLowerCase().includes(q)) : shapes;
+      const total = filtered.length;
+      const page = filtered.slice(offset, offset + limit);
+      const items = page.map(s => ({ id: s.id, name: s.name }));
+      res.json({ items, total });
     } catch (err) {
       logger.error('shapes names error:', err);
       res.status(500).json({ error: err.message });
