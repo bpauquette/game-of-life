@@ -32,7 +32,6 @@ import UndoIcon from '@mui/icons-material/Undo';
 import Typography from '@mui/material/Typography';
 import ShapePreview from './components/ShapePreview';
 import SearchBar from './components/SearchBar';
-import * as idbCatalog from './idbCatalog';
 import LinearProgress from '@mui/material/LinearProgress';
 
 // PropTypes for internal components
@@ -393,7 +392,9 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [cachedCatalog, setCachedCatalog] = useState(null);
   const [caching, setCaching] = useState(false);
   // Consider IDB available if idbCatalog provides the API (allows tests to mock it)
-  const useIndexedDB = typeof idbCatalog?.putItems === 'function';
+  // No IndexedDB usage in the frontend; we rely on the backend and an in-memory cache.
+  // We no longer persist the catalog to IndexedDB; keep a lightweight
+  // in-memory progress state for UI feedback during network fetches.
   const [cacheProgress, setCacheProgress] = useState({ done: 0, total: 0 });
   // When we finish a full catalog cache, briefly skip the next automatic
   // client-side paging/filter run so the UI can show the full cached list
@@ -403,21 +404,8 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const skipNextLocalFilterRef = useRef(false);
   // No localStorage usage; CACHE_KEY removed
 
-  // Helper to write the whole catalog into IDB with progress updates.
-  const writeCatalogToIDB = useCallback(async (items) => {
-    try {
-      await idbCatalog.clearStore();
-    } catch (e) {
-      logger.warn('IDB clear failed:', e?.message);
-    }
-    setCacheProgress({ done: 0, total: items.length });
-    await idbCatalog.putItems(items, {
-      batchSize: 200,
-      progressCb: ({ done, total: t }) => {
-        setCacheProgress({ done, total: t || items.length });
-      }
-    });
-  }, []);
+  // No IndexedDB persistence: the download helper will fetch and populate
+  // the in-memory cachedCatalog only.
   
   // Backend server management states
   const [showBackendDialog, setShowBackendDialog] = useState(false);
@@ -606,14 +594,10 @@ The backend will start on port ${backendPort}.`);
           setTotal(mem.length);
           return;
         }
-        const items = await idbCatalog.getAllItems();
-        if (mounted && Array.isArray(items) && items.length > 0) {
-          setCachedCatalog(items);
-          setResults(items);
-          setTotal(items.length);
-        }
+        // If no global cache is present, initialCacheLoaded is still true
+        // so the loader can kick off a fetch when the palette opens.
       } catch (e) {
-        logger.debug('No IndexedDB cache available on mount');
+        logger.debug('Error reading in-memory cache on mount', e);
       } finally {
         if (mounted) setInitialCacheLoaded(true);
       }
@@ -633,15 +617,7 @@ The backend will start on port ${backendPort}.`);
     // Fetch all paged shapes via helper
     const { all, reqCount, totalReqTime } = await fetchAllShapes(base, page);
     setCachedCatalog(all);
-      // If IndexedDB is available, write there in batches and report progress.
-      if (useIndexedDB) {
-        try {
-          await writeCatalogToIDB(all);
-        } catch (e) {
-          logger.warn('IDB putItems failed:', e?.message);
-        }
-      }
-        // No localStorage usage anymore; data is persisted to IndexedDB.
+      // No IndexedDB persistence: the catalog is kept in-memory only.
       // Timing info
       const totalMs = Date.now() - startTs;
       const avgReqMs = reqCount > 0 ? Math.round(totalReqTime / reqCount) : 0;
@@ -668,7 +644,7 @@ The backend will start on port ${backendPort}.`);
       setCaching(false);
       setLoading(false);
     }
-  }, [backendBase, useIndexedDB, writeCatalogToIDB]);
+  }, [backendBase]);
 
   // If caller requests prefetch, start caching as soon as the component mounts
   useEffect(() => {
@@ -760,11 +736,11 @@ The backend will start on port ${backendPort}.`);
         Loading state still controls network/cache behavior but we don't show
         the small spinner in the SearchBar to keep the UI calm. */}
   <SearchBar value={q} onChange={setQ} loading={false} onClose={onClose} />
-          {useIndexedDB && caching && cacheProgress?.total > 0 && (
+          {caching && cacheProgress?.total > 0 && (
             <div style={{ marginTop: 8 }}>
               <LinearProgress variant="determinate" value={(cacheProgress.done / Math.max(1, cacheProgress.total)) * 100} />
               <div style={{ display: 'flex', justifyContent: SPACE_BETWEEN, fontSize: 12, marginTop: 4 }}>
-                <span>Caching to IndexedDB: {cacheProgress.done}/{cacheProgress.total}</span>
+                <span>Downloading catalog: {cacheProgress.done}/{cacheProgress.total}</span>
                 <span>{Math.round((cacheProgress.done / Math.max(1, cacheProgress.total)) * 100)}%</span>
               </div>
             </div>
