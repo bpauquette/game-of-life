@@ -1,21 +1,52 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import WidgetsIcon from '@mui/icons-material/Widgets';
+import { Widgets as WidgetsIcon, Edit as EditIcon, Backspace as BackspaceIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Colorize as ColorizeIcon, HorizontalRule as HorizontalRuleIcon } from '@mui/icons-material';
 import TOOL_DESCRIPTIONS from './toolDescriptions';
-import EditIcon from '@mui/icons-material/Edit';
-import BackspaceIcon from '@mui/icons-material/Backspace';
-import CropSquareIcon from '@mui/icons-material/CropSquare';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-import CasinoIcon from '@mui/icons-material/Casino';
-import ColorizeIcon from '@mui/icons-material/Colorize';
+// icons are imported above from @mui/icons-material
 import OvalIcon from '../components/OvalIcon';
-import HorizontalRuleIcon from '@mui/icons-material/HorizontalRule';
+// HorizontalRuleIcon is imported above as HorizontalRuleIcon from @mui/icons-material
 
 // ToolGroup groups the primary tools into a single, reusable control
 export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = false, shapesEnabled = true }) {
+  // On small screens (mobile portrait) hide less-essential tools to
+  // preserve space and avoid accidental taps. When the device is rotated
+  // sideways (landscape) show them again.
+  const [isPortrait, setIsPortrait] = useState(() => {
+    try {
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        return window.matchMedia('(orientation: portrait)').matches;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia('(orientation: portrait)');
+    const handler = (ev) => setIsPortrait(ev.matches);
+    try {
+      if (typeof mq.addEventListener === 'function') mq.addEventListener('change', handler);
+      else if (typeof mq.addListener === 'function') mq.addListener(handler);
+    } catch (e) {
+      // ignore
+    }
+    return () => {
+      try {
+        if (typeof mq.removeEventListener === 'function') mq.removeEventListener('change', handler);
+        else if (typeof mq.removeListener === 'function') mq.removeListener(handler);
+      } catch (e) {
+        // ignore
+      }
+    };
+  }, []);
+
+  const hideOptionalTools = isSmall && isPortrait;
+
   return (
     <ToggleButtonGroup
       value={selectedTool}
@@ -50,12 +81,12 @@ export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = fal
     </Tooltip>
   </ToggleButton>
   <ToggleButton value="draw" aria-label="draw"><Tooltip title={TOOL_DESCRIPTIONS.draw}><EditIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  <ToggleButton value="eraser" aria-label="eraser"><Tooltip title={TOOL_DESCRIPTIONS.eraser}><BackspaceIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+  {!hideOptionalTools && <ToggleButton value="eraser" aria-label="eraser"><Tooltip title={TOOL_DESCRIPTIONS.eraser}><BackspaceIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>}
       <ToggleButton value="line" aria-label="line"><Tooltip title={TOOL_DESCRIPTIONS.line}><HorizontalRuleIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
   <ToggleButton value="rect" aria-label="rect"><Tooltip title={TOOL_DESCRIPTIONS.rect}><CropSquareIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
   <ToggleButton value="circle" aria-label="circle"><Tooltip title={TOOL_DESCRIPTIONS.circle}><RadioButtonUncheckedIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
   <ToggleButton value="oval" aria-label="oval"><Tooltip title={TOOL_DESCRIPTIONS.oval}><OvalIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title={TOOL_DESCRIPTIONS.randomRect}><CasinoIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+  {!hideOptionalTools && <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title={TOOL_DESCRIPTIONS.randomRect}><CasinoIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>}
   <ToggleButton value="capture" aria-label="capture"><Tooltip title={TOOL_DESCRIPTIONS.capture}><ColorizeIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
     </ToggleButtonGroup>
   );

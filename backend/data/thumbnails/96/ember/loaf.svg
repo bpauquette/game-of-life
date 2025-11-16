@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<rect width="100%" height="100%" fill="transparent" />
+<rect x="26" y="4" width="22" height="22" fill="hsl(20, 90%, 50%)" />
+<rect x="48" y="4" width="22" height="22" fill="hsl(20, 90%, 50%)" />
+<rect x="4" y="26" width="22" height="22" fill="hsl(20, 90%, 50%)" />
+<rect x="70" y="26" width="22" height="22" fill="hsl(20, 90%, 50%)" />
+<rect x="26" y="48" width="22" height="22" fill="hsl(20, 90%, 50%)" />
+<rect x="70" y="48" width="22" height="22" fill="hsl(20, 90%, 50%)" />
+<rect x="48" y="70" width="22" height="22" fill="hsl(20, 90%, 50%)" />
+</svg>

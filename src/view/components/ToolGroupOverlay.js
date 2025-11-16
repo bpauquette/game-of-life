@@ -4,12 +4,7 @@ import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import BrushIcon from '@mui/icons-material/Brush';
-import LineAxisIcon from '@mui/icons-material/ShowChart';
-import CropSquareIcon from '@mui/icons-material/CropSquare';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-import CasinoIcon from '@mui/icons-material/Casino';
-import ColorizeIcon from '@mui/icons-material/Colorize';
+import { Brush as BrushIcon, ShowChart as LineAxisIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Colorize as ColorizeIcon } from '@mui/icons-material';
 import OvalIcon from '../components/OvalIcon';
 import TOOL_DESCRIPTIONS from './toolDescriptions';
 

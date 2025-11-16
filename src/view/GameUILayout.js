@@ -9,8 +9,7 @@ import BottomStatusBar from './BottomStatusBar';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
-import FullscreenIcon from '@mui/icons-material/Fullscreen';
-import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import { Fullscreen as FullscreenIcon, FullscreenExit as FullscreenExitIcon } from '@mui/icons-material';
 function GameUILayout({
   recentShapes,
   onSelectShape,
@@ -183,6 +182,7 @@ function GameUILayout({
           onSelectShape={onPaletteSelect}
           backendBase={controlsProps?.backendBase}
           colorScheme={colorScheme}
+          colorSchemeKey={uiState?.colorSchemeKey || 'bio'}
           onAddRecent={controlsProps?.onAddRecent}
           prefetchOnMount={false}
         />

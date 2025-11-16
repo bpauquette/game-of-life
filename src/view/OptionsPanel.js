@@ -11,7 +11,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import InputAdornment from '@mui/material/InputAdornment';
 import Tooltip from '@mui/material/Tooltip';
-import InfoIcon from '@mui/icons-material/Info';
+import { Info as InfoIcon } from '@mui/icons-material';
 
 const OptionsPanel = ({
   colorSchemes,

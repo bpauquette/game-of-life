@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="125" height="125" viewBox="0 0 125 125">
+<rect width="100%" height="100%" fill="transparent" />
+<rect x="67" y="4" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="76" y="4" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="67" y="13" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="85" y="13" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="22" y="22" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="67" y="22" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="85" y="22" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="94" y="22" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="13" y="31" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="22" y="31" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="76" y="31" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="4" y="40" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="31" y="40" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="4" y="49" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="13" y="49" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="22" y="49" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="94" y="67" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="103" y="67" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="112" y="67" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="85" y="76" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="112" y="76" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="40" y="85" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="94" y="85" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="103" y="85" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="22" y="94" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="31" y="94" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="49" y="94" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="94" y="94" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="31" y="103" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="49" y="103" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="40" y="112" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+<rect x="49" y="112" width="9" height="9" fill="hsl(0, 100%, 60%)" />
+</svg>

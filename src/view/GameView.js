@@ -14,6 +14,16 @@ export class GameView {
 
     // Event callbacks
     this.callbacks = {};
+
+    // Improve input responsiveness by disabling default touch actions on the
+    // canvas (prevents browser panning/zooming) so we can safely mark input
+    // listeners as passive where appropriate. This reduces main-thread
+    // jank when handling wheel/touch events.
+    try {
+      if (this.canvas && this.canvas.style) this.canvas.style.touchAction = 'none';
+    } catch (e) {
+      // ignore (tests or non-DOM canvases)
+    }
   }
 
   // Event handling setup
@@ -199,10 +209,13 @@ export class GameView {
       this.canvas.addEventListener('pointercancel', onPointerUp, { passive: false });
       this.canvas.addEventListener('click', onClick);
       // Wheel zoom still useful on trackpads/mice
+      // Use a passive wheel listener to avoid the browser delaying the
+      // handler when the main thread is busy. We set touchAction='none'
+      // above so preventing default browser scroll isn't necessary.
       this.canvas.addEventListener('wheel', (e) => {
         const coords = getMouseCoords(e);
         this.emit('wheel', { event: e, deltaY: e.deltaY, ...coords });
-      }, { passive: false });
+      }, { passive: true });
     } else {
       // Mouse fallback
       // Mouse down
@@ -308,10 +321,11 @@ export class GameView {
       }, { passive: false });
 
       // Mouse wheel (zoom)
+      // Mouse wheel (zoom) - make passive for improved responsiveness.
       this.canvas.addEventListener('wheel', (e) => {
         const coords = getMouseCoords(e);
         this.emit('wheel', { event: e, deltaY: e.deltaY, ...coords });
-      }, { passive: false });
+      }, { passive: true });
     }
 
     // Context menu

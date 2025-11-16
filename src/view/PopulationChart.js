@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import Tooltip from '@mui/material/Tooltip';
-import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import { Lightbulb as LightbulbIcon } from '@mui/icons-material';
 
 // Chart dimensions and styling constants
 const CHART_WIDTH = 640;

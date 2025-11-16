@@ -49,6 +49,17 @@ const getShape = async (id) => {
   return data.find(s => s.id === id) || null;
 };
 
+const getShapeByName = async (name) => {
+  if (!name) return null;
+  const data = await readDb();
+  // prefer exact match, then case-insensitive
+  let found = data.find(s => s.name === name);
+  if (found) return found;
+  const lower = name.toLowerCase();
+  found = data.find(s => (s.name || '').toLowerCase() === lower);
+  return found || null;
+};
+
 const addShape = async (shape) => {
   const data = await readDb();
   data.push(shape);
@@ -97,7 +108,9 @@ const deleteGrid = async (id) => {
   return true;
 };
 
-export default { 
-  listShapes, getShape, addShape, deleteShape,
-  listGrids, getGrid, saveGrid, deleteGrid 
+const API = {
+  listShapes, getShape, getShapeByName, addShape, deleteShape,
+  listGrids, getGrid, saveGrid, deleteGrid
 };
+
+export default API;

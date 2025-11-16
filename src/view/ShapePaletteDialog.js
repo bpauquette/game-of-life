@@ -22,13 +22,12 @@ import Tooltip from '@mui/material/Tooltip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { Delete as DeleteIcon } from '@mui/icons-material';
 import DialogActions from '@mui/material/DialogActions';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Slide from '@mui/material/Slide';
-import CloseIcon from '@mui/icons-material/Close';
-import UndoIcon from '@mui/icons-material/Undo';
+import { Close as CloseIcon, Undo as UndoIcon } from '@mui/icons-material';
 import Typography from '@mui/material/Typography';
 // Name-only palette: do not render previews or descriptions in the dialog
 import SearchBar from './components/SearchBar';
@@ -315,8 +314,13 @@ function SnackMessage({ open, message, details, canUndo, onUndo, onClose }) {
   );
 }
 
-export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, onAddRecent, prefetchOnMount = false }){
+export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, colorSchemeKey = 'bio', onAddRecent, prefetchOnMount = false }){
   const [q, setQ] = useState('');
+  // inputQ is the immediate value bound to the TextField. We debounce
+  // propagation into `q` (which drives client-side filtering) so rapid
+  // keystrokes don't synchronously re-filter a potentially very large
+  // `results` array on every keypress.
+  const [inputQ, setInputQ] = useState('');
   const [results, setResults] = useState([]); // metadata items (id + name)
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -585,7 +589,7 @@ The backend will start on port ${backendPort}.`);
     }
   };
 
-  useEffect(()=>{ if(!open){ setQ(''); setResults([]); setLoading(false); } }, [open]);
+  useEffect(()=>{ if(!open){ setQ(''); setResults([]); setLoading(false); setInputQ(''); } }, [open]);
 
   // Track when the dialog is opened so we can time how long loading cached
   // shapes into the palette takes. start time is set when `open` becomes true.
@@ -601,24 +605,34 @@ The backend will start on port ${backendPort}.`);
   // effect free of `q` in its dependency list, lowering complexity.
   useEffect(() => {
     // when q changes, update ref and reset paging to first page
-    qRef.current = q;
+      qRef.current = q;
     setOffset(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
+
+    // Debounce input -> q to avoid expensive filtering on every keystroke.
+    useEffect(() => {
+      // If the immediate input matches the debounced q already, nothing to do
+      if (inputQ === q) return undefined;
+      const id = setTimeout(() => {
+        setQ(inputQ);
+      }, 200); // 200ms debounce is a good balance between responsiveness and work
+      return () => clearTimeout(id);
+    }, [inputQ, q]);
 
   // Worker-based incremental loader: fetch 50 names at a time in a Web Worker
   // to keep the UI responsive while the full catalog is downloaded.
   const workerRef = useRef(null);
 
-  // Restart the names worker when the query or paging offset changes while
-  // the dialog is open. This ensures typing in the SearchBar triggers a
-  // new search instead of only running the loader on dialog open.
+  // Restart the names worker when the paging offset or backendBase changes while
+  // the dialog is open. We intentionally do NOT restart on `q` so that typing
+  // filters the already-loaded catalog client-side (avoids extra backend calls).
   useEffect(() => {
     if (!open) return; // only run when dialog is visible
     // startNamesWorker stops any existing worker before starting a new one
     startNamesWorker();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, offset, backendBase, open]);
+  }, [offset, backendBase, open]);
 
   // Worker event handlers extracted to reduce cognitive complexity of
   // startNamesWorker. These are stable handlers that reference component
@@ -771,6 +785,13 @@ The backend will start on port ${backendPort}.`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, backendBase]);
 
+  // Client-side filtering of the loaded results based on the search query `q`.
+  const displayedResults = React.useMemo(() => {
+    if (!q || q.trim().length === 0) return results;
+    const ql = q.toLowerCase();
+    return (results || []).filter(r => (r.name || '').toLowerCase().includes(ql));
+  }, [results, q]);
+
   return (
     <>
 
@@ -789,9 +810,9 @@ The backend will start on port ${backendPort}.`);
         Loading state still controls network/cache behavior but we don't show
         the small spinner in the SearchBar to keep the UI calm. */}
   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-    <SearchBar value={q} onChange={setQ} loading={false} onClose={onClose} />
+  <SearchBar value={inputQ} onChange={setInputQ} loading={false} onClose={onClose} onClear={() => { setResults([]); setInputQ(''); setQ(''); }} />
     <Box sx={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 1, p: 1 }}>
-      <PreviewPanel preview={hoveredShapeData} colorScheme={colorScheme} />
+      <PreviewPanel preview={hoveredShapeData} colorScheme={colorScheme} colorSchemeKey={colorSchemeKey} />
     </Box>
   </Box>
           {/* Network-driven loading indicator is not shown inline; SearchBar shows minimal UI */}
@@ -800,7 +821,7 @@ The backend will start on port ${backendPort}.`);
                 filtered result set is large. Always show a brief hint when
                 results are capped and the user can refine their query. */}
             <ShapesList
-              items={results}
+              items={displayedResults}
               colorScheme={colorScheme}
               loading={loading}
               onSelect={handleShapeSelect}
@@ -855,6 +876,7 @@ ShapePaletteDialog.propTypes = {
   onSelectShape: PropTypes.func,
   backendBase: PropTypes.string,
   colorScheme: PropTypes.object,
+  colorSchemeKey: PropTypes.string,
   onAddRecent: PropTypes.func
 };
 

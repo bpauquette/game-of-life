@@ -95,11 +95,26 @@ export class GameModel {
   }
 
   notifyObservers(event, data) {
+    // Lightweight debug trace for captureCompleted to help diagnose why
+    // the UI might not be reacting to capture events.
+    try {
+      if (event === 'captureCompleted') {
+        logger.debug('[GameModel] notifyObservers -> captureCompleted (observerCount=' + this.observers.size + ')', data);
+      }
+    } catch (e) {
+      // swallow logging errors to avoid breaking runtime observer delivery
+    }
+
     for (const observer of this.observers) {
-      if (typeof observer === 'function') {
-        observer(event, data);
-      } else if (observer[event]) {
-        observer[event](data);
+      try {
+        if (typeof observer === 'function') {
+          observer(event, data);
+        } else if (observer[event]) {
+          observer[event](data);
+        }
+      } catch (err) {
+        // Protect observer iteration from individual observer failures
+        try { logger.error('[GameModel] observer threw for event ' + event + ':', err); } catch (e) {}
       }
     }
   }

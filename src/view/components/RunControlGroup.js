@@ -9,11 +9,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StopIcon from '@mui/icons-material/Stop';
-import SkipNextIcon from '@mui/icons-material/SkipNext';
-import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
-import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import { PlayArrow as PlayArrowIcon, Stop as StopIcon, SkipNext as SkipNextIcon, DeleteSweep as DeleteSweepIcon, Lightbulb as LightbulbIcon } from '@mui/icons-material';
 import { keyframes } from '@emotion/react';
 
 // A visually distinct grouping for stepping and run controls

@@ -4,10 +4,103 @@ import { v4 as uuidv4 } from 'uuid';
 import { parseRLE } from './rleParser.js';
 import db from './db.js';
 import logger from './logger.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// __dirname equivalent for ESM modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+import { generateThumbnailsForShape } from './thumbnailGenerator.js';
 
 
 const makeId = () => {
   return uuidv4();
+};
+
+// Small helpers to keep route handlers concise and reduce cognitive complexity
+const slugify = (s) => {
+  if (!s) return '';
+  return String(s).toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 200) || '';
+};
+
+const findAndSendThumbnail = (res, candidates) => {
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      if (p.toLowerCase().endsWith('.svg')) res.setHeader('Content-Type', 'image/svg+xml');
+      return res.sendFile(p);
+    }
+  }
+  return null;
+};
+
+const THUMB_NOT_FOUND_STR = 'thumbnail not found';
+
+const scanSchemesInSize = (sizeDir, nameSlug) => {
+  const out = [];
+  try {
+    const schemesInSize = fs.readdirSync(sizeDir, { withFileTypes: true });
+    for (const sChild of schemesInSize) {
+      if (!sChild.isDirectory()) continue;
+      out.push(path.join(sizeDir, sChild.name, `${nameSlug}.png`));
+      out.push(path.join(sizeDir, sChild.name, `${nameSlug}.svg`));
+    }
+  } catch (e) {
+    // ignore
+  }
+  return out;
+};
+
+const scanSizeDirectories = (baseThumbs, nameSlug, scheme) => {
+  const out = [];
+  try {
+    const children = fs.readdirSync(baseThumbs, { withFileTypes: true });
+    for (const child of children) {
+      if (!child.isDirectory()) continue;
+      const sizeDir = path.join(baseThumbs, child.name);
+      if (scheme) {
+        const schemeDirInSize = path.join(sizeDir, scheme);
+        out.push(path.join(schemeDirInSize, `${nameSlug}.png`));
+        out.push(path.join(schemeDirInSize, `${nameSlug}.svg`));
+        out.push(path.join(sizeDir, `${nameSlug}.png`));
+        out.push(path.join(sizeDir, `${nameSlug}.svg`));
+      } else {
+        out.push(path.join(sizeDir, `${nameSlug}.png`));
+        out.push(path.join(sizeDir, `${nameSlug}.svg`));
+        out.push(...scanSchemesInSize(sizeDir, nameSlug));
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+  return out;
+};
+
+const buildCandidatesForName = (baseThumbs, nameSlug, scheme, size) => {
+  const candidates = [];
+  if (size) {
+    const sizeDir = path.join(baseThumbs, String(size));
+    if (scheme) {
+      candidates.push(path.join(sizeDir, scheme, `${nameSlug}.png`));
+      candidates.push(path.join(sizeDir, scheme, `${nameSlug}.svg`));
+    }
+    candidates.push(path.join(sizeDir, `${nameSlug}.png`));
+    candidates.push(path.join(sizeDir, `${nameSlug}.svg`));
+    return candidates;
+  }
+
+  // No explicit size: prefer scheme-specific, then top-level, then scan size subdirs
+  if (scheme) {
+    candidates.push(path.join(baseThumbs, scheme, `${nameSlug}.png`));
+    candidates.push(path.join(baseThumbs, scheme, `${nameSlug}.svg`));
+  }
+  candidates.push(path.join(baseThumbs, `${nameSlug}.png`));
+  candidates.push(path.join(baseThumbs, `${nameSlug}.svg`));
+  const scanned = scanSizeDirectories(baseThumbs, nameSlug, scheme);
+  return candidates.concat(scanned);
 };
 
 // Helper function to ensure unique names
@@ -88,11 +181,64 @@ const start = async () => {
     }
   });
 
+  // NOTE: POST /v1/shapes/thumbnail removed — thumbnail serving is GET-only and
+  // thumbnails are written on shape save. If a thumbnail is missing, return 404.
+
   app.get('/v1/shapes/:id', async (req,res)=>{
     const s = await db.getShape(req.params.id);
     if(!s) return res.status(404).json({error:'not found'});
     res.json(s);
   });
+
+  // Serve a thumbnail (prefer PNG if available, else SVG).
+  // Optional query param `scheme` can be provided to select per-color-scheme thumbnails
+  // Also support name-based thumbnail requests at /v1/shapes/thumbnail?name=<slug>&scheme=&size=
+  app.get('/v1/shapes/thumbnail', async (req, res) => {
+    try {
+      const nameSlug = req.query.name;
+      const scheme = req.query.scheme;
+      const size = req.query.size; // optional size (e.g., '128')
+  if (!nameSlug) return res.status(400).json({ error: 'name query param required' });
+
+      const baseThumbs = path.join(__dirname, '..', 'data', 'thumbnails');
+      const candidates = buildCandidatesForName(baseThumbs, nameSlug, scheme, size);
+  if (findAndSendThumbnail(res, candidates)) return;
+  logger.info('thumbnail candidates checked (none found):', candidates.slice(0,10));
+  return res.status(404).json({ error: THUMB_NOT_FOUND_STR });
+    } catch (err) {
+      logger.error('thumbnail by name serve error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app.get('/v1/shapes/:id/thumbnail', async (req, res) => {
+    try {
+      const id = req.params.id;
+      const scheme = req.query.scheme;
+  const baseThumbs = path.join(__dirname, '..', 'data', 'thumbnails');
+      
+      // Lookup the shape and require a name; we only serve name-based thumbnails.
+      let nameSlug = '';
+      try {
+        const shapeObj = await db.getShape(id);
+        if (!shapeObj || !shapeObj.name) {
+          return res.status(404).json({ error: 'thumbnail not found (shape has no name)' });
+        }
+        nameSlug = slugify(shapeObj.name);
+      } catch (e) {
+        logger.warn('Could not lookup shape for thumbnail request:', e?.message || e);
+        return res.status(404).json({ error: 'thumbnail not found' });
+      }
+
+  const candidates = buildCandidatesForName(baseThumbs, nameSlug, scheme, null);
+  if (findAndSendThumbnail(res, candidates)) return;
+  return res.status(404).json({ error: THUMB_NOT_FOUND_STR });
+    } catch (err) {
+      logger.error('thumbnail serve error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  
 
   app.delete('/v1/shapes/:id', async (req,res)=>{
     try{
@@ -143,6 +289,10 @@ const start = async () => {
       
       // Add to DB
       await db.addShape(shape);
+      // Generate thumbnails asynchronously via helper
+      generateThumbnailsForShape(shape).catch(e => {
+        logger.error('thumbnail generation failed:', e?.message || e);
+      });
       res.status(201).json(shape);
     }catch(err){
       logger.error('add shape error:', err);

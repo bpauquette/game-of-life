@@ -14,6 +14,28 @@ export async function saveCapturedShapeToBackend(shapeData) {
     meta: { capturedAt: new Date().toISOString(), source: 'capture-tool' }
   };
   delete shapeForBackend.pattern;
+  // Check for duplicate name first (prefer client-side validation to avoid confusion)
+  try {
+    const base = resolveBackendBase();
+    const nameToCheck = (shapeForBackend.name || '').trim();
+    if (nameToCheck.length > 0) {
+      const nameRes = await fetchShapeNames(base, nameToCheck, 1, 0);
+      if (nameRes.ok && Array.isArray(nameRes.items) && nameRes.items.length > 0) {
+        // if an exact (case-insensitive) name match exists, signal duplicate
+        const exists = nameRes.items.some(it => (it.name||'').toLowerCase() === nameToCheck.toLowerCase());
+        if (exists) {
+          // throw a special error that the caller can interpret
+          throw new Error(`DUPLICATE_NAME:${nameToCheck}`);
+        }
+      }
+    }
+  } catch (e) {
+    // If the fetchShapeNames call failed for some reason, continue to attempt save
+    // unless it was a duplicate-name signal we threw above.
+    if (e.message && e.message.startsWith('DUPLICATE_NAME:')) throw e;
+    // otherwise ignore and continue
+  }
+
   const response = await fetch(`${resolveBackendBase()}/v1/shapes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

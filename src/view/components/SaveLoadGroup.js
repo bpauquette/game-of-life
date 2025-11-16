@@ -5,8 +5,7 @@ import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import SaveIcon from '@mui/icons-material/Save';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import { Save as SaveIcon, FolderOpen as FolderOpenIcon } from '@mui/icons-material';
 
 // Visually distinct grouping for Load (left) and Save (right)
 // Adds a compact mode for small screens to avoid crowding the header

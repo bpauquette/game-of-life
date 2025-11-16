@@ -14,12 +14,7 @@ import {
   CardContent,
   Chip
 } from '@mui/material';
-import {
-  GitHub as GitHubIcon,
-  Info as InfoIcon,
-  Code as CodeIcon,
-  BugReport as BugReportIcon
-} from '@mui/icons-material';
+import { GitHub as GitHubIcon, Info as InfoIcon, Code as CodeIcon, BugReport as BugReportIcon } from '@mui/icons-material';
 
 export default function AboutDialog({ open, onClose }) {
   // Get version from package.json - in a real app you might import this

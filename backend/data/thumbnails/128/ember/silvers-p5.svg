@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="118" height="78" viewBox="0 0 118 78">
+<rect width="100%" height="100%" fill="transparent" />
+<rect x="4" y="4" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="14" y="4" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="4" y="14" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="14" y="24" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="44" y="24" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="34" y="34" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="44" y="34" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="34" y="44" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="74" y="44" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="94" y="44" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="104" y="44" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="24" y="54" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="74" y="54" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="84" y="54" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="104" y="54" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="24" y="64" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+<rect x="34" y="64" width="10" height="10" fill="hsl(20, 90%, 50%)" />
+</svg>

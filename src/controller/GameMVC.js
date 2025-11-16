@@ -96,6 +96,8 @@ export class GameMVC {
       ...captureTool,
       onCaptureComplete: (captureData) => {
         try {
+          // Debug: trace capture completion flow
+          try { logger.debug('[GameMVC] enhancedCaptureTool.onCaptureComplete', { cellCount: captureData?.cellCount, bounds: captureData?.originalBounds }); } catch (e) { /* ignore */ }
           this.model.notifyObservers('captureCompleted', captureData);
         } catch (e) {
           logger.error('Failed to notify captureCompleted:', e);

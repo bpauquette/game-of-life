@@ -354,6 +354,24 @@ function GameOfLifeApp(props) {
         // Ensure we remove the observer when the MVC instance is destroyed
         // by capturing the observer reference in the mvc instance for cleanup.
         mvc._reactSelectedToolObserver = observer;
+        // Also listen for captureCompleted events from the model so the
+        // React UI can open the capture dialog when the user finishes a capture.
+        const captureObserver = (event, data) => {
+          try {
+            if (event === 'captureCompleted' && data) {
+              // Debug: trace that the React observer received the capture event
+              try { console.debug('[GameOfLifeApp] captureObserver received captureCompleted', data); } catch (e) {}
+              // Store capture data and open dialog in React UI
+              setUIState(prev => ({ ...prev, captureData: data, captureDialogOpen: true }));
+            }
+          } catch (e) {
+            // Log observer errors for diagnostics instead of silently ignoring them.
+            // eslint-disable-next-line no-console
+            console.error('captureObserver error:', e);
+          }
+        };
+        model.addObserver(captureObserver);
+        mvc._reactCaptureObserver = captureObserver;
       } catch (e) {
         // Non-fatal; continue initialization
         // eslint-disable-next-line no-console

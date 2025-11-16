@@ -14,9 +14,7 @@ import {
   Chip
 } from '@mui/material';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import SaveIcon from '@mui/icons-material/Save';
-import CancelIcon from '@mui/icons-material/Cancel';
-import GridOnIcon from '@mui/icons-material/GridOn';
+import { Save as SaveIcon, Cancel as CancelIcon, GridOn as GridOnIcon } from '@mui/icons-material';
 
 import { BUTTONS, STATUS } from '../utils/Constants';
 import logger from '../controller/utils/logger';

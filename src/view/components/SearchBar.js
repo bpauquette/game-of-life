@@ -4,7 +4,7 @@ import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import CloseIcon from '@mui/icons-material/Close';
+import { Close as CloseIcon } from '@mui/icons-material';
 
 export default function SearchBar({ value, onChange, loading, onClose, onClear }) {
 

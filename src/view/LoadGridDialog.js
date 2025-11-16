@@ -20,12 +20,7 @@ import {
   InputAdornment,
   TextField
 } from '@mui/material';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import CancelIcon from '@mui/icons-material/Cancel';
-import GridOnIcon from '@mui/icons-material/GridOn';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SearchIcon from '@mui/icons-material/Search';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import { FolderOpen as FolderOpenIcon, Cancel as CancelIcon, GridOn as GridOnIcon, Delete as DeleteIcon, Search as SearchIcon, AccessTime as AccessTimeIcon } from '@mui/icons-material';
 import logger from '../controller/utils/logger';
 import { BUTTONS, STATUS, PLACEHOLDERS } from '../utils/Constants';
 

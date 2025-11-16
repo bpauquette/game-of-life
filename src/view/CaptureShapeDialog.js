@@ -25,6 +25,7 @@ const CaptureShapeDialog = ({
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [duplicate, setDuplicate] = useState(false);
   // Preview canvas removed; keep only name input ref
   const nameInputRef = useRef(null);
 
@@ -75,7 +76,14 @@ const CaptureShapeDialog = ({
       await onSave(shapeData);
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to save shape');
+      const msg = err?.message || '';
+      if (typeof msg === 'string' && msg.startsWith('DUPLICATE_NAME:')) {
+        const dupName = msg.split(':')[1] || name.trim();
+        setError(`A shape named "${dupName}" already exists.`);
+        setDuplicate(true);
+      } else {
+        setError(msg || 'Failed to save shape');
+      }
     } finally {
       setSaving(false);
     }
@@ -142,7 +150,24 @@ const CaptureShapeDialog = ({
           />
 
           {error && (
-            <Alert severity="error" sx={{ mt: 1 }}>
+            <Alert
+              severity="error"
+              sx={{ mt: 1 }}
+              action={duplicate ? (
+                <>
+                  <Button onClick={() => {
+                    setDuplicate(false);
+                    requestAnimationFrame(() => {
+                      if (nameInputRef.current) {
+                        nameInputRef.current.focus();
+                        if (typeof nameInputRef.current.select === 'function') nameInputRef.current.select();
+                      }
+                    });
+                  }} size="small">Change name</Button>
+                  <Button onClick={() => { if (!saving) onClose(); }} size="small">Cancel</Button>
+                </>
+              ) : null}
+            >
               {error}
             </Alert>
           )}
