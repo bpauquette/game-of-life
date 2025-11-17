@@ -22,16 +22,39 @@ const makeId = () => {
 const slugify = (s) => {
   if (!s) return '';
   return String(s).toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replaceAll(/[^a-z0-9]+/g, '-')
+    .replaceAll(/^-+|-+$/g, '')
     .slice(0, 200) || '';
 };
 
 const findAndSendThumbnail = (res, candidates) => {
   for (const p of candidates) {
     if (fs.existsSync(p)) {
+      // Prefer logger so managed/background runs write this to backend.log
+      try { logger.info('findAndSendThumbnail: candidate exists -> ' + p); } catch (e) {}
       if (p.toLowerCase().endsWith('.svg')) res.setHeader('Content-Type', 'image/svg+xml');
-      return res.sendFile(p);
+      // Ensure file is readable and surface any sendFile errors to logs so we can
+      // diagnose why a file that exists might not be sent at runtime.
+      try {
+        // Check read access
+        fs.accessSync(p, fs.constants.R_OK);
+      } catch (e) {
+        logger.warn('thumbnail exists but not readable:', p, e && e.message ? e.message : e);
+        // try next candidate
+        continue;
+      }
+      // Use sendFile with a callback to log any runtime errors
+      try { logger.info('findAndSendThumbnail: calling res.sendFile for ' + p); } catch (e) {}
+      res.sendFile(p, (err) => {
+        if (err) {
+          logger.error('sendFile error for thumbnail:', p, err && err.message ? err.message : err);
+          // If headers not sent yet, return a 500 to the client to indicate server-side failure
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'thumbnail send error' });
+          }
+        }
+      });
+      return res;
     }
   }
   return null;
@@ -49,7 +72,8 @@ const scanSchemesInSize = (sizeDir, nameSlug) => {
       out.push(path.join(sizeDir, sChild.name, `${nameSlug}.svg`));
     }
   } catch (e) {
-    // ignore
+    // Log the error so it can be diagnosed instead of silently ignoring filesystem issues
+    logger.warn('scanSchemesInSize failed for', sizeDir, e && e.message ? e.message : e);
   }
   return out;
 };
@@ -74,7 +98,8 @@ const scanSizeDirectories = (baseThumbs, nameSlug, scheme) => {
       }
     }
   } catch (e) {
-    // ignore
+    // Log the error so filesystem/read issues are visible rather than silently ignored
+    logger.warn('scanSizeDirectories failed for', baseThumbs, e && e.message ? e.message : e);
   }
   return out;
 };
@@ -202,12 +227,70 @@ const start = async () => {
 
       const baseThumbs = path.join(__dirname, '..', 'data', 'thumbnails');
       const candidates = buildCandidatesForName(baseThumbs, nameSlug, scheme, size);
+      // Always log candidate paths and their existence to help debug missing thumbnails
+      try {
+        const existInfo = candidates.slice(0, 50).map(p => ({ path: p, exists: fs.existsSync(p) }));
+        // Use console.log in addition to logger so output appears even when
+        // NODE_ENV silences logger.info in production-like environments.
+        console.log('thumbnail candidates (first 50):', JSON.stringify(existInfo));
+        logger.info('thumbnail candidates (first 50):', existInfo);
+      } catch (e) {
+        logger.warn('Failed to stat thumbnail candidates:', e && e.message ? e.message : e);
+      }
+      // Extra: always log full candidates array for this request so we can
+      // trace control flow when a request yields 404 despite files existing.
+      try {
+        try { console.log('name-based request candidates:', JSON.stringify(candidates)); } catch (e) {}
+        logger.info('name-based request candidates', candidates);
+      } catch (e) {
+        // ignore
+      }
+  // Debug: optionally dump candidate paths and file existence when debugging thumbnails
+  if (process.env.GOL_DEBUG_THUMBS) {
+    try {
+      const existInfo = candidates.map(p => ({ path: p, exists: fs.existsSync(p) }));
+      logger.info('thumbnail candidate existence:', existInfo.slice(0, 20));
+    } catch (e) {
+      logger.warn('thumbnail debug check failed:', e?.message || e);
+    }
+  }
   if (findAndSendThumbnail(res, candidates)) return;
   logger.info('thumbnail candidates checked (none found):', candidates.slice(0,10));
   return res.status(404).json({ error: THUMB_NOT_FOUND_STR });
     } catch (err) {
       logger.error('thumbnail by name serve error:', err);
       return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Temporary debug route: serve a known thumbnail file directly to test sendFile
+  app.get('/__debug/thumbtest', (req, res) => {
+    try {
+      const testPath = path.join(__dirname, '..', 'data', 'thumbnails', '128', 'bio', '119p4h1v0.png');
+      if (!fs.existsSync(testPath)) return res.status(404).send('test file missing');
+      return res.sendFile(testPath);
+    } catch (e) {
+      logger.error('debug thumbtest error:', e?.message || e);
+      return res.status(500).json({ error: e?.message || String(e) });
+    }
+  });
+
+  // Debug: report candidate thumbnail paths and whether they exist
+  app.get('/__debug/thumbexist', (req, res) => {
+    try {
+      const nameSlug = req.query.name;
+      const scheme = req.query.scheme;
+      const size = req.query.size;
+      if (!nameSlug) return res.status(400).json({ error: 'name query param required' });
+      const baseThumbs = path.join(__dirname, '..', 'data', 'thumbnails');
+      const candidates = buildCandidatesForName(baseThumbs, nameSlug, scheme, size);
+      const existInfo = candidates.map(p => ({ path: p, exists: fs.existsSync(p) }));
+      // Also print to stdout to make sure manager-captured logs include it
+      console.log('__debug/thumbexist:', JSON.stringify(existInfo.slice(0,50)));
+      return res.json({ items: existInfo });
+    } catch (e) {
+      logger.error('thumbexist error:', e && e.message ? e.message : e);
+      return res.status(500).json({ error: String(e) });
     }
   });
   app.get('/v1/shapes/:id/thumbnail', async (req, res) => {
@@ -444,7 +527,22 @@ const start = async () => {
   // 2) PORT env var (common)
   // 3) default 55000
   const port = process.env.GOL_BACKEND_PORT || process.env.PORT || 55000;
-  app.listen(port, ()=> logger.info(`Shapes catalog backend listening on ${port}`));
+  // Bind explicitly to 0.0.0.0 so the server accepts IPv4 (127.0.0.1) and IPv6
+  // loopback connections. Some systems bind to IPv6-only by default which causes
+  // localhost (::1) to work but 127.0.0.1 (IPv4) to fail. Binding to 0.0.0.0
+  // ensures both address families are reachable for local dev.
+  const server = app.listen(port, '0.0.0.0', () => {
+    try {
+      const addr = server.address();
+      // addr may be a string for IPC or an object for TCP; handle both
+      const bindInfo = (addr && typeof addr === 'object') ? `${addr.address}:${addr.port}` : String(addr);
+      logger.info(`Shapes catalog backend listening on ${bindInfo}`);
+      // Also print to stdout so foreground runs show the same info immediately
+      try { console.log(`Shapes backend listening on ${bindInfo}`); } catch (e) {}
+    } catch (e) {
+      logger.info(`Shapes catalog backend listening on port ${port}`);
+    }
+  });
 }
 
 // Use top-level await instead of async IIFE

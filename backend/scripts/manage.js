@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-const { spawn } = require('cross-spawn');
-const fs = require('node:fs');
-const path = require('node:path');
+import { spawn } from 'cross-spawn';
+import * as fs from 'node:fs';
+import path from 'node:path';
+import net from 'node:net';
+import { fileURLToPath } from 'node:url';
 
 // Simple cross-platform process manager for the backend dev server.
 // Usage: node backend/scripts/manage.js <start|stop|status> [--foreground]
@@ -12,6 +14,8 @@ if (!action) {
   process.exit(2);
 }
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, '..', '..');
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const config = {
@@ -23,11 +27,16 @@ const config = {
   portEnv: process.env.GOL_BACKEND_PORT || process.env.PORT || '55000',
 };
 
+// Support an optional flag to enable thumbnail debug forwarding when starting
+// the managed backend. Usage: node backend/scripts/manage.js start --debug-thumbs
+const enableDebugThumbs = process.argv.includes('--debug-thumbs') || Boolean(process.env.GOL_DEBUG_THUMBS);
+
 function readPid(pidFile) {
   try {
     const pid = fs.readFileSync(pidFile, 'utf8').trim();
     return pid || null;
   } catch (e) {
+    console.warn(`Failed to read PID file (${pidFile}):`, e && e.message ? e.message : e);
     return null;
   }
 }
@@ -43,7 +52,6 @@ function isRunning(pid) {
 }
 
 function waitForPort(host, port, timeoutMs) {
-  const net = require('net');
   const start = Date.now();
   return new Promise((resolve, reject) => {
     (function attempt() {
@@ -89,6 +97,7 @@ function start() {
   console.log('spawn command:', spawnCmd);
   console.log('spawn args:', JSON.stringify(spawnArgs));
   console.log('spawn cwd:', config.cwd);
+  if (enableDebugThumbs) console.log('manager: forwarding GOL_DEBUG_THUMBS to child process');
 
   let child;
   try {
@@ -169,7 +178,7 @@ function spawnDetached(cmd, args) {
     cwd: config.cwd,
     stdio: stdioOption,
     detached: true,
-    env: { ...process.env, PORT: config.portEnv },
+    env: { ...process.env, PORT: config.portEnv, ...(enableDebugThumbs ? { GOL_DEBUG_THUMBS: '1' } : {}) },
   });
   if (typeof outFd === 'number') {
     try { 
@@ -194,7 +203,7 @@ function spawnForeground(cmd, args) {
     cwd: config.cwd,
     stdio: 'inherit',
     detached: false,
-    env: { ...process.env, PORT: config.portEnv },
+    env: { ...process.env, PORT: config.portEnv, ...(enableDebugThumbs ? { GOL_DEBUG_THUMBS: '1' } : {}) },
   });
 }
 

@@ -27,7 +27,8 @@ function getColorSchemeFromKey(key) {
 // The component has a slightly large body by necessity (many hooks/handlers).
 // Disable the cognitive-complexity rule here to keep the implementation readable
 // while we keep initialization logic small and well-factored above.
-// eslint-disable-next-line sonarjs/cognitive-complexity
+// Use the core 'complexity' rule name so ESLint doesn't require sonarjs plugin
+// eslint-disable-next-line complexity
 function GameOfLifeApp(props) {
 
   const defaultUIState = React.useMemo(() => ({

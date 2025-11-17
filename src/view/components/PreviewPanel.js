@@ -1,4 +1,4 @@
-/* eslint-disable sonarjs/cognitive-complexity */
+/* eslint-disable complexity */
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { resolveBackendBase } from '../../utils/backendApi';
 import PropTypes from 'prop-types';

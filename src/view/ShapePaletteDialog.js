@@ -624,6 +624,18 @@ The backend will start on port ${backendPort}.`);
   // to keep the UI responsive while the full catalog is downloaded.
   const workerRef = useRef(null);
 
+  // Lightweight instrumentation for diagnosing typing jank without heavy profiles.
+  // Records simple aggregate stats and exposes them on window for quick inspection.
+  const PROFILE_THRESHOLD_MS = 15; // log only when a measured operation exceeds this
+  const instrRef = useRef({ filter: { count: 0, total: 0, max: 0 }, worker: { count: 0, total: 0, max: 0 } });
+  useEffect(() => {
+    try {
+      // expose live stats for console inspection
+      window.__GOL_FILTER_STATS = instrRef.current.filter;
+      window.__GOL_WORKER_STATS = instrRef.current.worker;
+    } catch (e) {}
+  }, []);
+
   // Restart the names worker when the paging offset or backendBase changes while
   // the dialog is open. We intentionally do NOT restart on `q` so that typing
   // filters the already-loaded catalog client-side (avoids extra backend calls).
@@ -637,8 +649,9 @@ The backend will start on port ${backendPort}.`);
   // Worker event handlers extracted to reduce cognitive complexity of
   // startNamesWorker. These are stable handlers that reference component
   // state setters via closure.
-  /* eslint-disable-next-line sonarjs/cognitive-complexity */
+  /* eslint-disable-next-line complexity */
   function handleWorkerMessage(ev) {
+    const start = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     try {
       const data = ev.data || {};
       if (data.type === 'page') {
@@ -668,6 +681,16 @@ The backend will start on port ${backendPort}.`);
       setShowBackendDialog(true);
       setLoading(false);
       stopNamesWorker();
+    } finally {
+      try {
+        const end = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        const dur = end - start;
+        const w = instrRef.current.worker;
+        w.count += 1;
+        w.total += dur;
+        if (dur > w.max) w.max = dur;
+        if (dur > PROFILE_THRESHOLD_MS) console.debug('[ShapePaletteDialog] worker message processed', { duration: dur, type: (ev.data||{}).type });
+      } catch (e) {}
     }
   }
 
@@ -789,7 +812,18 @@ The backend will start on port ${backendPort}.`);
   const displayedResults = React.useMemo(() => {
     if (!q || q.trim().length === 0) return results;
     const ql = q.toLowerCase();
-    return (results || []).filter(r => (r.name || '').toLowerCase().includes(ql));
+    const start = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const out = (results || []).filter(r => (r.name || '').toLowerCase().includes(ql));
+    try {
+      const end = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      const dur = end - start;
+      const f = instrRef.current.filter;
+      f.count += 1;
+      f.total += dur;
+      if (dur > f.max) f.max = dur;
+      if (dur > PROFILE_THRESHOLD_MS) console.debug('[ShapePaletteDialog] filterResults', { duration: dur, q: ql, items: (results||[]).length, out: out.length });
+    } catch (e) {}
+    return out;
   }, [results, q]);
 
   return (
@@ -810,7 +844,7 @@ The backend will start on port ${backendPort}.`);
         Loading state still controls network/cache behavior but we don't show
         the small spinner in the SearchBar to keep the UI calm. */}
   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-  <SearchBar value={inputQ} onChange={setInputQ} loading={false} onClose={onClose} onClear={() => { setResults([]); setInputQ(''); setQ(''); }} />
+  <SearchBar value={inputQ} onChange={setInputQ} onClose={onClose}  />
     <Box sx={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 1, p: 1 }}>
       <PreviewPanel preview={hoveredShapeData} colorScheme={colorScheme} colorSchemeKey={colorSchemeKey} />
     </Box>

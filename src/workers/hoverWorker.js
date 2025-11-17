@@ -1,4 +1,4 @@
-/* eslint-disable no-console, sonarjs/cognitive-complexity */
+/* eslint-disable no-console */
 // hoverWorker.js - module worker to fetch a single shape preview
 // Keep a single active request and support aborting when a new start arrives.
 let currentId = null;

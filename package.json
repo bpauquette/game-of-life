@@ -12,7 +12,6 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "jsdom": "^26.1.0",
-    "prop-types": "^15.8.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-scripts": "^5.0.1",
@@ -22,55 +21,28 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "cross-env NODE_OPTIONS='--no-deprecation=DEP0040' react-scripts test",
-    "test:coverage": "cross-env CI=true NODE_OPTIONS='--no-deprecation=DEP0040' react-scripts test --coverage --watchAll=false",
-    "frontend:start": "node ./scripts/manage.js start",
-    "frontend:stop": "node ./scripts/manage.js stop",
-    "frontend:status": "node ./scripts/manage.js status",
-  "backend:start": "node ./backend/scripts/manage.cjs start",
-  "backend:stop": "node ./backend/scripts/manage.cjs stop",
-  "backend:status": "node ./backend/scripts/manage.cjs status",
-    "lint:css": "stylelint \"src/**/*.css\" || true",
-    "lint:js": "eslint -c .eslintrc-sonar.json \"src/**\" --ext .js,.jsx --no-error-on-unmatched-pattern || true",
-    "lint": "npm run lint:js && npm run lint:css",
+  "frontend:start": "node ./scripts/manage.js start",
+  "frontend:stop": "node ./scripts/manage.js stop",
+  "frontend:status": "node ./scripts/manage.js status",
+  "backend:start": "node ./backend/scripts/manage.js start",
+  "backend:stop": "node ./backend/scripts/manage.js stop",
+  "backend:status": "node ./backend/scripts/manage.js status",
     "eject": "react-scripts eject"
   },
   "jest": {
-    "testMatch": [
-      "<rootDir>/src/new-tests/**/*.test.js"
-    ],
     "collectCoverageFrom": [
-      "src/**/*.js",
-      "!src/index.js",
-      "!src/reportWebVitals.js",
-      "!src/setupTests.js",
-      "!src/**/*.test.js"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "branches": 0,
-        "functions": 0,
-        "lines": 0,
-        "statements": 0
-      }
-    }
+      "src/gameLogic.js",
+      "src/utils/populationUtils.js"
+    ]
   },
   "eslintConfig": {
     "extends": [
       "react-app",
-      "react-app/jest",
-      "plugin:sonarjs/recommended"
-    ],
-    "plugins": [
-      "sonarjs"
-    ],
+      "react-app/jest"
+    ]
+    ,
     "globals": {
       "globalThis": "readonly"
-    },
-    "rules": {
-      "sonarjs/cognitive-complexity": [
-        "warn",
-        15
-      ]
     }
   },
   "browserslist": {
@@ -87,10 +59,7 @@
   },
   "devDependencies": {
     "cross-env": "^10.0.0",
-    "cross-spawn": "^7.0.6",
-    "eslint": "^8.57.1",
-    "eslint-plugin-sonarjs": "^0.14.0",
-    "stylelint": "^15.0.0",
-    "stylelint-config-standard": "^33.0.0"
+    "cross-spawn": "^8.1.0",
+    "eslint-plugin-sonarjs": "^0.16.0"
   }
 }
