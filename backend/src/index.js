@@ -7,11 +7,11 @@ import logger from './logger.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { generateThumbnailsForShape } from './thumbnailGenerator.js';
 
 // __dirname equivalent for ESM modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-import { generateThumbnailsForShape } from './thumbnailGenerator.js';
 
 
 const makeId = () => {
