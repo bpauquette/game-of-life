@@ -67,7 +67,7 @@ function isRunning(pid) {
 }
 
 function waitForPort(host, port, timeoutMs) {
-  const net = require('node.net');
+  const net = require('node:net');
   const start = Date.now();
   return new Promise((resolve, reject) => {
     (function attempt() {
