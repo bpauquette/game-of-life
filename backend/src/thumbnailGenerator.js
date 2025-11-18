@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import logger from './logger.js';
 
 function computeBounds(cells = []) {
@@ -39,7 +40,12 @@ function makeSvg(cellsArr, bounds, targetPx = 128, color = '#1976d2') {
 
 export async function generateThumbnailsForShape(shape, options = {}) {
   try {
-    const thumbsBase = path.join(process.cwd(), 'backend', 'data', 'thumbnails');
+    // Resolve relative to the backend folder, not process.cwd(), to avoid
+    // creating paths like backend/backend when the working directory is already backend.
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const backendRoot = path.resolve(__dirname, '..');
+    const thumbsBase = path.join(backendRoot, 'data', 'thumbnails');
     if (!fs.existsSync(thumbsBase)) {
       fs.mkdirSync(thumbsBase, { recursive: true });
     }
@@ -51,7 +57,7 @@ export async function generateThumbnailsForShape(shape, options = {}) {
     // fails, fall back to a single default scheme named 'default'.
     let colorSchemes = { default: { name: 'default', background: '#000', getCellColor: () => '#1976d2' } };
     try {
-      const csPath = path.join(process.cwd(), 'src', 'model', 'colorSchemes.js');
+      const csPath = path.join(backendRoot, '..', 'src', 'model', 'colorSchemes.js');
       const mod = await import(`file://${csPath}`);
       colorSchemes = mod.colorSchemes || colorSchemes;
     } catch (e) {
@@ -78,48 +84,34 @@ export async function generateThumbnailsForShape(shape, options = {}) {
     };
     const nameSlug = shape && shape.name ? slugify(shape.name) : '';
 
-    // Top-level name-based svg/png for compatibility. If no name, skip top-level writes.
-    if (nameSlug) {
-      const topLevelSvg = makeSvg(cells, bounds, 128, defaultColor);
-      await fs.promises.writeFile(path.join(thumbsBase, `${nameSlug}.svg`), topLevelSvg, 'utf8');
-      if (sharpAvailable) {
+    // Write thumbnails per size and scheme into: thumbnails/<size>/<scheme>/<name>.png
+    const sizes = Array.isArray(options.sizes) && options.sizes.length ? options.sizes : [64, 96, 128];
+    for (const size of sizes) {
+      for (const schemeKey of Object.keys(colorSchemes)) {
         try {
-          await sharpAvailable(Buffer.from(topLevelSvg)).png().resize(128, 128, { fit: 'contain' }).toFile(path.join(thumbsBase, `${nameSlug}.png`));
-        } catch (e) {
-          logger.warn('Failed to write top-level PNG thumbnail for name:', nameSlug, e?.message || e);
-        }
-      }
-    }
-
-    // Write thumbnails per scheme
-    for (const schemeKey of Object.keys(colorSchemes)) {
-      try {
-        const scheme = colorSchemes[schemeKey] || {};
-        let color = defaultColor;
-        if (typeof scheme.getCellColor === 'function') {
-          try { color = scheme.getCellColor(0,0) || color; } catch (_) { /* ignore */ }
-        } else if (scheme.cellColor) {
-          color = scheme.cellColor;
-        }
-
-        const schemeDir = path.join(thumbsBase, schemeKey.toString());
-        if (!fs.existsSync(schemeDir)) fs.mkdirSync(schemeDir, { recursive: true });
-
-        const svgStr = makeSvg(cells, bounds, 128, color);
-        // write name-based files only; skip if no nameSlug
-        if (nameSlug) {
-          await fs.promises.writeFile(path.join(schemeDir, `${nameSlug}.svg`), svgStr, 'utf8');
-        }
-
-        if (sharpAvailable && nameSlug) {
-          try {
-            await sharpAvailable(Buffer.from(svgStr)).png().resize(128, 128, { fit: 'contain' }).toFile(path.join(schemeDir, `${nameSlug}.png`));
-          } catch (e) {
-            logger.warn(`sharp failed for scheme ${schemeKey} name=${nameSlug}:`, e?.message || e);
+          const scheme = colorSchemes[schemeKey] || {};
+          let color = defaultColor;
+          if (typeof scheme.getCellColor === 'function') {
+            try { color = scheme.getCellColor(0,0) || color; } catch (_) { /* ignore */ }
+          } else if (scheme.cellColor) {
+            color = scheme.cellColor;
           }
+
+          const sizeDir = path.join(thumbsBase, String(size));
+          const schemeDir = path.join(sizeDir, schemeKey.toString());
+          if (!fs.existsSync(schemeDir)) fs.mkdirSync(schemeDir, { recursive: true });
+
+          const svgStr = makeSvg(cells, bounds, size, color);
+          if (sharpAvailable && nameSlug) {
+            try {
+              await sharpAvailable(Buffer.from(svgStr)).png().resize(size, size, { fit: 'contain' }).toFile(path.join(schemeDir, `${nameSlug}.png`));
+            } catch (e) {
+              logger.warn(`sharp failed for size ${size} scheme ${schemeKey} name=${nameSlug}:`, e?.message || e);
+            }
+          }
+        } catch (e) {
+          logger.error(`Failed to write thumbnails for size ${size} scheme ${schemeKey}:`, e?.message || e);
         }
-      } catch (e) {
-        logger.error(`Failed to write thumbnails for scheme ${schemeKey}:`, e?.message || e);
       }
     }
   } catch (e) {

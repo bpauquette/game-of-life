@@ -147,8 +147,6 @@ async function main() {
           })() : '#1976d2');
           const svg = makeSvg(cells, bounds, size, color);
           const dir = path.join(outDir, String(size), schemeKey);
-          const svgPath = path.join(dir, `${filenameBase}.svg`);
-          await fs.writeFile(svgPath, svg, 'utf8');
           if (sharp) {
             const pngPath = path.join(dir, `${filenameBase}.png`);
             try {
@@ -156,6 +154,10 @@ async function main() {
             } catch (e) {
               console.warn('sharp failed for', filenameBase, e && e.message);
             }
+          } else {
+            // Fallback: write SVG only when sharp is not available
+            const svgPath = path.join(dir, `${filenameBase}.svg`);
+            await fs.writeFile(svgPath, svg, 'utf8');
           }
         }
       }
