@@ -21,12 +21,12 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "cross-env NODE_OPTIONS='--no-deprecation=DEP0040' react-scripts test",
-  "frontend:start": "node ./scripts/manage.js start",
-  "frontend:stop": "node ./scripts/manage.js stop",
-  "frontend:status": "node ./scripts/manage.js status",
-  "backend:start": "node ./backend/scripts/manage.js start",
-  "backend:stop": "node ./backend/scripts/manage.js stop",
-  "backend:status": "node ./backend/scripts/manage.js status",
+    "frontend:start": "node ./scripts/manage.js start",
+    "frontend:stop": "node ./scripts/manage.js stop",
+    "frontend:status": "node ./scripts/manage.js status",
+    "backend:start": "node ./backend/scripts/manage.js start",
+    "backend:stop": "node ./backend/scripts/manage.js stop",
+    "backend:status": "node ./backend/scripts/manage.js status",
     "eject": "react-scripts eject"
   },
   "jest": {
@@ -39,8 +39,7 @@
     "extends": [
       "react-app",
       "react-app/jest"
-    ]
-    ,
+    ],
     "globals": {
       "globalThis": "readonly"
     }
