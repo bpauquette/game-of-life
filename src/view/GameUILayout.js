@@ -9,7 +9,7 @@ import BottomStatusBar from './BottomStatusBar';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
-import { Fullscreen as FullscreenIcon, FullscreenExit as FullscreenExitIcon } from '@mui/icons-material';
+import { FullscreenExit as FullscreenExitIcon } from '@mui/icons-material';
 function GameUILayout({
   recentShapes,
   onSelectShape,
