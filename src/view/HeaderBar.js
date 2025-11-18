@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { BarChart as BarChartIcon, Help as HelpIcon, Info as InfoIcon, Settings as SettingsIcon } from '@mui/icons-material';
+import { BarChart as BarChartIcon, Help as HelpIcon, Info as InfoIcon, Settings as SettingsIcon, VpnKey as VpnKeyIcon } from '@mui/icons-material';
 // ToolGroup now lives in the LeftSidebar alongside RecentShapesStrip
 import SaveLoadGroup from './components/SaveLoadGroup';
 import RunControlGroup from './components/RunControlGroup';
@@ -18,14 +18,16 @@ import HelpDialog from './HelpDialog';
 import AboutDialog from './AboutDialog';
 import SaveGridDialog from './SaveGridDialog';
 import LoadGridDialog from './LoadGridDialog';
+import SSHKeysDialog from './SSHKeysDialog';
 import useGridFileManager from './hooks/useGridFileManager';
 
 // Tool toggles extracted into ToolGroup component
 
-function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions }) {
+function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenSSHKeys }) {
   return (
     <Stack direction="row" spacing={1} alignItems="center">
       <IconButton size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
+      <IconButton size="small" onClick={onOpenSSHKeys} aria-label="ssh-keys" data-testid="ssh-keys-button"><Tooltip title="SSH Keys"><VpnKeyIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenAbout} aria-label="about"><Tooltip title="About"><InfoIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenOptions} aria-label="options" data-testid="options-icon-button"><SettingsIcon fontSize="small" /></IconButton>
@@ -36,7 +38,8 @@ AuxActions.propTypes = {
   onOpenChart: PropTypes.func.isRequired,
   onOpenHelp: PropTypes.func.isRequired,
   onOpenAbout: PropTypes.func.isRequired,
-  onOpenOptions: PropTypes.func.isRequired
+  onOpenOptions: PropTypes.func.isRequired,
+  onOpenSSHKeys: PropTypes.func.isRequired
 };
 
 export default function HeaderBar({
@@ -92,6 +95,7 @@ export default function HeaderBar({
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [sshKeysOpen, setSSHKeysOpen] = useState(false);
   const [wasRunningBeforeOptions, setWasRunningBeforeOptions] = useState(false);
   const [confirmOnClear, setConfirmOnClear] = useState(() => {
     try {
@@ -186,6 +190,7 @@ export default function HeaderBar({
               onOpenHelp={() => setHelpOpen(true)}
               onOpenAbout={() => setAboutOpen(true)}
               onOpenOptions={openOptions}
+              onOpenSSHKeys={() => setSSHKeysOpen(true)}
             />
           </Stack>
         </Box>
@@ -257,6 +262,7 @@ export default function HeaderBar({
 
       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <SSHKeysDialog open={sshKeysOpen} onClose={() => setSSHKeysOpen(false)} />
 
       <SaveGridDialog
         open={saveDialogOpen}
