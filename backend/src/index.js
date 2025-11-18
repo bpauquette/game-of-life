@@ -144,7 +144,7 @@ const ensureUniqueName = async (baseName, userId = null) => {
   return uniqueName;
 };
 
-const start = async () => {
+export function createApp() {
   const app = express();
   app.use(cors());
   // Explicitly enable preflight for all routes (helps some mobile browsers)
@@ -208,12 +208,6 @@ const start = async () => {
 
   // NOTE: POST /v1/shapes/thumbnail removed — thumbnail serving is GET-only and
   // thumbnails are written on shape save. If a thumbnail is missing, return 404.
-
-  app.get('/v1/shapes/:id', async (req,res)=>{
-    const s = await db.getShape(req.params.id);
-    if(!s) return res.status(404).json({error:'not found'});
-    res.json(s);
-  });
 
   // Serve a thumbnail (prefer PNG if available, else SVG).
   // Optional query param `scheme` can be provided to select per-color-scheme thumbnails
@@ -319,6 +313,16 @@ const start = async () => {
       logger.error('thumbnail serve error:', err);
       return res.status(500).json({ error: err.message });
     }
+  });
+
+  // IMPORTANT: Register the generic "/v1/shapes/:id" route AFTER more specific
+  // routes like "/v1/shapes/thumbnail" to avoid accidental matching where
+  // ":id" would capture the literal string "thumbnail". Express matches in
+  // registration order.
+  app.get('/v1/shapes/:id', async (req,res)=>{
+    const s = await db.getShape(req.params.id);
+    if(!s) return res.status(404).json({error:'not found'});
+    res.json(s);
   });
 
   
@@ -522,33 +526,41 @@ const start = async () => {
     res.status(201).json(shape);
   });
 
-  // Port selection priority:
-  // 1) GOL_BACKEND_PORT env var
-  // 2) PORT env var (common)
-  // 3) default 55000
+  return app;
+}
+
+export async function start() {
+  const app = createApp();
   const port = process.env.GOL_BACKEND_PORT || process.env.PORT || 55000;
-  // Bind explicitly to 0.0.0.0 so the server accepts IPv4 (127.0.0.1) and IPv6
-  // loopback connections. Some systems bind to IPv6-only by default which causes
-  // localhost (::1) to work but 127.0.0.1 (IPv4) to fail. Binding to 0.0.0.0
-  // ensures both address families are reachable for local dev.
-  const server = app.listen(port, '0.0.0.0', () => {
-    try {
-      const addr = server.address();
-      // addr may be a string for IPC or an object for TCP; handle both
-      const bindInfo = (addr && typeof addr === 'object') ? `${addr.address}:${addr.port}` : String(addr);
-      logger.info(`Shapes catalog backend listening on ${bindInfo}`);
-      // Also print to stdout so foreground runs show the same info immediately
-      try { console.log(`Shapes backend listening on ${bindInfo}`); } catch (e) {}
-    } catch (e) {
-      logger.info(`Shapes catalog backend listening on port ${port}`);
-    }
+  const host = '0.0.0.0';
+  return new Promise((resolve) => {
+    const server = app.listen(port, host, () => {
+      try {
+        const addr = server.address();
+        const bindInfo = (addr && typeof addr === 'object') ? `${addr.address}:${addr.port}` : String(addr);
+        logger.info(`Shapes catalog backend listening on ${bindInfo}`);
+        try { console.log(`Shapes backend listening on ${bindInfo}`); } catch (e) {}
+      } catch (e) {
+        logger.info(`Shapes catalog backend listening on port ${port}`);
+      }
+      resolve({ app, server });
+    });
   });
 }
 
-// Use top-level await instead of async IIFE
-try {
-  await start();
-} catch (err) {
-  console.error('Failed to start server:', err);
-  process.exit(1);
+// Only auto-start when executed directly (not when imported by tests)
+const isMain = (() => {
+  try {
+    const thisFile = fileURLToPath(import.meta.url);
+    return process.argv[1] && (thisFile === path.resolve(process.argv[1]));
+  } catch {
+    return false;
+  }
+})();
+
+if (isMain) {
+  start().catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
 }
