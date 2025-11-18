@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const { spawn } = require('cross-spawn');
+const { spawn } = require('child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { default: logger } = require('../../src/controller/utils/logger');
