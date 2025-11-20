@@ -191,10 +191,20 @@ function ShapePreviewComponent({
 }
 
 const ShapePreview = React.memo(ShapePreviewComponent, (prev, next) => {
-  // shallow compare by stable identifiers to avoid expensive re-renders.
+  // Shallow compare by stable identifiers but also ensure the underlying shape data
+  // shares the same reference. Rotation updates reuse the same id/name, so relying
+  // solely on identifiers prevented React from re-rendering the preview.
   const idPrev = prev.shape?.id || prev.shape?.name;
   const idNext = next.shape?.id || next.shape?.name;
-  // Return true when all relevant props are equal (skip re-render), false otherwise.
+  const sameShapeRef = prev.shape === next.shape;
+  const sameArrayShape = Array.isArray(prev.shape) && Array.isArray(next.shape) && prev.shape === next.shape;
+  const sameCellsRef = prev.shape?.cells && next.shape?.cells && prev.shape.cells === next.shape.cells;
+  const shapeStable = sameShapeRef || sameArrayShape || sameCellsRef;
+
+  if (!shapeStable) {
+    return false; // shape object or its cells changed (e.g., after rotation)
+  }
+
   return (
     idPrev === idNext &&
     prev.colorScheme === next.colorScheme &&

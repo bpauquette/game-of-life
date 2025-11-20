@@ -2,6 +2,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const net = require('node:net');
 
 // Simple cross-platform process manager for frontend dev server only.
 // Usage: node scripts/manage.js frontend <start|stop|status> [--foreground]
@@ -66,7 +67,49 @@ function isRunning(pid) {
   }
 }
 
-function start() {
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function checkPortAvailability(port, host = '0.0.0.0') {
+  return new Promise((resolve, reject) => {
+    const tester = net.createServer();
+    tester.unref();
+    tester.once('error', (err) => {
+      if (err && err.code === 'EADDRINUSE') {
+        err.code = 'EADDRINUSE';
+        return reject(err);
+      }
+      return reject(err);
+    });
+    tester.once('listening', () => {
+      tester.close(() => resolve());
+    });
+    tester.listen(port, host);
+  });
+}
+
+async function ensurePortAvailable(port, { timeoutMs = 8000, intervalMs = 250, hosts = ['0.0.0.0'] } = {}) {
+  const started = Date.now();
+  while (true) {
+    try {
+      for (const host of hosts) {
+        await checkPortAvailability(port, host);
+        // Give the OS a brief moment to release the socket before the next attempt.
+        if (hosts.length > 1) await delay(50);
+      }
+      return;
+    } catch (err) {
+      if (!err || err.code !== 'EADDRINUSE') throw err;
+      if (Date.now() - started > timeoutMs) {
+        const timeoutErr = new Error(`Port ${port} is still in use after waiting ${timeoutMs}ms.`);
+        timeoutErr.code = 'PORT_IN_USE';
+        throw timeoutErr;
+      }
+      await delay(intervalMs);
+    }
+  }
+}
+
+async function start() {
   const existing = readPid(config.pidFile);
   if (existing && isRunning(existing)) {
     console.log(`${area} already running (pid=${existing}). Logs: ${config.logFile}`);
@@ -74,6 +117,22 @@ function start() {
   }
 
   console.log(`Starting ${area} (cwd=${config.cwd})`);
+
+  const desiredPort = Number.parseInt(config.portEnv, 10);
+  try {
+    await ensurePortAvailable(desiredPort, {
+      timeoutMs: 8000,
+      hosts: [process.env.HOST_IP || process.env.GOL_HOST || '0.0.0.0'],
+    });
+  } catch (err) {
+    if (err && (err.code === 'PORT_IN_USE' || err.code === 'EADDRINUSE')) {
+      console.error(`Cannot start ${area}: port ${desiredPort} is already in use.`);
+      console.error('Please stop the process occupying that port and try again.');
+      process.exit(1);
+    }
+    console.error(`Failed to verify port ${desiredPort}:`, err && err.message ? err.message : err);
+    process.exit(1);
+  }
 
   // Default to background (detached) start for all platforms so `manage.js start`
   // returns immediately. Pass --foreground to keep the manager attached and
@@ -216,7 +275,6 @@ function start() {
 }
 
 function waitForPort(host, port, timeoutMs) {
-  const net = require('node:net');
   const start = Date.now();
   return new Promise((resolve, reject) => {
     (function attempt() {
@@ -299,7 +357,12 @@ function status() {
   process.exit(1);
 }
 
-if (action === 'start') start();
+if (action === 'start') {
+  start().catch((err) => {
+    console.error(err && err.stack ? err.stack : err);
+    process.exit(1);
+  });
+}
 else if (action === 'stop') stop();
 else if (action === 'status') status();
 else {

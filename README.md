@@ -153,7 +153,7 @@ npm run frontend:start
 npm run frontend:stop
 ```
 
-These simply invoke the root-level `start.sh`/`stop.sh` wrappers and are intended for development convenience.
+These simply invoke the root-level `start.sh`/`stop.sh` wrappers and are intended for development convenience. The start helper refuses to auto-switch ports; it checks that port `3000` is truly free before spawning CRA so all tooling can rely on a consistent URL.
 
 ### Backend API (developer-focused)
 
@@ -187,6 +187,7 @@ If you prefer a manual approach, open `backend/data/shapes.json` and paste or ed
 ### Notes & troubleshooting
 
 - If you see `EADDRINUSE` when starting the backend, a local process is already bound to the configured port. Either pick a different port via `GOL_BACKEND_PORT` or stop the conflicting process.
+- If `npm run frontend:start` prints that port `3000` is already in use, the guard script detected a conflicting listener (for example, a lingering CRA process or a Windows portproxy entry). Stop the process using that port (or run `scripts/windows/cleanup-gol-dev-network.ps1` as admin to remove the dev portproxy) and re-run the start command; the helper will not fall back to 3001 automatically.
 - Previously this project used `lowdb`; to avoid runtime incompatibilities the backend now uses a simple fs-backed JSON store. If you reintroduce third-party DB adapters, pin the package versions in `backend/package.json`.
 - **Memory telemetry**: the frontend samples Chrome's `performance.memory` every 60 seconds (development builds) and logs the results via the standard logger without opening DevTools. Adjust the cadence with `window.GOL_MEMORY_LOG_INTERVAL_MS` (milliseconds) or disable by setting `window.GOL_MEMORY_LOGGER_ENABLED = false`. Each sample is appended to `window.__GOL_MEMORY_SAMPLES__` *and* POSTed to the backend (`POST /v1/memory-samples`) so the data is persisted under `backend/data/memorySamples.json`. Query recent samples with `GET /v1/memory-samples?limit=200` or disable uploads via `window.GOL_MEMORY_UPLOAD_ENABLED = false` / `REACT_APP_MEMORY_UPLOAD_ENABLED=0`.
 
