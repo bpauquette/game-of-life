@@ -15,6 +15,7 @@ import './GameOfLife.css';
 import React, { useRef, useEffect, useCallback, useState, useLayoutEffect } from 'react';
 import PropTypes from 'prop-types';
 import { GameMVC } from '../controller/GameMVC';
+import { startMemoryLogger } from '../utils/memoryLogger';
 
 // tools are registered by GameMVC.controller during initialization
 function getColorSchemeFromKey(key) {
@@ -66,6 +67,13 @@ function GameOfLifeApp(props) {
     gameRef.current?.setCellAlive?.(x, y, alive);
   }, [gameRef]);
   const colorScheme = React.useMemo(() => getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio'), [uiState?.colorSchemeKey]);
+
+  useEffect(() => {
+    const stopLogger = startMemoryLogger({ label: 'GOL Memory' });
+    return () => {
+      stopLogger?.();
+    };
+  }, []);
 
   
 

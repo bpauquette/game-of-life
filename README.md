@@ -188,6 +188,7 @@ If you prefer a manual approach, open `backend/data/shapes.json` and paste or ed
 
 - If you see `EADDRINUSE` when starting the backend, a local process is already bound to the configured port. Either pick a different port via `GOL_BACKEND_PORT` or stop the conflicting process.
 - Previously this project used `lowdb`; to avoid runtime incompatibilities the backend now uses a simple fs-backed JSON store. If you reintroduce third-party DB adapters, pin the package versions in `backend/package.json`.
+- **Memory telemetry**: the frontend samples Chrome's `performance.memory` every 60 seconds (development builds) and logs the results via the standard logger without opening DevTools. Adjust the cadence with `window.GOL_MEMORY_LOG_INTERVAL_MS` (milliseconds) or disable by setting `window.GOL_MEMORY_LOGGER_ENABLED = false`. Each sample is also appended to `window.__GOL_MEMORY_SAMPLES__` for quick inspection from the console or custom dashboards.
 
 If you'd like a cross-platform replacement for the shell start/stop scripts (Node-based process manager), I can add a small Node script that uses `child_process` and `detect-port` to make lifecycle control work consistently on Windows/macOS/Linux.
 
