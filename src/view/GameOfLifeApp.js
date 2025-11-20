@@ -218,8 +218,11 @@ function GameOfLifeApp(props) {
   const step = useCallback(() => { gameRef.current?.step?.(); }, []);
   const clear = useCallback(() => { gameRef.current?.clear?.(); }, []);
   const setRunningState = useCallback((running) => {
-    gameRef.current?.setRunning?.(running);
-    setIsRunning(running);
+    try {
+      gameRef.current?.setRunning?.(running);
+    } catch (e) {
+      console.error('Error setting running state on gameRef:', e);
+    }
   }, []);
   const openPalette = useCallback(() => {
     setUIState(prev => ({ ...prev, paletteOpen: true }));
@@ -351,11 +354,8 @@ function GameOfLifeApp(props) {
       const mvc = new GameMVC(canvasEl, {});
       gameRef.current = mvc;
 
-      // Sync the React `selectedTool` state with the MVC model's selectedTool
-      // so the ToolGroup reflects the current tool on initial load and when
-      // the model updates (for example after importing state or restoring
-      // from a saved session). We add a lightweight observer that updates
-      // the React state when the model notifies a `selectedToolChanged`.
+      // Sync select React states (tool, shape, running) with the MVC model so
+      // UI components simply reflect the authoritative controller state.
       try {
         const model = mvc.model;
         if (model) {
@@ -366,18 +366,28 @@ function GameOfLifeApp(props) {
           if (typeof model.getSelectedShape === 'function') {
             setSelectedShape(model.getSelectedShape());
           }
+          if (typeof model.getIsRunning === 'function') {
+            setIsRunning(!!model.getIsRunning());
+          }
         }
         const observer = (event, data) => {
           if (event === 'selectedToolChanged') {
             try { setSelectedTool(data); } catch (e) { /* ignore */ }
           } else if (event === 'selectedShapeChanged') {
             try { setSelectedShape(data); } catch (e) { /* ignore */ }
+          } else if (event === 'runningStateChanged') {
+            try {
+              const nextRunning = typeof data === 'object' && data !== null && 'isRunning' in data
+                ? data.isRunning
+                : data;
+              setIsRunning(!!nextRunning);
+            } catch (e) { /* ignore */ }
           }
         };
         model.addObserver(observer);
         // Ensure we remove the observer when the MVC instance is destroyed
         // by capturing the observer reference in the mvc instance for cleanup.
-        mvc._reactSelectedToolObserver = observer;
+        mvc._reactModelObserver = observer;
         // Also listen for captureCompleted events from the model so the
         // React UI can open the capture dialog when the user finishes a capture.
         const captureObserver = (event, data) => {
@@ -415,7 +425,7 @@ function GameOfLifeApp(props) {
         try {
           // Remove any observer we registered on the model
           try {
-            const obs = gameRef.current._reactSelectedToolObserver;
+            const obs = gameRef.current._reactModelObserver;
             if (obs && gameRef.current.model && typeof gameRef.current.model.removeObserver === 'function') {
               gameRef.current.model.removeObserver(obs);
             }
