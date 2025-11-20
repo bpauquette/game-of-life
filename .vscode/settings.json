@@ -2,5 +2,6 @@
     "sonarlint.connectedMode.project": {
         "connectionId": "http-localhost-9000",
         "projectKey": "game-of-life"
-    }
+    },
+    "chat.agent.maxRequests": 100
 }

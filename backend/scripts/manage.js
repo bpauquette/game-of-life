@@ -5,9 +5,6 @@ import path from 'node:path';
 import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 
-// Simple cross-platform process manager for the backend dev server.
-// Usage: node backend/scripts/manage.js <start|stop|status> [--foreground]
-
 const action = process.argv[2];
 if (!action) {
   console.error('Usage: node backend/scripts/manage.js <start|stop|status> [--foreground]');
@@ -17,6 +14,7 @@ if (!action) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, '..', '..');
+
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const config = {
   cmd: npmCmd,
@@ -27,16 +25,13 @@ const config = {
   portEnv: process.env.GOL_BACKEND_PORT || process.env.PORT || '55000',
 };
 
-// Support an optional flag to enable thumbnail debug forwarding when starting
-// the managed backend. Usage: node backend/scripts/manage.js start --debug-thumbs
 const enableDebugThumbs = process.argv.includes('--debug-thumbs') || Boolean(process.env.GOL_DEBUG_THUMBS);
 
 function readPid(pidFile) {
   try {
     const pid = fs.readFileSync(pidFile, 'utf8').trim();
     return pid || null;
-  } catch (e) {
-    console.warn(`Failed to read PID file (${pidFile}):`, e && e.message ? e.message : e);
+  } catch {
     return null;
   }
 }
@@ -46,7 +41,7 @@ function isRunning(pid) {
   try {
     process.kill(Number.parseInt(pid, 10), 0);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -57,20 +52,9 @@ function waitForPort(host, port, timeoutMs) {
     (function attempt() {
       const socket = new net.Socket();
       socket.setTimeout(2000);
-      socket.once('error', () => {
-        socket.destroy();
-        if (Date.now() - start > timeoutMs) return reject(new Error('timeout'));
-        setTimeout(attempt, 300);
-      });
-      socket.once('timeout', () => {
-        socket.destroy();
-        if (Date.now() - start > timeoutMs) return reject(new Error('timeout'));
-        setTimeout(attempt, 300);
-      });
-      socket.connect(port, host, () => {
-        socket.end();
-        resolve();
-      });
+      socket.once('error', () => { socket.destroy(); if (Date.now() - start > timeoutMs) return reject(new Error('timeout')); setTimeout(attempt, 300); });
+      socket.once('timeout', () => { socket.destroy(); if (Date.now() - start > timeoutMs) return reject(new Error('timeout')); setTimeout(attempt, 300); });
+      socket.connect(port, host, () => { socket.end(); resolve(); });
     })();
   });
 }
@@ -83,15 +67,16 @@ function start() {
   }
 
   console.log(`Starting backend (cwd=${config.cwd})`);
-
   const foreground = process.argv.includes('--foreground') || process.argv.includes('--no-detach');
   const shouldDetach = !foreground;
 
   let spawnCmd = config.cmd;
   let spawnArgs = config.args;
+
+  // On Windows, avoid wrapping in cmd.exe; shell:true fixes spawn EINVAL
   if (process.platform === 'win32') {
-    spawnCmd = 'cmd.exe';
-    spawnArgs = ['/c', npmCmd].concat(config.args || []);
+    spawnCmd = npmCmd;
+    spawnArgs = config.args;
   }
 
   console.log('spawn command:', spawnCmd);
@@ -107,12 +92,12 @@ function start() {
       child = spawnForeground(spawnCmd, spawnArgs);
     }
   } catch (err) {
-    console.error('spawn threw synchronously:', err && err.stack ? err.stack : err);
+    console.error('spawn threw synchronously:', err);
     throw err;
   }
 
   child.on('error', (err) => {
-    console.error('Failed to spawn process:', err && err.stack ? err.stack : err);
+    console.error('Failed to spawn process:', err);
     process.exit(1);
   });
 
@@ -120,136 +105,65 @@ function start() {
     if (shouldDetach && child.unref) child.unref();
     if (child.pid) {
       fs.writeFileSync(config.pidFile, String(child.pid));
-      if (shouldDetach) console.log(`backend started in background (pid=${child.pid}). Logs: ${config.logFile}`);
-      else console.log(`backend started in foreground (pid=${child.pid}).`);
-    } else {
-      console.log(`backend started (no pid available). Logs: ${config.logFile}`);
+      console.log(`backend started ${shouldDetach ? 'in background' : 'in foreground'} (pid=${child.pid}). Logs: ${config.logFile}`);
     }
-
-    const waitPort = config.portEnv;
-    const host = '127.0.0.1';
-    waitForPort(host, Number.parseInt(waitPort, 10), 20000)
-      .then(() => console.log(`backend appears to be accepting connections on ${host}:${waitPort}`))
-      .catch((err) => console.warn(`backend port check failed: ${err.message}`));
   } catch (e) {
     console.error('Error while writing PID file:', e.message);
   }
 
-  // In foreground mode, forward signals to the child and exit with its code so
-  // the manager behaves like running the command directly.
+  const host = '127.0.0.1';
+  waitForPort(host, Number.parseInt(config.portEnv, 10), 20000)
+    .then(() => console.log(`backend appears to be accepting connections on ${host}:${config.portEnv}`))
+    .catch((err) => console.warn(`backend port check failed: ${err.message}`));
+
   if (!shouldDetach) {
     child.on('exit', (code, signal) => {
-      // cleanup pidfile on foreground exit
-      if (fs.existsSync(config.pidFile)) {
-        try { 
-          fs.unlinkSync(config.pidFile); 
-        } catch (e) { 
-          console.warn('Failed to remove PID file:', e.message); 
-        }
-      }
-      if (typeof code === 'number') process.exit(code);
-      if (signal) process.exit(1);
-      process.exit(0);
+      if (fs.existsSync(config.pidFile)) fs.unlinkSync(config.pidFile);
+      process.exit(code ?? (signal ? 1 : 0));
     });
-    const forward = (sig) => { 
-      if (child && child.pid) {
-        try { 
-          child.kill(sig); 
-        } catch (e) { 
-          console.warn(`Failed to send ${sig} to process:`, e.message); 
-        }
-      }
-    };
+
+    const forward = (sig) => { if (child?.pid) child.kill(sig); };
     process.on('SIGINT', () => forward('SIGINT'));
     process.on('SIGTERM', () => forward('SIGTERM'));
   }
 }
 
 function spawnDetached(cmd, args) {
-  let outFd;
-  try {
-    outFd = fs.openSync(config.logFile, 'a');
-  } catch (e) {
-    console.warn('Unable to open log file for writing, falling back to ignore:', e.message);
-    outFd = 'ignore';
-  }
-  const stdioOption = (typeof outFd === 'number') ? ['ignore', outFd, outFd] : ['ignore', 'ignore', 'ignore'];
+  const outFd = fs.openSync(config.logFile, 'a');
   const child = spawn(cmd, args, {
     cwd: config.cwd,
-    stdio: stdioOption,
+    stdio: ['ignore', outFd, outFd],
     detached: true,
     env: { ...process.env, PORT: config.portEnv, ...(enableDebugThumbs ? { GOL_DEBUG_THUMBS: '1' } : {}) },
+    shell: process.platform === 'win32', // <--- FIX FOR WINDOWS EINVAL
   });
-  if (typeof outFd === 'number') {
-    try { 
-      fs.closeSync(outFd); 
-    } catch (e) { 
-      console.warn('Failed to close file descriptor:', e.message); 
-    }
-  }
+  fs.closeSync(outFd);
   return child;
 }
 
 function spawnForeground(cmd, args) {
-  if (process.platform === 'win32' && config.cmd && config.cmd.toLowerCase().indexOf('npm') !== -1) {
-    return spawn(npmCmd, config.args, {
-      cwd: config.cwd,
-      stdio: 'inherit',
-      detached: false,
-      env: { ...process.env, PORT: config.portEnv },
-    });
-  }
   return spawn(cmd, args, {
     cwd: config.cwd,
     stdio: 'inherit',
     detached: false,
     env: { ...process.env, PORT: config.portEnv, ...(enableDebugThumbs ? { GOL_DEBUG_THUMBS: '1' } : {}) },
+    shell: process.platform === 'win32', // <--- FIX FOR WINDOWS EINVAL
   });
 }
 
 function stop() {
   const pid = readPid(config.pidFile);
-  if (!pid) {
-    console.log(`No PID file at ${config.pidFile}. Nothing to stop.`);
+  if (!pid || !isRunning(pid)) {
+    if (fs.existsSync(config.pidFile)) fs.unlinkSync(config.pidFile);
+    console.log(`backend not running. PID file removed if it existed.`);
     process.exit(0);
   }
-  if (!isRunning(pid)) {
-    console.log(`Process ${pid} not running. Removing stale PID file.`);
-    if (fs.existsSync(config.pidFile)) {
-      try { 
-        fs.unlinkSync(config.pidFile); 
-      } catch (e) { 
-        console.warn('Failed to remove stale PID file:', e.message); 
-      }
-    }
-    process.exit(0);
-  }
+
   console.log(`Stopping backend (pid=${pid})`);
-  try {
-    process.kill(Number.parseInt(pid, 10));
-  } catch (e) {
-    console.warn('Error sending SIGTERM, attempting kill -9');
-    try { 
-      process.kill(Number.parseInt(pid, 10), 'SIGKILL'); 
-    } catch (e2) { 
-      console.warn('Failed to kill process with SIGKILL:', e2.message); 
-    }
-  }
+  try { process.kill(Number.parseInt(pid, 10)); } catch {}
   setTimeout(() => {
-    if (isRunning(pid)) {
-      try { 
-        process.kill(Number.parseInt(pid, 10), 'SIGKILL'); 
-      } catch (e) { 
-        console.warn('Failed to force kill process:', e.message); 
-      }
-    }
-    if (fs.existsSync(config.pidFile)) {
-      try { 
-        fs.unlinkSync(config.pidFile); 
-      } catch (e) { 
-        console.warn('Failed to remove PID file:', e.message); 
-      }
-    }
+    if (isRunning(pid)) try { process.kill(Number.parseInt(pid, 10), 'SIGKILL'); } catch {}
+    if (fs.existsSync(config.pidFile)) fs.unlinkSync(config.pidFile);
     console.log(`backend stopped.`);
     process.exit(0);
   }, 500);
