@@ -18,6 +18,59 @@ const makeId = () => {
   return uuidv4();
 };
 
+const memorySamplesPath = path.join(__dirname, '..', 'data', 'memorySamples.json');
+const MAX_MEMORY_SAMPLES = 5000;
+
+const ensureMemorySamplesFile = () => {
+  try {
+    fs.mkdirSync(path.dirname(memorySamplesPath), { recursive: true });
+    if (!fs.existsSync(memorySamplesPath)) {
+      fs.writeFileSync(memorySamplesPath, '[]', 'utf8');
+    }
+  } catch (e) {
+    logger.error('Failed to ensure memorySamples file', e?.message || e);
+  }
+};
+
+const readMemorySamples = () => {
+  try {
+    ensureMemorySamplesFile();
+    const raw = fs.readFileSync(memorySamplesPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    logger.warn('Failed to read memory samples, returning empty array', e?.message || e);
+    return [];
+  }
+};
+
+const writeMemorySamples = (samples) => {
+  try {
+    ensureMemorySamplesFile();
+    fs.writeFileSync(memorySamplesPath, JSON.stringify(samples, null, 2));
+  } catch (e) {
+    logger.error('Failed to write memory samples', e?.message || e);
+  }
+};
+
+const sanitizeSample = (sample) => {
+  const toNumber = (value, fallback = 0) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallback;
+  };
+  return {
+    ts: toNumber(sample?.ts, Date.now()),
+    usedMB: toNumber(sample?.usedMB),
+    totalMB: toNumber(sample?.totalMB),
+    limitMB: toNumber(sample?.limitMB),
+    deltaMB: toNumber(sample?.deltaMB),
+    sessionId: sample?.sessionId || 'unknown',
+    clientTime: toNumber(sample?.clientTime, Date.now()),
+    serverTs: Date.now(),
+    userAgent: sample?.userAgent || 'unknown'
+  };
+};
+
 // Small helpers to keep route handlers concise and reduce cognitive complexity
 const slugify = (s) => {
   if (!s) return '';
@@ -167,6 +220,39 @@ export function createApp() {
   });
 
   app.get('/v1/health', (req,res)=> res.json({ok:true}));
+
+  app.get('/v1/memory-samples', (req, res) => {
+    try {
+      const all = readMemorySamples();
+      const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 200));
+      const start = Math.max(0, all.length - limit);
+      const items = all.slice(start);
+      res.json({ items, total: all.length });
+    } catch (e) {
+      logger.error('memory samples fetch failed', e?.message || e);
+      res.status(500).json({ error: 'failed to load memory samples' });
+    }
+  });
+
+  app.post('/v1/memory-samples', (req, res) => {
+    try {
+      const rawSamples = Array.isArray(req.body?.samples)
+        ? req.body.samples
+        : (Array.isArray(req.body) ? req.body : null);
+      if (!rawSamples) {
+        return res.status(400).json({ error: 'samples array required' });
+      }
+      const sanitized = rawSamples.map(sanitizeSample);
+      const existing = readMemorySamples();
+      const merged = existing.concat(sanitized);
+      const trimmed = merged.slice(-MAX_MEMORY_SAMPLES);
+      writeMemorySamples(trimmed);
+      res.status(202).json({ stored: sanitized.length, total: trimmed.length });
+    } catch (e) {
+      logger.error('memory samples save failed', e?.message || e);
+      res.status(500).json({ error: 'failed to persist memory samples' });
+    }
+  });
 
   app.get('/v1/shapes', async (req,res)=>{
     try{

@@ -69,7 +69,13 @@ function GameOfLifeApp(props) {
   const colorScheme = React.useMemo(() => getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio'), [uiState?.colorSchemeKey]);
 
   useEffect(() => {
-    const stopLogger = startMemoryLogger({ label: 'GOL Memory' });
+    const base = resolveBackendBase() || '';
+    const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+    const stopLogger = startMemoryLogger({
+      label: 'GOL Memory',
+      uploadEnabled: true,
+      uploadUrl: `${normalizedBase}/v1/memory-samples`
+    });
     return () => {
       stopLogger?.();
     };

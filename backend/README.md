@@ -25,6 +25,8 @@ GOL_BACKEND_PORT=4001 bash ./start.sh
 
 APIs
 - GET /v1/health — basic health check
+- GET /v1/memory-samples — fetch the most recent memory telemetry samples (query `limit`, default 200)
+- POST /v1/memory-samples — append one or more telemetry samples (`{ samples: [...] }`)
 - GET /v1/shapes — list shapes (optional query `q` to search name)
 - GET /v1/shapes/:id — get a single shape by id
 - POST /v1/import-rle — import an RLE payload
@@ -32,4 +34,5 @@ APIs
 
 Notes
 - This is a prototype. We store shapes in `backend/data/shapes.json`. For production, use a proper database and add authentication, rate limits and licensing/attribution handling.
+- Memory telemetry samples are persisted in `backend/data/memorySamples.json`. Rotate or purge the file if you need to reset history.
 - When ready, we can extract this into its own repo and add CI/CD.

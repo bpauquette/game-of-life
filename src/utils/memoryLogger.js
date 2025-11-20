@@ -3,6 +3,8 @@ import logger from '../controller/utils/logger';
 const MB = 1024 * 1024;
 const DEFAULT_INTERVAL_MS = 60_000;
 const MAX_SAMPLES = 500;
+const DEFAULT_UPLOAD_URL = '/v1/memory-samples';
+const DEFAULT_UPLOAD_INTERVAL = 5 * DEFAULT_INTERVAL_MS;
 
 const canSampleMemory = () => {
   try {
@@ -32,12 +34,83 @@ function storeSample(sample) {
   if (samples.length > MAX_SAMPLES) {
     samples.splice(0, samples.length - MAX_SAMPLES);
   }
+  return samples;
+}
+
+function resolveUploadTarget(requestedUrl) {
+  if (typeof requestedUrl === 'string') return requestedUrl;
+  const runtimeUrl = typeof window !== 'undefined' ? window.GOL_MEMORY_UPLOAD_URL : undefined;
+  if (typeof runtimeUrl === 'string' && runtimeUrl.length > 0) return runtimeUrl;
+  const envUrl = typeof process !== 'undefined' ? process?.env?.REACT_APP_MEMORY_UPLOAD_URL : undefined;
+  if (typeof envUrl === 'string' && envUrl.length > 0) return envUrl;
+  return DEFAULT_UPLOAD_URL;
+}
+
+function shouldUpload(enabled) {
+  if (typeof enabled === 'boolean') return enabled;
+  const runtimeFlag = typeof window !== 'undefined' ? window.GOL_MEMORY_UPLOAD_ENABLED : undefined;
+  if (typeof runtimeFlag === 'boolean') return runtimeFlag;
+  const envFlag = typeof process !== 'undefined' ? process?.env?.REACT_APP_MEMORY_UPLOAD_ENABLED : undefined;
+  if (envFlag === 'true' || envFlag === '1') return true;
+  if (envFlag === 'false' || envFlag === '0') return false;
+  // default off unless explicitly enabled
+  return false;
+}
+
+const safeRandomId = () => {
+  try {
+    return globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+  } catch {
+    return Math.random().toString(36).slice(2);
+  }
+};
+
+const sendBeaconIfAvailable = (url, payload) => {
+  if (typeof navigator === 'undefined' || typeof navigator.sendBeacon !== 'function') {
+    return false;
+  }
+  try {
+    const ok = navigator.sendBeacon(url, JSON.stringify(payload));
+    if (!ok) logger.warn('[MemoryLogger] sendBeacon upload rejected');
+    return ok;
+  } catch (err) {
+    logger.warn('[MemoryLogger] sendBeacon upload error', err);
+    return false;
+  }
+};
+
+async function uploadSamples(samples, { url, signal }) {
+  if (!samples || samples.length === 0) return true;
+  if (typeof fetch !== 'function') {
+    return sendBeaconIfAvailable(url, { samples, clientTime: Date.now() });
+  }
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        samples,
+        clientTime: Date.now(),
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'
+      }),
+      keepalive: true,
+      signal
+    });
+    if (!res.ok) {
+      logger.warn('[MemoryLogger] upload failed with status', res.status);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    logger.warn('[MemoryLogger] upload error', err);
+    return false;
+  }
 }
 
 /**
  * Periodically logs Chrome heap metrics (if available) without needing DevTools.
  * Gracefully no-ops on unsupported browsers.
- * @param {{ intervalMs?: number, enabled?: boolean, label?: string }} options
+ * @param {{ intervalMs?: number, enabled?: boolean, label?: string, uploadEnabled?: boolean, uploadUrl?: string, uploadIntervalMs?: number, batchSize?: number }} options
  * @returns {() => void} cleanup function
  */
 export function startMemoryLogger(options = {}) {
@@ -65,6 +138,34 @@ export function startMemoryLogger(options = {}) {
 
   const label = options.label || 'Memory';
   const intervalMs = getIntervalMs(options.intervalMs);
+  const uploadEnabled = shouldUpload(options.uploadEnabled);
+  const uploadUrl = resolveUploadTarget(options.uploadUrl);
+  const uploadInterval = Number.isFinite(options.uploadIntervalMs) && options.uploadIntervalMs > 0
+    ? options.uploadIntervalMs
+    : DEFAULT_UPLOAD_INTERVAL;
+  const batchSize = Number.isFinite(options.batchSize) && options.batchSize > 0 ? options.batchSize : 10;
+  const uploadQueue = [];
+  const sessionId = (typeof window !== 'undefined' && window.GOL_MEMORY_SESSION_ID) || safeRandomId();
+  if (typeof window !== 'undefined' && !window.GOL_MEMORY_SESSION_ID) {
+    window.GOL_MEMORY_SESSION_ID = sessionId;
+  }
+  let uploadTimer = null;
+  let uploadAbortController = null;
+  let uploadInFlight = false;
+
+  const flushUploadQueue = async () => {
+    if (!uploadEnabled || uploadQueue.length === 0 || uploadInFlight) return;
+    uploadInFlight = true;
+    const payload = uploadQueue.slice();
+    uploadAbortController = new AbortController();
+    const enriched = payload.map((sample) => ({ ...sample, sessionId }));
+    const ok = await uploadSamples(enriched, { url: uploadUrl, signal: uploadAbortController.signal });
+    if (ok) {
+      uploadQueue.splice(0, payload.length);
+    }
+    uploadInFlight = false;
+  };
+
   let prevUsed = performance.memory.usedJSHeapSize;
 
   const logSample = () => {
@@ -79,6 +180,12 @@ export function startMemoryLogger(options = {}) {
       deltaMB: Number((delta / MB).toFixed(2))
     };
     storeSample(sample);
+    if (uploadEnabled) {
+      uploadQueue.push(sample);
+      if (uploadQueue.length >= batchSize) {
+        flushUploadQueue();
+      }
+    }
     logger.info(
       `[${label}] used=${sample.usedMB}MB total=${sample.totalMB}MB limit=${sample.limitMB}MB Δ=${sample.deltaMB}MB`
     );
@@ -86,7 +193,19 @@ export function startMemoryLogger(options = {}) {
 
   logSample();
   const timer = window.setInterval(logSample, intervalMs);
+  if (uploadEnabled) {
+    uploadTimer = window.setInterval(flushUploadQueue, uploadInterval);
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('beforeunload', () => {
+        if (uploadQueue.length > 0) {
+          sendBeaconIfAvailable(uploadUrl, { samples: uploadQueue.slice(0, batchSize), sessionId });
+        }
+      });
+    }
+  }
   return () => {
     if (timer) window.clearInterval(timer);
+    if (uploadTimer) window.clearInterval(uploadTimer);
+    if (uploadAbortController) uploadAbortController.abort();
   };
 }
