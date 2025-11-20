@@ -224,15 +224,7 @@ function GameUILayout({
           />
         )}
         {(uiState?.showChrome ?? true) && (
-          <BottomStatusBar
-            selectedTool={selectedTool}
-            toolStateRef={controlsProps?.toolStateRef}
-            cursorCell={cursorCell}
-            selectedShape={selectedShapeForPanel}
-            model={controlsProps?.model}
-            liveCellsCount={liveCellsCount}
-            generation={generation}
-          />
+          <BottomStatusBar cursorCell={cursorCell} />
         )}
         {/* Floating "Show controls" button appears only when the chrome is hidden
             so it sits over the canvas and lets the user bring the header back. */}

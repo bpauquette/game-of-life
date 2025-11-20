@@ -1,19 +1,32 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import GridMouseTracker from './GridMouseTracker';
 
-// Minimal BottomStatusBar stub. Expand as needed for your app.
-function BottomStatusBar({ status, children }) {
+function BottomStatusBar({ cursorCell }) {
   return (
-    <div style={{ width: '100%', padding: '8px', background: '#222', color: '#eee', fontSize: '0.95em', position: 'fixed', bottom: 0, left: 0, zIndex: 100 }}>
-      {status ? <span>{status}</span> : null}
-      {children}
+    <div
+      style={{
+        width: '100%',
+        padding: '10px 24px',
+        background: 'rgba(10, 10, 14, 0.95)',
+        color: '#eee',
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        zIndex: 120,
+        boxShadow: '0 -6px 18px rgba(0,0,0,0.35)'
+      }}
+    >
+      <GridMouseTracker position={cursorCell} />
     </div>
   );
 }
 
 BottomStatusBar.propTypes = {
-  status: PropTypes.string,
-  children: PropTypes.node
+  cursorCell: PropTypes.shape({
+    x: PropTypes.number,
+    y: PropTypes.number
+  })
 };
 
 export default BottomStatusBar;
