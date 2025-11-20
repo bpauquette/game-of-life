@@ -1,30 +1,39 @@
 import { useState, useEffect } from 'react';
+import { eventToCellFromCanvas } from '../../controller/utils/canvasUtils';
 
 /**
  * Tracks mouse position in grid coordinates (cellX, cellY) based on canvas and cell size.
  * @param {Object} params
  * @param {React.RefObject} canvasRef - Ref to the canvas element
  * @param {number} cellSize - Size of a cell in pixels
- * @returns {{ x: number, y: number }} Grid coordinates
+ * @param {React.RefObject} offsetRef - Ref containing world offset and zoom info
+ * @returns {{ x: number, y: number } | null} Grid coordinates
  */
-const useGridMousePosition = ({ canvasRef, cellSize }) => {
-  const [gridPosition, setGridPosition] = useState({ x: 0, y: 0 });
+const useGridMousePosition = ({ canvasRef, cellSize, offsetRef }) => {
+  const [gridPosition, setGridPosition] = useState(null);
+  const canvas = canvasRef?.current;
 
   useEffect(() => {
-    const updateGridPosition = (ev) => {
-      if (!canvasRef.current) return;
-      const rect = canvasRef.current.getBoundingClientRect();
-      const canvasX = ev.clientX - rect.left;
-      const canvasY = ev.clientY - rect.top;
-      const x = Math.floor(canvasX / cellSize);
-      const y = Math.floor(canvasY / cellSize);
-      setGridPosition({ x, y });
+    if (!canvas) return undefined;
+    const defaultOffsetRef = { current: { x: 0, y: 0, cellSize: cellSize || 8 } };
+    const targetOffsetRef = offsetRef?.current ? offsetRef : defaultOffsetRef;
+    const getEffectiveCellSize = () => {
+      const size = cellSize || targetOffsetRef.current?.cellSize || 8;
+      return size > 0 ? size : 1;
     };
-    globalThis.addEventListener('mousemove', updateGridPosition);
+    const handleMove = (ev) => {
+      const point = eventToCellFromCanvas(ev, canvas, targetOffsetRef, getEffectiveCellSize());
+      if (!point) return;
+      setGridPosition((prev) => (prev && prev.x === point.x && prev.y === point.y ? prev : point));
+    };
+    const handleLeave = () => setGridPosition(null);
+    globalThis.addEventListener('mousemove', handleMove);
+    canvas.addEventListener('mouseleave', handleLeave);
     return () => {
-      globalThis.removeEventListener('mousemove', updateGridPosition);
+      globalThis.removeEventListener('mousemove', handleMove);
+      canvas.removeEventListener('mouseleave', handleLeave);
     };
-  }, [canvasRef, cellSize]);
+  }, [canvas, offsetRef, cellSize]);
 
   return gridPosition;
 };

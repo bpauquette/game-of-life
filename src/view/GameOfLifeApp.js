@@ -60,7 +60,9 @@ function GameOfLifeApp(props) {
   const getViewport = useCallback(() => (
     gameRef.current?.getViewport?.() ?? { offsetX: 0, offsetY: 0, cellSize: 8 }
   ), [gameRef]);
-  const cellSize = getViewport().cellSize || 8;
+  const initialViewport = React.useMemo(() => getViewport(), [getViewport]);
+  const [viewportSnapshot, setViewportSnapshot] = useState(initialViewport);
+  const cellSize = viewportSnapshot.cellSize || 8;
   const getLiveCells = useCallback(() => (
     gameRef.current?.getLiveCells?.() ?? new Map()
   ), [gameRef]);
@@ -86,10 +88,28 @@ function GameOfLifeApp(props) {
 
   // Ensure offsetRef has the shape expected by canvas logic ({ x, y, cellSize })
   const offsetRef = useRef({
-    x: getViewport().offsetX ?? 0,
-    y: getViewport().offsetY ?? 0,
-    cellSize: getViewport().cellSize ?? 8
+    x: initialViewport.offsetX ?? 0,
+    y: initialViewport.offsetY ?? 0,
+    cellSize: initialViewport.cellSize ?? 8
   });
+  const updateViewportSnapshot = useCallback((nextViewport) => {
+    if (!nextViewport) return;
+    const normalized = {
+      offsetX: Number.isFinite(nextViewport.offsetX) ? nextViewport.offsetX : offsetRef.current.x,
+      offsetY: Number.isFinite(nextViewport.offsetY) ? nextViewport.offsetY : offsetRef.current.y,
+      cellSize: Number.isFinite(nextViewport.cellSize) ? nextViewport.cellSize : offsetRef.current.cellSize
+    };
+    offsetRef.current.x = normalized.offsetX;
+    offsetRef.current.y = normalized.offsetY;
+    offsetRef.current.cellSize = normalized.cellSize;
+    setViewportSnapshot((prev) => (
+      prev.offsetX === normalized.offsetX &&
+      prev.offsetY === normalized.offsetY &&
+      prev.cellSize === normalized.cellSize
+        ? prev
+        : normalized
+    ));
+  }, [offsetRef]);
   // Keep a ref to the current color scheme key so the layout effect
   // doesn't need to capture uiState in its dependency array.
   const colorSchemeKeyRef = useRef(uiState?.colorSchemeKey || 'bio');
@@ -130,7 +150,7 @@ function GameOfLifeApp(props) {
   }, [shapesReady]);
 
   // track cursor using the canvas DOM element
-  const cursorCell = useGridMousePosition({ canvasRef, cellSize });
+  const cursorCell = useGridMousePosition({ canvasRef, cellSize, offsetRef });
 
   // --- Handlers ---
   const handleSelectShape = useCallback(shape => {
@@ -311,22 +331,10 @@ function GameOfLifeApp(props) {
     if (mvc && typeof mvc.getViewport === 'function') {
       const vp = mvc.getViewport();
       if (vp) {
-        offsetRef.current.x = vp.offsetX ?? offsetRef.current.x;
-        offsetRef.current.y = vp.offsetY ?? offsetRef.current.y;
-        // Only adopt the MVC-provided cellSize when the UI doesn't
-        // already have a user-sized value. This avoids unexpectedly
-        // jumping the zoom when the MVC has a different default (for
-        // example stored session state) but the user already picked a
-        // preferred zoom in the current session. We treat 8 as the
-        // initial fallback cellSize (used before MVC exists) and only
-        // overwrite it when MVC reports a value.
-        const currentCellSize = offsetRef.current.cellSize;
-        if (!currentCellSize || currentCellSize === 8) {
-          offsetRef.current.cellSize = vp.cellSize ?? offsetRef.current.cellSize;
-        }
+        updateViewportSnapshot(vp);
       }
     }
-  }, []);
+  }, [updateViewportSnapshot]);
 
   const applyInitialColorScheme = useCallback((mvc) => {
     try {
@@ -382,6 +390,8 @@ function GameOfLifeApp(props) {
                 : data;
               setIsRunning(!!nextRunning);
             } catch (e) { /* ignore */ }
+          } else if (event === 'viewportChanged') {
+            updateViewportSnapshot(data);
           }
         };
         model.addObserver(observer);
@@ -443,7 +453,7 @@ function GameOfLifeApp(props) {
         gameRef.current = null;
       }
     };
-  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme, preloadStrategy, shapesLoading, shapesError]);
+  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme, preloadStrategy, shapesLoading, shapesError, updateViewportSnapshot]);
 
   const setSelectedToolLocal = useCallback((tool) => {
       setSelectedTool(tool);
@@ -482,7 +492,7 @@ function GameOfLifeApp(props) {
     setSteadyInfo,
     canvasRef,
     offsetRef,
-    cellSize: getViewport().cellSize,
+    cellSize: viewportSnapshot.cellSize,
     setCellAlive,
     popHistoryRef: { current: (gameRef.current && typeof gameRef.current.getPopulationHistory === 'function') ? gameRef.current.getPopulationHistory() : [] },
     setShowChart,
