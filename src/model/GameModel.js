@@ -4,6 +4,7 @@
 import { step as gameStep } from './gameLogic';
 import { colorSchemes } from './colorSchemes';
 import LiveCellIndex from './liveCellIndex';
+import { getShapeCells, getShapeCenter } from '../utils/shapeGeometry';
 import logger from '../controller/utils/logger';
 
 // Helpers for bulk updates (module-scope to keep method complexity low)
@@ -326,12 +327,15 @@ export class GameModel {
 
   // Shape operations
   placeShape(x, y, shape) {
-    if (!shape || (!shape.cells && !shape.pattern)) return;
+    if (!shape) return;
 
-    const cells = shape.cells || shape.pattern || [];
+    const cells = getShapeCells(shape);
+    if (!cells.length) return;
+
+    const center = getShapeCenter(cells);
     let cellsPlaced = 0;
 
-    cellsPlaced = this.drawShape(cells, x, y, cellsPlaced);
+    cellsPlaced = this.drawShape(cells, x - center.x, y - center.y, cellsPlaced);
 
     if (cellsPlaced > 0) {
       this.notifyObservers('shapePlace', { x, y, shape, cellsPlaced });

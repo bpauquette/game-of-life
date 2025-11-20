@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { eventToCellFromCanvas, computeComputedOffset, drawLiveCells } from '../../controller/utils/canvasUtils';
+import { getShapeCells, getCenteredOrigin } from '../../utils/shapeGeometry';
 
 const CONST_CAPTURE = 'capture';
 
@@ -92,22 +93,27 @@ export const useCanvasManager = ({
 
   // Enhanced draw: call tool overlay draw after main render
   // Helper function to draw shape preview overlay
-  const drawShapePreview = useCallback((ctx, selShape, last, computedOffset) => {
-    const cells = Array.isArray(selShape) ? selShape : selShape?.cells || [];
+  const drawShapePreview = useCallback((ctx, selShape, cursor, computedOffset) => {
+    if (!cursor) return;
+    const cells = getShapeCells(selShape);
     if (!cells?.length) return;
+
+    const origin = getCenteredOrigin(cursor, cells);
 
     ctx.save();
     ctx.globalAlpha = SHAPE_PREVIEW_ALPHA;
     
     for (const element of cells) {
       const c = element;
-      const cx = (c.x === undefined) ? c[0] : c.x;
-      const cy = (c.y === undefined) ? c[1] : c.y;
-      const drawX = (last.x + cx) * cellSize - computedOffset.x;
-      const drawY = (last.y + cy) * cellSize - computedOffset.y;
+      const cx = (c?.x === undefined) ? c[0] : c.x;
+      const cy = (c?.y === undefined) ? c[1] : c.y;
+      const absoluteX = (origin.x ?? 0) + cx;
+      const absoluteY = (origin.y ?? 0) + cy;
+      const drawX = absoluteX * cellSize - computedOffset.x;
+      const drawY = absoluteY * cellSize - computedOffset.y;
       
       try {
-        ctx.fillStyle = colorScheme?.getCellColor?.(last.x + cx, last.y + cy) ?? '#222';
+        ctx.fillStyle = colorScheme?.getCellColor?.(absoluteX, absoluteY) ?? '#222';
       } catch (err) {
         logger.warn(err);
         ctx.fillStyle = '#222';

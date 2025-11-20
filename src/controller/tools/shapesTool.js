@@ -1,5 +1,6 @@
 /* eslint-disable */
 import { makeShapePreviewOverlay } from '../../overlays/overlayTypes';
+import { getShapeCells, getShapeCenter, getCenteredOrigin } from '../../utils/shapeGeometry';
 
 
 const SHAPE_PREVIEW_ALPHA = 0.6;
@@ -22,20 +23,12 @@ export const shapesTool = {
       // No cursor position yet
       return null;
     }
-    let cells = [];
-    if (Array.isArray(sel)) {
-      cells = sel;
-    } else if (sel && Array.isArray(sel.cells)) {
-      cells = sel.cells;
-    } else if (sel && Array.isArray(sel.pattern)) {
-      cells = sel.pattern;
-    } else {
-      return null;
-    }
+    const cells = getShapeCells(sel);
     if (!cells.length) {
       return null;
     }
-    return makeShapePreviewOverlay(cells, last, {
+    const origin = getCenteredOrigin(last, cells);
+    return makeShapePreviewOverlay(cells, origin, {
       alpha: SHAPE_PREVIEW_ALPHA,
       color: PREVIEW_FILL_COLOR,
     });
@@ -68,20 +61,14 @@ export const shapesTool = {
       const last = toolState.last;
       if (!sel || !last) return;
       // Normalize cells from different formats
-      let cells = [];
-      if (Array.isArray(sel)) {
-        cells = sel;
-      } else if (sel && Array.isArray(sel.cells)) {
-        cells = sel.cells;
-      } else if (sel && Array.isArray(sel.pattern)) {
-        cells = sel.pattern;
-      } else { return; }
+      const cells = getShapeCells(sel);
       if (!cells.length) { return; }
+      const origin = getCenteredOrigin(last, cells);
       ctx.save();
       // Draw placement grid indicator (crosshair at placement point)
       this.drawPlacementIndicator(ctx, last, cellSize, computedOffset);
       // Draw shape preview with enhanced visibility
-      this.drawShapePreview(ctx, cells, last, cellSize, computedOffset);
+      this.drawShapePreview(ctx, cells, origin, cellSize, computedOffset);
       ctx.restore();
     } catch (error) {
        console.log.error(error.message)
@@ -121,17 +108,19 @@ export const shapesTool = {
     drawCorner(centerX + halfCell, centerY + halfCell); // Bottom-right
   },
 
-  drawShapePreview(ctx, cells, position, cellSize, computedOffset) {
+  drawShapePreview(ctx, cells, anchor, cellSize, computedOffset) {
     // Draw shape cells with improved visibility
     ctx.globalAlpha = SHAPE_PREVIEW_ALPHA;
     
     for (const cell of cells) {
       const cx = cell?.x ?? (Array.isArray(cell) ? cell[0] : 0);
       const cy = cell?.y ?? (Array.isArray(cell) ? cell[1] : 0);
-      
-      const drawX = (position.x + cx) * cellSize - computedOffset.x;
-      const drawY = (position.y + cy) * cellSize - computedOffset.y;
-      
+      const absoluteX = (anchor.x ?? 0) + cx;
+      const absoluteY = (anchor.y ?? 0) + cy;
+
+      const drawX = absoluteX * cellSize - computedOffset.x;
+      const drawY = absoluteY * cellSize - computedOffset.y;
+
       // Fill the cell
       ctx.fillStyle = PREVIEW_FILL_COLOR;
       ctx.fillRect(drawX, drawY, cellSize, cellSize);
