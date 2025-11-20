@@ -57,6 +57,7 @@ export class GameRenderer {
     this.viewport = { width: 0, height: 0 };
     this.colorCache = new Map();
     this.maxColorCacheSize = 10000;
+    this._invalidateGridCache();
   // Debounce timeout for coalescing rapid resize events (ms).
   // Use a small default to avoid layout thrash during header hide/show.
   this._resizeDebounceMs = (options && typeof options.resizeDebounceMs === 'number') ? options.resizeDebounceMs : 80;
@@ -108,7 +109,7 @@ export class GameRenderer {
       }
       if (this.ctx && typeof this.ctx.fillRect === CONST_FUNCTION) {
         const prevFill = this.ctx.fillStyle;
-        this.ctx.fillStyle = this.options.backgroundColor || CONST_FFFFFF;
+        this.ctx.fillStyle = this.options.backgroundColor;
         // fill in device-pixel coordinates for a solid background before scaling
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.fillStyle = prevFill;
@@ -127,7 +128,7 @@ export class GameRenderer {
   this.viewport.height = styleHeight;
 
     // Invalidate caches
-    this.gridCache = null;
+    this._invalidateGridCache();
     this.colorCache.clear();
 
     try {
@@ -192,7 +193,7 @@ export class GameRenderer {
     Object.assign(this.options, newOptions);
     // Invalidate grid cache if visual grid appearance changed (grid or background color)
     if (prevGridColor !== this.options.gridColor || prevBackground !== this.options.backgroundColor) {
-      this.gridCache = null;
+      this._invalidateGridCache();
     }
     // Clear color cache since colors or background changed
     this.colorCache.clear();
@@ -299,7 +300,7 @@ export class GameRenderer {
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
       }
       this.setupHighDPI();
-      this.gridCache = null;
+      this._invalidateGridCache();
       this.colorCache.clear();
       return;
     }
@@ -344,7 +345,7 @@ export class GameRenderer {
       this.viewport.cellSize = cellSize;
       
       // Invalidate grid cache when viewport changes
-      this.gridCache = null;
+      this._invalidateGridCache();
     }
     
     return changed;
@@ -420,24 +421,60 @@ export class GameRenderer {
     this.ctx.fillRect(0, 0, this.viewport.width, this.viewport.height);
   }
 
+  _invalidateGridCache() {
+    this.gridCache = null;
+    this.gridCacheDpr = null;
+    this.gridCacheCssWidth = 0;
+    this.gridCacheCssHeight = 0;
+  }
+
   /**
    * Draw the grid (cached for performance)
    */
   drawGrid() {
+    const dpr = (typeof window !== 'undefined' && Number.isFinite(window.devicePixelRatio))
+      ? window.devicePixelRatio
+      : 1;
+    if (this.gridCache && this.gridCacheDpr !== dpr) {
+      this._invalidateGridCache();
+    }
     if (!this.gridCache) {
-      this._createGridCache();
+      this._createGridCache(dpr);
     }
     this._drawGridCache();
   }
 
-  _createGridCache() {
-    this.gridCache = document.createElement('canvas');
-    this.gridCache.width = this.viewport.width;
-    this.gridCache.height = this.viewport.height;
-    const gridCtx = this.gridCache.getContext('2d') || this.canvas.getContext('2d') || { fillStyle: '', fillRect: () => {}, beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, stroke: () => {} };
+  _createGridCache(dprInput) {
+    const dpr = Number.isFinite(dprInput) && dprInput > 0 ? dprInput : 1;
+    const cache = document.createElement('canvas');
+    cache.width = Math.ceil(this.viewport.width * dpr);
+    cache.height = Math.ceil(this.viewport.height * dpr);
+    const gridCtx = cache.getContext('2d') || this.canvas.getContext('2d') || {
+      fillStyle: '',
+      fillRect: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      stroke: () => {},
+      scale: () => {},
+      setTransform: () => {}
+    };
+
+    if (typeof gridCtx.setTransform === CONST_FUNCTION) {
+      gridCtx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+    if (typeof gridCtx.scale === CONST_FUNCTION) {
+      gridCtx.scale(dpr, dpr);
+    }
+
+    this.gridCache = cache;
+    this.gridCacheDpr = dpr;
+    this.gridCacheCssWidth = this.viewport.width;
+    this.gridCacheCssHeight = this.viewport.height;
+
     this._drawGridBackground(gridCtx);
-    this._drawGridLines(gridCtx);
-    gridCtx.stroke();
+    this._drawGridLines(gridCtx, dpr);
+    gridCtx.stroke?.();
   }
 
   _drawGridBackground(gridCtx) {
@@ -445,63 +482,67 @@ export class GameRenderer {
     gridCtx.fillRect(0, 0, this.viewport.width, this.viewport.height);
   }
 
-  _drawGridLines(gridCtx) {
-  // Hide grid if cell size is extremely small
-  const cellSize = Number(this.viewport.cellSize);
-  if (cellSize < 4) {
-    return;
-  }
-  // Use configured grid color for grid lines, default to gray
-  gridCtx.strokeStyle = this.options.gridColor || '#888';
-  gridCtx.lineWidth = 1;
-  gridCtx.globalAlpha = 1;
-  gridCtx.beginPath();
+  _drawGridLines(gridCtx, dprInput) {
+    const dpr = Number.isFinite(dprInput) && dprInput > 0 ? dprInput : 1;
+    // Hide grid if cell size is extremely small
+    const cellSize = Number(this.viewport.cellSize);
+    if (cellSize < 4) {
+      return;
+    }
+    // Use configured grid color for grid lines, default to gray
+    gridCtx.strokeStyle = this.options.gridColor || '#888';
+    gridCtx.lineWidth = 1 / dpr;
+    gridCtx.globalAlpha = 1;
+    gridCtx.beginPath();
 
-  const offsetX = Number(this.viewport.offsetX);
-  const offsetY = Number(this.viewport.offsetY);
-  const width = Number(this.viewport.width);
-  const height = Number(this.viewport.height);
-  let gridLineOffset = Number(this.options.gridLineOffset);
-  if (!Number.isFinite(gridLineOffset)) {
-    gridLineOffset = 0;
-  }
-  const centerX = width / 2;
-  const centerY = height / 2;
+    const offsetX = Number(this.viewport.offsetX);
+    const offsetY = Number(this.viewport.offsetY);
+    const width = Number(this.viewport.width);
+    const height = Number(this.viewport.height);
+    let gridLineOffset = Number(this.options.gridLineOffset);
+    if (!Number.isFinite(gridLineOffset)) {
+      gridLineOffset = 0;
+    }
+    gridLineOffset /= dpr;
+    const centerX = width / 2;
+    const centerY = height / 2;
 
-  if (!cellSize || Number.isNaN(cellSize) || cellSize <= 0) {
-    return;
-  }
-  if (Number.isNaN(offsetX) || Number.isNaN(offsetY) || Number.isNaN(width) || Number.isNaN(height)) {
-    return;
-  }
+    if (!cellSize || Number.isNaN(cellSize) || cellSize <= 0) {
+      return;
+    }
+    if (Number.isNaN(offsetX) || Number.isNaN(offsetY) || Number.isNaN(width) || Number.isNaN(height)) {
+      return;
+    }
 
-  const computedOffset = {
-    x: offsetX * cellSize - centerX,
-    y: offsetY * cellSize - centerY
-  };
-  // Normalize to positive remainders in [0, cellSize)
-  const startX = ((-computedOffset.x % cellSize) + cellSize) % cellSize;
-  const startY = ((-computedOffset.y % cellSize) + cellSize) % cellSize;
+    const computedOffset = {
+      x: offsetX * cellSize - centerX,
+      y: offsetY * cellSize - centerY
+    };
+    // Normalize to positive remainders in [0, cellSize)
+    const startX = ((-computedOffset.x % cellSize) + cellSize) % cellSize;
+    const startY = ((-computedOffset.y % cellSize) + cellSize) % cellSize;
 
-  if (Number.isNaN(startX) || Number.isNaN(startY)) {
-    return;
-  }
+    if (Number.isNaN(startX) || Number.isNaN(startY)) {
+      return;
+    }
 
-  for (let x = startX; x < width; x += cellSize) {
-    const xPos = Math.floor(x) + gridLineOffset;
-    gridCtx.moveTo(xPos, 0);
-    gridCtx.lineTo(xPos, height);
-  }
-  for (let y = startY; y < height; y += cellSize) {
-    const yPos = Math.floor(y) + gridLineOffset;
-    gridCtx.moveTo(0, yPos);
-    gridCtx.lineTo(width, yPos);
-  }
+    for (let x = startX; x < width; x += cellSize) {
+      const xPos = x + gridLineOffset;
+      gridCtx.moveTo(xPos, 0);
+      gridCtx.lineTo(xPos, height);
+    }
+    for (let y = startY; y < height; y += cellSize) {
+      const yPos = y + gridLineOffset;
+      gridCtx.moveTo(0, yPos);
+      gridCtx.lineTo(width, yPos);
+    }
   }
 
   _drawGridCache() {
     if (this.ctx && typeof this.ctx.drawImage === CONST_FUNCTION) {
-      this.ctx.drawImage(this.gridCache, 0, 0);
+      const width = this.gridCacheCssWidth || this.viewport.width;
+      const height = this.gridCacheCssHeight || this.viewport.height;
+      this.ctx.drawImage(this.gridCache, 0, 0, width, height);
     } else if (this.ctx && typeof this.ctx.fillRect === CONST_FUNCTION) {
       this.ctx.fillStyle = this.options.backgroundColor;
       this.ctx.fillRect(0, 0, this.viewport.width, this.viewport.height);
@@ -642,7 +683,7 @@ export class GameRenderer {
       if (this.ctx && typeof this.ctx.scale === CONST_FUNCTION) this.ctx.scale(dpr, dpr);
       if (this.ctx && typeof this.ctx.fillRect === CONST_FUNCTION) {
         const prev = this.ctx.fillStyle;
-        this.ctx.fillStyle = this.options.backgroundColor || CONST_FFFFFF;
+        this.ctx.fillStyle = this.options.backgroundColor;
         // fill in CSS pixel coordinates (context is scaled by DPR)
         this.ctx.fillRect(0, 0, this.viewport.width, this.viewport.height);
         this.ctx.fillStyle = prev;
@@ -712,7 +753,7 @@ export class GameRenderer {
    */
   clearCaches() {
     this.colorCache.clear();
-    this.gridCache = null;
+    this._invalidateGridCache();
   }
 
   /**

@@ -188,7 +188,7 @@ function GameOfLifeApp(props) {
       }
       gameRef.current?.view?.renderer?.updateOptions?.({
         backgroundColor: scheme.background || scheme.backgroundColor || '#000000',
-        gridColor: scheme.gridColor || '#202020'
+        gridColor: scheme.gridColor
       });
       gameRef.current?.controller?.requestRender?.();
     } catch (err) {
