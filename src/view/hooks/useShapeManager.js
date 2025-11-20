@@ -87,6 +87,25 @@ export const useShapeManager = ({
     }
   }, []);
 
+  const getCursorFromModel = useCallback((targetModel) => {
+    if (!targetModel || typeof targetModel.getCursorPosition !== 'function') {
+      return null;
+    }
+    const cursor = targetModel.getCursorPosition();
+    if (!cursor || typeof cursor.x !== 'number' || typeof cursor.y !== 'number') {
+      return null;
+    }
+    return { x: cursor.x, y: cursor.y };
+  }, []);
+
+  const ensureToolCursor = useCallback((ref, fallback) => {
+    if (!ref?.current) return;
+    const last = ref.current.last;
+    if (!last || typeof last.x !== 'number' || typeof last.y !== 'number') {
+      ref.current.last = fallback || { x: 0, y: 0 };
+    }
+  }, []);
+
   const updateShapeState = useCallback((shape = null) => {
     debugLog('[useShapeManager] updateShapeState called:', shape);
     if (toolStateRef?.current) {
@@ -104,16 +123,11 @@ export const useShapeManager = ({
     if (toolStateRef?.current) {
       toolStateRef.current.selectedShapeData = shape;
       debugLog('[useShapeManager] toolStateRef.current.selectedShapeData set:', toolStateRef.current.selectedShapeData);
-      // Strategic logging for preview position (last)
-      const last = toolStateRef.current.last;
-      if (!last || typeof last.x !== 'number' || typeof last.y !== 'number') {
-        toolStateRef.current.last = { x: 0, y: 0 };
-        debugLog('[useShapeManager] toolStateRef.current.last set to default:', toolStateRef.current.last);
-      } else {
-        debugLog('[useShapeManager] toolStateRef.current.last already set:', toolStateRef.current.last);
-      }
+      const cursor = getCursorFromModel(targetModel);
+      ensureToolCursor(toolStateRef, cursor);
+      debugLog('[useShapeManager] toolStateRef.current.last ensured:', toolStateRef.current.last);
     }
-  }, [toolStateRef, debugLog, model, setSelectedShape]);
+  }, [toolStateRef, debugLog, model, setSelectedShape, getCursorFromModel, ensureToolCursor]);
 
   // Centralized shape selection: updates shape state, recent list, and triggers redraw
   const selectShape = useCallback((shape) => {
@@ -123,14 +137,13 @@ export const useShapeManager = ({
       // Ensure overlay preview position is set
       if (toolStateRef?.current) {
         toolStateRef.current.selectedShapeData = shape;
-        // If last is missing or invalid, set to grid center
-        if (!toolStateRef.current.last || typeof toolStateRef.current.last.x !== 'number' || typeof toolStateRef.current.last.y !== 'number') {
-          toolStateRef.current.last = { x: 0, y: 0 };
-        }
+        const targetModel = (typeof model === 'function') ? model() : model;
+        const cursor = getCursorFromModel(targetModel);
+        ensureToolCursor(toolStateRef, cursor);
       }
     }
     drawWithOverlay();
-  }, [updateShapeState, updateRecentShapesList, drawWithOverlay, toolStateRef]);
+  }, [updateShapeState, updateRecentShapesList, drawWithOverlay, toolStateRef, model, getCursorFromModel, ensureToolCursor]);
 
   // Open the shape palette and switch to shapes tool for previews
   const openPalette = useCallback(() => {

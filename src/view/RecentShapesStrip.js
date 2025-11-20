@@ -260,6 +260,44 @@ const RecentShapesStrip = ({
           } else {
             slotKey = `empty-slot-${index}`;
           }
+          const selected = isShapeSelected(shape);
+          const frameStyle = selected
+            ? {
+                padding: 2,
+                borderRadius: 12,
+                background: 'linear-gradient(135deg, rgba(0,245,160,0.9), rgba(0,217,245,0.9))',
+                boxShadow: '0 10px 32px rgba(0, 245, 160, 0.35)',
+                transition: 'transform 160ms ease, box-shadow 160ms ease'
+              }
+            : {
+                padding: 0,
+                borderRadius: 12,
+                transition: 'transform 160ms ease, box-shadow 160ms ease'
+              };
+          const cardContainerStyle = {
+            padding: 6,
+            borderRadius: 10,
+            background: cardBg,
+            display: 'flex',
+            alignItems: FLEX_START,
+            gap: 8,
+            position: 'relative',
+            minWidth: 0
+          };
+          const badgeStyle = {
+            position: 'absolute',
+            top: 6,
+            right: 8,
+            padding: '2px 8px',
+            borderRadius: 999,
+            fontSize: 10,
+            letterSpacing: 0.4,
+            textTransform: 'uppercase',
+            color: '#031b16',
+            fontWeight: 700,
+            background: 'linear-gradient(135deg, #00f5a0, #00d9f5)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.35)'
+          };
           return (
             <div
               key={slotKey}
@@ -273,18 +311,21 @@ const RecentShapesStrip = ({
                 justifyContent: 'center'
               }}
             >
-                <div style={{ padding: 6, borderRadius: 8, background: cardBg, display: 'flex', alignItems: FLEX_START, gap: 8 }}>
+              <div style={frameStyle}>
+                <div style={cardContainerStyle}>
+                  {selected && <span style={badgeStyle}>Selected</span>}
                 <ShapeSlot
                   shape={shape}
                   index={index}
                   colorScheme={colorScheme}
-                  selected={isShapeSelected(shape)}
+                  selected={selected}
                   title={getShapeTitle(shape, index)}
                   onSelect={() => handleShapeClick(shape)}
                   onRotate={(rotatedShape, i) => {
                     if (typeof onRotateShape === 'function') onRotateShape(rotatedShape, i, { inPlace: true });
                   }}
                 />
+              </div>
               </div>
             </div>
           );

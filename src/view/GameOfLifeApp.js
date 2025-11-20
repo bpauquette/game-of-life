@@ -45,6 +45,7 @@ function GameOfLifeApp(props) {
   // Removed unused generation state
   const [isRunning, setIsRunning] = useState(false);
   const [selectedTool, setSelectedTool] = useState(null);
+  const [selectedShape, setSelectedShape] = useState(null);
   const [popWindowSize, setPopWindowSize] = useState(50);
   const [popTolerance, setPopTolerance] = useState(3);
   const [steadyInfo, setSteadyInfo] = useState({ steady: false, period: 0, popChanging: false });
@@ -111,7 +112,8 @@ function GameOfLifeApp(props) {
     toolStateRef,
     drawWithOverlay,
     // Pass a getter so the hook can access the model once GameMVC initializes
-    model: () => (gameRef.current ? gameRef.current.model : null)
+    model: () => (gameRef.current ? gameRef.current.model : null),
+    setSelectedShape
   });
 
   // Preload shapes into IndexedDB on startup. Strategy can be configured
@@ -356,13 +358,20 @@ function GameOfLifeApp(props) {
       // the React state when the model notifies a `selectedToolChanged`.
       try {
         const model = mvc.model;
-        if (model && typeof model.getSelectedTool === 'function') {
-          // Initialize local selection from model
-          setSelectedTool(model.getSelectedTool());
+        if (model) {
+          if (typeof model.getSelectedTool === 'function') {
+            // Initialize local selection from model
+            setSelectedTool(model.getSelectedTool());
+          }
+          if (typeof model.getSelectedShape === 'function') {
+            setSelectedShape(model.getSelectedShape());
+          }
         }
         const observer = (event, data) => {
           if (event === 'selectedToolChanged') {
             try { setSelectedTool(data); } catch (e) { /* ignore */ }
+          } else if (event === 'selectedShapeChanged') {
+            try { setSelectedShape(data); } catch (e) { /* ignore */ }
           }
         };
         model.addObserver(observer);
@@ -496,6 +505,7 @@ function GameOfLifeApp(props) {
       onSelectShape={handleSelectShape}
   drawWithOverlay={drawWithOverlay}
       colorScheme={colorScheme}
+      selectedShape={selectedShape}
       onRotateShape={handleRotateShape}
       onSwitchToShapesTool={() => gameRef.current?.setSelectedTool?.('shapes')}
       controlsProps={controlsProps}

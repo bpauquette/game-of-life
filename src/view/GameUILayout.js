@@ -15,7 +15,7 @@ function GameUILayout({
   onSelectShape,
   drawWithOverlay,
   colorScheme,
-  selectedShapeForPanel,
+  selectedShape,
   onRotateShape,
   onSwitchToShapesTool,
   controlsProps,
@@ -41,8 +41,8 @@ function GameUILayout({
   sidebarOpen,
   onToggleSidebar,
   isSmall,
-  onToggleChrome
-  , shapesReady
+  onToggleChrome,
+  shapesReady
 }) {
   // measure header height so content is positioned correctly under it
   const headerRef = useRef(null);
@@ -68,7 +68,6 @@ function GameUILayout({
   const handleToggleChrome = useCallback(() => {
     try {
       const before = (globalThis.__GOL_DUMP_CANVAS_STATE__ && globalThis.__GOL_DUMP_CANVAS_STATE__()) || null;
-      pushDebug({ event: 'toggleChrome.before', before });
     } catch (e) { pushDebug({ event: 'toggleChrome.before.error', error: String(e) }); }
 
     try {
@@ -148,6 +147,7 @@ function GameUILayout({
           setSteadyInfo={controlsProps?.setSteadyInfo}
           colorSchemes={controlsProps?.colorSchemes}
           colorScheme={colorScheme}
+          selectedShape={selectedShape}
           colorSchemeKey={uiState?.colorSchemeKey || 'bio'}
           setColorSchemeKey={controlsProps?.setColorSchemeKey}
           popWindowSize={controlsProps?.popWindowSize}
@@ -258,7 +258,7 @@ GameUILayout.propTypes = {
   onSelectShape: PropTypes.func,
   drawWithOverlay: PropTypes.func,
   colorScheme: PropTypes.object,
-  selectedShapeForPanel: PropTypes.object,
+  selectedShape: PropTypes.object,
   onRotateShape: PropTypes.func,
   onSwitchToShapesTool: PropTypes.func,
   controlsProps: PropTypes.object,
