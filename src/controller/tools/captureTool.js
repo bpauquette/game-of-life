@@ -59,11 +59,21 @@ export const captureTool = {
     if (getLiveCells) {
       const liveCells = getLiveCells();
       toolState.capturedCells = [];
-      
-      for (const [key] of liveCells.entries()) {
-        const [cellX, cellY] = key.split(',').map(Number);
+
+      const collectIfWithin = (cellX, cellY) => {
         if (cellX >= minX && cellX <= maxX && cellY >= minY && cellY <= maxY) {
           toolState.capturedCells.push([cellX, cellY]);
+        }
+      };
+
+      if (typeof liveCells?.forEachCell === 'function') {
+        liveCells.forEachCell(collectIfWithin);
+      } else if (typeof liveCells?.entries === 'function') {
+        for (const [key] of liveCells.entries()) {
+          const [cellX, cellY] = key.split(',').map(Number);
+          if (Number.isFinite(cellX) && Number.isFinite(cellY)) {
+            collectIfWithin(cellX, cellY);
+          }
         }
       }
     }
@@ -83,15 +93,24 @@ export const captureTool = {
     
     if (getLiveCells) {
       const liveCells = getLiveCells();
-      
-      for (const [key] of liveCells.entries()) {
-        const [cellX, cellY] = key.split(',').map(Number);
+
+      const normalizeIfWithin = (cellX, cellY) => {
         if (cellX >= minX && cellX <= maxX && cellY >= minY && cellY <= maxY) {
-          // Normalize coordinates relative to top-left of selection
-          capturedCells.push({ 
-            x: cellX - minX, 
-            y: cellY - minY 
+          capturedCells.push({
+            x: cellX - minX,
+            y: cellY - minY
           });
+        }
+      };
+
+      if (typeof liveCells?.forEachCell === 'function') {
+        liveCells.forEachCell(normalizeIfWithin);
+      } else if (typeof liveCells?.entries === 'function') {
+        for (const [key] of liveCells.entries()) {
+          const [cellX, cellY] = key.split(',').map(Number);
+          if (Number.isFinite(cellX) && Number.isFinite(cellY)) {
+            normalizeIfWithin(cellX, cellY);
+          }
         }
       }
     }

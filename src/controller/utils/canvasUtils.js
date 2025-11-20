@@ -24,8 +24,8 @@ export function eventToCellFromCanvas(e, canvas, offsetRef, cellSize) {
 
 export function drawLiveCells(ctx, liveMap, computedOffset, cellSize, colorScheme) {
   if (!ctx || !liveMap) return;
-  for (const [key] of liveMap.entries()) {
-    const [x, y] = key.split(',').map(Number);
+
+  const drawCell = (x, y) => {
     ctx.fillStyle = colorScheme.getCellColor(x, y);
     ctx.fillRect(
       x * cellSize - computedOffset.x,
@@ -33,6 +33,18 @@ export function drawLiveCells(ctx, liveMap, computedOffset, cellSize, colorSchem
       cellSize,
       cellSize
     );
+  };
+
+  if (typeof liveMap.forEachCell === 'function') {
+    liveMap.forEachCell(drawCell);
+    return;
+  }
+
+  for (const [key] of liveMap.entries()) {
+    const [x, y] = key.split(',').map(Number);
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+      drawCell(x, y);
+    }
   }
 }
 

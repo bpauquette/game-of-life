@@ -3,28 +3,34 @@
 
 import { step as gameStep } from './gameLogic';
 import { colorSchemes } from './colorSchemes';
+import LiveCellIndex from './liveCellIndex';
 import logger from '../controller/utils/logger';
 
 // Helpers for bulk updates (module-scope to keep method complexity low)
 function normalizeBulkUpdate(u) {
-  if (Array.isArray(u)) return { x: u[0], y: u[1], alive: u.length > 2 ? !!u[2] : true };
-  if (u && typeof u === 'object') return { x: u.x, y: u.y, alive: Object.prototype.hasOwnProperty.call(u, 'alive') ? !!u.alive : true };
+  if (Array.isArray(u)) {
+    const x = Number(u[0]);
+    const y = Number(u[1]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return { x, y, alive: u.length > 2 ? !!u[2] : true };
+  }
+  if (u && typeof u === 'object') {
+    const x = Number(u.x);
+    const y = Number(u.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return {
+      x,
+      y,
+      alive: Object.prototype.hasOwnProperty.call(u, 'alive') ? !!u.alive : true
+    };
+  }
   return null;
 }
 
 function applyBulkUpdate(liveCells, upd) {
-  const key = `${upd.x},${upd.y}`;
-  const wasAlive = liveCells.has(key);
-  if (upd.alive) {
-    if (!wasAlive) {
-      liveCells.set(key, true);
-      return { add: 1, rem: 0 };
-    }
-  } else if (wasAlive) {
-    liveCells.delete(key);
-    return { add: 0, rem: 1 };
-  }
-  return { add: 0, rem: 0 };
+  const changed = liveCells.setCellAlive(upd.x, upd.y, upd.alive);
+  if (!changed) return { add: 0, rem: 0 };
+  return upd.alive ? { add: 1, rem: 0 } : { add: 0, rem: 1 };
 }
 const CONST_UISTATECHANGED = 'uiStateChanged';
 
@@ -46,7 +52,7 @@ export class GameModel {
   }
   constructor() {
     // Game state
-    this.liveCells = new Map();
+    this.liveCells = new LiveCellIndex();
     this.generation = 0;
     this.isRunning = false;
     // Viewport state
@@ -121,14 +127,9 @@ export class GameModel {
 
   // Game state operations
   setCellAliveModel(x, y, alive) {
-    const key = `${x},${y}`;
-    const wasAlive = this.liveCells.has(key);
-    if (alive && !wasAlive) {
-      this.liveCells.set(key, true);
-      this.notifyObservers('cellChanged', { x, y, alive: true });
-    } else if (!alive && wasAlive) {
-      this.liveCells.delete(key);
-      this.notifyObservers('cellChanged', { x, y, alive: false });
+    const changed = this.liveCells.setCellAlive(x, y, alive);
+    if (changed) {
+      this.notifyObservers('cellChanged', { x, y, alive: !!alive });
     }
   }
 
@@ -157,7 +158,7 @@ export class GameModel {
   }
 
   isCellAlive(x, y) {
-    return this.liveCells.has(`${x},${y}`);
+    return this.liveCells.has(x, y);
   }
 
   getLiveCells() {
@@ -367,31 +368,13 @@ export class GameModel {
 
   // Utility methods
   getBounds() {
-    if (this.liveCells.size === 0) {
-      return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-    }
-
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-
-    for (const key of this.liveCells.keys()) {
-      const [x, y] = key.split(',').map(Number);
-      minX = Math.min(minX, x);
-      maxX = Math.max(maxX, x);
-      minY = Math.min(minY, y);
-      maxY = Math.max(maxY, y);
-    }
-
-    return { minX, maxX, minY, maxY };
+    return this.liveCells.getBounds();
   }
 
   // Export/import state
   exportState() {
     return {
-      liveCells: Array.from(this.liveCells.keys()).map(key => {
-        const [x, y] = key.split(',').map(Number);
-        return { x, y };
-      }),
+      liveCells: this.liveCells.toArray(),
       generation: this.generation,
       viewport: { ...this.viewport },
       populationHistory: [...this.populationHistory]

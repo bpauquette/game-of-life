@@ -37,7 +37,7 @@ Key goals for an AI coding agent working on this repo:
 ## Build, test, and run commands:
 **Frontend:**
 - Start dev server: `npm start` (Create React App)
-- Run tests: `npm test` (project uses react-scripts/jest; tests are under `src/*.test.js`)
+- Run tests: `npm test` (project uses react-scripts/jest; tests are under `src/*.test.js`). When running tests in CI/non-interactive mode, always set `CI=true` first (PowerShell: `$env:CI="true"; npm test -- --watch=false`) so the runner exits without waiting for keyboard input.
 - Build production bundle: `npm run build`
 - Process management: `npm run frontend:start|stop|status` (uses `scripts/manage.js`)
 

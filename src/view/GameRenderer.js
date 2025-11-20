@@ -553,31 +553,40 @@ export class GameRenderer {
    * Draw live cells
    */
   drawCells(liveCells) {
-    for (const [key] of liveCells.entries()) {
-      const [cellX, cellY] = key.split(',').map(Number);
+    const drawCell = (cellX, cellY) => {
       const screenPos = this.cellToScreen(cellX, cellY);
-      
-      // Viewport culling
-      if (screenPos.x + this.viewport.cellSize < 0 || 
-          screenPos.x >= this.viewport.width ||
-          screenPos.y + this.viewport.cellSize < 0 || 
-          screenPos.y >= this.viewport.height) {
-        continue;
+
+      if (
+        screenPos.x + this.viewport.cellSize < 0 ||
+        screenPos.x >= this.viewport.width ||
+        screenPos.y + this.viewport.cellSize < 0 ||
+        screenPos.y >= this.viewport.height
+      ) {
+        return;
       }
-      
+
       const cellColor = this.getCellColor(cellX, cellY);
       this.ctx.fillStyle = cellColor;
-      // Log color for debugging colorScheme switching
       if (globalThis.DEBUG_COLOR_SCHEME) {
         console.log(`[GameRenderer] Drawing cell (${cellX},${cellY}) with color:`, cellColor);
       }
-      // Draw using exact floating coordinates to keep alignment with grid math
       this.ctx.fillRect(
         screenPos.x,
         screenPos.y,
         this.viewport.cellSize,
         this.viewport.cellSize
       );
+    };
+
+    if (typeof liveCells?.forEachCell === 'function') {
+      liveCells.forEachCell(drawCell);
+    } else if (typeof liveCells?.entries === 'function') {
+      for (const [key] of liveCells.entries()) {
+        const [cellX, cellY] = key.split(',').map(Number);
+        if (Number.isFinite(cellX) && Number.isFinite(cellY)) {
+          drawCell(cellX, cellY);
+        }
+      }
     }
   }
 

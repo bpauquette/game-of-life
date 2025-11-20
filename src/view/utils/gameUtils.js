@@ -21,7 +21,11 @@ export function loadGridIntoGame(gameRef, liveCells) {
     // serialized cells ({x,y}) coming from the backend. Normalize into a
     // bulk-update array that GameModel.setCellsAliveBulk understands.
     let updates = [];
-    if (liveCells instanceof Map) {
+    if (typeof liveCells.forEachCell === 'function') {
+      liveCells.forEachCell((x, y) => {
+        updates.push([x, y]);
+      });
+    } else if (liveCells instanceof Map) {
       for (const key of liveCells.keys()) {
         const parts = String(key).split(',').map(Number);
         if (parts.length === 2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1])) {

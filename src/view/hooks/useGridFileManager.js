@@ -37,15 +37,23 @@ const useGridFileManager = (config = {}) => {
 
   // Convert live cells to serializable format
   const serializeLiveCells = useCallback((liveCells) => {
-    if (!liveCells || typeof liveCells.entries !== 'function') {
-      return [];
-    }
-    
+    if (!liveCells) return [];
+
     const cells = [];
-    for (const [key, value] of liveCells.entries()) {
-      if (value) {
-        const [x, y] = key.split(',').map(Number);
+    if (typeof liveCells.forEachCell === 'function') {
+      liveCells.forEachCell((x, y) => {
         cells.push({ x, y });
+      });
+      return cells;
+    }
+
+    if (typeof liveCells.entries === 'function') {
+      for (const [key, value] of liveCells.entries()) {
+        if (!value) continue;
+        const [x, y] = key.split(',').map(Number);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          cells.push({ x, y });
+        }
       }
     }
     return cells;

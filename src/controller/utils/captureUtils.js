@@ -19,14 +19,23 @@ export function captureCellsInArea(start, end, getLiveCells) {
   const liveCells = getLiveCells();
   const capturedCells = [];
   
-  for (const [key] of liveCells.entries()) {
-    const [x, y] = key.split(',').map(Number);
+  const addIfWithinBounds = (x, y) => {
     if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-      // Normalize coordinates relative to top-left of selection
-      capturedCells.push({ 
-        x: x - minX, 
-        y: y - minY 
+      capturedCells.push({
+        x: x - minX,
+        y: y - minY
       });
+    }
+  };
+
+  if (typeof liveCells?.forEachCell === 'function') {
+    liveCells.forEachCell(addIfWithinBounds);
+  } else if (typeof liveCells?.entries === 'function') {
+    for (const [key] of liveCells.entries()) {
+      const [x, y] = key.split(',').map(Number);
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        addIfWithinBounds(x, y);
+      }
     }
   }
   
