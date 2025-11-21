@@ -390,13 +390,20 @@ export const useShapeManager = ({
         // Fast optimistic update: insert a small stub immediately so the UI
         // responds without waiting for any heavier processing. The full
         // shape (with cells) is reconciled on the next microtask.
+        const stubCells = Array.isArray(stubSource?.cells)
+          ? stubSource.cells
+          : extractCells(stubSource);
         const stub = {
           id: stubSource?.id,
           name: stubSource?.name || stubMeta?.name,
           width: stubSource?.width || stubMeta?.width,
           height: stubSource?.height || stubMeta?.height,
           // preserve a minimal preview-friendly meta so RecentShapesStrip can render quickly
-          meta: stubMeta ? { width: stubMeta.width, height: stubMeta.height, cellCount: stubMeta.cellCount } : undefined
+          meta: stubMeta ? { width: stubMeta.width, height: stubMeta.height, cellCount: stubMeta.cellCount } : undefined,
+          // include cell data immediately so thumbnails never render empty while awaiting async normalization
+          cells: Array.isArray(stubCells)
+            ? stubCells.map(cell => (Array.isArray(cell) ? [...cell] : [cell?.x ?? 0, cell?.y ?? 0]))
+            : []
         };
         setRecentShapes(prev => {
           const newKey = generateShapeKey(stub);
