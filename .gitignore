@@ -67,5 +67,8 @@ lerna-debug.log*
 sonar-issues.json
 .env.local
 
+# Backend data snapshots
+backend/data/
+
 # Generated shape thumbnails
 backend/data/thumbnails/

@@ -1,7 +1,7 @@
 import logger from '../controller/utils/logger';
 
 const MB = 1024 * 1024;
-const DEFAULT_INTERVAL_MS = 60_000;
+const DEFAULT_INTERVAL_MS = 5_000;
 const MAX_SAMPLES = 500;
 const DEFAULT_UPLOAD_URL = '/v1/memory-samples';
 const DEFAULT_UPLOAD_INTERVAL = 5 * DEFAULT_INTERVAL_MS;
@@ -122,9 +122,8 @@ export function startMemoryLogger(options = {}) {
     if (typeof runtimeFlag === 'boolean') return runtimeFlag;
     if (envFlag === 'true' || envFlag === '1') return true;
     if (envFlag === 'false' || envFlag === '0') return false;
-    // Default to on only in development/test to avoid noise in prod builds.
-    const nodeEnv = typeof process !== 'undefined' ? process?.env?.NODE_ENV : undefined;
-    return nodeEnv !== 'production';
+    // Default to on unless explicitly disabled so telemetry is always collected.
+    return true;
   };
 
   if (!shouldEnable()) {
