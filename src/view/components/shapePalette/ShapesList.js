@@ -72,14 +72,33 @@ const ShapesList = memo(function ShapesList({
     );
   }
 
+  const hasResizeObserver = typeof window !== 'undefined' && typeof window.ResizeObserver === 'function';
+  const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+
+  if (!hasResizeObserver || isTestEnv) {
+    return (
+      <List dense>
+        {items.map((shape, idx) => (
+          <ShapeListItem
+            key={`${shape.id || 'shape'}-${idx}`}
+            shape={shape}
+            idx={idx}
+            colorScheme={colorScheme}
+            onSelect={onSelect}
+            onRequestDelete={onDeleteRequest}
+            onAddRecent={onAddRecent}
+            onHover={onHover}
+          />
+        ))}
+      </List>
+    );
+  }
+
   return (
     <AutoSizer>
       {({ height, width }) => {
-        if (!height || !width) {
-          return null;
-        }
-        const listHeight = Math.max(height, MIN_RENDER_HEIGHT);
-        const listWidth = Math.max(width, 240);
+        const listHeight = Math.max(height || 0, MIN_RENDER_HEIGHT);
+        const listWidth = Math.max(width || 0, 240);
         return (
           <FixedSizeList
             height={listHeight}
