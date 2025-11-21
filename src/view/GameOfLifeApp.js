@@ -524,6 +524,7 @@ function GameOfLifeApp(props) {
       recentShapes={shapeManager.recentShapes}
         recentShapesPersistence={shapeManager.persistenceState}
         onSaveRecentShapes={shapeManager.persistRecentShapes}
+        onClearRecentShapes={shapeManager.clearRecentShapes}
       onSelectShape={handleSelectShape}
   drawWithOverlay={drawWithOverlay}
       colorScheme={colorScheme}

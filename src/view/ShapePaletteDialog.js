@@ -25,6 +25,12 @@ import {
 
 const LARGE_CATALOG_THRESHOLD = 1000;
 
+const hasShapeCells = (shape) => {
+  if (!shape) return false;
+  const has = (cells) => Array.isArray(cells) && cells.length > 0;
+  return has(shape.cells) || has(shape.pattern) || has(shape.liveCells);
+};
+
 export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, colorSchemeKey = 'bio', onAddRecent, prefetchOnMount = false }) {
   const {
     inputValue,
@@ -53,13 +59,28 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [snackUndoShape, setSnackUndoShape] = useState(null);
   const [snackDetails, setSnackDetails] = useState(null);
 
-  const safeAddRecent = useCallback((shape) => {
+  const ensureShapeHasCells = useCallback(async (shape) => {
+    if (!shape?.id || hasShapeCells(shape)) return shape;
     try {
-      onAddRecent?.(shape);
+      const res = await fetchShapeById(shape.id, backendBase);
+      if (res?.ok && res.data) {
+        return res.data;
+      }
+    } catch (err) {
+      logger.warn('[ShapePaletteDialog] failed to hydrate shape for recents:', err);
+    }
+    return shape;
+  }, [backendBase]);
+
+  const safeAddRecent = useCallback(async (shape) => {
+    if (!shape) return;
+    try {
+      const hydrated = await ensureShapeHasCells(shape);
+      onAddRecent?.(hydrated);
     } catch (e) {
       logger.warn('onAddRecent failed:', e);
     }
-  }, [onAddRecent]);
+  }, [onAddRecent, ensureShapeHasCells]);
 
   const handleDeleteRequest = useCallback((shape) => {
     setToDelete(shape);
@@ -76,7 +97,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     if (!shape?.id) {
       onSelectShape?.(shape);
       // Also add to recent when selecting a local/unsaved shape
-      safeAddRecent(shape);
+      await safeAddRecent(shape);
       onClose?.();
       return;
     }
@@ -85,16 +106,16 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   if (res.ok && res.data) {
   logger.debug('[ShapePaletteDialog] Fetched full shape data:', res.data);
         onSelectShape?.(res.data);
-        safeAddRecent(res.data);
+        await safeAddRecent(res.data);
       } else {
           // Removed debug log
         onSelectShape?.(shape);
-        safeAddRecent(shape);
+        await safeAddRecent(shape);
       }
     } catch (err) {
       logger.warn('Failed to fetch full shape data, using metadata only:', err);
       onSelectShape?.(shape);
-      safeAddRecent(shape);
+      await safeAddRecent(shape);
     } finally {
       onClose?.();
     }

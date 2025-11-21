@@ -360,6 +360,22 @@ export const useShapeManager = ({
     restorePersistedRecentShapes();
   }, [restorePersistedRecentShapes]);
 
+  const clearRecentShapes = useCallback(() => {
+    setRecentShapes([]);
+    try {
+      clearPersistedRecentShapes();
+    } finally {
+      lastPersistedFingerprintRef.current = null;
+      setPersistenceState(prev => ({
+        ...prev,
+        hasSavedState: false,
+        lastSavedAt: null,
+        isDirty: false,
+        error: null
+      }));
+    }
+  }, [clearPersistedRecentShapes]);
+
   return {
     // State
     recentShapes,
@@ -431,6 +447,7 @@ export const useShapeManager = ({
     persistRecentShapes,
     restorePersistedRecentShapes,
     clearPersistedRecentShapes,
+    clearRecentShapes,
     persistenceState
   };
 };

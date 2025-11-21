@@ -14,6 +14,7 @@ function GameUILayout({
   recentShapes,
   recentShapesPersistence,
   onSaveRecentShapes,
+  onClearRecentShapes,
   onSelectShape,
   drawWithOverlay,
   colorScheme,
@@ -142,6 +143,7 @@ function GameUILayout({
         onRotateShape={onRotateShape}
         onSwitchToShapesTool={onSwitchToShapesTool}
             onSaveRecentShapes={onSaveRecentShapes}
+          onClearRecentShapes={onClearRecentShapes}
           isRunning={isRunning}
           setIsRunning={controlsProps?.setIsRunning}
           step={controlsProps?.step}
@@ -290,7 +292,8 @@ GameUILayout.propTypes = {
   sidebarOpen: PropTypes.bool,
   onToggleSidebar: PropTypes.func,
   isSmall: PropTypes.bool,
-  onToggleChrome: PropTypes.func
+  onToggleChrome: PropTypes.func,
+  onClearRecentShapes: PropTypes.func,
 };
 
 export default GameUILayout;

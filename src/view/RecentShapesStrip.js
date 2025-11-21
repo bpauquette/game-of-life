@@ -30,6 +30,7 @@ const RecentShapesStrip = ({
   onRotateShape,
   onSwitchToShapesTool,
   onSaveRecentShapes,
+  onClearRecentShapes,
   persistenceStatus = {}
 }) => {
   const {
@@ -40,6 +41,7 @@ const RecentShapesStrip = ({
     error: persistenceError = null
   } = persistenceStatus || {};
   const [isSaving, setIsSaving] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   const getShapeTitle = (shape, index) => {
     return shape?.name || shape?.meta?.name || shape?.id || `shape ${index}`;
@@ -105,6 +107,21 @@ const RecentShapesStrip = ({
       setIsSaving(false);
     }
   }, [onSaveRecentShapes]);
+
+  const handleClearClick = useCallback(() => {
+    if (typeof onClearRecentShapes !== 'function') return;
+    try {
+      const result = onClearRecentShapes();
+      if (result && typeof result.then === 'function') {
+        setIsClearing(true);
+        Promise.resolve(result)
+          .catch(() => {})
+          .finally(() => setIsClearing(false));
+      }
+    } catch (e) {
+      setIsClearing(false);
+    }
+  }, [onClearRecentShapes]);
 
   /* Diagnostic helpers (inside component so hooks are valid) */
   const svgToImageData = useCallback((svgEl) => {
@@ -271,28 +288,54 @@ const RecentShapesStrip = ({
           }}
         >
           <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.6, color: '#f3f6f5' }}>Recent shapes</span>
-          <button
-            type="button"
-            onClick={handleSaveClick}
-            disabled={!slots.length || isSaving || (!isDirty && hasSavedState)}
-            data-testid="recent-save-button"
-            style={{
-              border: 'none',
-              borderRadius: 999,
-              padding: '8px 16px',
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#031b16',
-              background: (!slots.length || (!isDirty && hasSavedState))
-                ? 'rgba(255,255,255,0.25)'
-                : 'linear-gradient(135deg, #00f5a0, #00d9f5)',
-              cursor: (!slots.length || (!isDirty && hasSavedState)) ? 'not-allowed' : 'pointer',
-              opacity: isSaving ? 0.8 : 1,
-              transition: 'opacity 120ms ease'
-            }}
-          >
-            {isSaving ? 'Saving…' : isDirty ? 'Save recent shapes' : 'Saved'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, width: '100%', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleSaveClick}
+              disabled={!slots.length || isSaving || (!isDirty && hasSavedState)}
+              data-testid="recent-save-button"
+              style={{
+                border: 'none',
+                borderRadius: 999,
+                padding: '8px 16px',
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#031b16',
+                background: (!slots.length || (!isDirty && hasSavedState))
+                  ? 'rgba(255,255,255,0.25)'
+                  : 'linear-gradient(135deg, #00f5a0, #00d9f5)',
+                cursor: (!slots.length || (!isDirty && hasSavedState)) ? 'not-allowed' : 'pointer',
+                opacity: isSaving ? 0.8 : 1,
+                transition: 'opacity 120ms ease',
+                flex: '0 0 auto'
+              }}
+            >
+              {isSaving ? 'Saving…' : isDirty ? 'Save recent shapes' : 'Saved'}
+            </button>
+            {typeof onClearRecentShapes === 'function' && (
+              <button
+                type="button"
+                onClick={handleClearClick}
+                disabled={!slots.length || isClearing}
+                data-testid="recent-clear-button"
+                style={{
+                  border: '1px solid rgba(255,255,255,0.35)',
+                  borderRadius: 999,
+                  padding: '8px 14px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#f3f6f5',
+                  background: 'transparent',
+                  cursor: (!slots.length || isClearing) ? 'not-allowed' : 'pointer',
+                  opacity: isClearing ? 0.7 : 1,
+                  transition: 'opacity 120ms ease',
+                  flex: '0 0 auto'
+                }}
+              >
+                {isClearing ? 'Clearing…' : 'Clear'}
+              </button>
+            )}
+          </div>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.68)' }}>{statusText}</span>
         </div>
       )}
@@ -474,6 +517,7 @@ RecentShapesStrip.propTypes = {
   onRotateShape: PropTypes.func,
   onSwitchToShapesTool: PropTypes.func,
   onSaveRecentShapes: PropTypes.func,
+  onClearRecentShapes: PropTypes.func,
   persistenceStatus: PropTypes.shape({
     lastSavedAt: PropTypes.oneOfType([PropTypes.number, PropTypes.string, PropTypes.instanceOf(Date)]),
     loadedFromStorage: PropTypes.bool,

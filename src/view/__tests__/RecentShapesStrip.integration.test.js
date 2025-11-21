@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { render, waitFor, cleanup } from '@testing-library/react';
+import { render, waitFor, cleanup, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RecentShapesStrip from '../RecentShapesStrip';
 import { useShapeManager } from '../hooks/useShapeManager';
@@ -10,7 +10,7 @@ const colorScheme = {
   getCellColor: () => '#00ff88'
 };
 
-function StripHarness({ shape }) {
+function StripHarness({ shape, enablePersistenceControls = false }) {
   const toolStateRef = useRef({});
   const manager = useShapeManager({
     toolStateRef,
@@ -37,8 +37,9 @@ function StripHarness({ shape }) {
       selectedShape={null}
       onRotateShape={noop}
       onSwitchToShapesTool={noop}
-      onSaveRecentShapes={undefined}
-      persistenceStatus={{}}
+      onSaveRecentShapes={enablePersistenceControls ? manager.persistRecentShapes : undefined}
+      onClearRecentShapes={enablePersistenceControls ? manager.clearRecentShapes : undefined}
+      persistenceStatus={enablePersistenceControls ? manager.persistenceState : {}}
     />
   );
 }
@@ -67,6 +68,31 @@ describe('RecentShapesStrip integration', () => {
     await waitFor(() => {
       const rects = container.querySelectorAll('svg[data-shape-id="pattern-shape"] rect');
       expect(rects.length).toBe(3);
+    });
+  });
+
+  it('clears all recent shapes when the clear button is clicked', async () => {
+    const shape = {
+      id: 'clearable-shape',
+      name: 'Clearable shape',
+      pattern: [
+        [0, 0],
+        [1, 0]
+      ]
+    };
+
+    const { container, getByTestId } = render(<StripHarness shape={shape} enablePersistenceControls />);
+
+    await waitFor(() => {
+      const rects = container.querySelectorAll('svg[data-shape-id="clearable-shape"] rect');
+      expect(rects.length).toBe(2);
+    });
+
+    fireEvent.click(getByTestId('recent-clear-button'));
+
+    await waitFor(() => {
+      const rects = container.querySelectorAll('svg[data-shape-id="clearable-shape"] rect');
+      expect(rects.length).toBe(0);
     });
   });
 });

@@ -88,7 +88,8 @@ export default function HeaderBar({
   showToolsRow = true,
   detectStablePopulation = false,
   setDetectStablePopulation,
-  onSaveRecentShapes
+  onSaveRecentShapes,
+  onClearRecentShapes,
 }) {
   // dialogs
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -228,6 +229,7 @@ export default function HeaderBar({
             onRotateShape={onRotateShape}
             onSwitchToShapesTool={onSwitchToShapesTool}
             onSaveRecentShapes={onSaveRecentShapes}
+              onClearRecentShapes={onClearRecentShapes}
             persistenceStatus={recentShapesPersistence}
           />
         </Box>
@@ -330,5 +332,6 @@ HeaderBar.propTypes = {
   onToggleSidebar: PropTypes.func,
   isSidebarOpen: PropTypes.bool,
   isSmall: PropTypes.bool,
-  onSaveRecentShapes: PropTypes.func
+  onSaveRecentShapes: PropTypes.func,
+  onClearRecentShapes: PropTypes.func
 };
