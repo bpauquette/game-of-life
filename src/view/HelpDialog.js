@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Tabs, Tab, Link, List, ListItem, ListItemText, Divider, Card, CardContent, Chip } from '@mui/material';
-import { Brush as BrushIcon, ShowChart as LineAxisIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Widgets as WidgetsIcon, PlayArrow as PlayArrowIcon, BarChart as BarChartIcon, Settings as SettingsIcon } from '@mui/icons-material';
+import { Brush as BrushIcon, ShowChart as LineAxisIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Widgets as WidgetsIcon, PlayArrow as PlayArrowIcon, BarChart as BarChartIcon, Settings as SettingsIcon, Backspace as BackspaceIcon } from '@mui/icons-material';
 import OvalIcon from './components/OvalIcon';
 
 function TabPanel({ children, value, index, ...other }) {
@@ -55,21 +55,22 @@ export default function HelpDialog({ open, onClose }) {
         <TabPanel value={tabValue} index={1}>
           <Typography variant="h6" gutterBottom>Drawing Tools</Typography>
           <List>
-            <ListItem><BrushIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Freehand Draw" secondary="Click-drag to draw. Single-click toggles a cell." /></ListItem>
-            <ListItem><LineAxisIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Line Tool" secondary="Press-drag-release to place a straight line. Overlay previews the line." /></ListItem>
-            <ListItem><CropSquareIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Rectangle Tool" secondary="Press-drag-release to place an axis-aligned outline rectangle (not filled)." /></ListItem>
-            <ListItem><RadioButtonUncheckedIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Circle Tool" secondary="Press-drag-release to place a circle." /></ListItem>
-            <ListItem><OvalIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Oval Tool" secondary="Press-drag-release to place an ellipse." /></ListItem>
-            <ListItem><CasinoIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Random Rectangle" secondary="Press-drag-release to fill an area with random live cells." /></ListItem>
-            <ListItem><WidgetsIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Shapes Library" secondary="Pick predefined patterns. A preview follows the cursor; click to place." /></ListItem>
+            <ListItem><BrushIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Freehand Draw" secondary="Click-drag to paint cells. Single-click toggles a cell with the current tool overlay." /></ListItem>
+            <ListItem><BackspaceIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Erase" secondary="Scrub away cells with the same precision as drawing—great for trimming edges or carving tunnels." /></ListItem>
+            <ListItem><LineAxisIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Line Tool" secondary="Press-drag-release to place a straight line. The translucent preview shows the exact segment before you commit." /></ListItem>
+            <ListItem><CropSquareIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Rectangle Tool" secondary="Press-drag-release to place an outline rectangle. Great for borders and staging areas." /></ListItem>
+            <ListItem><RadioButtonUncheckedIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Circle Tool" secondary="Press-drag-release to place a circle that snaps to the current cell size." /></ListItem>
+            <ListItem><OvalIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Oval Tool" secondary="Press-drag-release to place an ellipse with live overlay feedback." /></ListItem>
+            <ListItem><CasinoIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Random Rectangle" secondary="Fill a region with randomized live cells for entropy tests." /></ListItem>
+            <ListItem><WidgetsIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Shapes Library" secondary="Search or browse curated patterns atop a whiz-bang virtual list, so even thousands of shapes stay silky smooth. A preview follows the cursor (or finger) until you click/tap to place." /></ListItem>
           </List>
 
           <Divider sx={{ my: 2 }} />
           <Typography variant="h6" gutterBottom>Shapes & Capture</Typography>
           <List>
-            <ListItem><ListItemText primary="Recent Shapes Strip" secondary="Each slot has ⟳90 which rotates the shape 90° clockwise. Thumbnail and preview update immediately." /></ListItem>
-            <ListItem><ListItemText primary="Rotate Direction" secondary="Rotation is visually clockwise; internally this maps to a 270° math rotation (y-down screen)." /></ListItem>
-            <ListItem><ListItemText primary="Capture Tool" secondary="Drag a rectangle to capture cells. On release, a dialog opens with a live preview and autofocus fields; typing doesn't trigger global shortcuts." /></ListItem>
+            <ListItem><ListItemText primary="Recent Shapes Strip" secondary="Pinned thumbnails remember metadata, color previews, and clockwise rotations via the ⟳90 action." /></ListItem>
+            <ListItem><ListItemText primary="Shape Palette Dialog" secondary="Loads asynchronously with a mobile-friendly loading overlay, supports search, sort, and tap-to-place previews." /></ListItem>
+            <ListItem><ListItemText primary="Capture Tool" secondary="Drag a rectangle to capture cells. The capture dialog autofocuses inputs, shows a live preview, and keeps global shortcuts suspended while typing." /></ListItem>
           </List>
 
           <Typography variant="h6" gutterBottom>Simulation Controls</Typography>
@@ -82,17 +83,65 @@ export default function HelpDialog({ open, onClose }) {
           <Divider sx={{ my: 2 }} />
           <Typography variant="h6" gutterBottom>Visualization & Analysis</Typography>
           <List>
-            <ListItem><BarChartIcon sx={{ mr: 2, color: 'info.main' }} /><ListItemText primary="Population Chart" secondary="Graph of population over time." /></ListItem>
-            <ListItem><SettingsIcon sx={{ mr: 2, color: 'action.active' }} /><ListItemText primary="Settings" secondary="Change color scheme and options. Colors update immediately." /></ListItem>
+            <ListItem><BarChartIcon sx={{ mr: 2, color: 'info.main' }} /><ListItemText primary="Population Chart" secondary="Live-updating graph that stays in sync with every generation, even while fast-forwarding." /></ListItem>
+            <ListItem><SettingsIcon sx={{ mr: 2, color: 'action.active' }} /><ListItemText primary="Settings" secondary="Switch color schemes, tweak performance budgets, and enable diagnostics—changes redraw instantly." /></ListItem>
+          </List>
+
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="h6" gutterBottom>Options Panel (Gear Icon)</Typography>
+          <Typography sx={{ mb: 1 }}>Tap the gear to open the Options panel; every control in that dialog is wired to the code paths below:</Typography>
+          <List dense>
+            <ListItem>
+              <ListItemText
+                primary="Color scheme"
+                secondary="Populated from the full colorSchemes map and applied via setColorSchemeKey → GameOfLifeApp → GameMVC, so the canvas redraws immediately with your palette." />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary="Steady window & population tolerance"
+                secondary="Both values are clamped (window ≥1, tolerance ≥0) before calling setPopWindowSize/setPopTolerance; GameModel.isStable(window, tolerance) uses them whenever we evaluate steady-state runs." />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary="Show Speed Gauge"
+                secondary="Toggles the uiState.showSpeedGauge flag through setShowSpeedGauge so the floating performance widget (and forthcoming overlays) know whether to render." />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary="Max FPS / Max GPS"
+                secondary="Inputs clamp to 1–120 FPS and 1–60 GPS before flowing into setPerformanceSettings; the controller still enforces its 60 FPS / 30 GPS ceiling today, but the plumbing is ready for tighter throttling." />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary="Confirm before clearing"
+                secondary="Backed by localStorage.confirmOnClear and consumed by RunControlGroup—when enabled, tapping Clear opens the confirmation dialog instead of wiping instantly." />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary="Draw while running"
+                secondary="Writes to localStorage.drawWhileRunning and is read in GameController.handleMouseDown/Move so drawing tools can paint even while the simulation is advancing." />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary="Toggle Draw Mode"
+                secondary="Stores localStorage.drawToggleMode; when true the draw tool uses the legacy 'flip whatever you drag over' path in drawTool.js, otherwise it paints continuously." />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary="Detect Stable Population"
+                secondary="Flips the detectStablePopulation flag via setDetectStablePopulation so the steady-state indicator knows you've opted in as soon as its detector wiring lands." />
+            </ListItem>
           </List>
 
           <Divider sx={{ my: 2 }} />
           <Typography variant="h6" gutterBottom>Navigation</Typography>
           <List dense>
-            <ListItem><ListItemText primary="Mouse Wheel" secondary="Zoom in/out (snaps to device pixels)." /></ListItem>
-            <ListItem><ListItemText primary="Arrow Keys" secondary="Pan the grid; hold Shift to pan faster." /></ListItem>
-            <ListItem><ListItemText primary="Center View" secondary="Click crosshair or press 'f' to focus on live cells." /></ListItem>
-            <ListItem><ListItemText primary="Typing in Dialogs" secondary="Global shortcuts are ignored while typing in inputs/textareas." /></ListItem>
+            <ListItem><ListItemText primary="Mouse Wheel / Trackpad" secondary="Zoom in or out around the pointer. Rendering keeps cell edges aligned with device pixels." /></ListItem>
+            <ListItem><ListItemText primary="Pinch-to-Zoom (Touch)" secondary="Use two fingers to pinch or spread. The zoom focuses on the pinch center and includes a gentle pan when the centroid moves." /></ListItem>
+            <ListItem><ListItemText primary="Two-Finger Pan" secondary="While pinching, drag both fingers to slide the world without changing zoom." /></ListItem>
+            <ListItem><ListItemText primary="Arrow Keys" secondary="Pan the grid; hold Shift for faster travel." /></ListItem>
+            <ListItem><ListItemText primary="Center View" secondary="Press 'f' to snap the viewport around all live cells." /></ListItem>
+            <ListItem><ListItemText primary="Typing in Dialogs" secondary="Global shortcuts pause while inputs, textareas, or contentEditable fields are focused." /></ListItem>
           </List>
         </TabPanel>
 
@@ -146,6 +195,20 @@ export default function HelpDialog({ open, onClose }) {
             <Chip label="Plaintext (.life)" variant="outlined" />
             <Chip label="Life 1.06" variant="outlined" />
           </Box>
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="subtitle1" color="primary" gutterBottom>About the Builder</Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                This app was crafted by Bryan Pauquette over several weeks as an experiment in pairing hands-on React/Node work with AI-assisted coding workflows.
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Bryan is usually on the lookout for the next opportunity—say hi or reach out via LinkedIn.
+              </Typography>
+              <Link href="https://www.linkedin.com/in/bryanpauquette/" target="_blank" rel="noopener noreferrer" variant="body2">
+                linkedin.com/in/bryanpauquette/
+              </Link>
+            </CardContent>
+          </Card>
         </TabPanel>
       </DialogContent>
       <DialogActions>
