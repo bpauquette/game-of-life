@@ -41,6 +41,7 @@ AuxActions.propTypes = {
 
 export default function HeaderBar({
   recentShapes,
+  recentShapesPersistence,
   selectShape,
   drawWithOverlay,
   colorScheme,
@@ -86,7 +87,8 @@ export default function HeaderBar({
   setSelectedTool,
   showToolsRow = true,
   detectStablePopulation = false,
-  setDetectStablePopulation
+  setDetectStablePopulation,
+  onSaveRecentShapes
 }) {
   // dialogs
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -225,6 +227,8 @@ export default function HeaderBar({
             selectedShape={selectedShape}
             onRotateShape={onRotateShape}
             onSwitchToShapesTool={onSwitchToShapesTool}
+            onSaveRecentShapes={onSaveRecentShapes}
+            persistenceStatus={recentShapesPersistence}
           />
         </Box>
       </Box>
@@ -284,6 +288,7 @@ export default function HeaderBar({
 
 HeaderBar.propTypes = {
   recentShapes: PropTypes.array,
+  recentShapesPersistence: PropTypes.object,
   selectShape: PropTypes.func,
   drawWithOverlay: PropTypes.func,
   colorScheme: PropTypes.object,
@@ -324,5 +329,6 @@ HeaderBar.propTypes = {
   setShowChart: PropTypes.func.isRequired,
   onToggleSidebar: PropTypes.func,
   isSidebarOpen: PropTypes.bool,
-  isSmall: PropTypes.bool
+  isSmall: PropTypes.bool,
+  onSaveRecentShapes: PropTypes.func
 };

@@ -12,6 +12,8 @@ import IconButton from '@mui/material/IconButton';
 import { FullscreenExit as FullscreenExitIcon } from '@mui/icons-material';
 function GameUILayout({
   recentShapes,
+  recentShapesPersistence,
+  onSaveRecentShapes,
   onSelectShape,
   drawWithOverlay,
   colorScheme,
@@ -131,13 +133,15 @@ function GameUILayout({
   return (
     <div className="canvas-container" style={{ height: '100vh', backgroundColor: '#000' }}>
       {(uiState?.showChrome ?? true) && (
-        <HeaderBar
+          <HeaderBar
           headerRef={headerRef}
           recentShapes={recentShapes}
+            recentShapesPersistence={recentShapesPersistence}
           selectShape={onSelectShape}
           drawWithOverlay={drawWithOverlay}
         onRotateShape={onRotateShape}
         onSwitchToShapesTool={onSwitchToShapesTool}
+            onSaveRecentShapes={onSaveRecentShapes}
           isRunning={isRunning}
           setIsRunning={controlsProps?.setIsRunning}
           step={controlsProps?.step}
@@ -255,6 +259,8 @@ function GameUILayout({
 
 GameUILayout.propTypes = {
   recentShapes: PropTypes.array,
+  recentShapesPersistence: PropTypes.object,
+  onSaveRecentShapes: PropTypes.func,
   onSelectShape: PropTypes.func,
   drawWithOverlay: PropTypes.func,
   colorScheme: PropTypes.object,

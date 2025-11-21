@@ -2,6 +2,25 @@ import React, { useEffect, useCallback, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
 
+const formatSavedStatus = (timestamp) => {
+  if (!timestamp) return '';
+  try {
+    const ts = Number(timestamp);
+    if (!Number.isFinite(ts)) return '';
+    const diff = Date.now() - ts;
+    if (diff < 15000) return 'Saved just now';
+    if (diff < 60000) return 'Saved < 1m ago';
+    if (diff < 3600000) {
+      const mins = Math.round(diff / 60000);
+      return `Saved ${mins}m ago`;
+    }
+    const date = new Date(ts);
+    return `Saved at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  } catch (e) {
+    return 'Saved';
+  }
+};
+
 const RecentShapesStrip = ({
   recentShapes = [],
   selectShape,
@@ -9,8 +28,19 @@ const RecentShapesStrip = ({
   colorScheme = {},
   selectedShape = null,
   onRotateShape,
-  onSwitchToShapesTool
+  onSwitchToShapesTool,
+  onSaveRecentShapes,
+  persistenceStatus = {}
 }) => {
+  const {
+    lastSavedAt = null,
+    loadedFromStorage = false,
+    hasSavedState = false,
+    isDirty = false,
+    error: persistenceError = null
+  } = persistenceStatus || {};
+  const [isSaving, setIsSaving] = useState(false);
+
   const getShapeTitle = (shape, index) => {
     return shape?.name || shape?.meta?.name || shape?.id || `shape ${index}`;
   };
@@ -49,6 +79,32 @@ const RecentShapesStrip = ({
   const panelBorder = '1px solid rgba(255,255,255,0.04)';
   const cardBg = colorScheme?.cardBackground || 'rgba(255,255,255,0.02)';
   const FLEX_START = 'flex-start';
+
+  const statusText = (() => {
+    if (persistenceError) return 'Save failed';
+    if (isSaving) return 'Saving…';
+    if (isDirty) return 'Changes not saved';
+    if (lastSavedAt) return formatSavedStatus(lastSavedAt);
+    if (hasSavedState) return 'Saved to disk';
+    if (loadedFromStorage) return 'Loaded from disk';
+    if (!slots.length) return 'No recent shapes yet';
+    return 'Not saved yet';
+  })();
+
+  const handleSaveClick = useCallback(() => {
+    if (typeof onSaveRecentShapes !== 'function') return;
+    try {
+      const result = onSaveRecentShapes();
+      if (result && typeof result.then === 'function') {
+        setIsSaving(true);
+        Promise.resolve(result)
+          .catch(() => {})
+          .finally(() => setIsSaving(false));
+      }
+    } catch (e) {
+      setIsSaving(false);
+    }
+  }, [onSaveRecentShapes]);
 
   /* Diagnostic helpers (inside component so hooks are valid) */
   const svgToImageData = useCallback((svgEl) => {
@@ -197,9 +253,49 @@ const RecentShapesStrip = ({
         overflow: 'visible',
         overflowY: 'hidden',
         display: 'flex',
-        alignItems: FLEX_START
+        alignItems: 'center',
+        gap: 16
       }}
     >
+      {typeof onSaveRecentShapes === 'function' && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            gap: 6,
+            minWidth: 180,
+            maxWidth: 240,
+            paddingRight: 12
+          }}
+        >
+          <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.6, color: '#f3f6f5' }}>Recent shapes</span>
+          <button
+            type="button"
+            onClick={handleSaveClick}
+            disabled={!slots.length || isSaving || (!isDirty && hasSavedState)}
+            data-testid="recent-save-button"
+            style={{
+              border: 'none',
+              borderRadius: 999,
+              padding: '8px 16px',
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#031b16',
+              background: (!slots.length || (!isDirty && hasSavedState))
+                ? 'rgba(255,255,255,0.25)'
+                : 'linear-gradient(135deg, #00f5a0, #00d9f5)',
+              cursor: (!slots.length || (!isDirty && hasSavedState)) ? 'not-allowed' : 'pointer',
+              opacity: isSaving ? 0.8 : 1,
+              transition: 'opacity 120ms ease'
+            }}
+          >
+            {isSaving ? 'Saving…' : isDirty ? 'Save recent shapes' : 'Saved'}
+          </button>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.68)' }}>{statusText}</span>
+        </div>
+      )}
       <div style={{ position: 'relative', width: '100%' }}>
         {/* Left nav button */}
         <button
@@ -376,7 +472,15 @@ RecentShapesStrip.propTypes = {
   colorScheme: PropTypes.object,
   selectedShape: PropTypes.object,
   onRotateShape: PropTypes.func,
-  onSwitchToShapesTool: PropTypes.func
+  onSwitchToShapesTool: PropTypes.func,
+  onSaveRecentShapes: PropTypes.func,
+  persistenceStatus: PropTypes.shape({
+    lastSavedAt: PropTypes.oneOfType([PropTypes.number, PropTypes.string, PropTypes.instanceOf(Date)]),
+    loadedFromStorage: PropTypes.bool,
+    hasSavedState: PropTypes.bool,
+    isDirty: PropTypes.bool,
+    error: PropTypes.string
+  })
 };
 
 export default RecentShapesStrip;

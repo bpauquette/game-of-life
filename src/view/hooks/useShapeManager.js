@@ -1,7 +1,59 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import logger from '../../controller/utils/logger';
 
 const MAX_RECENT_SHAPES = 20;
+const RECENTS_STORAGE_KEY = 'gol_recentShapes_v1';
+const RECENTS_STORAGE_VERSION = 1;
+
+const canUseLocalStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+const extractCells = (shape) => {
+  if (!shape) return [];
+  if (Array.isArray(shape.cells)) return shape.cells;
+  if (Array.isArray(shape.pattern)) return shape.pattern;
+  if (Array.isArray(shape.liveCells)) return shape.liveCells;
+  return [];
+};
+
+const normalizeRecentShape = (shape) => {
+  if (!shape) return shape;
+  const sourceCells = extractCells(shape);
+  if (!sourceCells.length) return shape;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  const absoluteCells = sourceCells.map((cell) => {
+    const x = Array.isArray(cell) ? cell[0] : (cell?.x ?? 0);
+    const y = Array.isArray(cell) ? cell[1] : (cell?.y ?? 0);
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    return { x, y };
+  });
+
+  if (!Number.isFinite(minX)) minX = 0;
+  if (!Number.isFinite(minY)) minY = 0;
+
+  const normalized = absoluteCells.map(({ x, y }) => [x - minX, y - minY]);
+  if (!normalized.length) return shape;
+
+  const xs = normalized.map(([x]) => x);
+  const ys = normalized.map(([, y]) => y);
+  const width = Math.max(...xs) - Math.min(...xs) + 1;
+  const height = Math.max(...ys) - Math.min(...ys) + 1;
+
+  return {
+    ...shape,
+    cells: normalized,
+    width: width || shape.width,
+    height: height || shape.height,
+    meta: {
+      ...shape.meta,
+      width: width || shape.meta?.width,
+      height: height || shape.meta?.height,
+      cellCount: sourceCells.length
+    }
+  };
+};
 
 /**
  * Custom hook for managing shape-related functionality in the Game of Life.
@@ -34,6 +86,15 @@ export const useShapeManager = ({
   const [recentShapes, setRecentShapes] = useState([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const prevToolRef = useRef(null);
+  const initialLoadRef = useRef(false);
+  const lastPersistedFingerprintRef = useRef(null);
+  const [persistenceState, setPersistenceState] = useState({
+    lastSavedAt: null,
+    loadedFromStorage: false,
+    error: null,
+    hasSavedState: false,
+    isDirty: false
+  });
 
   // Removed aggressive sync of toolStateRef.current.selectedShapeData with selectedShape.
   // Tool state is now only updated on explicit selection (see selectShape).
@@ -53,7 +114,7 @@ export const useShapeManager = ({
     if (shape.meta.height) keyParts.push(`h:${shape.meta.height}`);
     if (shape.meta.cellCount) keyParts.push(`c:${shape.meta.cellCount}`);
   }
-  const cells = Array.isArray(shape.cells) ? shape.cells : (Array.isArray(shape.pattern) ? shape.pattern : []);
+  const cells = extractCells(shape);
   if (Array.isArray(cells) && cells.length > 0) {
     keyParts.push(`len:${cells.length}`);
     // include a small sample of first few cells to reduce collisions
@@ -69,14 +130,32 @@ export const useShapeManager = ({
   return key || JSON.stringify({ name: shape?.name || '', len: (cells && cells.length) || 0 });
   }, []);
 
+  const computeFingerprint = useCallback((shapes = []) => {
+    if (!Array.isArray(shapes) || shapes.length === 0) return '';
+    return shapes.map((shape) => generateShapeKey(shape)).join('|');
+  }, [generateShapeKey]);
+
   // Update the recent shapes list, maintaining uniqueness and max length
   const updateRecentShapesList = useCallback((newShape) => {
+    const normalized = normalizeRecentShape(newShape);
     setRecentShapes(prev => {
-      const newKey = generateShapeKey(newShape);
+      const newKey = generateShapeKey(normalized);
       const filtered = prev.filter(shape => generateShapeKey(shape) !== newKey);
-      return [newShape, ...filtered].slice(0, MAX_RECENT_SHAPES);
+      return [normalized, ...filtered].slice(0, MAX_RECENT_SHAPES);
     });
   }, [generateShapeKey]);
+
+  useEffect(() => {
+    setPersistenceState(prev => {
+      const fingerprint = computeFingerprint(recentShapes);
+      const hasFingerprint = !!lastPersistedFingerprintRef.current;
+      const shouldBeDirty = recentShapes.length === 0
+        ? false
+        : !hasFingerprint || fingerprint !== lastPersistedFingerprintRef.current;
+      if (prev.isDirty === shouldBeDirty) return prev;
+      return { ...prev, isDirty: shouldBeDirty };
+    });
+  }, [recentShapes, computeFingerprint]);
 
   // Update shape state in both game state and tool state
   // Helper for debug logging to reduce cognitive complexity
@@ -180,6 +259,107 @@ export const useShapeManager = ({
     closePalette(false);
   }, [selectShape, closePalette]);
 
+  const persistRecentShapes = useCallback(() => {
+    if (!canUseLocalStorage()) return false;
+    try {
+      const normalized = (recentShapes || []).map(normalizeRecentShape).filter(Boolean).slice(0, MAX_RECENT_SHAPES);
+      const payload = {
+        version: RECENTS_STORAGE_VERSION,
+        savedAt: Date.now(),
+        shapes: normalized
+      };
+      window.localStorage.setItem(RECENTS_STORAGE_KEY, JSON.stringify(payload));
+      const fingerprint = computeFingerprint(normalized);
+      lastPersistedFingerprintRef.current = fingerprint || null;
+      setPersistenceState(prev => ({
+        ...prev,
+        lastSavedAt: payload.savedAt,
+        hasSavedState: normalized.length > 0,
+        error: null,
+        isDirty: false
+      }));
+      return true;
+    } catch (e) {
+      setPersistenceState(prev => ({ ...prev, error: e?.message || String(e) }));
+      return false;
+    }
+  }, [recentShapes, computeFingerprint]);
+
+  const restorePersistedRecentShapes = useCallback(() => {
+    if (!canUseLocalStorage()) return { restored: false };
+    try {
+      const raw = window.localStorage.getItem(RECENTS_STORAGE_KEY);
+      if (!raw) {
+        setPersistenceState(prev => ({ ...prev, hasSavedState: false }));
+        return { restored: false };
+      }
+      const parsed = JSON.parse(raw);
+      if (!parsed || parsed.version !== RECENTS_STORAGE_VERSION || !Array.isArray(parsed.shapes)) {
+        setPersistenceState(prev => ({ ...prev, hasSavedState: false }));
+        return { restored: false };
+      }
+      const normalized = parsed.shapes.map(normalizeRecentShape).filter(Boolean).slice(0, MAX_RECENT_SHAPES);
+      if (!normalized.length) {
+        setPersistenceState(prev => ({ ...prev, hasSavedState: false }));
+        return { restored: false };
+      }
+      const fingerprint = computeFingerprint(normalized);
+      lastPersistedFingerprintRef.current = fingerprint || null;
+      setRecentShapes(prev => {
+        if (!prev || prev.length === 0) return normalized;
+        const seen = new Set();
+        const combined = [...normalized, ...prev];
+        const result = [];
+        for (const shape of combined) {
+          const key = generateShapeKey(shape);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          result.push(shape);
+          if (result.length >= MAX_RECENT_SHAPES) break;
+        }
+        return result;
+      });
+      setPersistenceState(prev => ({
+        ...prev,
+        hasSavedState: true,
+        loadedFromStorage: true,
+        lastSavedAt: parsed.savedAt || parsed.timestamp || Date.now(),
+        error: null,
+        isDirty: false
+      }));
+      return { restored: true, shapes: normalized };
+    } catch (e) {
+      setPersistenceState(prev => ({ ...prev, error: e?.message || String(e) }));
+      return { restored: false, error: e };
+    }
+  }, [computeFingerprint, generateShapeKey]);
+
+  const clearPersistedRecentShapes = useCallback(() => {
+    if (!canUseLocalStorage()) return false;
+    try {
+      window.localStorage.removeItem(RECENTS_STORAGE_KEY);
+      lastPersistedFingerprintRef.current = null;
+      setPersistenceState(prev => ({
+        ...prev,
+        hasSavedState: false,
+        lastSavedAt: null,
+        isDirty: recentShapes.length > 0,
+        error: null
+      }));
+      return true;
+    } catch (e) {
+      setPersistenceState(prev => ({ ...prev, error: e?.message || String(e) }));
+      return false;
+    }
+  }, [recentShapes.length]);
+
+  useEffect(() => {
+    if (initialLoadRef.current) return;
+    initialLoadRef.current = true;
+    if (!canUseLocalStorage()) return;
+    restorePersistedRecentShapes();
+  }, [restorePersistedRecentShapes]);
+
   return {
     // State
     recentShapes,
@@ -191,43 +371,7 @@ export const useShapeManager = ({
     closePalette,
     selectShapeAndClosePalette,
     replaceRecentShapeAt: (index, shape) => {
-      // Normalize shape cell coordinates so stored shapes use a top-left
-      // anchored coordinate system (minX/minY === 0). This ensures the
-      // visual preview (which normalizes for display) matches placement.
-      const normalizeShape = (s) => {
-        if (!s) return s;
-        const cells = Array.isArray(s.cells) ? s.cells : (Array.isArray(s.pattern) ? s.pattern : []);
-        if (!Array.isArray(cells) || cells.length === 0) return s;
-        let minX = Infinity; let minY = Infinity;
-        for (const c of cells) {
-          const x = Array.isArray(c) ? c[0] : (c?.x ?? 0);
-          const y = Array.isArray(c) ? c[1] : (c?.y ?? 0);
-          if (x < minX) minX = x;
-          if (y < minY) minY = y;
-        }
-        if (!Number.isFinite(minX)) minX = 0;
-        if (!Number.isFinite(minY)) minY = 0;
-        const normalized = cells.map(c => {
-          const x = Array.isArray(c) ? c[0] : (c?.x ?? 0);
-          const y = Array.isArray(c) ? c[1] : (c?.y ?? 0);
-          return [x - minX, y - minY];
-        });
-        const next = { ...s, cells: normalized };
-        try {
-          const xs = normalized.map(c => c[0]);
-          const ys = normalized.map(c => c[1]);
-          next.width = Math.max(...xs) - Math.min(...xs) + 1;
-          next.height = Math.max(...ys) - Math.min(...ys) + 1;
-          if (next.meta) {
-            next.meta = { ...next.meta, width: next.width, height: next.height };
-          }
-        } catch (e) {
-          // ignore sizing errors
-        }
-        return next;
-      };
-
-      const normalized = normalizeShape(shape);
+      const normalized = normalizeRecentShape(shape);
       setRecentShapes(prev => {
         if (index < 0 || index >= prev.length) return prev;
         const next = [...prev];
@@ -240,16 +384,19 @@ export const useShapeManager = ({
     addRecentShape: (shape) => {
       if (!shape) return;
       try {
+        const normalized = normalizeRecentShape(shape);
+        const stubSource = normalized || shape;
+        const stubMeta = stubSource?.meta || shape.meta;
         // Fast optimistic update: insert a small stub immediately so the UI
         // responds without waiting for any heavier processing. The full
         // shape (with cells) is reconciled on the next microtask.
         const stub = {
-          id: shape.id,
-          name: shape.name || shape.meta?.name,
-          width: shape.width || shape.meta?.width,
-          height: shape.height || shape.meta?.height,
+          id: stubSource?.id,
+          name: stubSource?.name || stubMeta?.name,
+          width: stubSource?.width || stubMeta?.width,
+          height: stubSource?.height || stubMeta?.height,
           // preserve a minimal preview-friendly meta so RecentShapesStrip can render quickly
-          meta: shape.meta ? { width: shape.meta.width, height: shape.meta.height } : undefined
+          meta: stubMeta ? { width: stubMeta.width, height: stubMeta.height, cellCount: stubMeta.cellCount } : undefined
         };
         setRecentShapes(prev => {
           const newKey = generateShapeKey(stub);
@@ -262,7 +409,7 @@ export const useShapeManager = ({
         // browser has a chance to paint. Using setTimeout avoids blocking
         // the current microtask checkpoint which can still delay paint.
         setTimeout(() => {
-          try { updateRecentShapesList(shape); } catch (e) { /* swallow */ }
+          try { updateRecentShapesList(normalized || shape); } catch (e) { /* swallow */ }
         }, 0);
       } catch (e) {
         // Fallback to the original behavior on unexpected errors
@@ -273,7 +420,11 @@ export const useShapeManager = ({
     // Internal utilities (exposed for testing)
     generateShapeKey,
     updateRecentShapesList,
-    updateShapeState
+    updateShapeState,
+    persistRecentShapes,
+    restorePersistedRecentShapes,
+    clearPersistedRecentShapes,
+    persistenceState
   };
 };
 

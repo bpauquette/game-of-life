@@ -522,6 +522,8 @@ function GameOfLifeApp(props) {
   <LoadingShapesOverlay loading={shapesLoading} progress={shapesProgress} error={shapesError} onRetry={shapesStart} />
     <GameUILayout
       recentShapes={shapeManager.recentShapes}
+        recentShapesPersistence={shapeManager.persistenceState}
+        onSaveRecentShapes={shapeManager.persistRecentShapes}
       onSelectShape={handleSelectShape}
   drawWithOverlay={drawWithOverlay}
       colorScheme={colorScheme}
