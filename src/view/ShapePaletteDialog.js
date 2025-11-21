@@ -4,6 +4,8 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
 import logger from '../controller/utils/logger';
 import {
   fetchShapeById,
@@ -50,6 +52,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const { preview, handleHover } = useHoverPreview(backendBase);
   const previewForPanel = useDeferredValue(preview);
   const shapesForRender = useDeferredValue(displayedResults);
+  const isInitialMobileLoad = loading && results.length === 0;
 
   const [backendStarting, setBackendStarting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -252,6 +255,32 @@ The backend will start on port ${backendPort}.`);
               onAddRecent={safeAddRecent}
               onHover={handleHover}
             />
+            {isInitialMobileLoad && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1,
+                  bgcolor: 'rgba(0,0,0,0.35)',
+                  borderRadius: 1,
+                  textAlign: 'center',
+                  px: 2
+                }}
+                aria-live="polite"
+              >
+                <CircularProgress size={32} thickness={4} />
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Loading shapes catalog…
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                  This may take a few seconds on mobile networks. The list will populate automatically.
+                </Typography>
+              </Box>
+            )}
           </Box>
           <FooterControls
             total={total}

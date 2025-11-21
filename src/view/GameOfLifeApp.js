@@ -49,11 +49,14 @@ function GameOfLifeApp(props) {
   const [popWindowSize, setPopWindowSize] = useState(50);
   const [popTolerance, setPopTolerance] = useState(3);
   const [steadyInfo, setSteadyInfo] = useState({ steady: false, period: 0, popChanging: false });
+  const [populationHistory, setPopulationHistory] = useState([]);
   // persistent refs
   const snapshotsRef = useRef([]);
   const gameRef = useRef(null);
   const pendingLoadRef = useRef(null);
   const toolStateRef = useRef({});
+  const popHistoryRef = useRef([]);
+  useEffect(() => { popHistoryRef.current = populationHistory; }, [populationHistory]);
   const isSmall = useMediaQuery('(max-width:900px)');
   const [sidebarOpen, setSidebarOpen] = useState(!isSmall);
   useEffect(() => { setSidebarOpen(!isSmall); }, [isSmall]);
@@ -377,6 +380,11 @@ function GameOfLifeApp(props) {
           if (typeof model.getIsRunning === 'function') {
             setIsRunning(!!model.getIsRunning());
           }
+          if (typeof model.getPopulationHistory === 'function') {
+            const initialHistory = model.getPopulationHistory() || [];
+            popHistoryRef.current = initialHistory;
+            setPopulationHistory(initialHistory);
+          }
         }
         const observer = (event, data) => {
           if (event === 'selectedToolChanged') {
@@ -392,6 +400,30 @@ function GameOfLifeApp(props) {
             } catch (e) { /* ignore */ }
           } else if (event === 'viewportChanged') {
             updateViewportSnapshot(data);
+          } else if (event === 'gameStep') {
+            try {
+              const population = typeof data === 'object' && data ? data.population : undefined;
+              setPopulationHistory(prev => {
+                const popValue = typeof population === 'number' ? population : (model?.getCellCount?.() ?? 0);
+                const maxHistory = typeof model?.maxPopulationHistory === 'number' ? model.maxPopulationHistory : 1000;
+                const next = prev.length >= maxHistory
+                  ? [...prev.slice(-(maxHistory - 1)), popValue]
+                  : [...prev, popValue];
+                popHistoryRef.current = next;
+                return next;
+              });
+            } catch (e) { /* ignore */ }
+          } else if (event === 'modelCleared' || event === 'gameCleared') {
+            popHistoryRef.current = [];
+            setPopulationHistory([]);
+          } else if (event === 'stateImported') {
+            try {
+              const nextHistory = Array.isArray(data?.populationHistory)
+                ? [...data.populationHistory]
+                : (typeof model?.getPopulationHistory === 'function' ? model.getPopulationHistory() : []);
+              popHistoryRef.current = nextHistory;
+              setPopulationHistory(nextHistory);
+            } catch (e) { /* ignore */ }
           }
         };
         model.addObserver(observer);
@@ -494,7 +526,7 @@ function GameOfLifeApp(props) {
     offsetRef,
     cellSize: viewportSnapshot.cellSize,
     setCellAlive,
-    popHistoryRef: { current: (gameRef.current && typeof gameRef.current.getPopulationHistory === 'function') ? gameRef.current.getPopulationHistory() : [] },
+    popHistoryRef,
     setShowChart,
     getLiveCells,
     popWindowSize,
@@ -543,7 +575,7 @@ function GameOfLifeApp(props) {
       onSaveCapture={handleSaveCapturedShape}
   canvasRef={canvasRef}
       cursorCell={cursorCell}
-      populationHistory={(gameRef.current && typeof gameRef.current.getPopulationHistory === 'function') ? gameRef.current.getPopulationHistory() : []}
+      populationHistory={populationHistory}
       onCloseChart={() => setShowChart(false)}
       isRunning={isRunning}
       showSpeedGauge={uiState?.showSpeedGauge ?? true}
