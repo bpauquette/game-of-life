@@ -5,7 +5,10 @@ import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import { BarChart as BarChartIcon, Help as HelpIcon, Info as InfoIcon, Settings as SettingsIcon } from '@mui/icons-material';
-// ToolGroup now lives in the LeftSidebar alongside RecentShapesStrip
+import { AccountCircle as UserIcon, AccountBox as UserLoggedInIcon } from '@mui/icons-material';
+import { useAuth } from '../auth/AuthProvider';
+import Login from '../auth/Login';
+import Register from '../auth/Register';
 import SaveLoadGroup from './components/SaveLoadGroup';
 import RunControlGroup from './components/RunControlGroup';
 import ToolGroup from './components/ToolGroup';
@@ -22,13 +25,17 @@ import useGridFileManager from './hooks/useGridFileManager';
 
 // Tool toggles extracted into ToolGroup component
 
-function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions }) {
+function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, loggedIn }) {
   return (
     <Stack direction="row" spacing={1} alignItems="center">
       <IconButton size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
       <IconButton size="small" onClick={onOpenHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenAbout} aria-label="about"><Tooltip title="About"><InfoIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenOptions} aria-label="options" data-testid="options-icon-button"><SettingsIcon fontSize="small" /></IconButton>
+      {/* User profile icon to the right of settings */}
+      <IconButton size="small" onClick={onOpenUser} aria-label="user-profile" data-testid="user-profile-icon">
+        {loggedIn ? <UserLoggedInIcon fontSize="small" /> : <UserIcon fontSize="small" />}
+      </IconButton>
     </Stack>
   );
 }
@@ -93,7 +100,13 @@ export default function HeaderBar({
   onSaveRecentShapes,
   onClearRecentShapes,
 }) {
-  // dialogs
+   // Auth state and handlers
+  const { token, email, login, logout } = useAuth();
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const handleUserIconClick = () => setUserDialogOpen(true);
+  const handleLogout = () => { logout(); setUserDialogOpen(false); };
+  // dialogs 
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -191,7 +204,36 @@ export default function HeaderBar({
               onOpenHelp={() => setHelpOpen(true)}
               onOpenAbout={() => setAboutOpen(true)}
               onOpenOptions={openOptions}
+              onOpenUser={handleUserIconClick}
+              loggedIn={!!token}
             />
+            {/* User authentication dialog/modal */}
+            {userDialogOpen && (
+              <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, background: 'rgba(0,0,0,0.5)' }}>
+                <Box sx={{ maxWidth: 340, margin: '80px auto', background: '#222', borderRadius: 2, p: 3, color: 'white', boxShadow: 6 }}>
+                  {token ? (
+                    <>
+                      <div style={{ marginBottom: 16 }}>
+                        <UserLoggedInIcon fontSize="large" style={{ verticalAlign: 'middle', marginRight: 8 }} />
+                        <span>Logged in as <b>{email}</b></span>
+                      </div>
+                      <button onClick={handleLogout} style={{ marginRight: 8 }}>Logout</button>
+                    </>
+                  ) : showRegister ? (
+                    <>
+                      <Register />
+                      <button onClick={() => setShowRegister(false)} style={{ marginTop: 8 }}>Already have an account? Login</button>
+                    </>
+                  ) : (
+                    <>
+                      <Login />
+                      <button onClick={() => setShowRegister(true)} style={{ marginTop: 8 }}>Need an account? Register</button>
+                    </>
+                  )}
+                  <button onClick={() => setUserDialogOpen(false)} style={{ marginTop: 16 }}>Close</button>
+                </Box>
+              </Box>
+            )}
           </Stack>
         </Box>
         {/* Second row: ToolGroup */}
