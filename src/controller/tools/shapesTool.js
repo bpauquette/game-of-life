@@ -25,11 +25,16 @@ export const shapesTool = {
   },
 
   onMouseUp(toolState, x, y, setCellAlive, placeShape) {
+    const sel = toolState?.selectedShapeData;
     const last = toolState.last || (x === undefined ? null : { x, y });
-    if (last && placeShape) {
+    if (last && sel && placeShape) {
+      // Place at the centered origin (where overlay is drawn)
+      const cells = getShapeCells(sel);
+      const origin = getCenteredOrigin(last, cells);
+      placeShape(origin.x, origin.y);
+    } else if (last && placeShape) {
+      // Fallback: place at last
       placeShape(last.x, last.y);
-    } else {
-      // Missing last/handler
     }
     toolState.start = null;
     toolState.last = null;
@@ -90,30 +95,30 @@ function drawPlacementIndicator(renderer, position) {
   const centerY = screenPos.y + cellSize / 2;
 
   ctx.save();
-  ctx.strokeStyle = PLACEMENT_INDICATOR_COLOR;
-  ctx.lineWidth = 2;
-  ctx.globalAlpha = 0.7;
+  // Draw bright blue crosshair spanning the entire visible grid
+  ctx.strokeStyle = '#00BFFF'; // Bright blue
+  ctx.lineWidth = 2.5;
+  ctx.globalAlpha = 0.95;
 
-  const crossSize = cellSize * 0.3;
+  // Horizontal line across the canvas at centerY
   ctx.beginPath();
-  ctx.moveTo(centerX - crossSize, centerY);
-  ctx.lineTo(centerX + crossSize, centerY);
-  ctx.moveTo(centerX, centerY - crossSize);
-  ctx.lineTo(centerX, centerY + crossSize);
+  ctx.moveTo(0, centerY);
+  ctx.lineTo(ctx.canvas.width, centerY);
   ctx.stroke();
 
-  const halfCell = cellSize / 2;
-  const cornerSize = GRID_SNAP_INDICATOR_SIZE;
-  ctx.lineWidth = 1;
+  // Vertical line across the canvas at centerX
+  ctx.beginPath();
+  ctx.moveTo(centerX, 0);
+  ctx.lineTo(centerX, ctx.canvas.height);
+  ctx.stroke();
 
-  const drawCorner = (x, y) => {
-    ctx.strokeRect(x - cornerSize / 2, y - cornerSize / 2, cornerSize, cornerSize);
-  };
+  // Draw a small dot at the center for visibility
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, cellSize * 0.12, 0, 2 * Math.PI);
+  ctx.fillStyle = '#00BFFF';
+  ctx.globalAlpha = 0.85;
+  ctx.fill();
 
-  drawCorner(centerX - halfCell, centerY - halfCell);
-  drawCorner(centerX + halfCell, centerY - halfCell);
-  drawCorner(centerX - halfCell, centerY + halfCell);
-  drawCorner(centerX + halfCell, centerY + halfCell);
   ctx.restore();
 }
 
