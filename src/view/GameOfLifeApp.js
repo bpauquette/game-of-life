@@ -16,6 +16,7 @@ import React, { useRef, useEffect, useCallback, useState, useLayoutEffect } from
 import PropTypes from 'prop-types';
 import { GameMVC } from '../controller/GameMVC';
 import { startMemoryLogger } from '../utils/memoryLogger';
+import { computePopulationChange } from '../utils/stabilityMetrics';
 
 // tools are registered by GameMVC.controller during initialization
 function getColorSchemeFromKey(key) {
@@ -24,6 +25,8 @@ function getColorSchemeFromKey(key) {
   if (typeof Object.freeze === 'function') Object.freeze(copy);
   return copy;
 }
+
+const INITIAL_STEADY_INFO = Object.freeze({ steady: false, period: 0, popChanging: false });
 
 // The component has a slightly large body by necessity (many hooks/handlers).
 // Disable the cognitive-complexity rule here to keep the implementation readable
@@ -48,8 +51,34 @@ function GameOfLifeApp(props) {
   const [selectedShape, setSelectedShape] = useState(null);
   const [popWindowSize, setPopWindowSize] = useState(50);
   const [popTolerance, setPopTolerance] = useState(3);
-  const [steadyInfo, setSteadyInfo] = useState({ steady: false, period: 0, popChanging: false });
+  const [maxChartGenerations, setMaxChartGenerations] = useState(5000);
+  const [confirmOnClear, setConfirmOnClear] = useState(true);
+  const [performanceCaps, setPerformanceCaps] = useState({ maxFPS: 60, maxGPS: 30, enableFPSCap: false, enableGPSCap: false });
+  const [detectStablePopulation, setDetectStablePopulation] = useState(() => {
+    try {
+      const stored = globalThis.localStorage?.getItem('detectStablePopulation');
+      if (stored === 'true' || stored === 'false') {
+        return stored === 'true';
+      }
+      if (stored != null) {
+        return Boolean(JSON.parse(stored));
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  });
+  const [steadyInfo, setSteadyInfo] = useState(INITIAL_STEADY_INFO);
   const [populationHistory, setPopulationHistory] = useState([]);
+  const [memoryTelemetryEnabled, setMemoryTelemetryEnabled] = useState(() => {
+    try {
+      const stored = globalThis.localStorage?.getItem('memoryTelemetryEnabled');
+      if (stored === 'true' || stored === 'false') {
+        return stored === 'true';
+      }
+    } catch {}
+    return false;
+  });
   // persistent refs
   const snapshotsRef = useRef([]);
   const gameRef = useRef(null);
@@ -73,8 +102,78 @@ function GameOfLifeApp(props) {
     gameRef.current?.setCellAlive?.(x, y, alive);
   }, [gameRef]);
   const colorScheme = React.useMemo(() => getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio'), [uiState?.colorSchemeKey]);
+  useEffect(() => {
+    // Listen for a global "session cleared" signal (emitted by RunControlGroup
+    // when the user taps Clear grid) so we can reset React-side history and
+    // steady-state UI without tightly coupling those components.
+    const handleSessionCleared = () => {
+      setPopulationHistory([]);
+      popHistoryRef.current = [];
+      setSteadyInfo(INITIAL_STEADY_INFO);
+    };
+
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener('gol:sessionCleared', handleSessionCleared);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('gol:sessionCleared', handleSessionCleared);
+      }
+    };
+  }, []);
 
   useEffect(() => {
+    if (!gameRef.current?.setPerformanceSettings) return;
+    try {
+      gameRef.current.setPerformanceSettings({
+        populationWindowSize: popWindowSize,
+        populationTolerance: popTolerance
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to sync stability settings with GameMVC:', err);
+    }
+  }, [popWindowSize, popTolerance]);
+
+  useEffect(() => {
+    if (!detectStablePopulation) {
+      setSteadyInfo((prev) => (prev === INITIAL_STEADY_INFO ? prev : INITIAL_STEADY_INFO));
+      return;
+    }
+    const mvc = gameRef.current;
+    if (!mvc || typeof mvc.isStable !== 'function') return;
+
+    let steady = false;
+    let period = 0;
+    try {
+      steady = !!mvc.isStable(popWindowSize, popTolerance);
+      if (steady && typeof mvc.detectPeriod === 'function') {
+        period = mvc.detectPeriod(Math.min(popWindowSize, 120)) || 0;
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to evaluate steady state:', err);
+      steady = false;
+      period = 0;
+    }
+
+    const { popChanging } = computePopulationChange(popHistoryRef.current, popWindowSize, popTolerance);
+    const nextInfo = { steady, period, popChanging };
+    setSteadyInfo((prev) => (
+      prev.steady === nextInfo.steady &&
+      prev.period === nextInfo.period &&
+      prev.popChanging === nextInfo.popChanging
+        ? prev
+        : nextInfo
+    ));
+  }, [detectStablePopulation, popWindowSize, popTolerance]);
+
+  // Memory telemetry is opt-in; when enabled we start the logger.
+  useEffect(() => {
+    if (!memoryTelemetryEnabled) {
+      return undefined;
+    }
     const base = resolveBackendBase() || '';
     const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
     const stopLogger = startMemoryLogger({
@@ -85,7 +184,54 @@ function GameOfLifeApp(props) {
     return () => {
       stopLogger?.();
     };
-  }, []);
+  }, [memoryTelemetryEnabled]);
+
+  // Periodic population sampling (1Hz) with ring buffer to avoid per-step overhead.
+  // Samples capture the current model generation so charts can show true generation numbers
+  // even if multiple generations advance between samples.
+  useEffect(() => {
+    const mvc = gameRef.current;
+    if (!mvc || typeof mvc.model?.getCellCount !== 'function') return undefined;
+
+    const maxSamples = typeof mvc.model?.maxPopulationHistory === 'number'
+      ? mvc.model.maxPopulationHistory
+      : 1000;
+
+    let cancelled = false;
+    const sample = () => {
+      if (cancelled) return;
+      try {
+        const model = gameRef.current?.model;
+        if (!model || typeof model.getCellCount !== 'function') return;
+        const population = Number(model.getCellCount() ?? 0);
+        const generation = Number(
+          typeof model.getGeneration === 'function' ? model.getGeneration() : 0
+        );
+
+        if (!Number.isFinite(population) || !Number.isFinite(generation)) {
+          return;
+        }
+
+        const entry = { generation, population };
+        const prev = Array.isArray(popHistoryRef.current) ? popHistoryRef.current : [];
+        const windowSize = Math.max(1, Number(maxChartGenerations) || 5000);
+        const next = prev.length >= windowSize
+          ? [...prev.slice(-(windowSize - 1)), entry]
+          : [...prev, entry];
+        popHistoryRef.current = next;
+        setPopulationHistory(next);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('population sampling failed:', e);
+      }
+    };
+
+    const intervalId = window.setInterval(sample, 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [maxChartGenerations]);
 
   
 
@@ -226,12 +372,47 @@ function GameOfLifeApp(props) {
       return { ...prev, showSpeedGauge: show };
     });
   }, []);
+  const setDetectStablePopulationPreference = useCallback((enabled) => {
+    const next = !!enabled;
+    setDetectStablePopulation(next);
+    try {
+      globalThis.localStorage?.setItem('detectStablePopulation', next ? 'true' : 'false');
+    } catch {
+      // ignore storage failures
+    }
+  }, []);
   const setMaxFPS = useCallback((maxFPS) => {
-    gameRef.current?.setPerformanceSettings?.({ maxFPS });
-  }, []);
+    let next = Number(maxFPS);
+    if (!Number.isFinite(next)) {
+      next = performanceCaps.maxFPS;
+    }
+    next = Math.max(1, Math.min(120, next));
+    if (next === performanceCaps.maxFPS) return;
+    setPerformanceCaps((prev) => ({ ...prev, maxFPS: next }));
+    gameRef.current?.setPerformanceSettings?.({ maxFPS: next });
+  }, [performanceCaps.maxFPS]);
   const setMaxGPS = useCallback((maxGPS) => {
-    gameRef.current?.setPerformanceSettings?.({ maxGPS });
-  }, []);
+    let next = Number(maxGPS);
+    if (!Number.isFinite(next)) {
+      next = performanceCaps.maxGPS;
+    }
+    next = Math.max(1, Math.min(60, next));
+    if (next === performanceCaps.maxGPS) return;
+    setPerformanceCaps((prev) => ({ ...prev, maxGPS: next }));
+    gameRef.current?.setPerformanceSettings?.({ maxGPS: next });
+  }, [performanceCaps.maxGPS]);
+  const setEnableFPSCap = useCallback((enabled) => {
+    const next = !!enabled;
+    if (next === performanceCaps.enableFPSCap) return;
+    setPerformanceCaps((prev) => ({ ...prev, enableFPSCap: next }));
+    gameRef.current?.setPerformanceSettings?.({ enableFPSCap: next });
+  }, [performanceCaps.enableFPSCap]);
+  const setEnableGPSCap = useCallback((enabled) => {
+    const next = !!enabled;
+    if (next === performanceCaps.enableGPSCap) return;
+    setPerformanceCaps((prev) => ({ ...prev, enableGPSCap: next }));
+    gameRef.current?.setPerformanceSettings?.({ enableGPSCap: next });
+  }, [performanceCaps.enableGPSCap]);
   const setCaptureDialogOpen = useCallback((open) => {
     setUIState(prev => ({ ...prev, captureDialogOpen: open }));
   }, []);
@@ -401,18 +582,10 @@ function GameOfLifeApp(props) {
           } else if (event === 'viewportChanged') {
             updateViewportSnapshot(data);
           } else if (event === 'gameStep') {
-            try {
-              const population = typeof data === 'object' && data ? data.population : undefined;
-              setPopulationHistory(prev => {
-                const popValue = typeof population === 'number' ? population : (model?.getCellCount?.() ?? 0);
-                const maxHistory = typeof model?.maxPopulationHistory === 'number' ? model.maxPopulationHistory : 1000;
-                const next = prev.length >= maxHistory
-                  ? [...prev.slice(-(maxHistory - 1)), popValue]
-                  : [...prev, popValue];
-                popHistoryRef.current = next;
-                return next;
-              });
-            } catch (e) { /* ignore */ }
+            // Temporarily skip per-step populationHistory bookkeeping so we
+            // can measure its impact on simulation performance. We keep
+            // popHistoryRef stable, but avoid allocating new arrays or
+            // calling getCellCount() on every generation.
           } else if (event === 'modelCleared' || event === 'gameCleared') {
             popHistoryRef.current = [];
             setPopulationHistory([]);
@@ -424,6 +597,21 @@ function GameOfLifeApp(props) {
               popHistoryRef.current = nextHistory;
               setPopulationHistory(nextHistory);
             } catch (e) { /* ignore */ }
+          } else if (event === 'performanceSettingsChanged' && data) {
+            setPerformanceCaps((prev) => {
+              const nextFps = Number.isFinite(Number(data.maxFPS)) ? Number(data.maxFPS) : prev.maxFPS;
+              const nextGps = Number.isFinite(Number(data.maxGPS)) ? Number(data.maxGPS) : prev.maxGPS;
+              const nextEnableFps = typeof data.enableFPSCap === 'boolean' ? data.enableFPSCap : prev.enableFPSCap;
+              const nextEnableGps = typeof data.enableGPSCap === 'boolean' ? data.enableGPSCap : prev.enableGPSCap;
+              if (nextFps === prev.maxFPS && nextGps === prev.maxGPS && nextEnableFps === prev.enableFPSCap && nextEnableGps === prev.enableGPSCap) return prev;
+              return {
+                ...prev,
+                maxFPS: Math.max(1, Math.min(120, nextFps)),
+                maxGPS: Math.max(1, Math.min(60, nextGps)),
+                enableFPSCap: !!nextEnableFps,
+                enableGPSCap: !!nextEnableGps
+              };
+            });
           }
         };
         model.addObserver(observer);
@@ -452,6 +640,20 @@ function GameOfLifeApp(props) {
         // Non-fatal; continue initialization
         // eslint-disable-next-line no-console
         console.warn('Failed to sync selectedTool from MVC model:', e);
+      }
+
+      try {
+        const initialPerformance = mvc.getPerformanceSettings?.();
+        if (initialPerformance) {
+          setPerformanceCaps({
+            maxFPS: Math.max(1, Math.min(120, Number(initialPerformance.maxFPS) || 60)),
+            maxGPS: Math.max(1, Math.min(60, Number(initialPerformance.maxGPS) || 30)),
+            enableFPSCap: !!initialPerformance.enableFPSCap,
+            enableGPSCap: !!initialPerformance.enableGPSCap
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to read initial performance settings:', e);
       }
 
       applyPendingLoad(mvc);
@@ -542,8 +744,21 @@ function GameOfLifeApp(props) {
     onLoadGrid: handleLoadGrid,
     showSpeedGauge: uiState?.showSpeedGauge ?? true,
     setShowSpeedGauge,
+    setConfirmOnClear,
+    detectStablePopulation,
+    setDetectStablePopulation: setDetectStablePopulationPreference,
+    maxChartGenerations,
+    setMaxChartGenerations,
+    memoryTelemetryEnabled,
+    setMemoryTelemetryEnabled,
+    maxFPS: performanceCaps.maxFPS,
+    maxGPS: performanceCaps.maxGPS,
+    enableFPSCap: performanceCaps.enableFPSCap,
+    enableGPSCap: performanceCaps.enableGPSCap,
     setMaxFPS,
     setMaxGPS,
+    setEnableFPSCap,
+    setEnableGPSCap,
   backendBase: resolveBackendBase(),
     onAddRecent: handleAddRecent
   };

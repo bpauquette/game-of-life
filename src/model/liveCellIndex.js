@@ -44,6 +44,19 @@ export default class LiveCellIndex {
     this._boundsDirty = true;
   }
 
+  static fromCells(cells) {
+    const index = new LiveCellIndex();
+    if (!Array.isArray(cells)) {
+      return index;
+    }
+    for (const cell of cells) {
+      const coords = coerceCoords(cell);
+      if (!coords) continue;
+      index.setCellAlive(coords.x, coords.y, true);
+    }
+    return index;
+  }
+
   get size() {
     return this._size;
   }

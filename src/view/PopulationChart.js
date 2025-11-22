@@ -44,16 +44,64 @@ const Y_AXIS_TEXT_OFFSET_Y = 4;
 export default function PopulationChart({ history = [], onClose, isRunning = false, position, embedded = false }) {
   const [hoverIdx, setHoverIdx] = useState(null);
 
-  const max = useMemo(() => Math.max(1, ...history), [history]);
+  // Normalize history into parallel generation and population arrays so we can
+  // plot against true generation numbers when available.
+  const { generations, populations } = useMemo(() => {
+    if (!Array.isArray(history) || history.length === 0) {
+      return { generations: [], populations: [] };
+    }
+    const gens = [];
+    const pops = [];
+    history.forEach((entry, index) => {
+      if (entry == null) return;
+      if (typeof entry === 'number') {
+        const v = Number.isFinite(entry) ? entry : 0;
+        gens.push(index);
+        pops.push(v);
+      } else if (typeof entry === 'object') {
+        const g = Number(
+          Object.prototype.hasOwnProperty.call(entry, 'generation')
+            ? entry.generation
+            : index
+        );
+        const p = Number(
+          Object.prototype.hasOwnProperty.call(entry, 'population')
+            ? entry.population
+            : 0
+        );
+        if (!Number.isFinite(g) || !Number.isFinite(p)) return;
+        gens.push(g);
+        pops.push(p);
+      }
+    });
+    return { generations: gens, populations: pops };
+  }, [history]);
+
+  const isEmpty = generations.length === 0;
+
+  const maxPop = useMemo(
+    () => (populations.length === 0 ? 1 : Math.max(1, ...populations)),
+    [populations]
+  );
+
+  const minGen = useMemo(
+    () => (generations.length === 0 ? 0 : Math.min(...generations)),
+    [generations]
+  );
+
+  const maxGen = useMemo(
+    () => (generations.length === 0 ? 0 : Math.max(...generations)),
+    [generations]
+  );
+
+  const genSpan = Math.max(1, maxGen - minGen || 1);
   const w = CHART_WIDTH, h = CHART_HEIGHT, pad = CHART_PADDING;
 
-  // Show empty state when no data
-  const isEmpty = history.length === 0;
-
-  // Build points
-  const points = history.map((v, i) => {
-    const x = pad + (i / Math.max(1, history.length - 1)) * (w - pad * 2);
-    const y = pad + (1 - v / max) * (h - pad * 2);
+  // Build points from generations/populations
+  const points = generations.map((g, i) => {
+    const v = populations[i];
+    const x = pad + ((g - minGen) / genSpan) * (w - pad * 2);
+    const y = pad + (1 - v / maxPop) * (h - pad * 2);
     return [x, y];
   });
 
@@ -61,7 +109,13 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
 
   // ticks for Y axis
   const yTicks = Y_TICK_COUNT;
-  const xTicks = Math.min(MAX_X_TICKS, Math.max(MIN_X_TICKS, Math.floor(history.length / X_TICK_INTERVAL_DIVISOR)));
+  const xTicks = Math.min(
+    MAX_X_TICKS,
+    Math.max(
+      MIN_X_TICKS,
+      Math.floor(Math.max(1, genSpan) / X_TICK_INTERVAL_DIVISOR)
+    )
+  );
 
   // Build positioning style; default to top-right if not provided
   const posStyle = embedded
@@ -98,7 +152,7 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
           {Array.from({ length: yTicks + 1 }, (_, i) => {
             const t = i / yTicks;
             const y = pad + t * (h - pad * 2);
-            const val = Math.round((1 - t) * max);
+            const val = Math.round((1 - t) * maxPop);
             return (
               <g key={`ytick-${val}-${y.toFixed(1)}`}>
                 <line x1={pad - Y_AXIS_LABEL_OFFSET} x2={pad} y1={y} y2={y} stroke="rgba(255,255,255,0.2)" />
@@ -109,9 +163,9 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
 
           {/* X axis ticks (generation numbers) */}
           {Array.from({ length: xTicks + 1 }, (_, i) => {
-            const t = i / xTicks;
+            const t = xTicks === 0 ? 0 : i / xTicks;
             const x = pad + t * (w - pad * 2);
-            const gen = Math.round(t * Math.max(0, history.length - 1));
+            const gen = Math.round(minGen + t * genSpan);
             return (
               <g key={`xtick-${gen}-${x.toFixed(1)}`}>
                 <line x1={x} x2={x} y1={h - pad} y2={h - pad + TICK_LENGTH} stroke="rgba(255,255,255,0.2)" />
@@ -159,7 +213,7 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
               {hoverIdx === i && (
                 <g>
                   <rect x={p[0] + TOOLTIP_OFFSET_X} y={p[1] - TOOLTIP_OFFSET_Y} rx={TOOLTIP_BORDER_RADIUS} ry={TOOLTIP_BORDER_RADIUS} width={TOOLTIP_WIDTH} height={TOOLTIP_HEIGHT} fill="#000" opacity={0.8} />
-                  <text x={p[0] + TOOLTIP_TEXT_OFFSET_X} y={p[1] - TOOLTIP_TEXT_OFFSET_Y} fontSize={CHART_FONT_SIZE} fill="#fff">{history[i]}</text>
+                  <text x={p[0] + TOOLTIP_TEXT_OFFSET_X} y={p[1] - TOOLTIP_TEXT_OFFSET_Y} fontSize={CHART_FONT_SIZE} fill="#fff">{`Gen ${generations[i]}: ${populations[i]}`}</text>
                 </g>
               )}
             </g>
@@ -185,7 +239,9 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
             <span>{isRunning ? 'Running' : 'Stopped'}</span>
           </div>
           <span>
-            {isEmpty ? 'No data recorded' : `Generations: ${history.length}`}
+            {isEmpty
+              ? 'No data recorded'
+              : `Samples: ${generations.length}, Generations: ${minGen}${maxGen}`}
           </span>
         </div>
       </div>

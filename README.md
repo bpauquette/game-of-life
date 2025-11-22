@@ -214,7 +214,7 @@ Simulation controls:
 Navigation:
 - Zoom: Mouse wheel zooms in/out; zoom snaps to device pixels for crisp rendering on high-DPI displays.
 - Pan: Arrow keys pan; hold Shift for faster panning.
-- Center: Click the crosshair button or press 'f' to focus on all live cells.
+- Center: Press 'f' to focus the viewport on all live cells.
 
 Rotation direction (shapes):
 - The ⟳90 button on recent shape tiles rotates the shape 90° clockwise visually. Due to screen coordinates (y increases downward), this is implemented internally as a 270° mathematical rotation.

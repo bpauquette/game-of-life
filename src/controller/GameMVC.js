@@ -44,6 +44,14 @@ export class GameMVC {
   this.controller = new GameController(this.model, this.view, options.controller);
   // Ensure overlays work: model.controller must be set
   this.model.controller = this.controller;
+  try {
+    const initialSettings = this.model.getPerformanceSettings?.();
+    if (initialSettings) {
+      this.controller.applyPerformanceSettings?.(initialSettings);
+    }
+  } catch (e) {
+    logger.warn?.('GameMVC: failed to apply initial performance settings', e);
+  }
   // Expose controller for developer debugging (dev convenience)
   if (typeof globalThis !== 'undefined') {
     globalThis.gameController = this.controller;
@@ -214,7 +222,8 @@ export class GameMVC {
   }
 
   setPerformanceSettings(settings) {
-    this.model.setPerformanceSettingsModel(settings);
+    const next = this.model.setPerformanceSettingsModel(settings);
+    this.controller.applyPerformanceSettings?.(next);
   }
 
   getPerformanceSettings() {

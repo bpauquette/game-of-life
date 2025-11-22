@@ -123,11 +123,41 @@ export class GameView {
       return { screenX, screenY, cellCoords };
     };
 
+    const getCanvasRect = () => (
+      (typeof this.canvas.getBoundingClientRect === 'function')
+        ? this.canvas.getBoundingClientRect()
+        : {
+            left: 0,
+            top: 0,
+            width: this.canvas?.width || 0,
+            height: this.canvas?.height || 0
+          }
+    );
+
+    const buildPinchCenterPayload = (clientX, clientY) => {
+      const rect = getCanvasRect();
+      const localX = clientX - rect.left;
+      const localY = clientY - rect.top;
+      const canvasCenterX = (rect.width || this.canvas?.width || 0) / 2;
+      const canvasCenterY = (rect.height || this.canvas?.height || 0) / 2;
+      const exactCell = this.renderer?.screenToCellExact
+        ? this.renderer.screenToCellExact(localX, localY)
+        : this.screenToCell(localX, localY);
+      return {
+        screenX: localX,
+        screenY: localY,
+        canvasCenterX,
+        canvasCenterY,
+        cellX: exactCell?.x ?? 0,
+        cellY: exactCell?.y ?? 0
+      };
+    };
+
     // Prefer Pointer Events if available to get unified mouse/touch/pen handling
     if (globalThis.PointerEvent) {
       // Pointer Events path with basic pinch-zoom support
       const activePointers = new Map(); // id -> {x,y}
-      let pinchStartDist = null;
+      let pinchReferenceDist = null;
       let isPinchZooming = false;
       let lastPrimaryCoords = null;
       const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -141,7 +171,7 @@ export class GameView {
         }
         if (activePointers.size === 2) {
           const [p1, p2] = Array.from(activePointers.values());
-          pinchStartDist = distance(p1, p2);
+          pinchReferenceDist = distance(p1, p2);
           // Enter pinch-zoom mode: suspend tool interactions
           if (!isPinchZooming && lastPrimaryCoords) {
             this.emit('mouseUp', { event: e, ...lastPrimaryCoords });
@@ -155,7 +185,7 @@ export class GameView {
         if (!activePointers.has(e.pointerId)) return;
         activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-        if (activePointers.size >= 2 && pinchStartDist) {
+        if (activePointers.size >= 2 && pinchReferenceDist) {
           const [p1, p2] = Array.from(activePointers.values());
           // Pan: compute centroid movement while pinching
           const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
@@ -169,13 +199,12 @@ export class GameView {
           pinchLastCenter = center;
           const newDist = distance(p1, p2);
           if (newDist > 0) {
-            const ratio = newDist / pinchStartDist;
-            const threshold = 1.02; // small hysteresis
-            if (ratio > threshold || ratio < (1 / threshold)) {
-              // Map pinch to synthetic wheel delta
-              const deltaY = ratio > 1 ? -100 : 100;
-              this.emit('wheel', { event: { cancelable: false }, deltaY });
-              pinchStartDist = newDist; // step forward
+            const ratio = newDist / pinchReferenceDist;
+            const threshold = 0.01;
+            if (Math.abs(1 - ratio) > threshold) {
+              const centerPayload = buildPinchCenterPayload(center.x, center.y);
+              this.emit('pinchZoom', { scaleDelta: ratio, center: centerPayload });
+              pinchReferenceDist = newDist;
             }
           }
           if (e.cancelable) e.preventDefault();
@@ -190,7 +219,7 @@ export class GameView {
       };
       const onPointerUp = (e) => {
         activePointers.delete(e.pointerId);
-        if (activePointers.size < 2) { pinchStartDist = null; pinchLastCenter = null; isPinchZooming = false; }
+        if (activePointers.size < 2) { pinchReferenceDist = null; pinchLastCenter = null; isPinchZooming = false; }
         if (e.isPrimary !== false && !isPinchZooming) {
           const coords = getMouseCoords(e);
           lastPrimaryCoords = coords;
@@ -244,7 +273,7 @@ export class GameView {
 
       // Touch fallback with basic pinch-zoom support
   let activeTouchId = null;
-  let pinchStartDist = null;
+  let pinchReferenceDist = null;
   let touchLastCenter = null;
       const getTouchCoords = (touchEvent) => {
         const rect = (typeof this.canvas.getBoundingClientRect === 'function')
@@ -268,19 +297,20 @@ export class GameView {
           activeTouchId = e.changedTouches[0].identifier;
           const coords = getTouchCoords(e);
           this.emit('mouseDown', { event: e, ...coords });
-        } else if (e.touches.length === 2) {
+        }
+        if (e.touches.length === 2) {
           // If we were drawing, end the stroke before entering pinch-zoom
           if (activeTouchId != null) {
             const coords = getTouchCoords(e);
             this.emit('mouseUp', { event: e, ...coords });
           }
-          pinchStartDist = touchDistance(e.touches);
+          pinchReferenceDist = touchDistance(e.touches);
           activeTouchId = null; // suspend drawing while pinching
         }
         if (e.cancelable) e.preventDefault();
       }, { passive: false });
       this.canvas.addEventListener('touchmove', (e) => {
-        if (e.touches.length >= 2 && pinchStartDist) {
+        if (e.touches.length >= 2 && pinchReferenceDist) {
           const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
           const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
           if (touchLastCenter) {
@@ -293,12 +323,12 @@ export class GameView {
           touchLastCenter = { x: cx, y: cy };
           const newDist = touchDistance(e.touches);
           if (newDist > 0) {
-            const ratio = newDist / pinchStartDist;
-            const threshold = 1.02;
-            if (ratio > threshold || ratio < (1 / threshold)) {
-              const deltaY = ratio > 1 ? -100 : 100;
-              this.emit('wheel', { event: { cancelable: false }, deltaY });
-              pinchStartDist = newDist;
+            const ratio = newDist / pinchReferenceDist;
+            const threshold = 0.01;
+            if (Math.abs(1 - ratio) > threshold) {
+              const centerPayload = buildPinchCenterPayload(cx, cy);
+              this.emit('pinchZoom', { scaleDelta: ratio, center: centerPayload });
+              pinchReferenceDist = newDist;
             }
           }
           if (e.cancelable) e.preventDefault();
@@ -311,7 +341,7 @@ export class GameView {
         }
       }, { passive: false });
       this.canvas.addEventListener('touchend', (e) => {
-        if (e.touches.length < 2) { pinchStartDist = null; touchLastCenter = null; }
+        if (e.touches.length < 2) { pinchReferenceDist = null; touchLastCenter = null; }
         if (activeTouchId != null) {
           const coords = getTouchCoords(e);
           this.emit('mouseUp', { event: e, ...coords });

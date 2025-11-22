@@ -95,6 +95,15 @@ export default function RunControlGroup({
                 draw();
                 if (snapshotsRef) snapshotsRef.current = [];
                 if (setSteadyInfo) setSteadyInfo({ steady: false, period: STEADY_STATE_PERIOD_INITIAL_LOCAL, popChanging: false });
+                // UI-level session reset: clear population history and any cached
+                // stability/performance state so charts and gauges start fresh.
+                try {
+                  if (typeof window.dispatchEvent === 'function') {
+                    window.dispatchEvent(new CustomEvent('gol:sessionCleared'));
+                  }
+                } catch {
+                  // ignore if CustomEvent/window is unavailable (e.g. tests)
+                }
               }
             }}
           >

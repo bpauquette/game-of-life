@@ -162,6 +162,8 @@ function GameUILayout({
           setPopTolerance={controlsProps?.setPopTolerance}
           showSpeedGauge={showSpeedGauge}
           setShowSpeedGauge={controlsProps?.setShowSpeedGauge}
+          detectStablePopulation={controlsProps?.detectStablePopulation ?? false}
+          setDetectStablePopulation={controlsProps?.setDetectStablePopulation}
           maxFPS={controlsProps?.maxFPS}
           setMaxFPS={controlsProps?.setMaxFPS}
           maxGPS={controlsProps?.maxGPS}

@@ -14,6 +14,8 @@ import Tooltip from '@mui/material/Tooltip';
 import { Info as InfoIcon } from '@mui/icons-material';
 
 const OptionsPanel = ({
+  // ...existing props...
+  setConfirmOnClear,
   colorSchemes,
   colorSchemeKey,
   setColorSchemeKey,
@@ -28,11 +30,18 @@ const OptionsPanel = ({
   setMaxFPS,
   maxGPS,
   setMaxGPS,
+  enableFPSCap = false,
+  setEnableFPSCap,
+  enableGPSCap = false,
+  setEnableGPSCap,
   // UX settings
   confirmOnClear = true,
-  setConfirmOnClear,
+  maxChartGenerations = 5000,
+  setMaxChartGenerations,
   detectStablePopulation = false,
   setDetectStablePopulation,
+  memoryTelemetryEnabled = false,
+  setMemoryTelemetryEnabled,
   onOk,
   onCancel
 }) => {
@@ -42,6 +51,8 @@ const OptionsPanel = ({
   const [localShowSpeedGauge, setLocalShowSpeedGauge] = useState(showSpeedGauge);
   const [localMaxFPS, setLocalMaxFPS] = useState(maxFPS);
   const [localMaxGPS, setLocalMaxGPS] = useState(maxGPS);
+  const [localEnableFPSCap, setLocalEnableFPSCap] = useState(enableFPSCap);
+  const [localEnableGPSCap, setLocalEnableGPSCap] = useState(enableGPSCap);
   const [localConfirmOnClear, setLocalConfirmOnClear] = useState(confirmOnClear);
   const [localDrawToggleMode, setLocalDrawToggleMode] = useState(false); // default to off
   const [localDrawWhileRunning, setLocalDrawWhileRunning] = useState(() => {
@@ -52,6 +63,14 @@ const OptionsPanel = ({
     }
   });
   const [localDetectStablePopulation, setLocalDetectStablePopulation] = useState(detectStablePopulation);
+    const [localMaxChartGenerations, setLocalMaxChartGenerations] = useState(maxChartGenerations);
+  const [localMemoryTelemetryEnabled, setLocalMemoryTelemetryEnabled] = useState(() => {
+    try {
+      const stored = globalThis.localStorage.getItem('memoryTelemetryEnabled');
+      if (stored === 'true' || stored === 'false') return stored === 'true';
+    } catch {}
+    return memoryTelemetryEnabled;
+  });
 
   const handleOk = () => {
   try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
@@ -66,10 +85,17 @@ const OptionsPanel = ({
     try { setShowSpeedGauge?.(localShowSpeedGauge); } catch (err) { logger.debug('setShowSpeedGauge failed:', err); }
     try { setMaxFPS?.(Math.max(1, Math.min(120, Number(localMaxFPS) || 60))); } catch (err) { logger.debug('setMaxFPS failed:', err); }
     try { setMaxGPS?.(Math.max(1, Math.min(60, Number(localMaxGPS) || 30))); } catch (err) { logger.debug('setMaxGPS failed:', err); }
+    try { setEnableFPSCap?.(!!localEnableFPSCap); } catch (err) { logger.debug('setEnableFPSCap failed:', err); }
+    try { setEnableGPSCap?.(!!localEnableGPSCap); } catch (err) { logger.debug('setEnableGPSCap failed:', err); }
     try { setConfirmOnClear?.(!!localConfirmOnClear); } catch (err) { logger.debug('setConfirmOnClear failed:', err); }
+    try { setMaxChartGenerations?.(Number(localMaxChartGenerations) || 5000); } catch (err) { logger.debug('setMaxChartGenerations failed:', err); }
   try { globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode)); } catch {}
   try { globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning)); } catch {}
   try { setDetectStablePopulation?.(!!localDetectStablePopulation); } catch {}
+  try {
+    setMemoryTelemetryEnabled?.(!!localMemoryTelemetryEnabled);
+    globalThis.localStorage.setItem('memoryTelemetryEnabled', (!!localMemoryTelemetryEnabled) ? 'true' : 'false');
+  } catch {}
   onOk?.();
   };
 
@@ -185,6 +211,32 @@ const OptionsPanel = ({
                 </label>
               </div>
 
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={!!localEnableFPSCap}
+                  onChange={(e) => setLocalEnableFPSCap(e.target.checked)}
+                  style={{ marginRight: 8 }}
+                  id="enable-fps-cap-checkbox"
+                />
+                <label htmlFor="enable-fps-cap-checkbox" style={{ margin: 0 }}>
+                  Enable FPS cap
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={!!localEnableGPSCap}
+                  onChange={(e) => setLocalEnableGPSCap(e.target.checked)}
+                  style={{ marginRight: 8 }}
+                  id="enable-gps-cap-checkbox"
+                />
+                <label htmlFor="enable-gps-cap-checkbox" style={{ margin: 0 }}>
+                  Enable GPS cap
+                </label>
+              </div>
+
               <Stack direction="row" spacing={2}>
                 <TextField
                   label="Max FPS"
@@ -286,6 +338,32 @@ const OptionsPanel = ({
                 Detect Stable Population
               </label>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+              <input
+                type="checkbox"
+                checked={!!localMemoryTelemetryEnabled}
+                onChange={(e) => setLocalMemoryTelemetryEnabled(e.target.checked)}
+                style={{ marginRight: 8 }}
+                id="memory-telemetry-enabled-checkbox"
+              />
+              <label htmlFor="memory-telemetry-enabled-checkbox" style={{ margin: 0 }}>
+                Enable memory telemetry (experimental)
+              </label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+              <label htmlFor="max-chart-generations-input" style={{ marginRight: 8 }}>
+                Max generations in chart
+              </label>
+              <input
+                id="max-chart-generations-input"
+                type="number"
+                min={100}
+                max={20000}
+                value={localMaxChartGenerations}
+                onChange={(e) => setLocalMaxChartGenerations(e.target.value)}
+                style={{ width: 96 }}
+              />
+            </div>
           </div>
         
         </Stack>
@@ -313,9 +391,11 @@ OptionsPanel.propTypes = {
   maxGPS: PropTypes.number.isRequired,
   setMaxGPS: PropTypes.func.isRequired,
   confirmOnClear: PropTypes.bool,
-  setConfirmOnClear: PropTypes.func,
+  // setConfirmOnClear: PropTypes.func, // Removed duplicate
   detectStablePopulation: PropTypes.bool,
   setDetectStablePopulation: PropTypes.func,
+  memoryTelemetryEnabled: PropTypes.bool,
+  setMemoryTelemetryEnabled: PropTypes.func,
   onOk: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired
 };

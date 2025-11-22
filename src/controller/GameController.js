@@ -13,6 +13,7 @@ export class GameController {
     this.options = {
       maxFPS: 60,
       defaultSpeed: 30,
+      maxGPS: 30,
       zoomFactor: 1.12,
       keyboardPanAmount: 1,
       keyboardPanAmountShift: 10,
@@ -38,7 +39,13 @@ export class GameController {
     // Game loop state
     this.animationId = null;
     this.lastFrameTime = 0;
-    this.frameInterval = 1000 / this.options.defaultSpeed;
+    this.performanceCaps = {
+      maxFPS: Math.max(1, Number(this.options.maxFPS) || 60),
+      maxGPS: Math.max(1, Number(this.options.maxGPS || this.options.defaultSpeed) || 30),
+      enableFPSCap: false,
+      enableGPSCap: false
+    };
+    this.frameInterval = 0; // 0 means "no cap"; run every RAF
 
     // Performance tracking
     this.performanceCallbacks = [];
@@ -185,6 +192,9 @@ export class GameController {
     // Two-finger pan from touch/pointer gestures
     this.view.on('gesturePan', ({ dx, dy }) => {
       this.handleGesturePan(dx, dy);
+    });
+    this.view.on('pinchZoom', ({ scaleDelta, center }) => {
+      this.handlePinchZoom(scaleDelta, center);
     });
 
     this.view.on('keyDown', ({ key, shiftKey, event }) => {
@@ -528,6 +538,30 @@ export class GameController {
     this.model.setViewportModel(newOffsetX, newOffsetY, viewport.cellSize);
   }
 
+  handlePinchZoom(scaleDelta, center) {
+    if (!Number.isFinite(scaleDelta) || scaleDelta <= 0) return;
+    const viewport = this.model.getViewport();
+    const currentSize = viewport.cellSize || 1;
+    const effectiveScale = Math.min(Math.max(scaleDelta, 0.5), 2);
+    let nextSize = currentSize * effectiveScale;
+    const dpr = window.devicePixelRatio || 1;
+    const minCellSize = 1 / dpr;
+    const maxCellSize = 200;
+    nextSize = Math.min(Math.max(nextSize, minCellSize), maxCellSize);
+    if (!Number.isFinite(nextSize) || nextSize === currentSize) return;
+
+    const screenX = Number.isFinite(center?.screenX) ? center.screenX : center?.canvasCenterX || 0;
+    const screenY = Number.isFinite(center?.screenY) ? center.screenY : center?.canvasCenterY || 0;
+    const canvasCenterX = Number.isFinite(center?.canvasCenterX) ? center.canvasCenterX : screenX;
+    const canvasCenterY = Number.isFinite(center?.canvasCenterY) ? center.canvasCenterY : screenY;
+    const targetCellX = Number.isFinite(center?.cellX) ? center.cellX : viewport.offsetX;
+    const targetCellY = Number.isFinite(center?.cellY) ? center.cellY : viewport.offsetY;
+
+    const newOffsetX = targetCellX - (screenX - canvasCenterX) / nextSize;
+    const newOffsetY = targetCellY - (screenY - canvasCenterY) / nextSize;
+    this.model.setViewportModel(newOffsetX, newOffsetY, nextSize);
+  }
+
   // Keyboard handlers
   handleKeyDown(key, shiftKey, event) {
     const viewport = this.model.getViewport();
@@ -647,8 +681,10 @@ export class GameController {
         return;
       }
 
-      // Throttle to desired speed
-      if (timestamp - this.lastFrameTime >= this.frameInterval) {
+      const delta = timestamp - this.lastFrameTime;
+      const shouldStep = this.frameInterval <= 0 || delta >= this.frameInterval;
+
+      if (shouldStep) {
         const frameStart = performance.now();
 
         this.model.step();
@@ -656,7 +692,6 @@ export class GameController {
 
         const frameTime = performance.now() - frameStart;
         this.notifyPerformance(frameTime);
-
         this.lastFrameTime = timestamp;
       }
 
@@ -674,7 +709,68 @@ export class GameController {
   }
 
   setSpeed(fps) {
-    this.frameInterval = 1000 / Math.max(1, Math.min(fps, this.options.maxFPS));
+    const requested = Math.max(1, Number(fps) || 1);
+    const loopRate = Math.max(1, Math.min(requested, this.performanceCaps.maxFPS, this.performanceCaps.maxGPS));
+    if (!this.performanceCaps.enableFPSCap && !this.performanceCaps.enableGPSCap) {
+      this.frameInterval = 0;
+      return;
+    }
+    this.frameInterval = 1000 / loopRate;
+  }
+
+  applyPerformanceSettings(settings = {}) {
+    if (!settings || typeof settings !== 'object') return;
+
+    let capsChanged = false;
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'maxFPS')) {
+      const nextFps = Math.max(1, Math.min(Number(settings.maxFPS) || this.performanceCaps.maxFPS, 120));
+      if (nextFps !== this.performanceCaps.maxFPS) {
+        this.performanceCaps.maxFPS = nextFps;
+        capsChanged = true;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'maxGPS')) {
+      const nextGps = Math.max(1, Math.min(Number(settings.maxGPS) || this.performanceCaps.maxGPS, 60));
+      if (nextGps !== this.performanceCaps.maxGPS) {
+        this.performanceCaps.maxGPS = nextGps;
+        capsChanged = true;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'enableFPSCap')) {
+      const next = !!settings.enableFPSCap;
+      if (next !== this.performanceCaps.enableFPSCap) {
+        this.performanceCaps.enableFPSCap = next;
+        capsChanged = true;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'enableGPSCap')) {
+      const next = !!settings.enableGPSCap;
+      if (next !== this.performanceCaps.enableGPSCap) {
+        this.performanceCaps.enableGPSCap = next;
+        capsChanged = true;
+      }
+    }
+
+    if (capsChanged) {
+      if (!this.performanceCaps.enableFPSCap && !this.performanceCaps.enableGPSCap) {
+        this.frameInterval = 0;
+      } else {
+        this.frameInterval = 1000 / this._getLoopRate();
+      }
+    }
+  }
+
+  _getLoopRate() {
+    const fps = Math.max(1, this.performanceCaps.maxFPS || 60);
+    const gps = Math.max(1, this.performanceCaps.maxGPS || this.options.defaultSpeed || 30);
+    const useFps = this.performanceCaps.enableFPSCap ? fps : Infinity;
+    const useGps = this.performanceCaps.enableGPSCap ? gps : Infinity;
+    const rate = Math.min(useFps, useGps);
+    return Number.isFinite(rate) && rate > 0 ? rate : 60;
   }
 
   // Rendering

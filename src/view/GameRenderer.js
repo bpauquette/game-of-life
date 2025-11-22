@@ -364,6 +364,14 @@ export class GameRenderer {
     return { x: cellX, y: cellY };
   }
 
+  screenToCellExact(screenX, screenY) {
+    const centerX = this.viewport.width / 2;
+    const centerY = this.viewport.height / 2;
+    const cellX = this.viewport.offsetX + (screenX - centerX) / this.viewport.cellSize;
+    const cellY = this.viewport.offsetY + (screenY - centerY) / this.viewport.cellSize;
+    return { x: cellX, y: cellY };
+  }
+
   /**
    * Convert cell coordinates to screen coordinates
    */
@@ -725,21 +733,6 @@ export class GameRenderer {
       }
     }
 
-    // Always draw a 1px red border around the canvas to diagnose rendering edges
-    try {
-      this.ctx.save?.();
-      this.ctx.strokeStyle = '#ff0000';
-      this.ctx.lineWidth = 1;
-      // Use 0.5 offset for crisp 1px stroke in CSS pixel space
-      const w = this.viewport.width;
-      const h = this.viewport.height;
-      if (Number.isFinite(w) && Number.isFinite(h) && w > 1 && h > 1) {
-        this.ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
-      }
-      this.ctx.restore?.();
-    } catch {
-      // Non-fatal: border is diagnostic only
-    }
   }
 
   /**

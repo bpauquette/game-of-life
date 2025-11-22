@@ -88,6 +88,8 @@ export default function HeaderBar({
   showToolsRow = true,
   detectStablePopulation = false,
   setDetectStablePopulation,
+  memoryTelemetryEnabled = false,
+  setMemoryTelemetryEnabled,
   onSaveRecentShapes,
   onClearRecentShapes,
 }) {
@@ -254,6 +256,8 @@ export default function HeaderBar({
           setConfirmOnClear={setConfirmOnClear}
           detectStablePopulation={detectStablePopulation}
           setDetectStablePopulation={setDetectStablePopulation}
+          memoryTelemetryEnabled={memoryTelemetryEnabled}
+          setMemoryTelemetryEnabled={setMemoryTelemetryEnabled}
           onOk={handleOk}
           onCancel={handleCancel}
           data-testid-ok="options-ok-button"
@@ -305,6 +309,8 @@ HeaderBar.propTypes = {
   showToolsRow: PropTypes.bool,
   detectStablePopulation: PropTypes.bool,
   setDetectStablePopulation: PropTypes.func,
+  memoryTelemetryEnabled: PropTypes.bool,
+  setMemoryTelemetryEnabled: PropTypes.func,
   isRunning: PropTypes.bool.isRequired,
   setIsRunning: PropTypes.func.isRequired,
   step: PropTypes.func.isRequired,

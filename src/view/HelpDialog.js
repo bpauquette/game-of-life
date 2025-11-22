@@ -109,7 +109,7 @@ export default function HelpDialog({ open, onClose }) {
             <ListItem>
               <ListItemText
                 primary="Max FPS / Max GPS"
-                secondary="Inputs clamp to 1–120 FPS and 1–60 GPS before flowing into setPerformanceSettings; the controller still enforces its 60 FPS / 30 GPS ceiling today, but the plumbing is ready for tighter throttling." />
+                secondary="Inputs clamp to 1–120 FPS and 1–60 GPS before flowing into setPerformanceSettings, and the controller now retunes its animation loop immediately so both rendering and stepping respect your budgets." />
             </ListItem>
             <ListItem>
               <ListItemText

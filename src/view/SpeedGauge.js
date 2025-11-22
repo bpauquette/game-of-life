@@ -57,6 +57,31 @@ const SpeedGauge = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const peakCellsRef = useRef(0);
 
+  // Reset cached metrics when a new session is cleared so the gauge
+  // starts from a clean slate along with the model/UI history.
+  useEffect(() => {
+    const handleSessionCleared = () => {
+      peakCellsRef.current = 0;
+      setMetrics({
+        fps: 0,
+        gps: 0,
+        generation: 0,
+        population: 0,
+        peakCells: 0
+      });
+    };
+
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener('gol:sessionCleared', handleSessionCleared);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('gol:sessionCleared', handleSessionCleared);
+      }
+    };
+  }, []);
+
   // Update metrics every second by getting them from the game model
   useEffect(() => {
     const interval = setInterval(() => {

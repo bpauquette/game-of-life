@@ -3,37 +3,35 @@
 
 import { step as gameStep } from './gameLogic';
 import { colorSchemes } from './colorSchemes';
-import LiveCellIndex from './liveCellIndex';
-import { getShapeCells, getShapeCenter } from '../utils/shapeGeometry';
 import logger from '../controller/utils/logger';
 
 // Helpers for bulk updates (module-scope to keep method complexity low)
 function normalizeBulkUpdate(u) {
-  if (Array.isArray(u)) {
-    const x = Number(u[0]);
-    const y = Number(u[1]);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-    return { x, y, alive: u.length > 2 ? !!u[2] : true };
-  }
-  if (u && typeof u === 'object') {
-    const x = Number(u.x);
-    const y = Number(u.y);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-    return {
-      x,
-      y,
-      alive: Object.prototype.hasOwnProperty.call(u, 'alive') ? !!u.alive : true
-    };
-  }
+  if (Array.isArray(u)) return { x: u[0], y: u[1], alive: u.length > 2 ? !!u[2] : true };
+  if (u && typeof u === 'object') return { x: u.x, y: u.y, alive: Object.prototype.hasOwnProperty.call(u, 'alive') ? !!u.alive : true };
   return null;
 }
 
 function applyBulkUpdate(liveCells, upd) {
-  const changed = liveCells.setCellAlive(upd.x, upd.y, upd.alive);
-  if (!changed) return { add: 0, rem: 0 };
-  return upd.alive ? { add: 1, rem: 0 } : { add: 0, rem: 1 };
+  const key = `${upd.x},${upd.y}`;
+  const wasAlive = liveCells.has(key);
+  if (upd.alive) {
+    if (!wasAlive) {
+      liveCells.set(key, true);
+      return { add: 1, rem: 0 };
+    }
+  } else if (wasAlive) {
+    liveCells.delete(key);
+    return { add: 0, rem: 1 };
+  }
+  return { add: 0, rem: 0 };
 }
 const CONST_UISTATECHANGED = 'uiStateChanged';
+const clampNumber = (value, min, max) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return null;
+  return Math.min(max, Math.max(min, num));
+};
 
 export class GameModel {
   // Overlay management
@@ -53,7 +51,7 @@ export class GameModel {
   }
   constructor() {
     // Game state
-    this.liveCells = new LiveCellIndex();
+    this.liveCells = new Map();
     this.generation = 0;
     this.isRunning = false;
     // Viewport state
@@ -91,6 +89,14 @@ export class GameModel {
   this.cursorThrottleDelay = 16; // ~60fps throttling for cursor updates
   // Observers for state changes
   this.observers = new Set();
+    this.performanceSettings = {
+      maxFPS: 60,
+      maxGPS: 30,
+      populationWindowSize: 50,
+      populationTolerance: 3,
+      enableFPSCap: false,
+      enableGPSCap: false
+    };
   }
 
   addObserver(observer) {
@@ -128,9 +134,14 @@ export class GameModel {
 
   // Game state operations
   setCellAliveModel(x, y, alive) {
-    const changed = this.liveCells.setCellAlive(x, y, alive);
-    if (changed) {
-      this.notifyObservers('cellChanged', { x, y, alive: !!alive });
+    const key = `${x},${y}`;
+    const wasAlive = this.liveCells.has(key);
+    if (alive && !wasAlive) {
+      this.liveCells.set(key, true);
+      this.notifyObservers('cellChanged', { x, y, alive: true });
+    } else if (!alive && wasAlive) {
+      this.liveCells.delete(key);
+      this.notifyObservers('cellChanged', { x, y, alive: false });
     }
   }
 
@@ -159,7 +170,7 @@ export class GameModel {
   }
 
   isCellAlive(x, y) {
-    return this.liveCells.has(x, y);
+    return this.liveCells.has(`${x},${y}`);
   }
 
   getLiveCells() {
@@ -285,26 +296,33 @@ export class GameModel {
 
   // Game evolution
   step() {
-    let newLiveCells = this.liveCells;
+    const nextLiveCells = this.liveCells.size > 0
+      ? gameStep(this.liveCells)
+      : new Map();
+    this._applyStepResult(nextLiveCells, 1);
+  }
 
-    // Only evolve if there are live cells
-    if (this.liveCells.size > 0) {
-      newLiveCells = gameStep(this.liveCells);
-      this.liveCells = newLiveCells;
+  applyExternalStepResult(result) {
+    if (!result || !Array.isArray(result.cells)) {
+      return;
     }
+    const nextLiveCells = new Map();
+    for (const cell of result.cells) {
+      if (!cell || typeof cell.x !== 'number' || typeof cell.y !== 'number') continue;
+      nextLiveCells.set(`${cell.x},${cell.y}`, true);
+    }
+    const delta = Math.max(1, Number(result.generations) || 1);
+    this._applyStepResult(nextLiveCells, delta);
+  }
 
-    // Always increment generation and notify (for performance metrics)
-    this.generation++;
-
-    // Track generation timestamp for performance metrics
+  _applyStepResult(nextLiveCells, generationDelta = 1) {
+    this.liveCells = nextLiveCells;
+    this.generation += generationDelta;
     this.trackGeneration();
-
-    // Update population history
     this.populationHistory.push(this.liveCells.size);
     if (this.populationHistory.length > this.maxPopulationHistory) {
       this.populationHistory.shift();
     }
-
     this.notifyObservers('gameStep', {
       generation: this.generation,
       population: this.liveCells.size,
@@ -327,15 +345,12 @@ export class GameModel {
 
   // Shape operations
   placeShape(x, y, shape) {
-    if (!shape) return;
+    if (!shape || (!shape.cells && !shape.pattern)) return;
 
-    const cells = getShapeCells(shape);
-    if (!cells.length) return;
-
-    const center = getShapeCenter(cells);
+    const cells = shape.cells || shape.pattern || [];
     let cellsPlaced = 0;
 
-    cellsPlaced = this.drawShape(cells, x - center.x, y - center.y, cellsPlaced);
+    cellsPlaced = this.drawShape(cells, x, y, cellsPlaced);
 
     if (cellsPlaced > 0) {
       this.notifyObservers('shapePlace', { x, y, shape, cellsPlaced });
@@ -372,13 +387,31 @@ export class GameModel {
 
   // Utility methods
   getBounds() {
-    return this.liveCells.getBounds();
+    if (this.liveCells.size === 0) {
+      return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+    }
+
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    for (const key of this.liveCells.keys()) {
+      const [x, y] = key.split(',').map(Number);
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
+
+    return { minX, maxX, minY, maxY };
   }
 
   // Export/import state
   exportState() {
     return {
-      liveCells: this.liveCells.toArray(),
+      liveCells: Array.from(this.liveCells.keys()).map(key => {
+        const [x, y] = key.split(',').map(Number);
+        return { x, y };
+      }),
       generation: this.generation,
       viewport: { ...this.viewport },
       populationHistory: [...this.populationHistory]
@@ -531,47 +564,87 @@ export class GameModel {
 
   // Performance settings
   setMaxFPSModel(fps) {
-  // No-op: UI state now managed in React
+    return this.setPerformanceSettingsModel({ maxFPS: fps });
   }
 
   getMaxFPS() {
-  return 60;
+    return this.performanceSettings.maxFPS;
   }
 
   setMaxGPS(gps) {
-  // No-op: UI state now managed in React
+    return this.setPerformanceSettingsModel({ maxGPS: gps });
   }
 
   getMaxGPS() {
-  return 30;
+    return this.performanceSettings.maxGPS;
   }
 
   // Combined performance settings methods
   getPerformanceSettings() {
-    return {
-      maxFPS: 60,
-      maxGPS: 30
-    };
+    return { ...this.performanceSettings };
   }
 
   setPerformanceSettingsModel(settings) {
-    // No-op: UI state now managed in React
+    if (!settings || typeof settings !== 'object') {
+      return this.getPerformanceSettings();
+    }
+
+    const next = { ...this.performanceSettings };
+    let changed = false;
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'maxFPS')) {
+      const clamped = clampNumber(settings.maxFPS, 1, 120);
+      if (clamped !== null && clamped !== next.maxFPS) {
+        next.maxFPS = clamped;
+        changed = true;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'maxGPS')) {
+      const clamped = clampNumber(settings.maxGPS, 1, 60);
+      if (clamped !== null && clamped !== next.maxGPS) {
+        next.maxGPS = clamped;
+        changed = true;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'populationWindowSize')) {
+      const clamped = clampNumber(settings.populationWindowSize, 1, 1000);
+      if (clamped !== null && clamped !== next.populationWindowSize) {
+        next.populationWindowSize = clamped;
+        changed = true;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'populationTolerance')) {
+      const clamped = clampNumber(settings.populationTolerance, 0, 1000);
+      if (clamped !== null && clamped !== next.populationTolerance) {
+        next.populationTolerance = clamped;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this.performanceSettings = next;
+      this.notifyObservers('performanceSettingsChanged', { ...this.performanceSettings });
+    }
+    return this.getPerformanceSettings();
   }
 
   // Population stability settings
   setPopulationWindowSizeModel(size) {
-  // No-op: UI state now managed in React
+    return this.setPerformanceSettingsModel({ populationWindowSize: size });
   }
 
   getPopulationWindowSize() {
-  return 10;
+    return this.performanceSettings.populationWindowSize;
   }
 
   setPopulationToleranceModel(tolerance) {
-  // No-op: UI state now managed in React
+    return this.setPerformanceSettingsModel({ populationTolerance: tolerance });
   }
 
   getPopulationTolerance() {
-  return 0.1;
+    return this.performanceSettings.populationTolerance;
   }
 }
