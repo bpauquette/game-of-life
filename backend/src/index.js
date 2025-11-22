@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { generateThumbnailsForShape } from './thumbnailGenerator.js';
 
 // NEW — AUTH
-import authRouter from './auth/auth.js';
+import authRouter from './auth/auth.mjs';
 import { verifyToken } from './auth/jwtMiddleware.js';
 
 // __dirname equivalent for ESM modules
@@ -182,7 +182,11 @@ export function createApp() {
   app.use(express.text({ type: ['text/*', 'application/octet-stream'], limit: '5mb' }));
 
   // NEW — AUTH ROUTES
-  app.use('/auth', authRouter);
+  app.use('/auth', (req, res, next) => {
+    logger.info(`[DEBUG] /auth route received: ${req.method} ${req.originalUrl}`);
+    next();
+  }, authRouter);
+  console.log('Auth router mounted at /auth');
 
   // Request logger
   app.use((req, res, next) => {
@@ -264,43 +268,7 @@ export function createApp() {
     }
   });
 
-  // GET thumbnails (public)
-  app.get('/v1/shapes/thumbnail', async (req, res) => {
-    try {
-      const nameSlug = req.query.name;
-      const scheme = req.query.scheme;
-      const size = req.query.size;
-      if (!nameSlug) return res.status(400).json({ error: 'name required' });
-
-      const base = path.join(__dirname, '..', 'data', 'thumbnails');
-      const candidates = buildCandidatesForName(base, nameSlug, scheme, size);
-
-      if (findAndSendThumbnail(res, candidates)) return;
-      res.status(404).json({ error: THUMB_NOT_FOUND_STR });
-    } catch (err) {
-      logger.error('thumbnail error:', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // GET shape by ID (public)
-  app.get('/v1/shapes/:id/thumbnail', async (req, res) => {
-    try {
-      const id = req.params.id;
-      const scheme = req.query.scheme;
-      const shape = await db.getShape(id);
-      if (!shape || !shape.name) {
-        return res.status(404).json({ error: 'thumbnail not found' });
-      }
-      const base = path.join(__dirname, '..', 'data', 'thumbnails');
-      const candidates = buildCandidatesForName(base, slugify(shape.name), scheme, null);
-      if (findAndSendThumbnail(res, candidates)) return;
-      res.status(404).json({ error: THUMB_NOT_FOUND_STR });
-    } catch (err) {
-      logger.error('thumbnail serve error:', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
+  // Removed: GET thumbnails (public) and GET shape by ID thumbnail endpoints. Thumbnails are now served as static assets from /public/thumbnails.
 
   // GET shape (public)
   app.get('/v1/shapes/:id', async (req, res) => {

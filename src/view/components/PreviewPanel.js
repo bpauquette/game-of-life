@@ -54,6 +54,7 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
   const canvasRef = useRef(null);
   
   const [cachedDataUrl, setCachedDataUrl] = useState(null);
+  const [imgError, setImgError] = useState(false);
   const cells = useMemo(() => (preview && Array.isArray(preview.cells) ? preview.cells : []), [preview]);
   const bounds = useMemo(() => computeBounds(cells), [cells]);
   const { width, height } = bounds;
@@ -65,39 +66,57 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
   // If too many cells, render into a canvas for speed and/or generate cached dataUrl
   useEffect(() => {
     setCachedDataUrl(null);
-  if (!preview) return;
-  const nameSlug = preview.name ? (String(preview.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0,200)) : '';
-  const cacheId = preview.id ? `${preview.id}::${colorSchemeKey || 'default'}` : `${nameSlug || JSON.stringify(cells).slice(0,200)}::${colorSchemeKey || 'default'}`;
+    setImgError(false);
+    if (!preview) return;
+    const nameSlug = preview.name ? (String(preview.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0,200)) : '';
+    const cacheId = preview.id ? `${preview.id}::${colorSchemeKey || 'default'}` : `${nameSlug || JSON.stringify(cells).slice(0,200)}::${colorSchemeKey || 'default'}`;
     const existing = cacheGet(cacheId);
     if (existing) {
       setCachedDataUrl(existing);
       return;
     }
-    // Try server-provided thumbnail first (PNG preferred by backend).
-    // Request by slug (name) with explicit scheme and size to avoid UUIDs in requests.
+    // Use static public thumbnail path
     const scheme = colorSchemeKey || 'default';
-  const size = 128;
-  const backendBase = resolveBackendBase();
-  const thumbnailUrl = nameSlug ? `${backendBase}/v1/shapes/thumbnail?name=${encodeURIComponent(nameSlug)}&scheme=${encodeURIComponent(scheme)}&size=${encodeURIComponent(size)}` : null;
+    const size = 128;
+    const thumbnailUrl = nameSlug ? `/thumbnails/${size}/${scheme}/${nameSlug}.png` : null;
     if (thumbnailUrl) {
       cacheSet(cacheId, thumbnailUrl);
       setCachedDataUrl(thumbnailUrl);
     }
-
     // No name-based thumbnail available. Per policy this UI should not request
     // on-demand renders for unnamed captures — the capture tool requires a name
     // before saving, and thumbnails are generated on save. Leave the canvas
     // placeholder empty until a saved thumbnail exists.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preview, cells.length, maxSvgSize, width, height, colorScheme]);
+
+  // Draw shape preview in canvas if needed
+  useEffect(() => {
+    if (!canvasRef.current || !preview || cachedDataUrl && !imgError) return;
+    const ctx = canvasRef.current.getContext('2d');
+    ctx.clearRect(0, 0, drawW, drawH);
+    // Simple cell rendering
+    const cellColor = colorScheme?.cellColor || '#1976d2';
+    for (const cell of cells) {
+      const x = (typeof cell.x !== 'undefined') ? cell.x : (Array.isArray(cell) ? cell[0] : 0);
+      const y = (typeof cell.y !== 'undefined') ? cell.y : (Array.isArray(cell) ? cell[1] : 0);
+      ctx.fillStyle = cellColor;
+      ctx.fillRect((x - bounds.minX) * cellSize + 4, (y - bounds.minY) * cellSize + 4, cellSize, cellSize);
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, drawW, drawH);
+  }, [canvasRef, preview, cachedDataUrl, imgError, cells, bounds, drawW, drawH, cellSize, colorScheme]);
 
   if (!preview) return <Box sx={{ minWidth: 260, minHeight: 220 }} />;
 
   return (
     <Box sx={{ minWidth: 260, minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }} data-testid="hover-preview-panel">
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-        {cachedDataUrl ? (
-          <img src={cachedDataUrl} alt={preview.name || 'shape preview'} style={{ width: drawW, height: drawH, objectFit: 'contain', ...PREVIEW_BORDER_STYLE }} />
+        {cachedDataUrl && !imgError ? (
+          <img src={cachedDataUrl} alt={preview.name || 'shape preview'} style={{ width: drawW, height: drawH, objectFit: 'contain', ...PREVIEW_BORDER_STYLE }}
+            onError={() => setImgError(true)}
+          />
         ) : (
           <canvas ref={canvasRef} width={drawW} height={drawH} style={{ width: drawW, height: drawH, ...PREVIEW_BORDER_STYLE }} />
         )}
