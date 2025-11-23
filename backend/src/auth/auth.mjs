@@ -26,6 +26,9 @@ db.prepare(`CREATE TABLE IF NOT EXISTS users (
 	id TEXT PRIMARY KEY,
 	email TEXT UNIQUE NOT NULL,
 	hashed_password TEXT NOT NULL,
+	first_name TEXT,
+	last_name TEXT,
+	about_me TEXT,
 	reset_token TEXT,
 	reset_token_expiry INTEGER,
 	login_count INTEGER DEFAULT 0,
@@ -45,15 +48,15 @@ function issueJWT(user) {
 
 // --- REGISTER ------------------------------------------------------
 router.post("/register", (req, res) => {
-	const { email, password } = req.body;
+	const { email, password, firstName, lastName, aboutMe } = req.body;
 	if (!email || !password) return res.status(400).json({ error: "Missing fields" });
 
 	const userId = uuidv4();
 
 	bcrypt.hash(password, 12).then(hashed => {
 		try {
-			db.prepare(`INSERT INTO users (id, email, hashed_password) VALUES (?, ?, ?)`)
-				.run(userId, email, hashed);
+			db.prepare(`INSERT INTO users (id, email, hashed_password, first_name, last_name, about_me) VALUES (?, ?, ?, ?, ?, ?)`)
+				.run(userId, email, hashed, firstName || '', lastName || '', aboutMe || '');
 			const token = issueJWT({ id: userId, email });
 			res.json({ token });
 		} catch (err) {
