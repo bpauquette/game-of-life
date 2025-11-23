@@ -301,6 +301,18 @@ function GameOfLifeApp(props) {
     }
   }, [shapesReady]);
 
+  // Login required snackbar
+  const [loginNotifOpen, setLoginNotifOpen] = useState(false);
+  const [loginNotifMessage, setLoginNotifMessage] = useState('');
+  useEffect(() => {
+    const handleNeedLogin = (event) => {
+      setLoginNotifMessage(event.detail?.message || 'Please login.');
+      setLoginNotifOpen(true);
+    };
+    window.addEventListener('auth:needLogin', handleNeedLogin);
+    return () => window.removeEventListener('auth:needLogin', handleNeedLogin);
+  }, []);
+
   // track cursor using the canvas DOM element
   const cursorCell = useGridMousePosition({ canvasRef, cellSize, offsetRef });
 
@@ -808,6 +820,11 @@ function GameOfLifeApp(props) {
       <Snackbar open={shapesNotifOpen} autoHideDuration={4000} onClose={() => setShapesNotifOpen(false)}>
         <Alert severity="success" onClose={() => setShapesNotifOpen(false)} sx={{ width: '100%' }}>
           Shapes catalog loaded
+        </Alert>
+      </Snackbar>
+      <Snackbar open={loginNotifOpen} autoHideDuration={6000} onClose={() => setLoginNotifOpen(false)}>
+        <Alert severity="info" onClose={() => setLoginNotifOpen(false)} sx={{ width: '100%' }}>
+          {loginNotifMessage}
         </Alert>
       </Snackbar>
     </>

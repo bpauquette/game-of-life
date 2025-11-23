@@ -9,7 +9,7 @@ const useGridFileManager = (config = {}) => {
     // If not explicitly provided, derive from the current window location so mobile clients don't hit localhost
     backendBase = process.env.REACT_APP_BACKEND_BASE || null,
     getLiveCells = null,
-    generation = 0 
+    generation = 0
   } = config;
   const [savedGrids, setSavedGrids] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -199,6 +199,13 @@ const useGridFileManager = (config = {}) => {
     async (name, description = '') => {
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
         throw new Error('Grid name is required');
+      }
+
+      // Check if user is logged in
+      const token = sessionStorage.getItem('authToken');
+      if (!token) {
+        window.dispatchEvent(new CustomEvent('auth:needLogin', { detail: { message: 'Please login to save.' } }));
+        throw new Error('Please login to save.');
       }
 
       setLoading(true);
