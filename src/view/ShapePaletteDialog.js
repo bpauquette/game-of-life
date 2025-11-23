@@ -33,7 +33,7 @@ const hasShapeCells = (shape) => {
   return has(shape.cells) || has(shape.pattern) || has(shape.liveCells);
 };
 
-export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, colorSchemeKey = 'bio', onAddRecent, prefetchOnMount = false }) {
+export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, colorSchemeKey = 'bio', onAddRecent, prefetchOnMount = false, recentShapes = [] }) {
   const {
     inputValue,
     setInputValue,
@@ -48,6 +48,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     setShowBackendDialog,
     retry
   } = useShapePaletteSearch({ open, backendBase, prefetchOnMount });
+
 
   const { preview, handleHover } = useHoverPreview(backendBase);
   const previewForPanel = useDeferredValue(preview);
@@ -79,11 +80,20 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     if (!shape) return;
     try {
       const hydrated = await ensureShapeHasCells(shape);
+      // Check if shape is already in recents BEFORE adding
+      const alreadyInRecents = recentShapes.some(s => s.id === hydrated.id);
       onAddRecent?.(hydrated);
+      // After add, check again to confirm addition
+      if (alreadyInRecents) {
+        setSnackMsg('Already in recents');
+      } else {
+        setSnackMsg('Shape added to recents');
+      }
+      setSnackOpen(true);
     } catch (e) {
       logger.warn('onAddRecent failed:', e);
     }
-  }, [onAddRecent, ensureShapeHasCells]);
+  }, [onAddRecent, ensureShapeHasCells, recentShapes]);
 
   const handleDeleteRequest = useCallback((shape) => {
     setToDelete(shape);
