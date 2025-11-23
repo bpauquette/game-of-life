@@ -152,6 +152,10 @@ export default function HeaderBar({
 
   // Stop simulation immediately when user initiates Save or Load
   const openSaveDialogAndPause = useCallback(() => {
+    if (!sessionStorage.getItem('authToken')) {
+      window.dispatchEvent(new CustomEvent('auth:needLogin', { detail: { message: 'Please login to save.' } }));
+      return;
+    }
     if (isRunning) setIsRunning(false);
     openSaveDialog();
   }, [isRunning, setIsRunning, openSaveDialog]);
