@@ -111,6 +111,16 @@ export default function HeaderBar({
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [wasRunningBeforeOptions, setWasRunningBeforeOptions] = useState(false);
+
+  // Listen for login required event
+  useEffect(() => {
+    const handleNeedLogin = () => {
+      setUserDialogOpen(true);
+      setShowRegister(false);
+    };
+    window.addEventListener('auth:needLogin', handleNeedLogin);
+    return () => window.removeEventListener('auth:needLogin', handleNeedLogin);
+  }, []);
   const [confirmOnClear, setConfirmOnClear] = useState(() => {
     try {
       const v = localStorage.getItem('confirmOnClear');
