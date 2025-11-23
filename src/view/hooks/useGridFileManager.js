@@ -127,7 +127,7 @@ const useGridFileManager = (config = {}) => {
 
   // Helper for performing a single POST request
   const doPostGrid = useCallback(async (url, gridData, ac) => {
-    const token = localStorage.getItem('authToken');
+    const token = sessionStorage.getItem('authToken');
     const headers = {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-cache',

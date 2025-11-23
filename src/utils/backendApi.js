@@ -1,7 +1,7 @@
 import logger from '../controller/utils/logger';
-// Helper to get auth token from localStorage
+// Helper to get auth token from sessionStorage
 function getAuthToken() {
-  return localStorage.getItem('authToken');
+  return sessionStorage.getItem('authToken');
 }
 export function resolveBackendBase() {
   const envBase = process.env.REACT_APP_BACKEND_BASE;
