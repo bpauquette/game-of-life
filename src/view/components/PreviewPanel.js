@@ -121,8 +121,35 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
           <canvas ref={canvasRef} width={drawW} height={drawH} style={{ width: drawW, height: drawH, ...PREVIEW_BORDER_STYLE }} />
         )}
         <Box sx={{ maxWidth: 320, maxHeight: 200, overflow: 'auto' }}>
-          <Typography sx={{ fontWeight: 700 }}>{preview.name}</Typography>
-          {preview.description && <Typography variant="body2" sx={{ fontSize: 12, color: 'rgba(0,0,0,0.7)' }}>{preview.description}</Typography>}
+          <Typography
+            sx={{
+              fontWeight: 700,
+              color: '#00e6ff', // Vibrant cyan
+              textShadow: '0 2px 8px rgba(0,0,0,0.25), 0 0 2px #00e6ff',
+              fontSize: 20,
+              letterSpacing: 0.5,
+              mb: 1
+            }}
+          >
+            {preview.name}
+          </Typography>
+          {preview.description && (
+            <Typography
+              variant="body2"
+              sx={{
+                fontSize: 13,
+                color: '#fff',
+                background: 'linear-gradient(90deg, #00e6ff 0%, #3ad6ff 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontWeight: 500,
+                textShadow: '0 1px 4px rgba(0,0,0,0.18)',
+                mt: 0.5
+              }}
+            >
+              {preview.description}
+            </Typography>
+          )}
         </Box>
       </Box>
     </Box>
