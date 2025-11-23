@@ -62,16 +62,26 @@ const RecentShapesStrip = ({
   const handleShapeClick = (shape) => {
     // Always switch to shapes tool first
     if (typeof onSwitchToShapesTool === 'function') onSwitchToShapesTool();
-    // Always set the selected shape for the tool
-    if (typeof selectShape === 'function') selectShape(shape);
+    // Always set the selected shape for the tool, even if already selected
+    if (typeof selectShape === 'function') {
+      // Force update by passing a new object reference if already selected
+      if (selectedShape && shape && (shape.id === selectedShape.id || shape.name === selectedShape.name)) {
+        selectShape({ ...shape });
+      } else {
+        selectShape(shape);
+      }
+    }
     // Optionally trigger overlay redraw if needed
     if (typeof drawWithOverlay === 'function') drawWithOverlay();
   };
 
-  // Render all recent shapes without an artificial slot limit so new shapes
-  // flow off to the right and can be scrolled into view. This allows the
-  // strip to grow indefinitely and rely on overflow + nav controls.
-  const slots = Array.isArray(recentShapes) ? recentShapes : [];
+  // Render all recent shapes in the order provided, never reordering.
+  const slots = Array.isArray(recentShapes) ? [...recentShapes] : [];
+
+  // Log the order of shapes every render
+  useEffect(() => {
+    // ...existing code...
+  }, [slots]);
 
   const bg = (colorScheme && (colorScheme.panelBackground || colorScheme.background)) || '#111217';
   const panelBorder = '1px solid rgba(255,255,255,0.04)';
@@ -372,8 +382,7 @@ const RecentShapesStrip = ({
             alignItems: FLEX_START,
             gap: 12,
             width: '100%',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
+            overflow: 'hidden',
             paddingBottom: 12,
             paddingTop: 8,
             scrollSnapType: 'x mandatory',
@@ -382,12 +391,6 @@ const RecentShapesStrip = ({
           }}
         >
         {slots.map((shape, index) => {
-          // Ensure keys are unique per rendered slot. Some shapes may share the same
-          // `id` or `name` (for example when shapes are created from identical
-          // sources), which caused React warnings like
-          // "Encountered two children with the same key, `1-2-3`". Append the
-          // slot index so keys are always unique while remaining stable enough for
-          // reconciliation within this list.
           let slotKey;
           if (shape) {
             const baseKey = shape.id || shape.name || 'shape';
@@ -396,62 +399,28 @@ const RecentShapesStrip = ({
             slotKey = `empty-slot-${index}`;
           }
           const selected = isShapeSelected(shape);
-          const frameStyle = selected
-            ? {
-                padding: 2,
-                borderRadius: 12,
-                background: 'linear-gradient(135deg, rgba(0,245,160,0.9), rgba(0,217,245,0.9))',
-                boxShadow: '0 10px 32px rgba(0, 245, 160, 0.35)',
-                transition: 'transform 160ms ease, box-shadow 160ms ease'
-              }
-            : {
-                padding: 0,
-                borderRadius: 12,
-                transition: 'transform 160ms ease, box-shadow 160ms ease'
-              };
-          const cardContainerStyle = {
-            padding: 0,
-            borderRadius: 10,
-            background: cardBg,
+          // Simplified: no scaling, shadow, or scrollIntoView
+          const slotStyle = {
+            width: 130,
+            height: 110,
+            minWidth: 130,
+            maxWidth: 130,
+            flexShrink: 0,
+            scrollSnapAlign: 'center',
             display: 'flex',
-            alignItems: FLEX_START,
-            gap: 8,
-            position: 'relative',
-            minWidth: 0,
-            width: '100%',
-            height: '100%',
-            justifyContent: 'center'
-          };
-          const badgeStyle = {
-            position: 'absolute',
-            top: 6,
-            right: 8,
-            padding: '2px 8px',
-            borderRadius: 999,
-            fontSize: 10,
-            letterSpacing: 0.4,
-            textTransform: 'uppercase',
-            color: '#031b16',
-            fontWeight: 700,
-            background: 'linear-gradient(135deg, #00f5a0, #00d9f5)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.35)'
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            margin: '0 2px'
           };
           return (
             <div
               key={slotKey}
-              style={{
-                minWidth: 0,
-                width: 'auto',
-                maxWidth: 170,
-                height: 'auto',
-                flexShrink: 0,
-                scrollSnapAlign: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 0,
-                margin: '0 2px'
-              }}
+              style={slotStyle}
+              onClick={() => handleShapeClick(shape)}
+              tabIndex={0}
+              role="button"
+              aria-label={`Select shape ${getShapeTitle(shape, index)}`}
             >
               <ShapeSlot
                 shape={shape}
