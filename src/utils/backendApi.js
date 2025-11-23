@@ -1,4 +1,8 @@
 import logger from '../controller/utils/logger';
+// Helper to get auth token from localStorage
+function getAuthToken() {
+  return localStorage.getItem('authToken');
+}
 export function resolveBackendBase() {
   const envBase = process.env.REACT_APP_BACKEND_BASE;
   if (envBase && typeof envBase === 'string' && envBase.trim().length > 0) return envBase;
@@ -7,7 +11,7 @@ export function resolveBackendBase() {
   return `${protocol}//${hostname}:${port}`;
 }
 
-export async function saveCapturedShapeToBackend(shapeData) {
+export async function saveCapturedShapeToBackend(shapeData, logout) {
   const shapeForBackend = {
     ...shapeData,
     cells: shapeData.pattern,
@@ -36,13 +40,22 @@ export async function saveCapturedShapeToBackend(shapeData) {
     // otherwise ignore and continue
   }
 
+  const token = getAuthToken();
+    const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
   const response = await fetch(`${resolveBackendBase()}/v1/shapes`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(shapeForBackend)
   });
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    if (errorData.error === 'Invalid or expired token') {
+      if (typeof logout === 'function') logout();
+      throw new Error('Please log in again to save shapes');
+    }
     throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
   }
   return await response.json();
@@ -130,9 +143,14 @@ export async function deleteShapeById(id, backendBase) {
 export async function createShape(shape, backendBase) {
   const base = getBaseUrl(backendBase);
   const url = new URL('/v1/shapes', base);
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
   const res = await fetch(url.toString(), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(shape)
   });
   return res.ok;

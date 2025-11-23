@@ -1,3 +1,4 @@
+import './clearBackendLog.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -466,6 +467,12 @@ export function createApp() {
     res.status(201).json(shape);
   });
 
+  // Global error handler (always returns JSON)
+  app.use((err, req, res, next) => {
+    logger.error('Unhandled error:', err);
+    if (res.headersSent) return next(err);
+    res.status(500).json({ error: 'Internal server error' });
+  });
   return app;
 }
 

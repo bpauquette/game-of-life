@@ -127,15 +127,28 @@ const useGridFileManager = (config = {}) => {
 
   // Helper for performing a single POST request
   const doPostGrid = useCallback(async (url, gridData, ac) => {
+    const token = localStorage.getItem('authToken');
+    const headers = {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
     const response = await fetch(url.toString(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      headers,
       body: JSON.stringify(gridData),
       signal: ac.signal,
       cache: 'no-store',
     });
     if (!response.ok) {
-      throw new Error(await extractErrorText(response));
+      const errorText = await extractErrorText(response);
+      if (errorText === 'Invalid or expired token') {
+        try {
+          const { logout } = require('../../auth/AuthProvider');
+          if (typeof logout === 'function') logout();
+        } catch {}
+      }
+      throw new Error(errorText);
     }
     return response;
   }, [extractErrorText]);

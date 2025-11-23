@@ -144,8 +144,8 @@ export const useShapeManager = ({
       if (prev.some(shape => generateShapeKey(shape) === newKey)) {
         return prev;
       }
-      // Otherwise, append to end
-      return [...prev, normalized].slice(0, MAX_RECENT_SHAPES);
+      // Insert new shape at the leftmost position
+      return [normalized, ...prev].slice(0, MAX_RECENT_SHAPES);
     });
   }, [generateShapeKey]);
 
@@ -431,8 +431,8 @@ export const useShapeManager = ({
           if (prev.some(s => generateShapeKey(s) === newKey)) {
             return prev;
           }
-          // Otherwise, append to end
-          return [...prev, stub].slice(0, MAX_RECENT_SHAPES);
+          // Insert new shape at the leftmost position
+          return [stub, ...prev].slice(0, MAX_RECENT_SHAPES);
         });
 
         // Defer the full update (which may be slightly heavier) to the next

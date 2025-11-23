@@ -103,6 +103,8 @@ describe('GameController animation loop', () => {
     const stepSpy = jest.spyOn(model, 'step');
     const renderSpy = jest.spyOn(controller, 'requestRender');
 
+    controller.performanceCaps.enableGPSCap = true;
+    controller.setSpeed(30);
     controller.setRunning(true); // triggers loop via observer
 
   // First frame below interval should not step

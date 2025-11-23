@@ -1,4 +1,6 @@
 import React, { useState, useCallback, useDeferredValue } from 'react';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import PropTypes from 'prop-types';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -16,7 +18,6 @@ import {
 import SearchBar from './components/SearchBar';
 import PreviewPanel from './components/PreviewPanel';
 import { useShapePaletteSearch } from './hooks/useShapePaletteSearch';
-import { useHoverPreview } from './hooks/useHoverPreview';
 import {
   ShapesList,
   FooterControls,
@@ -34,6 +35,8 @@ const hasShapeCells = (shape) => {
 };
 
 export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, colorSchemeKey = 'bio', onAddRecent, prefetchOnMount = false, recentShapes = [] }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const {
     inputValue,
     setInputValue,
@@ -49,9 +52,11 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     retry
   } = useShapePaletteSearch({ open, backendBase, prefetchOnMount });
 
+    // Local preview state for selected shape
+    const [selectedShape, setSelectedShape] = useState(null);
 
-  const { preview, handleHover } = useHoverPreview(backendBase);
-  const previewForPanel = useDeferredValue(preview);
+
+  // ...existing code...
   const shapesForRender = useDeferredValue(displayedResults);
   const isInitialMobileLoad = loading && results.length === 0;
 
@@ -82,11 +87,10 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       const hydrated = await ensureShapeHasCells(shape);
       // Check if shape is already in recents BEFORE adding
       const alreadyInRecents = recentShapes.some(s => s.id === hydrated.id);
-      onAddRecent?.(hydrated);
-      // After add, check again to confirm addition
       if (alreadyInRecents) {
         setSnackMsg('Already in recents');
       } else {
+        onAddRecent?.(hydrated);
         setSnackMsg('Shape added to recents');
       }
       setSnackOpen(true);
@@ -105,34 +109,24 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     setToDelete(null);
   }, []);
 
+  // Hydrate shape details before updating preview panel
   const handleShapeSelect = useCallback(async (shape) => {
-    logger.debug('[ShapePaletteDialog] Shape selected:', shape);
-    if (!shape?.id) {
-      onSelectShape?.(shape);
-      // Also add to recent when selecting a local/unsaved shape
-      await safeAddRecent(shape);
-      onClose?.();
+    if (!shape?.id || hasShapeCells(shape)) {
+      setSelectedShape(shape);
       return;
     }
     try {
       const res = await fetchShapeById(shape.id, backendBase);
-  if (res.ok && res.data) {
-  logger.debug('[ShapePaletteDialog] Fetched full shape data:', res.data);
-        onSelectShape?.(res.data);
-        await safeAddRecent(res.data);
+      if (res?.ok && res.data) {
+        setSelectedShape(res.data);
       } else {
-          // Removed debug log
-        onSelectShape?.(shape);
-        await safeAddRecent(shape);
+        setSelectedShape(shape);
       }
     } catch (err) {
-      logger.warn('Failed to fetch full shape data, using metadata only:', err);
-      onSelectShape?.(shape);
-      await safeAddRecent(shape);
-    } finally {
-      onClose?.();
+      logger.warn('[ShapePaletteDialog] failed to hydrate shape for preview:', err);
+      setSelectedShape(shape);
     }
-  }, [backendBase, onSelectShape, onClose, safeAddRecent]);
+  }, [backendBase]);
 
   const handleDelete = useCallback(async (shape) => {
     if (!shape) return;
@@ -239,8 +233,9 @@ The backend will start on port ${backendPort}.`);
         open={open}
         onClose={onClose}
         disableEscapeKeyDown={false}
-        maxWidth="sm"
+        maxWidth={isMobile ? 'xs' : 'sm'}
         fullWidth
+        fullScreen={isMobile}
         data-testid="shapes-palette"
       >
         <DialogTitle>Insert shape from catalog</DialogTitle>
@@ -251,11 +246,20 @@ The backend will start on port ${backendPort}.`);
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <SearchBar value={inputValue} onChange={setInputValue} onClose={onClose} />
             <Box sx={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 1, p: 1 }}>
-              <PreviewPanel preview={previewForPanel} colorScheme={colorScheme} colorSchemeKey={colorSchemeKey} />
+              <PreviewPanel preview={selectedShape} colorScheme={colorScheme} colorSchemeKey={colorSchemeKey} compact={isMobile} />
             </Box>
           </Box>
           {/* Virtualized list keeps the palette responsive even with thousands of shapes */}
-          <Box sx={{ position: 'relative', flex: 1, minHeight: 260 }} data-testid="shapes-list-scroll">
+          <Box
+            sx={{
+              position: 'relative',
+              flex: 1,
+              minHeight: 260,
+              gap: isMobile ? 2 : 1,
+              ...(isMobile && { maxHeight: 320, overflowY: 'auto' })
+            }}
+            data-testid="shapes-list-scroll"
+          >
             <ShapesList
               items={shapesForRender}
               colorScheme={colorScheme}
@@ -263,7 +267,8 @@ The backend will start on port ${backendPort}.`);
               onSelect={handleShapeSelect}
               onDeleteRequest={handleDeleteRequest}
               onAddRecent={safeAddRecent}
-              onHover={handleHover}
+              shapeSize={isMobile ? 64 : 40}
+              showShapeNames={isMobile}
             />
             {isInitialMobileLoad && (
               <Box

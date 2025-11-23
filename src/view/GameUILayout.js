@@ -70,7 +70,7 @@ function GameUILayout({
   /* eslint-disable complexity */
   const handleToggleChrome = useCallback(() => {
     try {
-      const before = (globalThis.__GOL_DUMP_CANVAS_STATE__ && globalThis.__GOL_DUMP_CANVAS_STATE__()) || null;
+      globalThis.__GOL_DUMP_CANVAS_STATE__ && globalThis.__GOL_DUMP_CANVAS_STATE__();
     } catch (e) { pushDebug({ event: 'toggleChrome.before.error', error: String(e) }); }
 
     try {

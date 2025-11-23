@@ -16,36 +16,54 @@ const config = {
   enabled: process.env.NODE_ENV !== 'test' // Disable logging in tests
 };
 
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const logFilePath = path.join(__dirname, '..', 'backend.log');
+
+function appendLog(level, message, ...args) {
+  function formatArg(a) {
+    if (!a && a !== 0) return '';
+    if (a instanceof Error) return a.stack || a.message;
+    if (typeof a === 'object') {
+      try { return JSON.stringify(a); } catch { return String(a); }
+    }
+    return String(a);
+  }
+  const line = `[${new Date().toISOString()}] [${level}] ${message} ${args.map(formatArg).join(' ')}\n`;
+  try {
+    fs.appendFileSync(logFilePath, line, 'utf8');
+  } catch {}
+}
+
 const logger = {
   error: (message, ...args) => {
     if (config.enabled && config.level >= LOG_LEVELS.ERROR) {
-      // In production, this could send to error tracking service
-      // eslint-disable-next-line no-console
       console.error(message, ...args);
+      appendLog('ERROR', message, ...args);
     }
   },
-  
   warn: (message, ...args) => {
     if (config.enabled && config.level >= LOG_LEVELS.WARN) {
-      // In production, warnings are typically suppressed or sent to monitoring
       if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
         console.warn(message, ...args);
       }
+      appendLog('WARN', message, ...args);
     }
   },
-  
   info: (message, ...args) => {
     if (config.enabled && config.level >= LOG_LEVELS.INFO) {
-      // eslint-disable-next-line no-console
       console.info(message, ...args);
+      appendLog('INFO', message, ...args);
     }
   },
-  
   debug: (message, ...args) => {
     if (config.enabled && config.level >= LOG_LEVELS.DEBUG) {
-      // eslint-disable-next-line no-console
       console.debug(message, ...args);
+      appendLog('DEBUG', message, ...args);
     }
   }
 };

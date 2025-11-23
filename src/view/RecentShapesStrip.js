@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef, useState } from 'react';
+import React, { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
 
@@ -76,7 +76,7 @@ const RecentShapesStrip = ({
   };
 
   // Render all recent shapes in the order provided, never reordering.
-  const slots = Array.isArray(recentShapes) ? [...recentShapes] : [];
+  const slots = useMemo(() => Array.isArray(recentShapes) ? [...recentShapes] : [], [recentShapes]);
 
   // Log the order of shapes every render
   useEffect(() => {
@@ -85,7 +85,6 @@ const RecentShapesStrip = ({
 
   const bg = (colorScheme && (colorScheme.panelBackground || colorScheme.background)) || '#111217';
   const panelBorder = '1px solid rgba(255,255,255,0.04)';
-  const cardBg = colorScheme?.cardBackground || 'rgba(255,255,255,0.02)';
   const FLEX_START = 'flex-start';
 
   const statusText = (() => {

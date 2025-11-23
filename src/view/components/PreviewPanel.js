@@ -1,6 +1,5 @@
 /* eslint-disable complexity */
 import React, { useMemo, useRef, useEffect, useState } from 'react';
-import { resolveBackendBase } from '../../utils/backendApi';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -92,7 +91,7 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
 
   // Draw shape preview in canvas if needed
   useEffect(() => {
-    if (!canvasRef.current || !preview || cachedDataUrl && !imgError) return;
+    if (!canvasRef.current || !preview || (cachedDataUrl && !imgError)) return;
     const ctx = canvasRef.current.getContext('2d');
     ctx.clearRect(0, 0, drawW, drawH);
     // Simple cell rendering
