@@ -140,8 +140,12 @@ export const useShapeManager = ({
     const normalized = normalizeRecentShape(newShape);
     setRecentShapes(prev => {
       const newKey = generateShapeKey(normalized);
-      const filtered = prev.filter(shape => generateShapeKey(shape) !== newKey);
-      return [normalized, ...filtered].slice(0, MAX_RECENT_SHAPES);
+      // If shape already exists, do not change order
+      if (prev.some(shape => generateShapeKey(shape) === newKey)) {
+        return prev;
+      }
+      // Otherwise, append to end
+      return [...prev, normalized].slice(0, MAX_RECENT_SHAPES);
     });
   }, [generateShapeKey]);
 
@@ -423,8 +427,12 @@ export const useShapeManager = ({
         };
         setRecentShapes(prev => {
           const newKey = generateShapeKey(stub);
-          const filtered = prev.filter(s => generateShapeKey(s) !== newKey);
-          return [stub, ...filtered].slice(0, MAX_RECENT_SHAPES);
+          // If shape already exists, do not change order
+          if (prev.some(s => generateShapeKey(s) === newKey)) {
+            return prev;
+          }
+          // Otherwise, append to end
+          return [...prev, stub].slice(0, MAX_RECENT_SHAPES);
         });
 
         // Defer the full update (which may be slightly heavier) to the next
