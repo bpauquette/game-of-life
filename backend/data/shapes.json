@@ -189039,5 +189039,25 @@
       "createdAt": "2025-11-20T21:17:27.867Z"
     },
     "id": "86ac9a13-3e51-4890-a4e2-d46eea650d57"
+  },
+  {
+    "name": "Test Shape",
+    "rle": "bo$2bo$3o!",
+    "description": "A test shape for integration tests",
+    "id": "d0b627f0-1ac4-454b-ae3b-9f16908ce816",
+    "meta": {
+      "createdAt": "2025-11-23T22:35:41.746Z",
+      "source": "user-created"
+    }
+  },
+  {
+    "name": "Test Shape (1)",
+    "rle": "bo$2bo$3o!",
+    "description": "A test shape for integration tests",
+    "id": "d906b7db-aeca-449b-accb-42b70b440d10",
+    "meta": {
+      "createdAt": "2025-11-23T22:40:41.419Z",
+      "source": "user-created"
+    }
   }
 ]

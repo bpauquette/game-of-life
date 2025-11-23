@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { post } from "./api";
 import { useAuth } from "./AuthProvider";
+import validator from "validator";
 
 export default function Register() {
   const { login } = useAuth();
@@ -23,19 +24,33 @@ export default function Register() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setMsg("");
+
     if (!firstName.trim()) return setMsg("First name is required");
     if (!lastName.trim()) return setMsg("Last name is required");
     if (!email.trim()) return setMsg("Email is required");
+    if (!validator.isEmail(email.trim())) return setMsg("Invalid email format");
     if (!password) return setMsg("Password is required");
     const pwError = validatePassword(password);
     if (pwError) return setMsg(pwError);
-    const data = await post("/register", { email, password, firstName, lastName, aboutMe });
 
-    if (data.error) return setMsg(data.error);
-    if (!data.token) return setMsg("Unexpected error");
+    try {
+      const data = await post("/register", {
+        email: email.trim(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        aboutMe: aboutMe.trim()
+      });
 
-    login(email, data.token);
-    setMsg("Registration successful!");
+      if (data.error) return setMsg(data.error);
+      if (!data.token) return setMsg("Registration failed: No token received");
+
+      login(email.trim(), data.token);
+      setMsg("Registration successful!");
+    } catch (error) {
+      setMsg("Registration failed: " + error.message);
+    }
   }
 
   return (

@@ -52,7 +52,6 @@ function GameOfLifeApp(props) {
   const [popWindowSize, setPopWindowSize] = useState(50);
   const [popTolerance, setPopTolerance] = useState(3);
   const [maxChartGenerations, setMaxChartGenerations] = useState(5000);
-  const [confirmOnClear, setConfirmOnClear] = useState(true);
   const [performanceCaps, setPerformanceCaps] = useState({ maxFPS: 60, maxGPS: 30, enableFPSCap: false, enableGPSCap: false });
   const [detectStablePopulation, setDetectStablePopulation] = useState(() => {
     try {
@@ -192,10 +191,6 @@ function GameOfLifeApp(props) {
   useEffect(() => {
     const mvc = gameRef.current;
     if (!mvc || typeof mvc.model?.getCellCount !== 'function') return undefined;
-
-    const maxSamples = typeof mvc.model?.maxPopulationHistory === 'number'
-      ? mvc.model.maxPopulationHistory
-      : 1000;
 
     let cancelled = false;
     const sample = () => {
@@ -752,7 +747,6 @@ function GameOfLifeApp(props) {
     onLoadGrid: handleLoadGrid,
     showSpeedGauge: uiState?.showSpeedGauge ?? true,
     setShowSpeedGauge,
-    setConfirmOnClear,
     detectStablePopulation,
     setDetectStablePopulation: setDetectStablePopulationPreference,
     maxChartGenerations,

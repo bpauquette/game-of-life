@@ -1,6 +1,7 @@
 // src/auth/ResetRequest.jsx
 import { useState } from "react";
 import { post } from "./api";
+import validator from "validator";
 
 export default function ResetRequest() {
   const [email, setEmail] = useState("");
@@ -8,11 +9,20 @@ export default function ResetRequest() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const data = await post("/reset/request", { email });
+    setMsg("");
 
-    if (data.error) return setMsg(data.error);
+    if (!email.trim()) return setMsg("Email is required");
+    if (!validator.isEmail(email.trim())) return setMsg("Invalid email format");
 
-    setMsg("If that email exists, you will receive a reset link.");
+    try {
+      const data = await post("/reset/request", { email: email.trim() });
+
+      if (data.error) return setMsg(data.error);
+
+      setMsg("If that email exists, you will receive a reset link.");
+    } catch (error) {
+      setMsg("Request failed: " + error.message);
+    }
   }
 
   return (
@@ -23,6 +33,8 @@ export default function ResetRequest() {
           placeholder="Email"
           value={email}
           onChange={e => setEmail(e.target.value)}
+          type="email"
+          required
         /><br/>
         <button type="submit">Send Reset Link</button>
       </form>

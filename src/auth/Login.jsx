@@ -2,22 +2,34 @@
 import { useState } from "react";
 import { post } from "./api";
 import { useAuth } from "./AuthProvider";
+import validator from "validator";
 
 export default function Login() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const data = await post("/login", { email, password });
+    setMsg("");
 
-    if (data.error) return setMsg(data.error);
-    if (!data.token) return setMsg("Unexpected error");
+    if (!email.trim()) return setMsg("Email is required");
+    if (!validator.isEmail(email)) return setMsg("Invalid email format");
+    if (!password) return setMsg("Password is required");
 
-    login(email, data.token);
-    setMsg("Logged in!");
+    try {
+      const data = await post("/login", { email: email.trim(), password });
+
+      if (data.error) return setMsg(data.error);
+      if (!data.token) return setMsg("Login failed: No token received");
+
+      login(email.trim(), data.token);
+      setMsg("Logged in successfully!");
+    } catch (error) {
+      setMsg("Login failed: " + error.message);
+    }
   }
 
   return (
@@ -28,13 +40,20 @@ export default function Login() {
           placeholder="Email"
           value={email}
           onChange={e => setEmail(e.target.value)}
+          type="email"
+          required
         /><br/>
         <input
-          type="password"
+          type={showPassword ? "text" : "password"}
           placeholder="Password"
           value={password}
           onChange={e => setPassword(e.target.value)}
-        /><br/>
+          required
+        />
+        <button type="button" onClick={() => setShowPassword(!showPassword)}>
+          {showPassword ? "Hide" : "Show"} Password
+        </button>
+        <br/>
         <button type="submit">Login</button>
       </form>
       <div>{msg}</div>

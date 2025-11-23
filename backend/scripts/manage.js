@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
@@ -15,10 +15,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, '..', '..');
 
+// Use the current node executable by default so the manager tracks the actual server process PID.
+const nodeCmd = process.execPath; // full path to node
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const config = {
-  cmd: npmCmd,
-  args: ['start'],
+  cmd: nodeCmd,
+  args: ['src/index.js'],
   cwd: path.join(root, 'backend'),
   pidFile: path.join(root, 'backend', 'backend.pid'),
   logFile: path.join(root, 'backend', 'backend.log'),
@@ -70,13 +72,13 @@ function start() {
   const foreground = process.argv.includes('--foreground') || process.argv.includes('--no-detach');
   const shouldDetach = !foreground;
 
+  // Default to using node directly, but allow `--use-npm` to still use 'npm start'
   let spawnCmd = config.cmd;
   let spawnArgs = config.args;
-
-  // On Windows, avoid wrapping in cmd.exe; shell:true fixes spawn EINVAL
-  if (process.platform === 'win32') {
+  const useNpm = process.argv.includes('--use-npm');
+  if (useNpm) {
     spawnCmd = npmCmd;
-    spawnArgs = config.args;
+    spawnArgs = ['start'];
   }
 
   console.log('spawn command:', spawnCmd);
@@ -135,7 +137,7 @@ function spawnDetached(cmd, args) {
     stdio: ['ignore', outFd, outFd],
     detached: true,
     env: { ...process.env, PORT: config.portEnv, ...(enableDebugThumbs ? { GOL_DEBUG_THUMBS: '1' } : {}) },
-    shell: process.platform === 'win32', // <--- FIX FOR WINDOWS EINVAL
+    shell: false,
   });
   fs.closeSync(outFd);
   return child;
@@ -147,7 +149,7 @@ function spawnForeground(cmd, args) {
     stdio: 'inherit',
     detached: false,
     env: { ...process.env, PORT: config.portEnv, ...(enableDebugThumbs ? { GOL_DEBUG_THUMBS: '1' } : {}) },
-    shell: process.platform === 'win32', // <--- FIX FOR WINDOWS EINVAL
+    shell: false,
   });
 }
 
@@ -160,7 +162,13 @@ function stop() {
   }
 
   console.log(`Stopping backend (pid=${pid})`);
-  try { process.kill(Number.parseInt(pid, 10)); } catch {}
+  try { process.kill(Number.parseInt(pid, 10)); } catch (e) { /* ignore */ }
+  // On Windows, try taskkill to ensure the process tree is eliminated.
+  if (process.platform === 'win32') {
+    try {
+      spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
+    } catch (e) { /* ignore */ }
+  }
   setTimeout(() => {
     if (isRunning(pid)) try { process.kill(Number.parseInt(pid, 10), 'SIGKILL'); } catch {}
     if (fs.existsSync(config.pidFile)) fs.unlinkSync(config.pidFile);

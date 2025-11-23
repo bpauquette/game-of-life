@@ -1,7 +1,6 @@
 /* eslint-disable complexity */
 import React from 'react';
 import PropTypes from 'prop-types';
-import shapesCatalogStats from '../../config/shapesCatalogStats';
 
 const GRID_LINE_OFFSET = 0.5;
 
@@ -35,18 +34,6 @@ function getShapeExtents(cells) {
     maxY = Math.max(maxY, y);
   }
   return { minX, minY, maxX, maxY };
-}
-
-function normalizeCellsForDisplay(cells) {
-  if (!cells || cells.length === 0) return [];
-  const { minX, minY } = getShapeExtents(cells);
-  return cells.map(c => {
-    const ARRAY_X_INDEX = 0;
-    const ARRAY_Y_INDEX = 1;
-    const x = Array.isArray(c) ? c[ARRAY_X_INDEX] : (c.x ?? 0);
-    const y = Array.isArray(c) ? c[ARRAY_Y_INDEX] : (c.y ?? 0);
-    return { x: x - minX, y: y - minY };
-  });
 }
 
 // Helper: sample a few cell colors and compare/store them globally to detect mismatches

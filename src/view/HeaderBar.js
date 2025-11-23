@@ -101,7 +101,7 @@ export default function HeaderBar({
   onClearRecentShapes,
 }) {
    // Auth state and handlers
-  const { token, email, login, logout } = useAuth();
+  const { token, email, logout } = useAuth();
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const handleUserIconClick = () => setUserDialogOpen(true);

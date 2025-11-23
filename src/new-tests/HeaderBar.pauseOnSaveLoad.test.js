@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import HeaderBar from '../view/HeaderBar';
+import { AuthProvider } from '../auth/AuthProvider';
 import useGridFileManager from '../view/hooks/useGridFileManager';
 // Mock the grid file manager hook to avoid network and heavy UI
 jest.mock('../view/hooks/useGridFileManager', () => ({ __esModule: true, default: jest.fn() }));
@@ -66,7 +67,7 @@ function makeProps(overrides = {}) {
 describe('HeaderBar - pause on Save/Load click', () => {
   test('clicking Save pauses the simulation (calls setIsRunning(false))', async () => {
     const props = makeProps({ isRunning: true });
-    render(<HeaderBar {...props} />);
+    render(<AuthProvider><HeaderBar {...props} /></AuthProvider>);
 
   const saveButton = screen.getByRole('button', { name: /save current grid state/i });
   userEvent.click(saveButton);
@@ -76,7 +77,7 @@ describe('HeaderBar - pause on Save/Load click', () => {
 
   test('clicking Load pauses the simulation (calls setIsRunning(false))', async () => {
     const props = makeProps({ isRunning: true });
-    render(<HeaderBar {...props} />);
+    render(<AuthProvider><HeaderBar {...props} /></AuthProvider>);
 
     const loadButton = screen.getByRole('button', { name: /load/i });
   userEvent.click(loadButton);

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import useGridFileManager from '../view/hooks/useGridFileManager';
 import HeaderBar from '../view/HeaderBar';
+import { AuthProvider } from '../auth/AuthProvider';
 
 // Mock grid file manager used by HeaderBar so we don't open dialogs or hit network
 jest.mock('../view/hooks/useGridFileManager', () => ({ __esModule: true, default: jest.fn() }));
@@ -65,7 +66,7 @@ beforeEach(() => {
 describe('RunControlGroup - clear confirmation', () => {
   test('clicking Clear opens confirm dialog and only clears after confirm', async () => {
     const props = makeProps();
-    render(<HeaderBar {...props} />);
+    render(<AuthProvider><HeaderBar {...props} /></AuthProvider>);
 
     // Open confirm dialog via clear button
     const clearButton = screen.getByLabelText(/clear/i);
