@@ -60,15 +60,11 @@ const RecentShapesStrip = ({
   };
 
   const handleShapeClick = (shape) => {
-    // Switch to shapes tool first so tool state/overlays are prepared
-    // to receive the selected shape (avoids race where selection is set
-    // but the tool isn't active yet).
+    // Always switch to shapes tool first
     if (typeof onSwitchToShapesTool === 'function') onSwitchToShapesTool();
-    if (globalThis.gameController && typeof globalThis.gameController.setSelectedShape === 'function') {
-      globalThis.gameController.setSelectedShape(shape);
-    } else if (typeof selectShape === 'function') {
-      selectShape(shape);
-    }
+    // Always set the selected shape for the tool
+    if (typeof selectShape === 'function') selectShape(shape);
+    // Optionally trigger overlay redraw if needed
     if (typeof drawWithOverlay === 'function') drawWithOverlay();
   };
 
