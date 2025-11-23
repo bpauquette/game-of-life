@@ -201,13 +201,6 @@ const useGridFileManager = (config = {}) => {
         throw new Error('Grid name is required');
       }
 
-      // Check if user is logged in
-      const token = sessionStorage.getItem('authToken');
-      if (!token) {
-        window.dispatchEvent(new CustomEvent('auth:needLogin', { detail: { message: 'Please login to save.' } }));
-        throw new Error('Please login to save.');
-      }
-
       setLoading(true);
       setError(null);
 

@@ -244,6 +244,14 @@ const ControlsBar = ({
     generation
   });
 
+  const handleOpenSave = () => {
+    if (!sessionStorage.getItem('authToken')) {
+      window.dispatchEvent(new CustomEvent('auth:needLogin', { detail: { message: 'Please login to save.' } }));
+    } else {
+      openSaveDialog();
+    }
+  };
+
   const openOptions = () => {
     setWasRunningBeforeOptions(isRunning);
     if (isRunning) setIsRunning(false);
@@ -296,7 +304,7 @@ const ControlsBar = ({
     <div className="controls">
       <Stack direction="row" spacing={CONTROL_SPACING} alignItems="center">
         {/* Order: Save/Load (far left) -> Start/Stop/Clear -> Tool toggles -> Aux */}
-  <SaveLoadGroup openSaveGrid={openSaveGrid} openLoadGrid={openLoadGrid} />
+  <SaveLoadGroup openSaveGrid={handleOpenSave} openLoadGrid={openLoadGrid} />
 
         <RunControlGroup
           isRunning={isRunning}
