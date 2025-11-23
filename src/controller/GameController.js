@@ -444,7 +444,24 @@ export class GameController {
     const placeShape = (x, y) => {
       const shape = this.model.getSelectedShape();
       if (shape) {
+        // Collect diff for undo
+        const cells = shape.cells || shape.pattern || [];
+        const diff = [];
+        for (const cell of cells) {
+          const hasX = cell && Object.hasOwn(cell, 'x');
+          const hasY = cell && Object.hasOwn(cell, 'y');
+          let offsetX = hasX ? cell.x : Array.isArray(cell) ? cell[0] ?? 0 : 0;
+          let offsetY = hasY ? cell.y : Array.isArray(cell) ? cell[1] ?? 0 : 0;
+          const cellX = x + offsetX;
+          const cellY = y + offsetY;
+          const prevAlive = this.model.isCellAlive(cellX, cellY);
+          if (!prevAlive) {
+            diff.push({ x: cellX, y: cellY, prevAlive, newAlive: true });
+          }
+        }
         this.model.placeShape(x, y, shape);
+        if (!this._currentDiff) this._currentDiff = [];
+        this._currentDiff.push(...diff);
         // record when a placement happened so a subsequent click event
         // that fires immediately after mouseup doesn't duplicate it
         this._lastPlacementAt = Date.now();
