@@ -3,6 +3,9 @@ import { useState } from "react";
 import { post } from "./api";
 import { useAuth } from "./AuthProvider";
 import validator from "validator";
+import IconButton from "@mui/material/IconButton";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 export default function Login() {
   const { login } = useAuth();
@@ -43,16 +46,22 @@ export default function Login() {
           type="email"
           required
         /><br/>
-        <input
-          type={showPassword ? "text" : "password"}
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-        />
-        <button type="button" onClick={() => setShowPassword(!showPassword)}>
-          {showPassword ? "Hide" : "Show"} Password
-        </button>
+        <div style={{ position: 'relative' }}>
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+            style={{ paddingRight: 40 }}
+          />
+          <IconButton
+            onClick={() => setShowPassword(!showPassword)}
+            style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}
+          >
+            {showPassword ? <VisibilityOff /> : <Visibility />}
+          </IconButton>
+        </div>
         <br/>
         <button type="submit">Login</button>
       </form>
