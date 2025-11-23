@@ -241,7 +241,7 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
           <span>
             {isEmpty
               ? 'No data recorded'
-              : `Samples: ${generations.length}, Generations: ${minGen}${maxGen}`}
+                : `Samples: ${generations.length}, Generations: ${minGen}–${maxGen}`}
           </span>
         </div>
       </div>
