@@ -241,6 +241,11 @@ function GameOfLifeApp(props) {
     y: initialViewport.offsetY ?? 0,
     cellSize: initialViewport.cellSize ?? 8
   });
+  const lastViewportRef = useRef({
+    offsetX: initialViewport.offsetX ?? 0,
+    offsetY: initialViewport.offsetY ?? 0,
+    cellSize: initialViewport.cellSize ?? 8
+  });
   const updateViewportSnapshot = useCallback((nextViewport) => {
     if (!nextViewport) return;
     const normalized = {
@@ -248,16 +253,19 @@ function GameOfLifeApp(props) {
       offsetY: Number.isFinite(nextViewport.offsetY) ? nextViewport.offsetY : offsetRef.current.y,
       cellSize: Number.isFinite(nextViewport.cellSize) ? nextViewport.cellSize : offsetRef.current.cellSize
     };
-    offsetRef.current.x = normalized.offsetX;
-    offsetRef.current.y = normalized.offsetY;
-    offsetRef.current.cellSize = normalized.cellSize;
-    setViewportSnapshot((prev) => (
-      prev.offsetX === normalized.offsetX &&
-      prev.offsetY === normalized.offsetY &&
-      prev.cellSize === normalized.cellSize
-        ? prev
-        : normalized
-    ));
+    // Only update if the viewport actually changed
+    const last = lastViewportRef.current;
+    if (
+      last.offsetX !== normalized.offsetX ||
+      last.offsetY !== normalized.offsetY ||
+      last.cellSize !== normalized.cellSize
+    ) {
+      offsetRef.current.x = normalized.offsetX;
+      offsetRef.current.y = normalized.offsetY;
+      offsetRef.current.cellSize = normalized.cellSize;
+      setViewportSnapshot(normalized);
+      lastViewportRef.current = { ...normalized };
+    }
   }, [offsetRef]);
   // Keep a ref to the current color scheme key so the layout effect
   // doesn't need to capture uiState in its dependency array.

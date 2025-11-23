@@ -531,8 +531,9 @@ export class GameController {
     const viewport = this.model.getViewport();
     const cellSize = viewport.cellSize || 1;
     if (!Number.isFinite(dx) || !Number.isFinite(dy) || !Number.isFinite(cellSize) || cellSize <= 0) return;
-    const deltaCellsX = dx / cellSize;
-    const deltaCellsY = dy / cellSize;
+    // Triple the pan increment
+    const deltaCellsX = (dx * 3) / cellSize;
+    const deltaCellsY = (dy * 3) / cellSize;
     const newOffsetX = viewport.offsetX - deltaCellsX;
     const newOffsetY = viewport.offsetY - deltaCellsY;
     this.model.setViewportModel(newOffsetX, newOffsetY, viewport.cellSize);
@@ -565,7 +566,7 @@ export class GameController {
   // Keyboard handlers
   handleKeyDown(key, shiftKey, event) {
     const viewport = this.model.getViewport();
-    const amount = shiftKey ? this.options.keyboardPanAmountShift : this.options.keyboardPanAmount;
+    const amount = (shiftKey ? this.options.keyboardPanAmountShift : this.options.keyboardPanAmount) * 3;
 
     let newOffsetX = viewport.offsetX;
     let newOffsetY = viewport.offsetY;
