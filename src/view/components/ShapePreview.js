@@ -73,10 +73,20 @@ function ShapePreviewComponent({
 }) {
   const cells = getShapeCells(shape);
   const { minX, minY, maxX, maxY } = getShapeExtents(cells);
-  // Prefer explicit shape width/height when available (ShapePalette uses s.width/s.height)
-  const w = (shape && (shape.width || shape.w || shape.meta?.width)) || Math.max(1, (maxX - minX + 1));
-  const h = (shape && (shape.height || shape.h || shape.meta?.height)) || Math.max(1, (maxY - minY + 1));
-  const normalized = cells && cells.length > 0 ? normalizeCellsForDisplay(cells) : [];
+  // Use shape's own extents for grid size
+  const w = Math.max(1, (maxX - minX + 1));
+  const h = Math.max(1, (maxY - minY + 1));
+  // Center shape in grid: offset all cells so shape is centered in viewBox
+  let offsetX = 0, offsetY = 0;
+  if (cells.length > 0) {
+    offsetX = Math.floor((w - (maxX - minX + 1)) / 2) - minX;
+    offsetY = Math.floor((h - (maxY - minY + 1)) / 2) - minY;
+  }
+  const centeredCells = cells.map(c => {
+    const x = Array.isArray(c) ? c[0] : (c.x ?? 0);
+    const y = Array.isArray(c) ? c[1] : (c.y ?? 0);
+    return { x: x + offsetX, y: y + offsetY };
+  });
 
   const time = t || Date.now();
 
@@ -96,7 +106,7 @@ function ShapePreviewComponent({
     // ignore
   }
 
-  const hasCells = normalized.length > 0;
+  const hasCells = cells.length > 0;
 
   // --- Debugging/check: compare color outputs across different render sources (palette vs recent)
   // To avoid spamming the console, debugging is gated behind a flag and each unique
@@ -139,11 +149,9 @@ function ShapePreviewComponent({
     if (typeof console !== 'undefined' && console.error) console.error('ShapePreview debug error', err);
   }
 
-  // Normalize all previews to the catalog's maximum extents so thumbnails
-  // render at consistent scale relative to the largest shape. This ensures
-  // RecentShapesStrip thumbnails line up visually when compared side-by-side.
-  const viewW = Math.max(1, shapesCatalogStats?.maxW || w);
-  const viewH = Math.max(1, shapesCatalogStats?.maxH || h);
+  // Use shape's own extents for viewBox
+  const viewW = w;
+  const viewH = h;
 
   return (
     <svg
@@ -157,9 +165,7 @@ function ShapePreviewComponent({
         background: selected
           ? `linear-gradient(${selectedBackgroundOverlay}, ${selectedBackgroundOverlay}), ${colorScheme.background || '#1a1a1a'}`
           : colorScheme.background || '#1a1a1a',
-        border: selected
-          ? `${selectedBorderWidth} solid ${selectedBorderColor}`
-          : `1px solid rgba(0,0,0,${borderOpacity})`,
+        border: 'none',
         borderRadius,
         boxShadow: selected ? selectedBoxShadow : 'none',
         transition: 'all 0.3s ease'
@@ -175,8 +181,8 @@ function ShapePreviewComponent({
           ))}
         </g>
       ) : (
-        normalized.map((cell, i) => {
-          // draw at normalized coordinates but ask colorScheme for the original coordinates
+        centeredCells.map((cell, i) => {
+          // draw at centered coordinates but ask colorScheme for the original coordinates
           const original = cells[i];
           const origX = Array.isArray(original) ? original[0] : (original.x ?? 0);
           const origY = Array.isArray(original) ? original[1] : (original.y ?? 0);

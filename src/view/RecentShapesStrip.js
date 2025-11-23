@@ -414,14 +414,17 @@ const RecentShapesStrip = ({
                 transition: 'transform 160ms ease, box-shadow 160ms ease'
               };
           const cardContainerStyle = {
-            padding: 6,
+            padding: 0,
             borderRadius: 10,
             background: cardBg,
             display: 'flex',
             alignItems: FLEX_START,
             gap: 8,
             position: 'relative',
-            minWidth: 0
+            minWidth: 0,
+            width: '100%',
+            height: '100%',
+            justifyContent: 'center'
           };
           const badgeStyle = {
             position: 'absolute',
@@ -441,31 +444,31 @@ const RecentShapesStrip = ({
             <div
               key={slotKey}
               style={{
-                minWidth: 92,
-                maxWidth: 140,
+                minWidth: 0,
+                width: 'auto',
+                maxWidth: 170,
+                height: 'auto',
                 flexShrink: 0,
                 scrollSnapAlign: 'center',
-                  display: 'flex',
-                  alignItems: FLEX_START,
-                justifyContent: 'center'
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                margin: '0 2px'
               }}
             >
-              <div style={frameStyle}>
-                <div style={cardContainerStyle}>
-                  {selected && <span style={badgeStyle}>Selected</span>}
-                <ShapeSlot
-                  shape={shape}
-                  index={index}
-                  colorScheme={colorScheme}
-                  selected={selected}
-                  title={getShapeTitle(shape, index)}
-                  onSelect={() => handleShapeClick(shape)}
-                  onRotate={(rotatedShape, i) => {
-                    if (typeof onRotateShape === 'function') onRotateShape(rotatedShape, i, { inPlace: true });
-                  }}
-                />
-              </div>
-              </div>
+              <ShapeSlot
+                shape={shape}
+                index={index}
+                colorScheme={colorScheme}
+                selected={selected}
+                title={getShapeTitle(shape, index)}
+                onSelect={() => handleShapeClick(shape)}
+                onRotate={(rotatedShape, i) => {
+                  if (typeof onRotateShape === 'function') onRotateShape(rotatedShape, i, { inPlace: true });
+                }}
+                thumbnailSize={64}
+              />
             </div>
           );
         })}
