@@ -17,6 +17,7 @@ const ShapeListItem = memo(function ShapeListItem({
   onRequestDelete,
   onAddRecent,
   onHover,
+  user,
 }) {
   const tRef = useRef(Date.now());
   const getCellColor = (x, y) => colorScheme?.getCellColor?.(x, y, tRef.current) ?? '#4a9';
@@ -83,16 +84,18 @@ const ShapeListItem = memo(function ShapeListItem({
               {shape.name || '(unnamed)'}
             </Typography>
           </Box>
-          <IconButton
-            edge="end"
-            aria-label="delete"
-            onClick={(event) => {
-              event.stopPropagation();
-              onRequestDelete(shape);
-            }}
-          >
-            <DeleteIcon />
-          </IconButton>
+            {user && shape.userId === user.id && (
+              <IconButton
+                edge="end"
+                aria-label="delete"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRequestDelete(shape);
+                }}
+              >
+                <DeleteIcon />
+              </IconButton>
+            )}
         </ListItemButton>
       </Box>
     </ListItem>
@@ -107,6 +110,7 @@ ShapeListItem.propTypes = {
   onRequestDelete: PropTypes.func,
   onAddRecent: PropTypes.func.isRequired,
   onHover: PropTypes.func,
+  user: PropTypes.object,
 };
 
 export default ShapeListItem;

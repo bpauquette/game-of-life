@@ -3,6 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ShapePaletteDialog from '../view/ShapePaletteDialog';
 
+// Mock useAuth hook
+jest.mock('../auth/AuthProvider', () => ({
+  useAuth: () => ({ user: null }),
+}));
+
 function mockFetchShapesFail() {
   return Promise.reject(new Error('NetworkError: Failed to fetch'));
 }

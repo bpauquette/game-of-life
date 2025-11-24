@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useDeferredValue } from 'react';
+import React, { useState, useCallback, useDeferredValue, useMemo } from 'react';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import PropTypes from 'prop-types';
@@ -25,6 +25,7 @@ import {
   SnackMessage,
   BackendServerDialog,
 } from './components/shapePalette';
+import { useAuth } from '../auth/AuthProvider';
 
 const LARGE_CATALOG_THRESHOLD = 1000;
 
@@ -37,6 +38,7 @@ const hasShapeCells = (shape) => {
 export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, colorSchemeKey = 'bio', onAddRecent, prefetchOnMount = false, recentShapes = [] }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { user } = useAuth();
   const {
     inputValue,
     setInputValue,
@@ -57,7 +59,20 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
 
 
   // ...existing code...
-  const shapesForRender = useDeferredValue(displayedResults);
+  const shapesForRender = useDeferredValue(
+    useMemo(() => {
+      // Sort shapes: user-owned shapes first, then system shapes
+      const sorted = [...displayedResults].sort((a, b) => {
+        const aIsUserOwned = user && a.userId === user.id;
+        const bIsUserOwned = user && b.userId === user.id;
+        
+        if (aIsUserOwned && !bIsUserOwned) return -1;
+        if (!aIsUserOwned && bIsUserOwned) return 1;
+        return 0;
+      });
+      return sorted;
+    }, [displayedResults, user])
+  );
   const isInitialMobileLoad = loading && results.length === 0;
 
   const [backendStarting, setBackendStarting] = useState(false);
@@ -269,6 +284,7 @@ The backend will start on port ${backendPort}.`);
               onAddRecent={safeAddRecent}
               shapeSize={isMobile ? 64 : 40}
               showShapeNames={isMobile}
+              user={user}
             />
             {isInitialMobileLoad && (
               <Box

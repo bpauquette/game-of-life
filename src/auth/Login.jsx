@@ -85,6 +85,7 @@ export default function Login({ onSuccess, onError, showRegisterLink = true }) {
           <IconButton
             onClick={() => setShowPassword(!showPassword)}
             style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}
+            aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? <VisibilityOff /> : <Visibility />}
           </IconButton>

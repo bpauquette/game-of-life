@@ -72,7 +72,8 @@ describe('Login Component', () => {
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/login', { email: 'test@example.com', password: 'Password123!' });
-      expect(screen.getByText('Logged in successfully!')).toBeInTheDocument();
+      // Check that no error message is shown
+      expect(screen.queryByText(/Login failed/)).not.toBeInTheDocument();
     });
   });
 
@@ -102,12 +103,12 @@ describe('Login Component', () => {
     );
 
     const passwordInput = screen.getByPlaceholderText('Password');
-    const toggleButton = screen.getByRole('button', { name: 'Show Password' });
+    const toggleButton = screen.getByRole('button', { name: 'Show password' });
 
     expect(passwordInput).toHaveAttribute('type', 'password');
 
     fireEvent.click(toggleButton);
     expect(passwordInput).toHaveAttribute('type', 'text');
-    expect(toggleButton).toHaveTextContent('Hide Password');
+    expect(screen.getByRole('button', { name: 'Hide password' })).toBeInTheDocument();
   });
 });

@@ -4,6 +4,11 @@ import '@testing-library/jest-dom';
 import ShapePaletteDialog from './ShapePaletteDialog';
 import { colorSchemes } from '../model/colorSchemes';
 
+// Mock useAuth hook
+jest.mock('../auth/AuthProvider', () => ({
+  useAuth: () => ({ user: null }),
+}));
+
 function mockFetchShapesFail() {
   return Promise.reject(new Error('NetworkError: Failed to fetch'));
 }

@@ -8,6 +8,9 @@ import { fetchShapeById } from '../../utils/backendApi';
 
 jest.mock('../hooks/useShapePaletteSearch');
 jest.mock('../hooks/useHoverPreview');
+jest.mock('../../auth/AuthProvider', () => ({
+  useAuth: () => ({ user: null }),
+}));
 jest.mock('../../utils/backendApi', () => ({
   fetchShapeById: jest.fn(),
   createShape: jest.fn(),
