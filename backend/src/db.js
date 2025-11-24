@@ -110,7 +110,8 @@ const deleteGrid = async (id) => {
 
 const API = {
   listShapes, getShape, getShapeByName, addShape, deleteShape,
-  listGrids, getGrid, saveGrid, deleteGrid
+  listGrids, getGrid, saveGrid, deleteGrid,
+  writeDb // Export for migration use
 };
 
 export default API;
