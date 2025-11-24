@@ -38,6 +38,20 @@ db.prepare(`CREATE TABLE IF NOT EXISTS users (
 	last_login TEXT
 )`).run();
 
+// Create system user for existing shapes
+const SYSTEM_USER_ID = 'system-user';
+const systemUser = db.prepare(`SELECT * FROM users WHERE id = ?`).get(SYSTEM_USER_ID);
+if (!systemUser) {
+  db.prepare(`INSERT INTO users (id, email, first_name, last_name, about_me) VALUES (?, ?, ?, ?, ?)`).run(
+    SYSTEM_USER_ID,
+    'system@gameoflife.com',
+    'System',
+    'User',
+    'Built-in shapes and patterns'
+  );
+  logger.info('Created system user for existing shapes');
+}
+
 // Close DB on exit
 process.on('exit', () => db.close());
 process.on('SIGINT', () => { db.close(); process.exit(); });
@@ -247,5 +261,22 @@ router.post("/reset/confirm/:token", (req, res) => {
 	}
 });
 
+// --- CHECK EMAIL EXISTS ---------------------------------------------
+router.post("/check-email", authLimiter, (req, res) => {
+	try {
+		const { email } = req.body;
+		if (!email || !email.trim()) {
+			return res.status(400).json({ error: "Email is required" });
+		}
+
+		const user = db.prepare(`SELECT id FROM users WHERE email = ?`).get(email.trim());
+		res.json({ exists: !!user });
+	} catch (err) {
+		logger.error('[CHECK EMAIL] Error:', err);
+		return res.status(500).json({ error: "Check email failed" });
+	}
+});
+
 // --- EXPORT ROUTER --------------------------------------------------
 export default router;
+export { SYSTEM_USER_ID };
