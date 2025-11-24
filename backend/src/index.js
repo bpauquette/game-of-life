@@ -419,6 +419,29 @@ export function createApp() {
     }
   });
 
+  // GET my shapes (protected - only user's own shapes)
+  app.get('/v1/shapes/my', verifyToken, async (req, res) => {
+    try {
+      const q = (req.query.q || '').toLowerCase();
+      const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
+      const offset = Math.max(0, Number(req.query.offset) || 0);
+
+      const shapes = await db.listShapes();
+
+      // Only return shapes owned by the authenticated user
+      const myShapes = shapes.filter(s => s.userId === req.user.id);
+
+      const filtered = q
+        ? myShapes.filter(s => (s.name || '').toLowerCase().includes(q))
+        : myShapes;
+
+      res.json({ items: filtered.slice(offset, offset + limit), total: filtered.length });
+    } catch (err) {
+      logger.error('my shapes list error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Body size error handler
   app.use((err, req, res, next) => {
     if (err && (err.type === 'entity.too.large' || err.status === 413)) {
