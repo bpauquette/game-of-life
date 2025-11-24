@@ -16,6 +16,7 @@ import { generateThumbnailsForShape } from './thumbnailGenerator.js';
 // NEW — AUTH
 import authRouter from './auth/auth.mjs';
 import { verifyToken } from './auth/jwtMiddleware.js';
+import { SYSTEM_USER_ID } from './auth/auth.mjs';
 
 // __dirname equivalent for ESM modules
 const __filename = fileURLToPath(import.meta.url);
@@ -173,8 +174,35 @@ const ensureUniqueName = async (baseName) => {
   return unique;
 };
 
+// Migration: Add userId to existing shapes
+async function migrateExistingShapes() {
+  try {
+    const shapes = await db.listShapes();
+    const shapesToUpdate = shapes.filter(s => !s.userId);
+
+    if (shapesToUpdate.length > 0) {
+      logger.info(`Migrating ${shapesToUpdate.length} existing shapes to system user`);
+
+      for (const shape of shapesToUpdate) {
+        shape.userId = SYSTEM_USER_ID;
+      }
+
+      // Re-save all shapes (this will update the JSON file)
+      const allShapes = await db.listShapes();
+      await writeDb(allShapes);
+
+      logger.info('Migration completed successfully');
+    }
+  } catch (error) {
+    logger.error('Migration failed:', error);
+  }
+}
+
 export function createApp() {
   const app = express();
+
+  // Migrate existing shapes to have system userId
+  migrateExistingShapes();
 
   app.use(cors());
   app.options('*', cors());
@@ -237,10 +265,22 @@ export function createApp() {
       const q = (req.query.q || '').toLowerCase();
       const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
       const offset = Math.max(0, Number(req.query.offset) || 0);
+
       const shapes = await db.listShapes();
+
+      // Filter by user: show user's shapes + system shapes
+      let userShapes = shapes;
+      if (req.user) {
+        // Authenticated user: show their shapes + system shapes
+        userShapes = shapes.filter(s => s.userId === req.user.id || s.userId === SYSTEM_USER_ID);
+      } else {
+        // Unauthenticated user: show only system shapes
+        userShapes = shapes.filter(s => s.userId === SYSTEM_USER_ID);
+      }
+
       const filtered = q
-        ? shapes.filter(s => (s.name || '').toLowerCase().includes(q))
-        : shapes;
+        ? userShapes.filter(s => (s.name || '').toLowerCase().includes(q))
+        : userShapes;
       res.json({ items: filtered.slice(offset, offset + limit), total: filtered.length });
     } catch (err) {
       logger.error('shapes list error:', err);
@@ -248,16 +288,27 @@ export function createApp() {
     }
   });
 
-  // Names list (public)
+  // Names list (public for system shapes, protected for user shapes)
   app.get('/v1/shapes/names', async (req, res) => {
     try {
       const q = (req.query.q || '').toLowerCase();
       const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 50));
       const offset = Math.max(0, Number(req.query.offset) || 0);
       const shapes = await db.listShapes();
+
+      // Filter by user access: show user's shapes + system shapes
+      let userShapes = shapes;
+      if (req.user) {
+        // Authenticated user: show their shapes + system shapes
+        userShapes = shapes.filter(s => s.userId === req.user.id || s.userId === SYSTEM_USER_ID);
+      } else {
+        // Unauthenticated user: show only system shapes
+        userShapes = shapes.filter(s => s.userId === SYSTEM_USER_ID);
+      }
+
       const filtered = q
-        ? shapes.filter(s => (s.name || '').toLowerCase().includes(q))
-        : shapes;
+        ? userShapes.filter(s => (s.name || '').toLowerCase().includes(q))
+        : userShapes;
       const items = filtered.slice(offset, offset + limit).map(s => ({
         id: s.id,
         name: s.name
@@ -271,21 +322,99 @@ export function createApp() {
 
   // Removed: GET thumbnails (public) and GET shape by ID thumbnail endpoints. Thumbnails are now served as static assets from /public/thumbnails.
 
-  // GET shape (public)
+  // GET shape (public for system shapes, protected for user shapes)
   app.get('/v1/shapes/:id', async (req, res) => {
     const s = await db.getShape(req.params.id);
     if (!s) return res.status(404).json({ error: 'not found' });
-    res.json(s);
+
+    // Allow access to system shapes for everyone, user shapes only for owner
+    if (s.userId === SYSTEM_USER_ID || (req.user && s.userId === req.user.id)) {
+      res.json(s);
+    } else {
+      res.status(403).json({ error: 'access denied' });
+    }
   });
 
   // DELETE shape (protected)
   app.delete('/v1/shapes/:id', verifyToken, async (req, res) => {
     try {
+      const shape = await db.getShape(req.params.id);
+      if (!shape) return res.status(404).json({ error: 'not found' });
+
+      // Prevent deletion of system shapes, only allow deletion of user's own shapes
+      if (shape.userId === SYSTEM_USER_ID) {
+        return res.status(403).json({ error: 'cannot delete system shapes' });
+      }
+      if (shape.userId !== req.user.id) {
+        return res.status(403).json({ error: 'access denied' });
+      }
+
       const ok = await db.deleteShape(req.params.id);
       if (!ok) return res.status(404).json({ error: 'not found' });
       res.status(204).end();
     } catch (err) {
       logger.error('delete error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // PATCH shape public status (protected)
+  app.patch('/v1/shapes/:id/public', verifyToken, async (req, res) => {
+    try {
+      const shape = await db.getShape(req.params.id);
+      if (!shape) return res.status(404).json({ error: 'not found' });
+
+      // Only allow owner to change public status
+      if (shape.userId !== req.user.id) {
+        return res.status(403).json({ error: 'access denied' });
+      }
+
+      const { public: isPublic } = req.body;
+      if (typeof isPublic !== 'boolean') {
+        return res.status(400).json({ error: 'public must be boolean' });
+      }
+
+      shape.public = isPublic;
+      await db.addShape(shape); // This will update the shape
+
+      res.json({ id: shape.id, public: shape.public });
+    } catch (err) {
+      logger.error('toggle public error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET public shapes (public access)
+  app.get('/v1/shapes/public', async (req, res) => {
+    try {
+      const q = (req.query.q || '').toLowerCase();
+      const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
+      const offset = Math.max(0, Number(req.query.offset) || 0);
+
+      const shapes = await db.listShapes();
+      const publicShapes = shapes.filter(s => s.public === true);
+
+      const filtered = q
+        ? publicShapes.filter(s => (s.name || '').toLowerCase().includes(q))
+        : publicShapes;
+
+      // Return limited shape data for public access
+      const items = filtered.slice(offset, offset + limit).map(s => ({
+        id: s.id,
+        name: s.name,
+        width: s.width,
+        height: s.height,
+        cellCount: s.cellCount,
+        userId: s.userId, // Include userId for attribution
+        meta: {
+          createdAt: s.meta?.createdAt,
+          source: s.meta?.source
+        }
+      }));
+
+      res.json({ items, total: filtered.length });
+    } catch (err) {
+      logger.error('public shapes list error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -312,6 +441,8 @@ export function createApp() {
       if (!shape.id) shape.id = makeId();
       if (shape.name) shape.name = await ensureUniqueName(shape.name);
 
+      shape.userId = req.user.id; // Associate shape with authenticated user
+      shape.public = shape.public || false; // Default to private
       shape.meta = shape.meta || {};
       shape.meta.createdAt = shape.meta.createdAt || new Date().toISOString();
       shape.meta.source = shape.meta.source || 'user-created';
