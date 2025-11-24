@@ -42,12 +42,13 @@ db.prepare(`CREATE TABLE IF NOT EXISTS users (
 const SYSTEM_USER_ID = 'system-user';
 const systemUser = db.prepare(`SELECT * FROM users WHERE id = ?`).get(SYSTEM_USER_ID);
 if (!systemUser) {
-  // Create a dummy hashed password for system user (never used for login)
-  const dummyPassword = await bcrypt.hash('system-password-not-used', 10);
+  // Use a pre-computed hash for a password that will never be used for login
+  // This hash corresponds to 'system-user-no-login-allowed' with bcrypt cost 12
+  const dummyHash = '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewfLkE0qQcO8c3G';
   db.prepare(`INSERT INTO users (id, email, hashed_password, first_name, last_name, about_me) VALUES (?, ?, ?, ?, ?, ?)`).run(
     SYSTEM_USER_ID,
     'system@gameoflife.com',
-    dummyPassword,
+    dummyHash,
     'System',
     'User',
     'Built-in shapes and patterns'
@@ -185,6 +186,13 @@ router.post("/login", authLimiter, (req, res) => {
 			logger.warn('[LOGIN] Invalid email:', email);
 			return res.status(401).json({ error: "Invalid login" });
 		}
+
+		// Prevent system user from logging in
+		if (user.id === SYSTEM_USER_ID) {
+			logger.warn('[LOGIN] Attempted login for system user:', email);
+			return res.status(401).json({ error: "Invalid login" });
+		}
+
 		bcrypt.compare(password, user.hashed_password).then(match => {
 			if (!match) {
 				logger.warn('[LOGIN] Invalid password for:', email);
