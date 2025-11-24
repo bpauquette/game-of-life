@@ -188,8 +188,7 @@ async function migrateExistingShapes() {
       }
 
       // Re-save all shapes (this will update the JSON file)
-      const allShapes = await db.listShapes();
-      await writeDb(allShapes);
+      await db.writeDb(shapes);
 
       logger.info('Migration completed successfully');
     }
