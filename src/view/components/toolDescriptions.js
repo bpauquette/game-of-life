@@ -4,6 +4,7 @@ const TOOL_DESCRIPTIONS = {
   draw: 'Freehand Draw',
   line: 'Line Tool',
   rect: 'Rectangle Tool',
+  square: 'Square Tool',
   circle: 'Circle Tool',
   oval: 'Oval Tool',
   shapes: 'Shape Placement',

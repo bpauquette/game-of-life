@@ -7,7 +7,7 @@ import { GameController } from './GameController';
 import { drawTool } from './tools/drawTool';
 import { eraserTool } from './tools/eraserTool';
 import { lineTool } from './tools/lineTool';
-import { rectTool } from './tools/rectTool';
+import { rectTool, squareTool } from './tools/rectTool';
 import { circleTool } from './tools/circleTool';
 import { ovalTool } from './tools/ovalTool';
 import { randomRectTool } from './tools/randomRectTool';
@@ -94,6 +94,7 @@ export class GameMVC {
     this.controller.registerTool('erase', eraserTool);
     this.controller.registerTool('line', lineTool);
     this.controller.registerTool('rect', rectTool);
+    this.controller.registerTool('square', squareTool);
     this.controller.registerTool('circle', circleTool);
     this.controller.registerTool('oval', ovalTool);
     this.controller.registerTool('randomRect', randomRectTool);

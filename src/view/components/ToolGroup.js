@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import { Widgets as WidgetsIcon, Edit as EditIcon, Backspace as BackspaceIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Colorize as ColorizeIcon, HorizontalRule as HorizontalRuleIcon } from '@mui/icons-material';
+import { Widgets as WidgetsIcon, Edit as EditIcon, Backspace as BackspaceIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Colorize as ColorizeIcon, HorizontalRule as HorizontalRuleIcon, Stop as StopIcon } from '@mui/icons-material';
 import TOOL_DESCRIPTIONS from './toolDescriptions';
 // icons are imported above from @mui/icons-material
 import OvalIcon from '../components/OvalIcon';
@@ -84,6 +84,7 @@ export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = fal
   {!hideOptionalTools && <ToggleButton value="eraser" aria-label="eraser"><Tooltip title={TOOL_DESCRIPTIONS.eraser}><BackspaceIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>}
       <ToggleButton value="line" aria-label="line"><Tooltip title={TOOL_DESCRIPTIONS.line}><HorizontalRuleIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
   <ToggleButton value="rect" aria-label="rect"><Tooltip title={TOOL_DESCRIPTIONS.rect}><CropSquareIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+  <ToggleButton value="square" aria-label="square"><Tooltip title={TOOL_DESCRIPTIONS.square}><StopIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
   <ToggleButton value="circle" aria-label="circle"><Tooltip title={TOOL_DESCRIPTIONS.circle}><RadioButtonUncheckedIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
   <ToggleButton value="oval" aria-label="oval"><Tooltip title={TOOL_DESCRIPTIONS.oval}><OvalIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
   {!hideOptionalTools && <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title={TOOL_DESCRIPTIONS.randomRect}><CasinoIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>}
