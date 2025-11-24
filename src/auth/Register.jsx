@@ -3,6 +3,9 @@ import { useState } from "react";
 import { post } from "./api";
 import { useAuth } from "./AuthProvider";
 import validator from "validator";
+import IconButton from "@mui/material/IconButton";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 export default function Register() {
   const { login } = useAuth();
@@ -12,6 +15,7 @@ export default function Register() {
   const [lastName, setLastName] = useState("");
   const [aboutMe, setAboutMe] = useState("");
   const [msg, setMsg] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   function validatePassword(pw) {
     if (pw.length < 8) return "Password must be at least 8 characters.";
@@ -80,13 +84,22 @@ export default function Register() {
           onChange={e => setEmail(e.target.value)}
           required
         /><br/>
-        <input
-          type="password"
-          placeholder="Password (required)"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-        /><br/>
+        <div style={{ position: 'relative' }}>
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password (required)"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+            style={{ paddingRight: 40 }}
+          />
+          <IconButton
+            onClick={() => setShowPassword(!showPassword)}
+            style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}
+          >
+            {showPassword ? <VisibilityOff /> : <Visibility />}
+          </IconButton>
+        </div><br/>
         <button type="submit">Register</button>
       </form>
       <div>{msg}</div>
