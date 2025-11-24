@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import { BarChart as BarChartIcon, Help as HelpIcon, Info as InfoIcon, Settings as SettingsIcon } from '@mui/icons-material';
-import { AccountCircle as UserIcon, AccountBox as UserLoggedInIcon } from '@mui/icons-material';
+import { PsychologyAlt as UserIcon, LockPerson as UserLoggedInIcon } from '@mui/icons-material';
 import { useAuth } from '../auth/AuthProvider';
 import Login from '../auth/Login';
 import Register from '../auth/Register';
@@ -99,6 +99,7 @@ export default function HeaderBar({
   setMemoryTelemetryEnabled,
   onSaveRecentShapes,
   onClearRecentShapes,
+  onOpenMyShapes,
 }) {
    // Auth state and handlers
   const { token, email, logout } = useAuth();
@@ -231,6 +232,7 @@ export default function HeaderBar({
                         <UserLoggedInIcon fontSize="large" style={{ verticalAlign: 'middle', marginRight: 8 }} />
                         <span>Logged in as <b>{email}</b></span>
                       </div>
+                      <button onClick={() => { setUserDialogOpen(false); onOpenMyShapes(); }} style={{ marginRight: 8 }}>My Shapes</button>
                       <button onClick={handleLogout} style={{ marginRight: 8 }}>Logout</button>
                     </>
                   ) : showRegister ? (
@@ -395,5 +397,6 @@ HeaderBar.propTypes = {
   isSidebarOpen: PropTypes.bool,
   isSmall: PropTypes.bool,
   onSaveRecentShapes: PropTypes.func,
-  onClearRecentShapes: PropTypes.func
+  onClearRecentShapes: PropTypes.func,
+  onOpenMyShapes: PropTypes.func.isRequired
 };

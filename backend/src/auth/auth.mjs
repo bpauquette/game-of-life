@@ -42,9 +42,12 @@ db.prepare(`CREATE TABLE IF NOT EXISTS users (
 const SYSTEM_USER_ID = 'system-user';
 const systemUser = db.prepare(`SELECT * FROM users WHERE id = ?`).get(SYSTEM_USER_ID);
 if (!systemUser) {
-  db.prepare(`INSERT INTO users (id, email, first_name, last_name, about_me) VALUES (?, ?, ?, ?, ?)`).run(
+  // Create a dummy hashed password for system user (never used for login)
+  const dummyPassword = await bcrypt.hash('system-password-not-used', 10);
+  db.prepare(`INSERT INTO users (id, email, hashed_password, first_name, last_name, about_me) VALUES (?, ?, ?, ?, ?, ?)`).run(
     SYSTEM_USER_ID,
     'system@gameoflife.com',
+    dummyPassword,
     'System',
     'User',
     'Built-in shapes and patterns'

@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import HeaderBar from './HeaderBar';
 import PalettePortal from './PalettePortal';
 import CaptureDialogPortal from './CaptureDialogPortal';
+import MyShapesDialog from './MyShapesDialog';
 import RecentShapesDrawer from './RecentShapesDrawer';
 import StatisticsPanel from './StatisticsPanel';
 import BottomStatusBar from './BottomStatusBar';
@@ -30,6 +31,9 @@ function GameUILayout({
   onCloseCaptureDialog,
   captureData,
   onSaveCapture,
+  myShapesDialogOpen,
+  onCloseMyShapesDialog,
+  onOpenMyShapes,
   canvasRef,
   cursorStyle,
   cursorCell,
@@ -180,6 +184,7 @@ function GameUILayout({
           setSelectedTool={controlsProps?.setSelectedTool}
           shapesReady={shapesReady}
           showToolsRow={true}
+          onOpenMyShapes={onOpenMyShapes}
         />
       )}
   {/* main content: absolutely positioned below header and sized to fill remaining viewport */}
@@ -199,6 +204,10 @@ function GameUILayout({
           onClose={onCloseCaptureDialog}
           captureData={captureData}
           onSave={onSaveCapture}
+        />
+        <MyShapesDialog
+          open={myShapesDialogOpen}
+          onClose={onCloseMyShapesDialog}
         />
         <canvas
           ref={el => {
@@ -280,6 +289,9 @@ GameUILayout.propTypes = {
   onCloseCaptureDialog: PropTypes.func,
   captureData: PropTypes.object,
   onSaveCapture: PropTypes.func,
+  myShapesDialogOpen: PropTypes.bool,
+  onCloseMyShapesDialog: PropTypes.func,
+  onOpenMyShapes: PropTypes.func,
   canvasRef: PropTypes.object,
   cursorStyle: PropTypes.string,
   cursorCell: PropTypes.object,

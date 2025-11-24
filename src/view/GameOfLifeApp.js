@@ -10,6 +10,7 @@ import { loadGridIntoGame, rotateAndApply } from './utils/gameUtils';
 import { colorSchemes } from '../model/colorSchemes';
 // tools are registered by GameMVC; no direct tool imports needed here
 import { saveCapturedShapeToBackend, resolveBackendBase } from '../utils/backendApi';
+import { useProtectedAction } from '../auth/useProtectedAction';
 import GameUILayout from './GameUILayout';
 import './GameOfLife.css';
 import React, { useRef, useEffect, useCallback, useState, useLayoutEffect } from 'react';
@@ -41,6 +42,7 @@ function GameOfLifeApp(props) {
     colorSchemeKey: 'bio',
     captureDialogOpen: false,
     paletteOpen: false,
+    myShapesDialogOpen: false,
     captureData: null,
     showChrome: true
   }), []);
@@ -431,6 +433,9 @@ function GameOfLifeApp(props) {
   const setCaptureDialogOpen = useCallback((open) => {
     setUIState(prev => ({ ...prev, captureDialogOpen: open }));
   }, []);
+  const setMyShapesDialogOpen = useCallback((open) => {
+    setUIState(prev => ({ ...prev, myShapesDialogOpen: open }));
+  }, []);
   const toggleChrome = useCallback(() => {
     setUIState(prev => ({ ...prev, showChrome: !(prev.showChrome ?? true) }));
   }, []);
@@ -449,7 +454,9 @@ function GameOfLifeApp(props) {
   const closePalette = useCallback(() => {
     setUIState(prev => ({ ...prev, paletteOpen: false }));
   }, []);
-  const handleSaveCapturedShape = useCallback(async (shapeData) => {
+
+  // Protected save function for captured shapes
+  const { wrappedAction: handleSaveCapturedShape, renderDialog: renderCaptureSaveDialog } = useProtectedAction(async (shapeData) => {
     // Save to backend first (assume saveCapturedShapeToBackend is imported)
     const saved = await saveCapturedShapeToBackend(shapeData);
     const now = Date.now();
@@ -473,7 +480,8 @@ function GameOfLifeApp(props) {
       console.error('Error selecting shape or setting tool:', e);
     }
     return saved;
-  }, [shapeManager]);
+  });
+
   const handleLoadGrid = useCallback((liveCells) => {
     if (gameRef.current) {
       // Clear existing cells first so the loaded grid replaces the world
@@ -802,6 +810,9 @@ function GameOfLifeApp(props) {
       onCloseCaptureDialog={() => setCaptureDialogOpen(false)}
       captureData={uiState.captureData}
       onSaveCapture={handleSaveCapturedShape}
+      myShapesDialogOpen={uiState?.myShapesDialogOpen ?? false}
+      onCloseMyShapesDialog={() => setMyShapesDialogOpen(false)}
+      onOpenMyShapes={() => setMyShapesDialogOpen(true)}
   canvasRef={canvasRef}
       cursorCell={cursorCell}
       populationHistory={populationHistory}
@@ -827,6 +838,7 @@ function GameOfLifeApp(props) {
           {loginNotifMessage}
         </Alert>
       </Snackbar>
+      {renderCaptureSaveDialog()}
     </>
   );
 }

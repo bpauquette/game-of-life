@@ -6,8 +6,9 @@ import validator from "validator";
 import IconButton from "@mui/material/IconButton";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import PropTypes from 'prop-types';
 
-export default function Register() {
+export default function Register({ onSuccess, onError, showLoginLink = true, onSwitchToLogin }) {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,13 +31,42 @@ export default function Register() {
     e.preventDefault();
     setMsg("");
 
-    if (!firstName.trim()) return setMsg("First name is required");
-    if (!lastName.trim()) return setMsg("Last name is required");
-    if (!email.trim()) return setMsg("Email is required");
-    if (!validator.isEmail(email.trim())) return setMsg("Invalid email format");
-    if (!password) return setMsg("Password is required");
+    if (!firstName.trim()) {
+      const error = "First name is required";
+      setMsg(error);
+      onError?.(error);
+      return;
+    }
+    if (!lastName.trim()) {
+      const error = "Last name is required";
+      setMsg(error);
+      onError?.(error);
+      return;
+    }
+    if (!email.trim()) {
+      const error = "Email is required";
+      setMsg(error);
+      onError?.(error);
+      return;
+    }
+    if (!validator.isEmail(email.trim())) {
+      const error = "Invalid email format";
+      setMsg(error);
+      onError?.(error);
+      return;
+    }
+    if (!password) {
+      const error = "Password is required";
+      setMsg(error);
+      onError?.(error);
+      return;
+    }
     const pwError = validatePassword(password);
-    if (pwError) return setMsg(pwError);
+    if (pwError) {
+      setMsg(pwError);
+      onError?.(pwError);
+      return;
+    }
 
     try {
       const data = await post("/register", {
@@ -47,13 +77,24 @@ export default function Register() {
         aboutMe: aboutMe.trim()
       });
 
-      if (data.error) return setMsg(data.error);
-      if (!data.token) return setMsg("Registration failed: No token received");
+      if (data.error) {
+        setMsg(data.error);
+        onError?.(data.error);
+        return;
+      }
+      if (!data.token) {
+        const error = "Registration failed: No token received";
+        setMsg(error);
+        onError?.(error);
+        return;
+      }
 
       login(email.trim(), data.token);
-      setMsg("Registration successful!");
+      onSuccess?.();
     } catch (error) {
-      setMsg("Registration failed: " + error.message);
+      const errorMsg = "Registration failed: " + error.message;
+      setMsg(errorMsg);
+      onError?.(errorMsg);
     }
   }
 
@@ -106,3 +147,10 @@ export default function Register() {
     </div>
   );
 }
+
+Register.propTypes = {
+  onSuccess: PropTypes.func,
+  onError: PropTypes.func,
+  showLoginLink: PropTypes.bool,
+  onSwitchToLogin: PropTypes.func,
+};
