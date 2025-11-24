@@ -21,6 +21,11 @@ import ShapePaletteDialog from '../view/ShapePaletteDialog';
 import { fetchShapeNames } from '../utils/backendApi';
 /* eslint-enable import/first */
 
+// Mock useAuth hook
+jest.mock('../auth/AuthProvider', () => ({
+  useAuth: () => ({ user: null }),
+}));
+
 // Tests now use mocked idbCatalog; no localStorage cache key
 
 describe('ShapePaletteDialog caching behavior', () => {

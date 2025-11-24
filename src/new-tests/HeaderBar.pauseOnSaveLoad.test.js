@@ -8,8 +8,21 @@ import useGridFileManager from '../view/hooks/useGridFileManager';
 // Mock the grid file manager hook to avoid network and heavy UI
 jest.mock('../view/hooks/useGridFileManager', () => ({ __esModule: true, default: jest.fn() }));
 
+// Mock sessionStorage
+const mockSessionStorage = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+};
+Object.defineProperty(window, 'sessionStorage', { value: mockSessionStorage });
+
 beforeEach(() => {
   jest.clearAllMocks();
+  // Mock sessionStorage to have an auth token
+  mockSessionStorage.getItem.mockImplementation((key) => {
+    if (key === 'authToken') return 'fake-token';
+    return null;
+  });
   // Ensure the mocked hook returns the contract HeaderBar expects
   useGridFileManager.mockReturnValue({
     saveGrid: jest.fn(),
@@ -69,8 +82,8 @@ describe('HeaderBar - pause on Save/Load click', () => {
     const props = makeProps({ isRunning: true });
     render(<AuthProvider><HeaderBar {...props} /></AuthProvider>);
 
-  const saveButton = screen.getByRole('button', { name: /save current grid state/i });
-  userEvent.click(saveButton);
+    const saveButton = screen.getByRole('button', { name: 'Save current grid state' });
+    userEvent.click(saveButton);
 
     expect(props.setIsRunning).toHaveBeenCalledWith(false);
   });
@@ -79,8 +92,8 @@ describe('HeaderBar - pause on Save/Load click', () => {
     const props = makeProps({ isRunning: true });
     render(<AuthProvider><HeaderBar {...props} /></AuthProvider>);
 
-    const loadButton = screen.getByRole('button', { name: /load/i });
-  userEvent.click(loadButton);
+    const loadButton = screen.getByRole('button', { name: 'Load saved grid state' });
+    userEvent.click(loadButton);
 
     expect(props.setIsRunning).toHaveBeenCalledWith(false);
   });

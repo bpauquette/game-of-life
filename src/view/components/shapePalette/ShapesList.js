@@ -11,7 +11,7 @@ const ROW_HEIGHT = 64;
 const MIN_RENDER_HEIGHT = ROW_HEIGHT * 4;
 
 const VirtualRow = memo(({ index, style, data }) => {
-  const { items, colorScheme, onSelect, onDeleteRequest, onAddRecent, onHover } = data;
+  const { items, colorScheme, onSelect, onDeleteRequest, onAddRecent, onHover, user } = data;
   const shape = items[index];
   if (!shape) return null;
   return (
@@ -24,6 +24,7 @@ const VirtualRow = memo(({ index, style, data }) => {
         onRequestDelete={onDeleteRequest}
         onAddRecent={onAddRecent}
         onHover={onHover}
+        user={user}
       />
     </div>
   );
@@ -41,6 +42,7 @@ VirtualRow.propTypes = {
     onDeleteRequest: PropTypes.func,
     onAddRecent: PropTypes.func.isRequired,
     onHover: PropTypes.func,
+    user: PropTypes.object,
   }).isRequired,
 };
 
@@ -52,14 +54,16 @@ const ShapesList = memo(function ShapesList({
   onDeleteRequest,
   onAddRecent,
   onHover,
+  user,
 }) {
-  const itemData = useMemo(() => ({ items, colorScheme, onSelect, onDeleteRequest, onAddRecent, onHover }), [
+  const itemData = useMemo(() => ({ items, colorScheme, onSelect, onDeleteRequest, onAddRecent, onHover, user }), [
     items,
     colorScheme,
     onSelect,
     onDeleteRequest,
     onAddRecent,
     onHover,
+    user,
   ]);
 
   if (!loading && items.length === 0) {
@@ -88,6 +92,7 @@ const ShapesList = memo(function ShapesList({
             onRequestDelete={onDeleteRequest}
             onAddRecent={onAddRecent}
             onHover={onHover}
+            user={user}
           />
         ))}
       </List>
@@ -124,6 +129,7 @@ ShapesList.propTypes = {
   onDeleteRequest: PropTypes.func,
   onAddRecent: PropTypes.func.isRequired,
   onHover: PropTypes.func,
+  user: PropTypes.object,
 };
 
 export default ShapesList;
