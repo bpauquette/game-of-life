@@ -36,16 +36,15 @@ const MyShapesDialog = ({ open, onClose }) => {
     setError('');
     try {
       const baseUrl = resolveBackendBase();
-      const response = await fetch(`${baseUrl}/v1/shapes`, {
+      const response = await fetch(`${baseUrl}/v1/shapes/my`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       if (!response.ok) throw new Error('Failed to load shapes');
       const data = await response.json();
-      // Filter to only user's shapes (not system shapes)
-      const userShapes = data.items.filter(shape => shape.userId !== 'system-user');
-      setShapes(userShapes);
+      // Only user-owned shapes are returned by this endpoint
+      setShapes(data.items);
     } catch (err) {
       setError(err.message);
     } finally {
