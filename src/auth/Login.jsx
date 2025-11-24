@@ -6,8 +6,9 @@ import validator from "validator";
 import IconButton from "@mui/material/IconButton";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import PropTypes from 'prop-types';
 
-export default function Login() {
+export default function Login({ onSuccess, onError, showRegisterLink = true }) {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,20 +19,46 @@ export default function Login() {
     e.preventDefault();
     setMsg("");
 
-    if (!email.trim()) return setMsg("Email is required");
-    if (!validator.isEmail(email)) return setMsg("Invalid email format");
-    if (!password) return setMsg("Password is required");
+    if (!email.trim()) {
+      const error = "Email is required";
+      setMsg(error);
+      onError?.(error, email.trim());
+      return;
+    }
+    if (!validator.isEmail(email)) {
+      const error = "Invalid email format";
+      setMsg(error);
+      onError?.(error, email.trim());
+      return;
+    }
+    if (!password) {
+      const error = "Password is required";
+      setMsg(error);
+      onError?.(error, email.trim());
+      return;
+    }
 
     try {
       const data = await post("/login", { email: email.trim(), password });
 
-      if (data.error) return setMsg(data.error);
-      if (!data.token) return setMsg("Login failed: No token received");
+      if (data.error) {
+        setMsg(data.error);
+        onError?.(data.error, email.trim());
+        return;
+      }
+      if (!data.token) {
+        const error = "Login failed: No token received";
+        setMsg(error);
+        onError?.(error, email.trim());
+        return;
+      }
 
       login(email.trim(), data.token);
-      setMsg("Logged in successfully!");
+      onSuccess?.();
     } catch (error) {
-      setMsg("Login failed: " + error.message);
+      const errorMsg = "Login failed: " + error.message;
+      setMsg(errorMsg);
+      onError?.(errorMsg, email.trim());
     }
   }
 
@@ -69,3 +96,9 @@ export default function Login() {
     </div>
   );
 }
+
+Login.propTypes = {
+  onSuccess: PropTypes.func,
+  onError: PropTypes.func,
+  showRegisterLink: PropTypes.bool,
+};

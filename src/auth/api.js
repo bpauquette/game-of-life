@@ -22,3 +22,7 @@ export async function post(path, body) {
     throw error;
   }
 }
+
+export async function checkEmail(email) {
+  return post("/check-email", { email });
+}

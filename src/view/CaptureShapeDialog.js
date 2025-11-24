@@ -10,7 +10,9 @@ import {
   Box,
   Typography,
   Alert,
-  CircularProgress
+  CircularProgress,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import { BUTTONS, STATUS } from '../utils/Constants';
 // logger not needed here after preview removal
@@ -26,6 +28,7 @@ const CaptureShapeDialog = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [duplicate, setDuplicate] = useState(false);
+  const [isPublic, setIsPublic] = useState(false); // Default to private
   // Preview canvas removed; keep only name input ref
   const nameInputRef = useRef(null);
 
@@ -34,6 +37,7 @@ const CaptureShapeDialog = ({
     if (!open) return;
     setName('');
     setDescription('');
+    setIsPublic(false); // Reset to private
     setError('');
     setSaving(false);
     requestAnimationFrame(() => {
@@ -70,6 +74,7 @@ const CaptureShapeDialog = ({
         height: captureData.height,
         cellCount: captureData.cellCount,
         type: 'captured',
+        public: isPublic, // Include public flag
         created: new Date().toISOString()
       };
 
@@ -148,6 +153,27 @@ const CaptureShapeDialog = ({
             disabled={saving}
             placeholder="Describe this shape pattern..."
           />
+
+          <Box sx={{ mt: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                  disabled={saving}
+                  color="primary"
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body1">Share publicly</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Make this shape visible to all users in the community gallery
+                  </Typography>
+                </Box>
+              }
+            />
+          </Box>
 
           {error && (
             <Alert
