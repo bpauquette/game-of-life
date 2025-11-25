@@ -24,6 +24,30 @@ function rotate270(cells) {
   return norm.map(([x, y]) => [-y, x]);
 }
 
+function flipH(cells) {
+  // Flip horizontal: (x, y) => (-x, y)
+  const norm = normalizeCells(cells);
+  return norm.map(([x, y]) => [-x, y]);
+}
+
+function flipV(cells) {
+  // Flip vertical: (x, y) => (x, -y)
+  const norm = normalizeCells(cells);
+  return norm.map(([x, y]) => [x, -y]);
+}
+
+function diag1(cells) {
+  // Diagonal 1: (x, y) => (y, x)
+  const norm = normalizeCells(cells);
+  return norm.map(([x, y]) => [y, x]);
+}
+
+function diag2(cells) {
+  // Diagonal 2: (x, y) => (-y, -x)
+  const norm = normalizeCells(cells);
+  return norm.map(([x, y]) => [-y, -x]);
+}
+
 export function rotateShape(cells, angle) {
   // angle: 90, 180, 270
   if (angle === 90) return rotate90(cells);
@@ -32,4 +56,13 @@ export function rotateShape(cells, angle) {
   return cells;
 }
 
-export { rotate90, rotate180, rotate270 };
+export function transformShape(cells, transform) {
+  // transform: 'flipH', 'flipV', 'diag1', 'diag2'
+  if (transform === 'flipH') return flipH(cells);
+  if (transform === 'flipV') return flipV(cells);
+  if (transform === 'diag1') return diag1(cells);
+  if (transform === 'diag2') return diag2(cells);
+  return cells;
+}
+
+export { rotate90, rotate180, rotate270, flipH, flipV, diag1, diag2 };

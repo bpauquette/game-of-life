@@ -84,33 +84,60 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [snackDetails, setSnackDetails] = useState(null);
 
   const ensureShapeHasCells = useCallback(async (shape) => {
-    if (!shape?.id || hasShapeCells(shape)) return shape;
+    if (!shape?.id || hasShapeCells(shape)) {
+      console.log('[ensureShapeHasCells] Shape already has cells:', shape?.id, hasShapeCells(shape));
+      return shape;
+    }
     try {
+      console.log('[ensureShapeHasCells] Fetching shape:', shape?.id);
       const res = await fetchShapeById(shape.id, backendBase);
+      console.log('[ensureShapeHasCells] Fetch result:', res?.ok, res?.data ? 'has data' : 'no data');
       if (res?.ok && res.data) {
-        return res.data;
+        const hasCells = hasShapeCells(res.data);
+        console.log('[ensureShapeHasCells] Fetched shape has cells:', hasCells, res.data?.cells?.length);
+        if (hasCells) {
+          return res.data;
+        } else {
+          console.log('[ensureShapeHasCells] Fetched shape missing cells, rejecting');
+        }
+      } else {
+        console.log('[ensureShapeHasCells] Fetch failed:', res);
       }
     } catch (err) {
+      console.log('[ensureShapeHasCells] Fetch error:', err);
       logger.warn('[ShapePaletteDialog] failed to hydrate shape for recents:', err);
     }
-    return shape;
+    return null; // Return null if we can't get cells
   }, [backendBase]);
 
   const safeAddRecent = useCallback(async (shape) => {
     if (!shape) return;
+    console.log('[safeAddRecent] Starting for shape:', shape?.id, shape?.name);
     try {
       const hydrated = await ensureShapeHasCells(shape);
+      console.log('[safeAddRecent] Hydrated shape:', hydrated?.id, hydrated ? 'has cells: ' + hasShapeCells(hydrated) : 'null');
+      if (!hydrated) {
+        console.log('[safeAddRecent] No hydrated shape, showing error');
+        setSnackMsg('Unable to load shape details');
+        setSnackOpen(true);
+        return;
+      }
       // Check if shape is already in recents BEFORE adding
       const alreadyInRecents = recentShapes.some(s => s.id === hydrated.id);
+      console.log('[safeAddRecent] Already in recents:', alreadyInRecents);
       if (alreadyInRecents) {
         setSnackMsg('Already in recents');
       } else {
+        console.log('[safeAddRecent] Adding to recents:', hydrated.id, hydrated.cells?.length, 'cells');
         onAddRecent?.(hydrated);
         setSnackMsg('Shape added to recents');
       }
       setSnackOpen(true);
     } catch (e) {
+      console.log('[safeAddRecent] Error:', e);
       logger.warn('onAddRecent failed:', e);
+      setSnackMsg('Failed to add shape');
+      setSnackOpen(true);
     }
   }, [onAddRecent, ensureShapeHasCells, recentShapes]);
 
@@ -132,7 +159,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     }
     try {
       const res = await fetchShapeById(shape.id, backendBase);
-      if (res?.ok && res.data) {
+      if (res?.ok && res.data && hasShapeCells(res.data)) {
         setSelectedShape(res.data);
       } else {
         setSelectedShape(shape);
@@ -248,20 +275,20 @@ The backend will start on port ${backendPort}.`);
         open={open}
         onClose={onClose}
         disableEscapeKeyDown={false}
-        maxWidth={isMobile ? 'xs' : 'sm'}
+        maxWidth={isMobile ? 'xs' : 'md'}
         fullWidth
         fullScreen={isMobile}
         data-testid="shapes-palette"
       >
         <DialogTitle>Insert shape from catalog</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1, p: 2, minHeight: 520 }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 2, minHeight: 900 }}>
           {/* Hide the inline spinner to avoid a distracting persistent progress indicator.
             Loading state still controls network/cache behavior but we don't show
             the small spinner in the SearchBar to keep the UI calm. */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             <SearchBar value={inputValue} onChange={setInputValue} onClose={onClose} />
-            <Box sx={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 1, p: 1 }}>
-              <PreviewPanel preview={selectedShape} colorScheme={colorScheme} colorSchemeKey={colorSchemeKey} compact={isMobile} />
+            <Box sx={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 1, p: 0 }}>
+              <PreviewPanel preview={selectedShape} colorScheme={colorScheme} colorSchemeKey={colorSchemeKey} onAddRecent={onAddRecent} compact={true} maxSvgSize={80} />
             </Box>
           </Box>
           {/* Virtualized list keeps the palette responsive even with thousands of shapes */}
@@ -285,6 +312,7 @@ The backend will start on port ${backendPort}.`);
               shapeSize={isMobile ? 64 : 40}
               showShapeNames={isMobile}
               user={user}
+              backendBase={backendBase}
             />
             {isInitialMobileLoad && (
               <Box
@@ -295,7 +323,7 @@ The backend will start on port ${backendPort}.`);
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 1,
+                  gap: 0.5,
                   bgcolor: 'rgba(0,0,0,0.35)',
                   borderRadius: 1,
                   textAlign: 'center',

@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { BarChart as BarChartIcon, Help as HelpIcon, Info as InfoIcon, Settings as SettingsIcon } from '@mui/icons-material';
+import { BarChart as BarChartIcon, Help as HelpIcon, Info as InfoIcon, Settings as SettingsIcon, CloudDownload as ImportIcon, Language as LanguageIcon } from '@mui/icons-material';
 import { PsychologyAlt as UserIcon, LockPerson as UserLoggedInIcon } from '@mui/icons-material';
 import { useAuth } from '../auth/AuthProvider';
 import Login from '../auth/Login';
@@ -25,10 +25,16 @@ import useGridFileManager from './hooks/useGridFileManager';
 
 // Tool toggles extracted into ToolGroup component
 
-function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, loggedIn }) {
+function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, onOpenImport, loggedIn }) {
+  const openLifeWiki = () => {
+    window.open('https://conwaylife.com/wiki/Main_Page', '_blank');
+  };
+
   return (
     <Stack direction="row" spacing={1} alignItems="center">
       <IconButton size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
+      <IconButton size="small" onClick={onOpenImport} aria-label="import"><Tooltip title="Import Shape"><ImportIcon fontSize="small" /></Tooltip></IconButton>
+      <IconButton size="small" onClick={openLifeWiki} aria-label="lifewiki"><Tooltip title="LifeWiki"><LanguageIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenAbout} aria-label="about"><Tooltip title="About"><InfoIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenOptions} aria-label="options" data-testid="options-icon-button"><SettingsIcon fontSize="small" /></IconButton>
@@ -41,6 +47,7 @@ function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpe
 }
 AuxActions.propTypes = {
   onOpenChart: PropTypes.func.isRequired,
+  onOpenImport: PropTypes.func.isRequired,
   onOpenHelp: PropTypes.func.isRequired,
   onOpenAbout: PropTypes.func.isRequired,
   onOpenOptions: PropTypes.func.isRequired
@@ -100,6 +107,7 @@ export default function HeaderBar({
   onSaveRecentShapes,
   onClearRecentShapes,
   onOpenMyShapes,
+  onOpenImport,
 }) {
    // Auth state and handlers
   const { token, email, logout } = useAuth();
@@ -216,6 +224,7 @@ export default function HeaderBar({
           <Stack direction="row" spacing={0.5} alignItems="center">
             <AuxActions
               onOpenChart={() => setShowChart(true)}
+              onOpenImport={onOpenImport}
               onOpenHelp={() => setHelpOpen(true)}
               onOpenAbout={() => setAboutOpen(true)}
               onOpenOptions={openOptions}
@@ -398,5 +407,6 @@ HeaderBar.propTypes = {
   isSmall: PropTypes.bool,
   onSaveRecentShapes: PropTypes.func,
   onClearRecentShapes: PropTypes.func,
-  onOpenMyShapes: PropTypes.func.isRequired
+  onOpenMyShapes: PropTypes.func.isRequired,
+  onOpenImport: PropTypes.func.isRequired,
 };

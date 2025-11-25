@@ -139,4 +139,78 @@ const computeBoundingBox = (cells) => {
   return { empty: false, minX, minY, maxX, maxY };
 }
 
-export { parseRLE };
+// Parse .cells format (plain text grid with . and O)
+const parseCells = (text) => {
+  if (!text?.trim()) throw new Error('Empty cells text');
+  const lines = text.split(/\r?\n/);
+  const meta = { comments: [] };
+  const gridLines = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('!')) {
+      const body = trimmed.slice(1).trim();
+      if (body.toLowerCase().startsWith('name:')) {
+        meta.name = body.slice(5).trim();
+      } else if (body.toLowerCase().startsWith('author:')) {
+        meta.author = body.slice(7).trim();
+      } else {
+        meta.comments.push(body);
+      }
+    } else if (trimmed) {
+      gridLines.push(trimmed);
+    }
+  }
+
+  if (gridLines.length === 0) {
+    return {
+      name: meta.name || 'unnamed',
+      width: 0,
+      height: 0,
+      cells: [],
+      rule: null,
+      meta
+    };
+  }
+
+  const height = gridLines.length;
+  const width = Math.max(...gridLines.map(line => line.length));
+  const cells = [];
+
+  for (let y = 0; y < height; y++) {
+    const line = gridLines[y];
+    for (let x = 0; x < width; x++) {
+      if (line[x] === 'O') {
+        cells.push({ x, y });
+      }
+    }
+  }
+
+  // Normalize to top-left
+  const bbox = computeBoundingBox(cells);
+  if (bbox.empty) {
+    return {
+      name: meta.name || 'unnamed',
+      width: 0,
+      height: 0,
+      cells: [],
+      rule: null,
+      meta
+    };
+  }
+
+  const normalized = cells.map(p => ({ x: p.x - bbox.minX, y: p.y - bbox.minY }));
+  const finalWidth = (bbox.maxX - bbox.minX) + 1;
+  const finalHeight = (bbox.maxY - bbox.minY) + 1;
+
+  return {
+    name: meta.name || 'unnamed',
+    width: finalWidth,
+    height: finalHeight,
+    cells: normalized,
+    rule: null,
+    meta
+  };
+};
+
+export { parseRLE, parseCells };

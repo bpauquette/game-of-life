@@ -18,6 +18,11 @@ import PropTypes from 'prop-types';
 import { GameMVC } from '../controller/GameMVC';
 import { startMemoryLogger } from '../utils/memoryLogger';
 import { computePopulationChange } from '../utils/stabilityMetrics';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
 
 // tools are registered by GameMVC.controller during initialization
 function getColorSchemeFromKey(key) {
@@ -43,6 +48,7 @@ function GameOfLifeApp(props) {
     captureDialogOpen: false,
     paletteOpen: false,
     myShapesDialogOpen: false,
+    importDialogOpen: false,
     captureData: null,
     showChrome: true
   }), []);
@@ -80,6 +86,8 @@ function GameOfLifeApp(props) {
     } catch {}
     return false;
   });
+  const [duplicateShape, setDuplicateShape] = useState(null);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   // persistent refs
   const snapshotsRef = useRef([]);
   const gameRef = useRef(null);
@@ -436,6 +444,9 @@ function GameOfLifeApp(props) {
   const setMyShapesDialogOpen = useCallback((open) => {
     setUIState(prev => ({ ...prev, myShapesDialogOpen: open }));
   }, []);
+  const setImportDialogOpen = useCallback((open) => {
+    setUIState(prev => ({ ...prev, importDialogOpen: open }));
+  }, []);
   const toggleChrome = useCallback(() => {
     setUIState(prev => ({ ...prev, showChrome: !(prev.showChrome ?? true) }));
   }, []);
@@ -457,29 +468,39 @@ function GameOfLifeApp(props) {
 
   // Protected save function for captured shapes
   const { wrappedAction: handleSaveCapturedShape, renderDialog: renderCaptureSaveDialog } = useProtectedAction(async (shapeData) => {
-    // Save to backend first (assume saveCapturedShapeToBackend is imported)
-    const saved = await saveCapturedShapeToBackend(shapeData);
-    const now = Date.now();
-    const localShape = {
-      id: saved?.id || saved?._id || `shape-${now}`,
-      name: saved?.name || shapeData.name,
-      cells: Array.isArray(shapeData?.pattern) ? shapeData.pattern.map(c => ({ x: c.x, y: c.y })) : [],
-      meta: {
-        width: shapeData?.width,
-        height: shapeData?.height,
-        cellCount: shapeData?.cellCount,
-        savedAt: new Date(now).toISOString(),
-        source: 'capture-tool'
-      }
-    };
     try {
-      shapeManager?.selectShape?.(localShape);
-      gameRef.current?.setSelectedTool?.('shapes');
-    } catch (e) {
-      // Log the error for debugging purposes
-      console.error('Error selecting shape or setting tool:', e);
+      // Save to backend first (assume saveCapturedShapeToBackend is imported)
+      const saved = await saveCapturedShapeToBackend(shapeData);
+      const now = Date.now();
+      const localShape = {
+        id: saved?.id || saved?._id || `shape-${now}`,
+        name: saved?.name || shapeData.name,
+        cells: Array.isArray(shapeData?.pattern) ? shapeData.pattern.map(c => ({ x: c.x, y: c.y })) : [],
+        meta: {
+          width: shapeData?.width,
+          height: shapeData?.height,
+          cellCount: shapeData?.cellCount,
+          savedAt: new Date(now).toISOString(),
+          source: 'capture-tool'
+        }
+      };
+      try {
+        shapeManager?.selectShape?.(localShape);
+        gameRef.current?.setSelectedTool?.('shapes');
+      } catch (e) {
+        // Log the error for debugging purposes
+        console.error('Error selecting shape or setting tool:', e);
+      }
+      return saved;
+    } catch (error) {
+      if (error.duplicate) {
+        // Show duplicate modal
+        setDuplicateShape(error.existingShape);
+        setShowDuplicateDialog(true);
+        throw new Error('Duplicate shape - handled by modal');
+      }
+      throw error;
     }
-    return saved;
   });
 
   const handleLoadGrid = useCallback((liveCells) => {
@@ -813,6 +834,14 @@ function GameOfLifeApp(props) {
       myShapesDialogOpen={uiState?.myShapesDialogOpen ?? false}
       onCloseMyShapesDialog={() => setMyShapesDialogOpen(false)}
       onOpenMyShapes={() => setMyShapesDialogOpen(true)}
+      importDialogOpen={uiState?.importDialogOpen ?? false}
+      onCloseImportDialog={() => setImportDialogOpen(false)}
+      onOpenImportDialog={() => setImportDialogOpen(true)}
+      onImportSuccess={(shape) => {
+        // Refresh shapes or show message
+        shapeManager.refreshShapes();
+        // Could show snackbar here
+      }}
   canvasRef={canvasRef}
       cursorCell={cursorCell}
       populationHistory={populationHistory}
@@ -839,6 +868,36 @@ function GameOfLifeApp(props) {
         </Alert>
       </Snackbar>
       {renderCaptureSaveDialog()}
+      <Dialog open={showDuplicateDialog} onClose={() => setShowDuplicateDialog(false)}>
+        <DialogTitle>Duplicate Shape Detected</DialogTitle>
+        <DialogContent>
+          <p>A shape with the same pattern already exists in the catalog:</p>
+          {duplicateShape && (
+            <div>
+              <strong>Name:</strong> {duplicateShape.name}<br />
+              <strong>Description:</strong> {duplicateShape.description || 'No description'}<br />
+              <strong>Cells:</strong> {duplicateShape.cellCount || 'Unknown'}
+            </div>
+          )}
+          <p>Would you like to view the existing shape instead?</p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDuplicateDialog(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              if (duplicateShape) {
+                shapeManager?.selectShape?.(duplicateShape);
+                gameRef.current?.setSelectedTool?.('shapes');
+              }
+              setShowDuplicateDialog(false);
+              setDuplicateShape(null);
+            }}
+            variant="contained"
+          >
+            View Existing Shape
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

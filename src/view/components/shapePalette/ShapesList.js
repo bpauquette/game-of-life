@@ -7,15 +7,15 @@ import AutoSizer from 'react-virtualized-auto-sizer';
 import { FixedSizeList } from 'react-window';
 import ShapeListItem from './ShapeListItem';
 
-const ROW_HEIGHT = 64;
+const ROW_HEIGHT = 20;
 const MIN_RENDER_HEIGHT = ROW_HEIGHT * 4;
 
 const VirtualRow = memo(({ index, style, data }) => {
-  const { items, colorScheme, onSelect, onDeleteRequest, onAddRecent, onHover, user } = data;
+  const { items, colorScheme, onSelect, onDeleteRequest, onAddRecent, onHover, user, backendBase } = data;
   const shape = items[index];
   if (!shape) return null;
   return (
-    <div style={style}>
+    <div style={{ ...style, margin: 0, padding: 0 }}>
       <ShapeListItem
         shape={shape}
         idx={index}
@@ -25,6 +25,7 @@ const VirtualRow = memo(({ index, style, data }) => {
         onAddRecent={onAddRecent}
         onHover={onHover}
         user={user}
+        backendBase={backendBase}
       />
     </div>
   );
@@ -55,8 +56,9 @@ const ShapesList = memo(function ShapesList({
   onAddRecent,
   onHover,
   user,
+  backendBase,
 }) {
-  const itemData = useMemo(() => ({ items, colorScheme, onSelect, onDeleteRequest, onAddRecent, onHover, user }), [
+  const itemData = useMemo(() => ({ items, colorScheme, onSelect, onDeleteRequest, onAddRecent, onHover, user, backendBase }), [
     items,
     colorScheme,
     onSelect,
@@ -64,6 +66,7 @@ const ShapesList = memo(function ShapesList({
     onAddRecent,
     onHover,
     user,
+    backendBase,
   ]);
 
   if (!loading && items.length === 0) {
@@ -130,6 +133,7 @@ ShapesList.propTypes = {
   onAddRecent: PropTypes.func.isRequired,
   onHover: PropTypes.func,
   user: PropTypes.object,
+  backendBase: PropTypes.string,
 };
 
 export default ShapesList;
