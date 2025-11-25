@@ -15,10 +15,20 @@ const extractCells = (shape) => {
   return [];
 };
 
+const hasShapeCells = (shape) => {
+  if (!shape) return false;
+  const has = (cells) => Array.isArray(cells) && cells.length > 0;
+  return has(shape.cells) || has(shape.pattern) || has(shape.liveCells);
+};
+
 const normalizeRecentShape = (shape) => {
   if (!shape) return shape;
   const sourceCells = extractCells(shape);
-  if (!sourceCells.length) return shape;
+  console.log('[normalizeRecentShape] Shape:', shape?.id, 'sourceCells length:', sourceCells.length);
+  if (!sourceCells.length) {
+    console.log('[normalizeRecentShape] No cells found, returning original shape');
+    return shape;
+  }
 
   let minX = Infinity;
   let minY = Infinity;
@@ -137,7 +147,9 @@ export const useShapeManager = ({
 
   // Update the recent shapes list, maintaining uniqueness and max length
   const updateRecentShapesList = useCallback((newShape) => {
+    console.log('[updateRecentShapesList] Updating with shape:', newShape?.id, newShape?.name, 'has cells:', hasShapeCells(newShape), newShape?.cells?.length);
     const normalized = normalizeRecentShape(newShape);
+    console.log('[updateRecentShapesList] Normalized shape has cells:', hasShapeCells(normalized), normalized?.cells?.length);
     setRecentShapes(prev => {
       const newKey = generateShapeKey(normalized);
       // If shape already exists, do not change order
@@ -402,6 +414,7 @@ export const useShapeManager = ({
     },
     // Add a recent shape programmatically
     addRecentShape: (shape) => {
+      console.log('[addRecentShape] Adding shape:', shape?.id, shape?.name, 'has cells:', hasShapeCells(shape), shape?.cells?.length);
       if (!shape) return;
       try {
         const normalized = normalizeRecentShape(shape);
@@ -413,6 +426,7 @@ export const useShapeManager = ({
         const stubCells = Array.isArray(stubSource?.cells)
           ? stubSource.cells
           : extractCells(stubSource);
+        console.log('[addRecentShape] stubCells length:', stubCells.length, 'from', Array.isArray(stubSource?.cells) ? 'cells' : 'extractCells');
         const stub = {
           id: stubSource?.id,
           name: stubSource?.name || stubMeta?.name,
@@ -425,6 +439,7 @@ export const useShapeManager = ({
             ? stubCells.map(cell => (Array.isArray(cell) ? [...cell] : [cell?.x ?? 0, cell?.y ?? 0]))
             : []
         };
+        console.log('[addRecentShape] Created stub with cells:', stub.cells.length);
         setRecentShapes(prev => {
           const newKey = generateShapeKey(stub);
           // If shape already exists, do not change order

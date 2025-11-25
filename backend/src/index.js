@@ -6,7 +6,10 @@ import express from 'express';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import { parseRLE } from './rleParser.js';
-import db from './db.js';
+import { SQLiteDatabase } from './sqlite-db.js';
+
+// Database instance
+const db = new SQLiteDatabase();
 import logger from './logger.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -265,22 +268,10 @@ export function createApp() {
       const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
       const offset = Math.max(0, Number(req.query.offset) || 0);
 
-      const shapes = await db.listShapes();
+      const userId = req.user?.id;
+      const result = await db.getShapesForUser(userId, { q, limit, offset, includeCells: true });
 
-      // Filter by user: show user's shapes + system shapes
-      let userShapes = shapes;
-      if (req.user) {
-        // Authenticated user: show their shapes + system shapes
-        userShapes = shapes.filter(s => s.userId === req.user.id || s.userId === SYSTEM_USER_ID);
-      } else {
-        // Unauthenticated user: show only system shapes
-        userShapes = shapes.filter(s => s.userId === SYSTEM_USER_ID);
-      }
-
-      const filtered = q
-        ? userShapes.filter(s => (s.name || '').toLowerCase().includes(q))
-        : userShapes;
-      res.json({ items: filtered.slice(offset, offset + limit), total: filtered.length });
+      res.json(result);
     } catch (err) {
       logger.error('shapes list error:', err);
       res.status(500).json({ error: err.message });
@@ -293,26 +284,11 @@ export function createApp() {
       const q = (req.query.q || '').toLowerCase();
       const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 50));
       const offset = Math.max(0, Number(req.query.offset) || 0);
-      const shapes = await db.listShapes();
 
-      // Filter by user access: show user's shapes + system shapes
-      let userShapes = shapes;
-      if (req.user) {
-        // Authenticated user: show their shapes + system shapes
-        userShapes = shapes.filter(s => s.userId === req.user.id || s.userId === SYSTEM_USER_ID);
-      } else {
-        // Unauthenticated user: show only system shapes
-        userShapes = shapes.filter(s => s.userId === SYSTEM_USER_ID);
-      }
+      const userId = req.user?.id;
+      const result = await db.getShapeNamesForUser(userId, { q, limit, offset });
 
-      const filtered = q
-        ? userShapes.filter(s => (s.name || '').toLowerCase().includes(q))
-        : userShapes;
-      const items = filtered.slice(offset, offset + limit).map(s => ({
-        id: s.id,
-        name: s.name
-      }));
-      res.json({ items, total: filtered.length });
+      res.json(result);
     } catch (err) {
       logger.error('shapes names error:', err);
       res.status(500).json({ error: err.message });
@@ -324,12 +300,14 @@ export function createApp() {
   // GET shape (public for system shapes, protected for user shapes)
   app.get('/v1/shapes/:id', async (req, res) => {
     const s = await db.getShape(req.params.id);
+    console.log(`[API] GET /v1/shapes/${req.params.id}: shape found:`, !!s, s?.cells?.length || 'no cells');
     if (!s) return res.status(404).json({ error: 'not found' });
 
     // Allow access to system shapes for everyone, user shapes only for owner
-    if (s.userId === SYSTEM_USER_ID || (req.user && s.userId === req.user.id)) {
+    if (s.userId === SYSTEM_USER_ID || s.userId === 'system' || (req.user && s.userId === req.user.id)) {
       res.json(s);
     } else {
+      console.log(`[API] Access denied for shape ${req.params.id}: userId=${s.userId}, req.user.id=${req.user?.id}`);
       res.status(403).json({ error: 'access denied' });
     }
   });
@@ -390,28 +368,9 @@ export function createApp() {
       const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
       const offset = Math.max(0, Number(req.query.offset) || 0);
 
-      const shapes = await db.listShapes();
-      const publicShapes = shapes.filter(s => s.public === true);
+      const result = await db.getPublicShapes({ q, limit, offset });
 
-      const filtered = q
-        ? publicShapes.filter(s => (s.name || '').toLowerCase().includes(q))
-        : publicShapes;
-
-      // Return limited shape data for public access
-      const items = filtered.slice(offset, offset + limit).map(s => ({
-        id: s.id,
-        name: s.name,
-        width: s.width,
-        height: s.height,
-        cellCount: s.cellCount,
-        userId: s.userId, // Include userId for attribution
-        meta: {
-          createdAt: s.meta?.createdAt,
-          source: s.meta?.source
-        }
-      }));
-
-      res.json({ items, total: filtered.length });
+      res.json(result);
     } catch (err) {
       logger.error('public shapes list error:', err);
       res.status(500).json({ error: err.message });
@@ -425,16 +384,9 @@ export function createApp() {
       const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
       const offset = Math.max(0, Number(req.query.offset) || 0);
 
-      const shapes = await db.listShapes();
+      const result = await db.getUserShapes(req.user.id, { q, limit, offset });
 
-      // Only return shapes owned by the authenticated user
-      const myShapes = shapes.filter(s => s.userId === req.user.id);
-
-      const filtered = q
-        ? myShapes.filter(s => (s.name || '').toLowerCase().includes(q))
-        : myShapes;
-
-      res.json({ items: filtered.slice(offset, offset + limit), total: filtered.length });
+      res.json(result);
     } catch (err) {
       logger.error('my shapes list error:', err);
       res.status(500).json({ error: err.message });
@@ -469,7 +421,15 @@ export function createApp() {
       shape.meta.createdAt = shape.meta.createdAt || new Date().toISOString();
       shape.meta.source = shape.meta.source || 'user-created';
 
-      await db.addShape(shape);
+      const result = await db.addShape(shape);
+
+      if (result.duplicate) {
+        return res.status(409).json({
+          error: 'Shape already exists',
+          duplicate: true,
+          existingShape: result.existingShape
+        });
+      }
 
       generateThumbnailsForShape(shape).catch(e =>
         logger.error('thumbnail generation failed:', e?.message || e)
@@ -633,14 +593,56 @@ export async function start() {
   const app = createApp();
   const port = process.env.GOL_BACKEND_PORT || process.env.PORT || 55000;
   const host = '0.0.0.0';
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const server = app.listen(port, host, () => {
       const addr = server.address();
       const bind = addr && typeof addr === 'object'
         ? `${addr.address}:${addr.port}`
         : String(addr);
       logger.info(`Shapes backend listening on ${bind}`);
+      
+      // Add termination logging
+      const logTermination = (signal, code) => {
+        const timestamp = new Date().toISOString();
+        logger.error(`Backend terminating: ${signal || 'exit'} (code: ${code}) at ${timestamp}`);
+        console.error(`Backend terminating: ${signal || 'exit'} (code: ${code}) at ${timestamp}`);
+      };
+      
+      process.on('exit', (code) => logTermination('exit', code));
+      process.on('SIGINT', () => logTermination('SIGINT'));
+      process.on('SIGTERM', () => logTermination('SIGTERM'));
+      process.on('uncaughtException', (err) => {
+        logger.error('Uncaught exception:', err);
+        console.error('Uncaught exception:', err);
+        logTermination('uncaughtException');
+      });
+      process.on('unhandledRejection', (reason, promise) => {
+        logger.error('Unhandled rejection:', reason);
+        console.error('Unhandled rejection:', reason);
+        logTermination('unhandledRejection');
+      });
+
+      // Add server error logging
+      server.on('error', (err) => {
+        logger.error('Server error:', err);
+        console.error('Server error:', err);
+        logTermination('server error');
+      });
+      
+      // Add server close logging
+      server.on('close', () => {
+        logger.error('Server closed');
+        console.error('Server closed');
+        logTermination('server close');
+      });
+      
       resolve({ app, server });
+    });
+
+    server.on('error', (err) => {
+      logger.error('Server listen error:', err);
+      console.error('Server listen error:', err);
+      reject(err);
     });
   });
 }
@@ -655,8 +657,12 @@ const isMain = (() => {
 })();
 
 if (isMain) {
-  start().catch(err => {
+  try {
+    await start();
+    // Keep the process alive
+    process.stdin.resume();
+  } catch (err) {
     console.error('Failed to start server:', err);
     process.exit(1);
-  });
+  }
 }

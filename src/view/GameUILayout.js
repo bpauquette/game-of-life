@@ -4,6 +4,7 @@ import HeaderBar from './HeaderBar';
 import PalettePortal from './PalettePortal';
 import CaptureDialogPortal from './CaptureDialogPortal';
 import MyShapesDialog from './MyShapesDialog';
+import ImportShapeDialog from './components/ImportShapeDialog';
 import RecentShapesDrawer from './RecentShapesDrawer';
 import StatisticsPanel from './StatisticsPanel';
 import BottomStatusBar from './BottomStatusBar';
@@ -34,6 +35,10 @@ function GameUILayout({
   myShapesDialogOpen,
   onCloseMyShapesDialog,
   onOpenMyShapes,
+  importDialogOpen,
+  onCloseImportDialog,
+  onOpenImportDialog,
+  onImportSuccess,
   canvasRef,
   cursorStyle,
   cursorCell,
@@ -185,6 +190,7 @@ function GameUILayout({
           shapesReady={shapesReady}
           showToolsRow={true}
           onOpenMyShapes={onOpenMyShapes}
+          onOpenImport={onOpenImportDialog}
         />
       )}
   {/* main content: absolutely positioned below header and sized to fill remaining viewport */}
@@ -208,6 +214,11 @@ function GameUILayout({
         <MyShapesDialog
           open={myShapesDialogOpen}
           onClose={onCloseMyShapesDialog}
+        />
+        <ImportShapeDialog
+          open={importDialogOpen}
+          onClose={onCloseImportDialog}
+          onImportSuccess={onImportSuccess}
         />
         <canvas
           ref={el => {
@@ -290,6 +301,10 @@ GameUILayout.propTypes = {
   captureData: PropTypes.object,
   onSaveCapture: PropTypes.func,
   myShapesDialogOpen: PropTypes.bool,
+  importDialogOpen: PropTypes.bool,
+  onCloseImportDialog: PropTypes.func,
+  onOpenImportDialog: PropTypes.func,
+  onImportSuccess: PropTypes.func,
   onCloseMyShapesDialog: PropTypes.func,
   onOpenMyShapes: PropTypes.func,
   canvasRef: PropTypes.object,

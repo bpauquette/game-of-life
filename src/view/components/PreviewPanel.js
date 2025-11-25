@@ -1,8 +1,12 @@
-/* eslint-disable complexity */
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import { transformShape } from '../../model/shapeTransforms';
+import { rotateShape } from '../../model/shapeTransforms';
 
 function computeBounds(cells = []) {
   // Simple, low-complexity version: compute min/max with fewer branches
@@ -49,12 +53,30 @@ function cacheSet(id, dataUrl) {
   }
 }
 
-export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, colorSchemeKey }) {
+export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, colorSchemeKey, onAddRecent }) {
   const canvasRef = useRef(null);
   
   const [cachedDataUrl, setCachedDataUrl] = useState(null);
   const [imgError, setImgError] = useState(false);
-  const cells = useMemo(() => (preview && Array.isArray(preview.cells) ? preview.cells : []), [preview]);
+  const [transformIndex, setTransformIndex] = useState(0);
+  const [rotationAngle, setRotationAngle] = useState(0);
+  const transforms = ['identity', 'flipH', 'flipV', 'diag1', 'diag2'];
+  const currentTransform = transforms[transformIndex];
+  // Reset transform when preview changes
+  useEffect(() => {
+    setTransformIndex(0);
+    setRotationAngle(0);
+  }, [preview]);
+  const cells = useMemo(() => {
+    let c = (preview && Array.isArray(preview.cells) ? preview.cells : []);
+    if (transformIndex !== 0) {
+      c = transformShape(c, currentTransform);
+    }
+    if (rotationAngle !== 0) {
+      c = rotateShape(c, rotationAngle);
+    }
+    return c;
+  }, [preview, transformIndex, currentTransform, rotationAngle]);
   const bounds = useMemo(() => computeBounds(cells), [cells]);
   const { width, height } = bounds;
   const cellSize = 8;
@@ -68,7 +90,8 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
     setImgError(false);
     if (!preview) return;
     const nameSlug = preview.name ? (String(preview.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0,200)) : '';
-    const cacheId = preview.id ? `${preview.id}::${colorSchemeKey || 'default'}` : `${nameSlug || JSON.stringify(cells).slice(0,200)}::${colorSchemeKey || 'default'}`;
+    const transformKey = `${transformIndex}-${rotationAngle}`;
+    const cacheId = preview.id ? `${preview.id}::${colorSchemeKey || 'default'}::${transformKey}` : `${nameSlug || JSON.stringify(cells).slice(0,200)}::${colorSchemeKey || 'default'}::${transformKey}`;
     const existing = cacheGet(cacheId);
     if (existing) {
       setCachedDataUrl(existing);
@@ -110,7 +133,7 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
   if (!preview) return <Box sx={{ minWidth: 260, minHeight: 220 }} />;
 
   return (
-    <Box sx={{ minWidth: 260, minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }} data-testid="hover-preview-panel">
+    <Box sx={{ minWidth: 260, minHeight: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} data-testid="hover-preview-panel">
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
         {cachedDataUrl && !imgError ? (
           <img src={cachedDataUrl} alt={preview.name || 'shape preview'} style={{ width: drawW, height: drawH, objectFit: 'contain', ...PREVIEW_BORDER_STYLE }}
@@ -151,6 +174,38 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
           )}
         </Box>
       </Box>
+      <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Button variant="outlined" size="small" onClick={() => setTransformIndex(1)}>Flip H</Button>
+        <Button variant="outlined" size="small" onClick={() => setTransformIndex(2)}>Flip V</Button>
+        <Button variant="outlined" size="small" onClick={() => setTransformIndex(3)}>Diag 1</Button>
+        <Button variant="outlined" size="small" onClick={() => setTransformIndex(4)}>Diag 2</Button>
+        <Button variant="outlined" size="small" onClick={() => setRotationAngle(90)}>Rot 90</Button>
+        <Button variant="outlined" size="small" onClick={() => setRotationAngle(180)}>Rot 180</Button>
+        <Button variant="outlined" size="small" onClick={() => setRotationAngle(270)}>Rot 270</Button>
+        <Button variant="outlined" size="small" onClick={() => { setTransformIndex(0); setRotationAngle(0); }}>Reset</Button>
+        <IconButton
+          size="small"
+          sx={{ color: '#388e3c', bgcolor: 'rgba(56,142,60,0.08)', borderRadius: 1 }}
+          onClick={() => {
+            if (preview && cells.length > 0) {
+              const transformedShape = {
+                ...preview,
+                cells,
+                name: `${preview.name || 'unnamed'} (${currentTransform}${rotationAngle ? ` rot${rotationAngle}` : ''})`.trim()
+              };
+              onAddRecent?.(transformedShape);
+            }
+          }}
+          data-testid="add-transformed-recent"
+        >
+          <Tooltip title="Add Transformed to Recent">
+            <svg width={16} height={16} viewBox="0 0 20 20">
+              <circle cx={10} cy={10} r={9} fill="#388e3c" opacity={0.15} />
+              <path d="M6 10h8M10 6v8" stroke="#388e3c" strokeWidth={2} strokeLinecap="round" />
+            </svg>
+          </Tooltip>
+        </IconButton>
+      </Box>
     </Box>
   );
 }
@@ -159,5 +214,6 @@ PreviewPanel.propTypes = {
   preview: PropTypes.object,
   maxSvgSize: PropTypes.number,
   colorScheme: PropTypes.object,
-  colorSchemeKey: PropTypes.string
+  colorSchemeKey: PropTypes.string,
+  onAddRecent: PropTypes.func
 };
