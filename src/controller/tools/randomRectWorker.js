@@ -7,7 +7,14 @@ globalThis.onmessage = function(e) {
   const xMax = Math.max(x0, x1);
   const yMin = Math.min(y0, y1);
   const yMax = Math.max(y0, y1);
-  const p = Math.max(0, Math.min(1, prob ?? 0.5));
+  let p = 0;
+  if (typeof prob === 'number' && Number.isFinite(prob)) {
+    p = Math.max(0, Math.min(1, prob));
+  } else {
+    // If prob missing or invalid, default to 0 (no cells alive)
+    p = 0;
+    // No console here; keep worker quiet but deterministic
+  }
 
   const cells = [];
   for (let x = xMin; x <= xMax; x++) {

@@ -537,8 +537,8 @@ const RecentShapesStrip = ({
                 onSelect={() => handleShapeClick(shape)}
                 onSwitchToShapesTool={onSwitchToShapesTool}
                 onStartPaletteDrag={startPaletteDrag}
-                onRotate={(rotatedShape, i) => {
-                  if (typeof onRotateShape === 'function') onRotateShape(rotatedShape, i, { inPlace: true });
+                onRotate={(rotatedShape) => {
+                  if (typeof onRotateShape === 'function') onRotateShape(rotatedShape, index, { inPlace: true });
                 }}
                 thumbnailSize={64}
               />

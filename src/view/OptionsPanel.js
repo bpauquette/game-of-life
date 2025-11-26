@@ -111,7 +111,7 @@ const OptionsPanel = ({
     try { setEnableGPSCap?.(!!localEnableGPSCap); } catch (err) { logger.debug('setEnableGPSCap failed:', err); }
     try { setConfirmOnClear?.(!!localConfirmOnClear); } catch (err) { logger.debug('setConfirmOnClear failed:', err); }
     try { setMaxChartGenerations?.(Number(localMaxChartGenerations) || 5000); } catch (err) { logger.debug('setMaxChartGenerations failed:', err); }
-    try { setRandomRectPercent?.(Math.max(0, Math.min(100, Number(localRandomRectPercent) || 50))); } catch (err) { logger.debug('setRandomRectPercent failed:', err); }
+    try { setRandomRectPercent?.(Math.max(0, Math.min(100, Number(localRandomRectPercent)))); } catch (err) { logger.debug('setRandomRectPercent failed:', err); }
   // Persist all options so they are remembered across sessions
   try { globalThis.localStorage.setItem('colorSchemeKey', String(localScheme)); } catch {}
   try { globalThis.localStorage.setItem('popWindowSize', String(win)); } catch {}
@@ -125,7 +125,7 @@ const OptionsPanel = ({
   try { globalThis.localStorage.setItem('maxChartGenerations', String(localMaxChartGenerations)); } catch {}
   try { globalThis.localStorage.setItem('detectStablePopulation', JSON.stringify(!!localDetectStablePopulation)); } catch {}
   try { globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode)); } catch {}
-  try { globalThis.localStorage.setItem('randomRectPercent', String(Math.max(0, Math.min(100, Number(localRandomRectPercent) || 50)))); } catch {}
+  try { globalThis.localStorage.setItem('randomRectPercent', String(Math.max(0, Math.min(100, Number(localRandomRectPercent))))); } catch {}
   try { globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning)); } catch {}
   try { setDetectStablePopulation?.(!!localDetectStablePopulation); } catch {}
   try {

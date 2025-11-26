@@ -32,7 +32,6 @@ export const randomRectTool = {
     state.start = { x, y };
     state.last = { x, y };
     state.preview = [];
-    if (state.prob == null) state.prob = 0.5;
   },
 
   onMouseMove(state, x, y) {
@@ -44,7 +43,14 @@ export const randomRectTool = {
   onMouseUp(state, x, y, setCellAlive, setCellsAliveBulk) {
     if (!state.start) return;
     const pts = computeRect(state.start.x, state.start.y, x, y);
-    const p = Math.max(0, Math.min(1, state.prob ?? 0.5));
+    let p = 0;
+    if (typeof state.prob === 'number' && Number.isFinite(state.prob)) {
+      p = Math.max(0, Math.min(1, state.prob));
+    } else {
+      // If prob is missing or invalid, default to 0 (no cells)
+      p = 0;
+      logger.debug('randomRectTool: state.prob is missing or invalid; defaulting to 0');
+    }
 
     // Always use controller buffer for double buffering
     if (pts.length > 500 && globalThis.window !== undefined && globalThis.Worker !== undefined && state._controller) {
