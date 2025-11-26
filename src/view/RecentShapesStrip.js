@@ -76,12 +76,6 @@ const RecentShapesStrip = ({
     if (typeof drawWithOverlay === 'function') drawWithOverlay();
   };
 
-  const handlePlaceButton = (shape) => {
-    // For mobile: select shape and switch to shapes tool so user can tap/drag on canvas
-    if (typeof selectShape === 'function') selectShape(shape);
-    if (typeof onSwitchToShapesTool === 'function') onSwitchToShapesTool();
-    if (typeof drawWithOverlay === 'function') drawWithOverlay();
-  };
 
   // Render all recent shapes in the order provided, never reordering.
   const slots = useMemo(() => Array.isArray(recentShapes) ? [...recentShapes] : [], [recentShapes]);

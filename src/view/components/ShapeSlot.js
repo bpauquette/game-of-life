@@ -242,7 +242,8 @@ ShapeSlot.propTypes = {
 ShapeSlot.defaultProps = {
   colorScheme: {},
   selected: false,
-  title: ''
+  title: '',
+  onRotate: null
 };
 
 export default ShapeSlot;
