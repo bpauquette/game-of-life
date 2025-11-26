@@ -24,9 +24,18 @@ function computeBounds(cells = []) {
 
 async function main() {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-  const dataFile = path.join(scriptDir, '..', 'data', 'shapes.json');
-  const txt = await fs.readFile(dataFile, 'utf8');
-  const arr = JSON.parse(txt);
+  let arr = null;
+  try {
+    const dbClient = await import('./dbClient.mjs');
+    arr = await dbClient.getAllShapes();
+  } catch (e) {
+    // fallback to JSON
+  }
+  if (!arr) {
+    const dataFile = path.join(scriptDir, '..', 'data', 'shapes.json');
+    const txt = await fs.readFile(dataFile, 'utf8');
+    arr = JSON.parse(txt);
+  }
   console.log('Total shapes:', arr.length);
   const stats = arr.map(s => {
     const cells = Array.isArray(s.cells) ? s.cells : [];

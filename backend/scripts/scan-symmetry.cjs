@@ -3,6 +3,14 @@ const fs = require('fs');
 const path = require('path');
 
 function readShapes() {
+  // prefer DB client when available
+  try {
+    const clientPath = path.join(__dirname, 'dbClient.cjs');
+    if (fs.existsSync(clientPath)) {
+      const dbClient = require(clientPath);
+      return dbClient.getAllShapes();
+    }
+  } catch (e) { }
   const p = path.join(__dirname, '..', 'data', 'shapes.json');
   const txt = fs.readFileSync(p, 'utf8');
   return JSON.parse(txt);

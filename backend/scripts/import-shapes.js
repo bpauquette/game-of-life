@@ -32,7 +32,19 @@ const main = async () => {
   console.log(dry? 'Dry run: no file will be written' : 'Merging and writing to dest');
 
   const srcData = await readJson(src);
-  const dstData = await readJson(dst);
+  let dstData = [];
+  // prefer DB when available (commonjs)
+  let dbClient = null;
+  try {
+    const clientPath = path.join(__dirname, 'dbClient.cjs');
+    if (require('fs').existsSync(clientPath)) dbClient = require(clientPath);
+  } catch (e) { dbClient = null; }
+
+  if (dbClient) {
+    dstData = await dbClient.getAllShapes();
+  } else {
+    dstData = await readJson(dst);
+  }
 
   const existingById = new Set(dstData.map(s => s.id).filter(Boolean));
   const existingSig = new Set(dstData.map(shapeSignature));
@@ -54,8 +66,13 @@ const main = async () => {
 
   console.log(`Found ${srcData.length} shapes in source; ${dstData.length - added} already present; ${added} to add.`);
   if(added>0 && !dry){
-    await writeJson(dst, dstData);
-    console.log('Write complete.');
+    if (dbClient) {
+      await dbClient.writeShapes(dstData);
+      console.log('Written to database via dbClient');
+    } else {
+      await writeJson(dst, dstData);
+      console.log('Write complete to JSON file');
+    }
   }
 }
 

@@ -95,9 +95,18 @@ async function main() {
       await fs.rm(outDir, { recursive: true, force: true });
     }
 
-    // read shapes
-    const txt = await fs.readFile(dataFile, 'utf8');
-    const arr = JSON.parse(txt);
+    // read shapes (prefer DB)
+    let arr = null;
+    try {
+      const dbClient = await import('./dbClient.mjs');
+      arr = await dbClient.getAllShapes();
+    } catch (e) {
+      arr = null;
+    }
+    if (!arr) {
+      const txt = await fs.readFile(dataFile, 'utf8');
+      arr = JSON.parse(txt);
+    }
 
     // prepare unique name assignment
     const used = new Set();

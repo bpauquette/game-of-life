@@ -1,30 +1,24 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const sqlite3 = require('sqlite3');
+const { open } = require('sqlite');
+const path = require('path');
+const pako = require('pako');
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'shapes.db');
 
-export async function openDb() {
+async function openDb() {
   return open({ filename: DB_PATH, driver: sqlite3.Database });
 }
 
-export async function getAllShapes() {
+async function getAllShapes() {
   const db = await openDb();
   try {
     const rows = await db.all('SELECT * FROM shapes WHERE is_active = 1');
-    // Decompress cells_json if present
     return (rows || []).map(r => {
       const out = { ...r };
       try {
         if (r.cells_json) {
-          // sqlite returns Buffer for BLOBs
           const input = Buffer.isBuffer(r.cells_json) ? r.cells_json : Buffer.from(r.cells_json);
           try {
-            const pako = await import('pako');
             const decompressed = pako.inflate(new Uint8Array(input), { to: 'string' });
             out.cells = JSON.parse(decompressed);
           } catch (e) {
@@ -41,7 +35,7 @@ export async function getAllShapes() {
   }
 }
 
-export async function writeShapes(shapes) {
+async function writeShapes(shapes) {
   if (!Array.isArray(shapes)) throw new Error('shapes must be array');
   const db = await openDb();
   try {
@@ -53,7 +47,7 @@ export async function writeShapes(shapes) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     for (const shape of shapes) {
-      const compressed = (shape.cells && shape.cells.length) ? Buffer.from((await import('pako')).deflate(JSON.stringify(shape.cells))) : null;
+      const compressed = (shape.cells && shape.cells.length) ? Buffer.from(pako.deflate(JSON.stringify(shape.cells))) : null;
       const population = Number.isFinite(Number(shape.population)) ? Number(shape.population) : (Array.isArray(shape.cells) ? shape.cells.length : 0);
       await db.run(sql, [
         shape.id,
@@ -86,21 +80,4 @@ export async function writeShapes(shapes) {
   }
 }
 
-export async function updateShape(id, fields = {}) {
-  const db = await openDb();
-  try {
-    const sets = [];
-    const params = [];
-    for (const [k, v] of Object.entries(fields)) {
-      sets.push(`${k} = ?`);
-      params.push(v);
-    }
-    if (sets.length === 0) return false;
-    params.push(id);
-    const sql = `UPDATE shapes SET ${sets.join(', ')} WHERE id = ?`;
-    const res = await db.run(sql, params);
-    return res && res.changes > 0;
-  } finally {
-    await db.close();
-  }
-}
+module.exports = { openDb, getAllShapes, writeShapes };
