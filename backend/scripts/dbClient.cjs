@@ -1,18 +1,17 @@
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+const Database = require('better-sqlite3');
 const path = require('path');
 const pako = require('pako');
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'shapes.db');
 
-async function openDb() {
-  return open({ filename: DB_PATH, driver: sqlite3.Database });
+function openDb() {
+  return new Database(DB_PATH);
 }
 
-async function getAllShapes() {
-  const db = await openDb();
+function getAllShapes() {
+  const db = openDb();
   try {
-    const rows = await db.all('SELECT * FROM shapes WHERE is_active = 1');
+    const rows = db.prepare('SELECT * FROM shapes WHERE is_active = 1').all();
     return (rows || []).map(r => {
       const out = { ...r };
       try {
@@ -31,25 +30,25 @@ async function getAllShapes() {
       return out;
     });
   } finally {
-    await db.close();
+    try { db.close(); } catch (e) { /* ignore */ }
   }
 }
 
-async function writeShapes(shapes) {
+function writeShapes(shapes) {
   if (!Array.isArray(shapes)) throw new Error('shapes must be array');
-  const db = await openDb();
-  try {
-    await db.exec('BEGIN TRANSACTION');
-    const sql = `INSERT OR REPLACE INTO shapes (
+  const db = openDb();
+  const sql = `INSERT OR REPLACE INTO shapes (
       id, name, description, slug, rule, width, height, population,
       period, speed, user_id, source_url, rle_text, cells_json, signature,
       created_at, updated_at, is_active, public
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-    for (const shape of shapes) {
+  const insert = db.prepare(sql);
+  const insertTxn = db.transaction((list) => {
+    for (const shape of list) {
       const compressed = (shape.cells && shape.cells.length) ? Buffer.from(pako.deflate(JSON.stringify(shape.cells))) : null;
       const population = Number.isFinite(Number(shape.population)) ? Number(shape.population) : (Array.isArray(shape.cells) ? shape.cells.length : 0);
-      await db.run(sql, [
+      insert.run([
         shape.id,
         shape.name || null,
         shape.description || null,
@@ -71,12 +70,12 @@ async function writeShapes(shapes) {
         typeof shape.public === 'number' ? shape.public : (shape.public ? 1 : 0)
       ]);
     }
-    await db.exec('COMMIT');
-  } catch (err) {
-    await db.exec('ROLLBACK');
-    throw err;
+  });
+
+  try {
+    insertTxn(shapes);
   } finally {
-    await db.close();
+    try { db.close(); } catch (e) { /* ignore */ }
   }
 }
 

@@ -4,3 +4,4 @@ node_modules/
 # Local/generated data reports and backups
 data/shapes-missing-cells.json
 data/shapes.backup*.json
+data/shapes.json

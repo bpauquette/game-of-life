@@ -1,5 +1,4 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -75,10 +74,7 @@ const migrateShapes = async () => {
   const dbPath = path.resolve(__dirname, '..', 'data', 'shapes.db');
   console.log('Database path:', dbPath);
 
-  const db = await open({
-    filename: dbPath,
-    driver: sqlite3.Database
-  });
+  const db = new Database(dbPath);
 
   // Create tables
   console.log('Creating tables...');
@@ -87,10 +83,10 @@ const migrateShapes = async () => {
   await db.exec(schema);
 
   // If DB already contains shapes, skip migration
-  const existing = await db.get('SELECT COUNT(*) as count FROM shapes');
+  const existing = db.prepare('SELECT COUNT(*) as count FROM shapes').get();
   if (existing && existing.count > 0) {
     console.log(`Database already contains ${existing.count} shapes — skipping migration.`);
-    await db.close();
+    try { db.close(); } catch (e) {}
     return;
   }
 
@@ -114,44 +110,43 @@ const migrateShapes = async () => {
     const batch = shapesData.slice(i, i + batchSize);
     console.log(`Migrating batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(shapesData.length / batchSize)}...`);
 
-    const stmt = await db.prepare(`
+    const stmt = db.prepare(`
       INSERT OR REPLACE INTO shapes (
         id, name, slug, description, rule, width, height, population,
         period, speed, user_id, rle_text, cells_json, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    for (const shape of batch) {
-      const slug = createSlug(shape.name);
-      const period = extractPeriod(shape.name, shape.meta);
-      const speed = extractSpeed(shape.name);
-      const compressedCells = compressCells(shape.cells);
+    const insertTxn = db.transaction((batchList) => {
+      for (const shape of batchList) {
+        const slug = createSlug(shape.name);
+        const period = extractPeriod(shape.name, shape.meta);
+        const speed = extractSpeed(shape.name);
+        const compressedCells = compressCells(shape.cells);
 
-      // Store original RLE if available, otherwise reconstruct
-      const rleText = shape.meta?.originalHeader ?
-        `${shape.meta.originalHeader}\n${shape.rle_body || ''}` :
-        null;
+        const rleText = shape.meta?.originalHeader ? `${shape.meta.originalHeader}\n${shape.rle_body || ''}` : null;
 
-      await stmt.run(
-        shape.id,
-        shape.name,
-        slug,
-        shape.description || shape.meta?.comments?.join('\n'),
-        shape.rule || 'B3/S23',
-        shape.width,
-        shape.height,
-        shape.cells?.length || 0,
-        period,
-        speed,
-        shape.userId || 'system',
-        rleText,
-        compressedCells,
-        shape.createdAt || new Date().toISOString(),
-        shape.updatedAt || new Date().toISOString()
-      );
-    }
+        stmt.run(
+          shape.id,
+          shape.name,
+          slug,
+          shape.description || shape.meta?.comments?.join('\n'),
+          shape.rule || 'B3/S23',
+          shape.width,
+          shape.height,
+          shape.cells?.length || 0,
+          period,
+          speed,
+          shape.userId || 'system',
+          rleText,
+          compressedCells,
+          shape.createdAt || new Date().toISOString(),
+          shape.updatedAt || new Date().toISOString()
+        );
+      }
+    });
 
-    await stmt.finalize();
+    insertTxn(batch);
     migrated += batch.length;
   }
 
@@ -197,23 +192,20 @@ const migrateShapes = async () => {
 
 // Test query
 const testQueries = async () => {
-  const db = await open({
-    filename: path.join(__dirname, 'data', 'shapes.db'),
-    driver: sqlite3.Database
-  });
+  const db = new Database(path.join(__dirname, 'data', 'shapes.db'));
 
   console.log('\n=== Test Queries ===');
 
   // Count shapes
-  const count = await db.get('SELECT COUNT(*) as count FROM shapes');
+  const count = db.prepare('SELECT COUNT(*) as count FROM shapes').get();
   console.log(`Total shapes: ${count.count}`);
 
   // Sample shapes
-  const samples = await db.all('SELECT name, population, period FROM shapes LIMIT 5');
+  const samples = db.prepare('SELECT name, population, period FROM shapes LIMIT 5').all();
   console.log('Sample shapes:', samples);
 
   // Statistics
-  const stats = await db.get(`
+  const stats = db.prepare(`
     SELECT
       COUNT(*) as total,
       AVG(population) as avg_pop,
@@ -221,10 +213,10 @@ const testQueries = async () => {
       COUNT(CASE WHEN period = 1 THEN 1 END) as still_lives,
       COUNT(CASE WHEN period > 1 THEN 1 END) as oscillators
     FROM shapes
-  `);
+  `).get();
   console.log('Statistics:', stats);
 
-  await db.close();
+  try { db.close(); } catch (e) {}
 };
 
 // Run migration if called directly

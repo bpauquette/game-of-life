@@ -1,30 +1,28 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import Database from 'better-sqlite3';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import pako from 'pako';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'shapes.db');
 
-export async function openDb() {
-  return open({ filename: DB_PATH, driver: sqlite3.Database });
+export function openDb() {
+  // returns a better-sqlite3 Database instance
+  return new Database(DB_PATH);
 }
 
-export async function getAllShapes() {
-  const db = await openDb();
+export function getAllShapes() {
+  const db = openDb();
   try {
-    const rows = await db.all('SELECT * FROM shapes WHERE is_active = 1');
-    // Decompress cells_json if present
+    const rows = db.prepare('SELECT * FROM shapes WHERE is_active = 1').all();
     return (rows || []).map(r => {
       const out = { ...r };
       try {
         if (r.cells_json) {
-          // sqlite returns Buffer for BLOBs
           const input = Buffer.isBuffer(r.cells_json) ? r.cells_json : Buffer.from(r.cells_json);
           try {
-            const pako = await import('pako');
             const decompressed = pako.inflate(new Uint8Array(input), { to: 'string' });
             out.cells = JSON.parse(decompressed);
           } catch (e) {
@@ -37,25 +35,25 @@ export async function getAllShapes() {
       return out;
     });
   } finally {
-    await db.close();
+    try { db.close(); } catch (e) { /* ignore */ }
   }
 }
 
-export async function writeShapes(shapes) {
+export function writeShapes(shapes) {
   if (!Array.isArray(shapes)) throw new Error('shapes must be array');
-  const db = await openDb();
-  try {
-    await db.exec('BEGIN TRANSACTION');
-    const sql = `INSERT OR REPLACE INTO shapes (
+  const db = openDb();
+  const sql = `INSERT OR REPLACE INTO shapes (
       id, name, description, slug, rule, width, height, population,
       period, speed, user_id, source_url, rle_text, cells_json, signature,
       created_at, updated_at, is_active, public
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-    for (const shape of shapes) {
-      const compressed = (shape.cells && shape.cells.length) ? Buffer.from((await import('pako')).deflate(JSON.stringify(shape.cells))) : null;
+  const insert = db.prepare(sql);
+  const insertTxn = db.transaction((list) => {
+    for (const shape of list) {
+      const compressed = (shape.cells && shape.cells.length) ? Buffer.from(pako.deflate(JSON.stringify(shape.cells))) : null;
       const population = Number.isFinite(Number(shape.population)) ? Number(shape.population) : (Array.isArray(shape.cells) ? shape.cells.length : 0);
-      await db.run(sql, [
+      insert.run([
         shape.id,
         shape.name || null,
         shape.description || null,
@@ -77,17 +75,17 @@ export async function writeShapes(shapes) {
         typeof shape.public === 'number' ? shape.public : (shape.public ? 1 : 0)
       ]);
     }
-    await db.exec('COMMIT');
-  } catch (err) {
-    await db.exec('ROLLBACK');
-    throw err;
+  });
+
+  try {
+    insertTxn(shapes);
   } finally {
-    await db.close();
+    try { db.close(); } catch (e) { /* ignore */ }
   }
 }
 
-export async function updateShape(id, fields = {}) {
-  const db = await openDb();
+export function updateShape(id, fields = {}) {
+  const db = openDb();
   try {
     const sets = [];
     const params = [];
@@ -98,9 +96,9 @@ export async function updateShape(id, fields = {}) {
     if (sets.length === 0) return false;
     params.push(id);
     const sql = `UPDATE shapes SET ${sets.join(', ')} WHERE id = ?`;
-    const res = await db.run(sql, params);
+    const res = db.prepare(sql).run(...params);
     return res && res.changes > 0;
   } finally {
-    await db.close();
+    try { db.close(); } catch (e) { /* ignore */ }
   }
 }
