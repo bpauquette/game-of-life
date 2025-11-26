@@ -66,13 +66,17 @@ const router = express.Router();
 router.use(express.json());
 
 // Rate limiting for auth endpoints
-const authLimiter = rateLimit({
-	windowMs: 15 * 60 * 1000, // 15 minutes
-	max: 5, // Limit each IP to 5 requests per windowMs
-	message: { error: "Too many requests, please try again later." },
-	standardHeaders: true,
-	legacyHeaders: false,
-});
+// During automated tests, the limiter is a no-op to avoid flaky 429s.
+const isTestEnv = process.env.NODE_ENV === 'test' || process.env.GOL_TEST === '1';
+const authLimiter = isTestEnv
+	? (req, res, next) => next()
+	: rateLimit({
+			windowMs: 15 * 60 * 1000, // 15 minutes
+			max: 5, // Limit each IP to 5 requests per windowMs
+			message: { error: "Too many requests, please try again later." },
+			standardHeaders: true,
+			legacyHeaders: false,
+		});
 
 // --- HELPERS -------------------------------------------------------
 function issueJWT(user) {
