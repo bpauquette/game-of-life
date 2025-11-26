@@ -6,7 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseRLE, parseCells } from '../src/rleParser.js';
 import { SQLiteDatabase } from '../src/sqlite-db.js';
-import { generateShapeSignature, generateShapeSignatureFromCells } from '../src/shapeSignature.js';
+import { v4 as uuidv4 } from 'uuid';
+import { generateShapeSignature } from '../src/shapeSignature.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -99,9 +100,9 @@ async function main() {
     // Prepare shape for database
     const name = path.parse(file).name; // base name without extension
     const dbShape = {
-      id: 'rle-' + name.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 46),
+      id: uuidv4(),
       name: name,
-      description: '',
+      description: shape.meta?.comments?.join(' ') || '',
       rule: 'B3/S23',
       width: shape.width,
       height: shape.height,
@@ -112,8 +113,8 @@ async function main() {
       population: shape.cells.length
     };
 
-    const signature = generateShapeSignatureFromCells(shape.cells);
-    console.log(`Signature for ${name}: ${signature.slice(0, 16)}...`);
+    const signature = 'not needed'; // generateShapeSignatureFromCells(shape.cells);
+    console.log(`Processing ${name}...`);
 
     let result;
     try {

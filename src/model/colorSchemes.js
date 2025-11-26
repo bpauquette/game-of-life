@@ -16,24 +16,28 @@ export const colorSchemes = {
     name: "Neon Grid",
     background: "#0a0a1a",
     gridColor: "#1d1f3d",
+    cellColor: "#00ffff",
     getCellColor: (x, y) => `hsl(${(x * NEON_X_MULTIPLIER + y * NEON_Y_MULTIPLIER) % HUE_FULL_CIRCLE}, ${SATURATION_HIGH}%, ${LIGHTNESS_BRIGHT}%)`
   },
   bio: {
     name: "BioLife",
     background: "#0e1a12",
     gridColor: "#1c3a27",
+    cellColor: "#4aff6c",
     getCellColor: () => "#4aff6c"
   },
   ember: {
     name: "Ember Field",
     background: "#1a0b0b",
     gridColor: "#3a1a1a",
+    cellColor: "#ff4500",
     getCellColor: (x, y) => `hsl(${EMBER_HUE_BASE + ((x + y) % EMBER_HUE_VARIATION)}, ${SATURATION_EMBER}%, ${LIGHTNESS_MEDIUM}%)`
   },
   retro: {
     name: "Retro Vector",
     background: "#001f3f",
     gridColor: "#12345a",
+    cellColor: "#39ff14",
     getCellColor: () => "#39ff14"
   }
 };
