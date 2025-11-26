@@ -46,16 +46,23 @@ class SQLiteDatabase {
     if (this.db) return this.db;
 
     console.log('Connecting to SQLite database at', DB_PATH);
-    this.db = await open({
-      filename: DB_PATH,
-      driver: sqlite3.Database
-    });
+    // Use better-sqlite3 synchronous driver. Create a DB instance and
+    // provide small helper wrappers so the rest of the codebase can continue
+    // to call `await db.all(...)` / `await db.get(...)`.
+    const d = new Database(DB_PATH);
+
+    // Provide synchronous helpers with the same names used elsewhere.
+    d.all = function (sql, ...params) { return this.prepare(sql).all(...params); };
+    d.get = function (sql, ...params) { return this.prepare(sql).get(...params); };
+    d.run = function (sql, ...params) { return this.prepare(sql).run(...params); };
+
+    this.db = d;
 
     // Enable WAL mode for better concurrency and reasonable cache size.
-    await this.db.exec('PRAGMA journal_mode = WAL');
-    await this.db.exec('PRAGMA synchronous = NORMAL');
+    this.db.exec('PRAGMA journal_mode = WAL');
+    this.db.exec('PRAGMA synchronous = NORMAL');
     // cache_size is measured in pages; keep conservative default to avoid OOM
-    await this.db.exec('PRAGMA cache_size = 20000');
+    this.db.exec('PRAGMA cache_size = 20000');
 
     // Ensure tables and auxiliary structures exist
     await this.ensureSignatureColumn();
@@ -299,8 +306,8 @@ class SQLiteDatabase {
       shape.description || null,
       shape.slug || null,
       shape.rule || 'B3/S23',
-      shape.width,
-      shape.height,
+      (shape.width ?? 1),
+      (shape.height ?? 1),
       shape.cells?.length || 0,
       shape.period || 1,
       shape.speed || null,

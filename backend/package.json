@@ -8,7 +8,7 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "node --test tests/*.test.js",
-    "test:integration": "mocha src/auth/auth.integration.test.cjs --exit",
+    "test:integration": "mocha src/auth/auth.integration.test.cjs --exit --timeout 5000",
     "migrate:shape-ids": "node scripts/ensure-shape-ids.js"
   },
   "dependencies": {
