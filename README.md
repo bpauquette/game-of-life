@@ -184,7 +184,7 @@ curl -X POST http://localhost:55000/v1/demo/load-glider
 
 Predefined shapes are maintained in the frontend source at `src/shapes.js`. The backend now persists shapes in `backend/data/shapes.db` (SQLite). The old `backend/data/shapes.json` is retained as a legacy snapshot for offline tooling only.
 
-Import/migration tools in `backend/scripts/` now prefer the database. Scripts that previously read/wrote `shapes.json` will fall back to the file only if the DB is not present. To refresh the DB from `src/shapes.js`, run the scripts in `backend/scripts/` (for example the one-time `migrate-to-sqlite.mjs`), which will detect an existing DB and skip duplicate imports.
+Import/migration tools in `backend/scripts/` now require the database and use the SQLite store at `backend/data/shapes.db` as the authoritative source. Deprecated JSON-backed scripts have been archived to `backend/scripts/legacy/`. To refresh or populate the DB from sources (`src/shapes.js`, `lexicon/`, or `all/`), run the canonical importers: `backend/scripts/import-lexicon-shapes.mjs` (for `lexicon/`) or `backend/scripts/bulk-import-all.mjs` (for `all/`). The one-time `migrate-to-sqlite.mjs` will still read `backend/data/shapes.json` if present to perform migrations.
 
 ### Notes & troubleshooting
 
