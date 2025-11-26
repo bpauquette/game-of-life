@@ -176,7 +176,8 @@ function GameOfLifeApp(props) {
   // Sync random rectangle percent into controller tool state as a probability (0..1)
   useEffect(() => {
     try {
-      const p = Math.max(0, Math.min(1, (Number(randomRectPercent) || 50) / 100));
+      const n = Number(randomRectPercent);
+      const p = Number.isFinite(n) ? Math.max(0, Math.min(1, n / 100)) : 0;
       const ctrl = gameRef.current?.controller;
       if (ctrl && typeof ctrl._setToolState === 'function') {
         ctrl._setToolState({ prob: p });
