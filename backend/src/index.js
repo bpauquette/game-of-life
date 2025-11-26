@@ -172,7 +172,8 @@ const ensureUniqueName = async (baseName) => {
   let candidate = baseName;
   let counter = 1;
   while (true) {
-    const existing = await db.get(
+    const conn = await db.connect();
+    const existing = conn.get(
       'SELECT id FROM shapes WHERE LOWER(name) = LOWER(?) AND is_active = 1 LIMIT 1',
       candidate
     );
