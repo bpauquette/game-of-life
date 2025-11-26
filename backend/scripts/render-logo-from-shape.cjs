@@ -59,6 +59,8 @@ async function main() {
   } catch (e) {
     console.error('This script requires the SQLite DB and backend/scripts/dbClient.cjs to be present.');
     console.error('Populate the DB (e.g. run import-lexicon-shapes.mjs or bulk-import-all.mjs) and retry.');
+    console.error('Import error:');
+    console.error(e && (e.stack || e.message || e));
     process.exit(2);
   }
   if (!Array.isArray(arr) || arr.length === 0) {
