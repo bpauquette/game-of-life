@@ -1,4 +1,4 @@
 #!/usr/bin/env node
-// Deprecated: centralized import now writes full descriptions; merging is no longer needed.
-console.error('[deprecated] merge-shape-descriptions.cjs has been removed. Use scripts/import-lexicon-shapes.mjs.');
+// Deprecated and archived: this script has been moved to backend/scripts/legacy
+console.error('[deprecated] merge-shape-descriptions.cjs has been archived to backend/scripts/legacy');
 process.exit(1);

@@ -1,5 +1,4 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import Database from 'better-sqlite3';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pako from 'pako';
@@ -36,6 +35,7 @@ const decompressCells = (cellsBlob) => {
     return null;
   }
 };
+// file intentionally updated to use better-sqlite3 synchronous API
 
 class SQLiteDatabase {
   constructor() {

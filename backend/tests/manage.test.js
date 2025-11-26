@@ -19,7 +19,8 @@ function runManage(action, extraArgs = []) {
     const child = spawn(process.execPath, [manageScript, action, ...extraArgs], {
       cwd: root,
       stdio: ['ignore', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
+      // Avoid shell on Windows so spaces in process.execPath don't break the command
+      shell: false,
     });
     let stdout = '';
     let stderr = '';
