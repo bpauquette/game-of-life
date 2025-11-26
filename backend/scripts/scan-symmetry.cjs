@@ -2,18 +2,21 @@
 const fs = require('fs');
 const path = require('path');
 
-function readShapes() {
-  // prefer DB client when available
+async function readShapes() {
+  // DB-only: require dbClient and abort if not present
   try {
     const clientPath = path.join(__dirname, 'dbClient.cjs');
-    if (fs.existsSync(clientPath)) {
-      const dbClient = require(clientPath);
-      return dbClient.getAllShapes();
+    if (!fs.existsSync(clientPath)) {
+      throw new Error('dbClient.cjs not found');
     }
-  } catch (e) { }
-  const p = path.join(__dirname, '..', 'data', 'shapes.json');
-  const txt = fs.readFileSync(p, 'utf8');
-  return JSON.parse(txt);
+    const dbClient = require(clientPath);
+    const shapes = await dbClient.getAllShapes();
+    return shapes;
+  } catch (e) {
+    console.error('This script requires the SQLite DB and backend/scripts/dbClient.cjs.');
+    console.error('Populate the DB (e.g. run import-lexicon-shapes.mjs or bulk-import-all.mjs) and retry.');
+    process.exit(2);
+  }
 }
 
 function computeBounds(cells) {
@@ -84,11 +87,11 @@ function displayScore(cellCount, bbox) {
   return cellCount / (1 + Math.log1p(maxDim));
 }
 
-function main() {
+async function main() {
   const args = process.argv.slice(2);
   const topArg = args.find(a => a.startsWith('--top='));
   const top = Number(topArg ? topArg.split('=')[1] : 20) || 20;
-  const shapes = readShapes();
+  const shapes = await readShapes();
   const results = [];
   for (const s of shapes) {
     const cells = Array.isArray(s.cells) ? s.cells : [];
