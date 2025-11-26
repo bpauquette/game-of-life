@@ -2,12 +2,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AuthProvider } from './AuthProvider';
 import Login from './Login';
 
+import { post } from './api';
+
 // Mock the API
 jest.mock('./api', () => ({
   post: jest.fn(),
 }));
-
-import { post } from './api';
 
 const mockPost = post;
 
