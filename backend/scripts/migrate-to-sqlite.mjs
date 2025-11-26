@@ -86,9 +86,22 @@ const migrateShapes = async () => {
   const schema = fs.readFileSync(schemaPath, 'utf8');
   await db.exec(schema);
 
-  // Load existing shapes
+  // If DB already contains shapes, skip migration
+  const existing = await db.get('SELECT COUNT(*) as count FROM shapes');
+  if (existing && existing.count > 0) {
+    console.log(`Database already contains ${existing.count} shapes — skipping migration.`);
+    await db.close();
+    return;
+  }
+
+  // Load existing shapes from JSON
   console.log('Loading existing shapes from JSON...');
   const shapesPath = path.resolve(__dirname, '..', 'data', 'shapes.json');
+  if (!fs.existsSync(shapesPath)) {
+    console.warn('No shapes.json found at', shapesPath, '- nothing to migrate');
+    await db.close();
+    return;
+  }
   const shapesData = JSON.parse(fs.readFileSync(shapesPath, 'utf8'));
 
   console.log(`Found ${shapesData.length} shapes to migrate`);
