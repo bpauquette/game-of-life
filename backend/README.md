@@ -32,7 +32,7 @@ APIs
 - POST /v1/import-rle — import an RLE payload
   - Accepts JSON { "rle": "..." } or text/plain body containing RLE
 
-Notes
-- This is a prototype. We store shapes in `backend/data/shapes.json`. For production, use a proper database and add authentication, rate limits and licensing/attribution handling.
+- Notes
+- This is a prototype. Shapes are persisted in `backend/data/shapes.db` (SQLite). The legacy JSON export `backend/data/shapes.json` is kept as a local snapshot/backup for tooling, but backend runtime and scripts prefer the SQLite database.
 - Memory telemetry samples are persisted in `backend/data/memorySamples.json`. Rotate or purge the file if you need to reset history.
 - When ready, we can extract this into its own repo and add CI/CD.

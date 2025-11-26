@@ -133,6 +133,8 @@ GOL_BACKEND_PORT=55000 node src/index.js
 - Entry point: `backend/src/index.js`
 - Persistent data file: `backend/data/shapes.json` (an array of shape objects)
 - Simple filesystem-backed DB wrapper: `backend/src/db.js`
+- Persistent storage: `backend/data/shapes.db` (SQLite DB). The legacy `backend/data/shapes.json` is kept as a local snapshot/backup only and is no longer used at runtime by the API.
+- Simple filesystem-backed DB wrapper: `backend/src/db.js` (keeps compatibility for small tooling)
 
 There are convenience start/stop scripts provided:
 
@@ -180,9 +182,9 @@ curl -X POST http://localhost:55000/v1/demo/load-glider
 
 ### Importing shapes
 
-Predefined shapes are maintained in the frontend source at `src/shapes.js`. The backend data file `backend/data/shapes.json` is used at runtime by the API. There are small import scripts in `backend/scripts/` to help convert and merge shapes into the backend data file (deduplication is performed by name). Use those scripts from the `backend/` folder when you need to refresh the backend store from `src/shapes.js`.
+Predefined shapes are maintained in the frontend source at `src/shapes.js`. The backend now persists shapes in `backend/data/shapes.db` (SQLite). The old `backend/data/shapes.json` is retained as a legacy snapshot for offline tooling only.
 
-If you prefer a manual approach, open `backend/data/shapes.json` and paste or edit shape objects as an array of JSON objects.
+Import/migration tools in `backend/scripts/` now prefer the database. Scripts that previously read/wrote `shapes.json` will fall back to the file only if the DB is not present. To refresh the DB from `src/shapes.js`, run the scripts in `backend/scripts/` (for example the one-time `migrate-to-sqlite.mjs`), which will detect an existing DB and skip duplicate imports.
 
 ### Notes & troubleshooting
 

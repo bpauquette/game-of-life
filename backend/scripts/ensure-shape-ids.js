@@ -7,11 +7,42 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { v4 as uuidv4 } from 'uuid';
 
+// Prefer DB-backed shapes when available
+let dbClient;
+try {
+  dbClient = await import('./dbClient.mjs');
+} catch (e) {
+  dbClient = null;
+}
+
 async function main() {
   try {
     const scriptDir = path.dirname(fileURLToPath(import.meta.url));
     const dataFile = path.join(scriptDir, '..', 'data', 'shapes.json');
     const backupFile = path.join(scriptDir, '..', 'data', `shapes.json.bak.${Date.now()}`);
+
+    if (dbClient) {
+      console.log('DB detected — checking shapes table for missing ids');
+      const shapes = await dbClient.getAllShapes();
+      const updates = [];
+      for (const s of shapes) {
+        if (s && !s.id) {
+          const id = uuidv4();
+          const ok = await dbClient.updateShape(s.rowid ? s.rowid : s.id, { id });
+          if (ok) updates.push({ name: s.name, id });
+        }
+      }
+      if (updates.length === 0) {
+        console.log('All DB shapes already have ids. Nothing to do.');
+        process.exit(0);
+      }
+      console.log(`Assigned ids to ${updates.length} DB shapes.`);
+      for (let i = 0; i < Math.min(5, updates.length); i++) {
+        const s = updates[i];
+        console.log(` - ${s.name || '<unnamed>'}: ${s.id}`);
+      }
+      process.exit(0);
+    }
 
     console.log('Reading shapes from', dataFile);
     const txt = await fs.readFile(dataFile, 'utf8').catch(() => null);
