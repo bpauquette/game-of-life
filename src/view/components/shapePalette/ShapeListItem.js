@@ -1,4 +1,4 @@
-import React, { useRef, memo, useEffect, useState } from 'react';
+import React, { useRef, memo, useEffect, useState, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import ListItem from '@mui/material/ListItem';
 import Box from '@mui/material/Box';
@@ -30,10 +30,10 @@ const ShapeListItem = memo(function ShapeListItem({
   const tRef = useRef(Date.now());
   const canvasRef = useRef(null);
   const [fullShape, setFullShape] = useState(null);
-  const getCellColor = (x, y) => colorScheme?.getCellColor?.(x, y, tRef.current) ?? '#4a9';
+  const getCellColor = useCallback((x, y) => colorScheme?.getCellColor?.(x, y, tRef.current) ?? '#4a9', [colorScheme]);
   const keyBase = shape.id || 'shape';
   const displayShape = fullShape || shape;
-  const cells = displayShape.cells || [];
+  const cells = useMemo(() => (displayShape?.cells || []), [displayShape]);
 
   // Fetch full shape if needed
   useEffect(() => {
@@ -79,7 +79,7 @@ const ShapeListItem = memo(function ShapeListItem({
       ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
     }
     ctx.restore();
-  }, [cells, colorScheme]);
+  }, [cells, getCellColor]);
 
   try {
     const first = Array.isArray(shape.cells) && shape.cells.length > 0 ? shape.cells[0] : null;

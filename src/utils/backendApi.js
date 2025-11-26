@@ -53,8 +53,11 @@ export async function saveCapturedShapeToBackend(shapeData, logout) {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     if (response.status === 409 && errorData.duplicate) {
-      // Special handling for duplicates
-      throw { duplicate: true, existingShape: errorData.existingShape };
+      // Special handling for duplicates - throw an Error instance with metadata
+      const err = new Error('Conflict: duplicate shape');
+      err.duplicate = true;
+      err.existingShape = errorData.existingShape;
+      throw err;
     }
     if (errorData.error === 'Invalid or expired token') {
       if (typeof logout === 'function') logout();
