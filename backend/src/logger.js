@@ -3,6 +3,10 @@
  * Respects NODE_ENV for production logging
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 const LOG_LEVELS = {
   ERROR: 0,
   WARN: 1,
@@ -15,10 +19,6 @@ const config = {
   level: process.env.NODE_ENV === 'production' ? LOG_LEVELS.ERROR : LOG_LEVELS.DEBUG,
   enabled: process.env.NODE_ENV !== 'test' // Disable logging in tests
 };
-
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
