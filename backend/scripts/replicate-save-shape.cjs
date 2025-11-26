@@ -31,12 +31,14 @@ async function run() {
   }
 
   console.log('Posting shape with token');
+  const start = Date.now();
   res = await fetch(base + '/v1/shapes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
     body: JSON.stringify({ name: 'Replicate Shape', rle: 'bo$2bo$3o!', description: 'replicate test' })
   });
-  console.log('Shape POST status', res.status);
+  const elapsed = Date.now() - start;
+  console.log('Shape POST status', res.status, `(elapsed ${elapsed}ms)`);
   const text = await res.text();
   console.log('Shape POST body:', text);
 }

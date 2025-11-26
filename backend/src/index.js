@@ -167,14 +167,18 @@ const buildCandidatesForName = (baseThumbs, nameSlug, scheme, size) => {
 };
 
 const ensureUniqueName = async (baseName) => {
-  const shapes = await db.listShapes();
-  const existingNames = new Set(shapes.map(s => s.name?.toLowerCase()));
-  let unique = baseName;
+  // Fast uniqueness check that avoids decompressing all shapes.
+  // Use a targeted SELECT to find an exact (case-insensitive) name match.
+  let candidate = baseName;
   let counter = 1;
-  while (existingNames.has(unique.toLowerCase())) {
-    unique = `${baseName} (${counter++})`;
+  while (true) {
+    const existing = await db.get(
+      'SELECT id FROM shapes WHERE LOWER(name) = LOWER(?) AND is_active = 1 LIMIT 1',
+      candidate
+    );
+    if (!existing) return candidate;
+    candidate = `${baseName} (${counter++})`;
   }
-  return unique;
 };
 
 // Migration: Add userId to existing shapes
