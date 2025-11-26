@@ -377,18 +377,33 @@ const RecentShapesStrip = ({
         <div
           ref={scrollRef}
           className="recent-shapes-scroll"
+          onWheel={(e) => {
+            // Translate vertical wheel into horizontal scroll for a "carousel" feel
+            const el = scrollRef.current;
+            if (!el) return;
+            // Only intercept primarily-vertical scrolls so nested vertical scrolling still works
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+              e.preventDefault();
+              el.scrollBy({ left: e.deltaY, behavior: 'auto' });
+              return;
+            }
+            // allow default horizontal wheel behavior otherwise
+          }}
           style={{
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'flex-start',
             gap: 12,
             width: '100%',
-            overflow: 'hidden',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            WebkitOverflowScrolling: 'touch',
             paddingBottom: 12,
             paddingTop: 8,
             scrollSnapType: 'x mandatory',
             paddingLeft: 4,
-            paddingRight: 6
+            paddingRight: 6,
+            scrollBehavior: 'smooth'
           }}
         >
         {slots.map((shape, index) => {
