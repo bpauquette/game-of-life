@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLexiconFile } from '../src/lexiconParser.js';
 import { SQLiteDatabase } from '../src/sqlite-db.js';
-import { generateShapeSignature } from '../src/shapeSignature.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,7 +70,7 @@ async function main() {
 
         // Prepare shape for database
         const dbShape = {
-          id: shape.name.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 50), // Generate ID from name
+          id: uuidv4(),
           name: shape.name,
           description: shape.description,
           rule: 'B3/S23',

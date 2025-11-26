@@ -62,6 +62,7 @@ class SQLiteDatabase {
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
           slug TEXT,
+          description TEXT,
           rule TEXT DEFAULT 'B3/S23',
           width INTEGER NOT NULL,
           height INTEGER NOT NULL,
@@ -82,14 +83,20 @@ class SQLiteDatabase {
       // Check if signature column exists
       const columns = await db.all("PRAGMA table_info(shapes)");
       const hasSignature = columns.some(col => col.name === 'signature');
+      const hasDescription = columns.some(col => col.name === 'description');
       
       if (!hasSignature) {
         console.log('Adding signature column to shapes table');
         await db.exec('ALTER TABLE shapes ADD COLUMN signature TEXT UNIQUE');
         console.log('Signature column added');
       }
+      if (!hasDescription) {
+        console.log('Adding description column to shapes table');
+        await db.exec('ALTER TABLE shapes ADD COLUMN description TEXT');
+        console.log('Description column added');
+      }
     } catch (err) {
-      console.warn('Error ensuring signature column:', err.message);
+      console.warn('Error ensuring columns:', err.message);
     }
   }
 
@@ -123,7 +130,7 @@ class SQLiteDatabase {
     const db = await this.connect();
     const row = await db.get(`
       SELECT
-        id, name, rule, width, height, population,
+        id, name, description, rule, width, height, population,
         period, speed, user_id as userId, source_url as sourceUrl,
         rle_text as rleText, cells_json as cellsBlob,
         created_at as createdAt, updated_at as updatedAt
@@ -209,13 +216,14 @@ class SQLiteDatabase {
 
     await db.run(`
       INSERT INTO shapes (
-        id, name, slug, rule, width, height, population,
+        id, name, description, slug, rule, width, height, population,
         period, speed, user_id, rle_text, cells_json, signature,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       shape.id,
       shape.name,
+      shape.description || null,
       shape.slug || null,
       shape.rule || 'B3/S23',
       shape.width,
@@ -370,8 +378,8 @@ class SQLiteDatabase {
     const whereClause = whereConditions.join(' AND ');
 
     const selectFields = includeCells
-      ? 's.id, s.name, s.rule, s.width, s.height, s.population, s.period, s.speed, s.user_id as userId, s.source_url as sourceUrl, s.rle_text as rleText, s.cells_json as cellsBlob, s.created_at as createdAt, s.updated_at as updatedAt'
-      : 's.id, s.name, s.rule, s.width, s.height, s.population, s.period, s.speed, s.user_id as userId, s.created_at as createdAt, s.updated_at as updatedAt';
+      ? 's.id, s.name, s.description, s.rule, s.width, s.height, s.population, s.period, s.speed, s.user_id as userId, s.source_url as sourceUrl, s.rle_text as rleText, s.cells_json as cellsBlob, s.created_at as createdAt, s.updated_at as updatedAt'
+      : 's.id, s.name, s.description, s.rule, s.width, s.height, s.population, s.period, s.speed, s.user_id as userId, s.created_at as createdAt, s.updated_at as updatedAt';
 
     // Get total count
     const countQuery = `SELECT COUNT(*) as total FROM shapes s WHERE ${whereClause}`;
