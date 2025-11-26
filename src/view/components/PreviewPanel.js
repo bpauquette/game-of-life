@@ -5,8 +5,48 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import Link from '@mui/material/Link';
 import { transformShape } from '../../model/shapeTransforms';
 import { rotateShape } from '../../model/shapeTransforms';
+
+// Function to parse text and convert URLs to clickable links
+function renderTextWithLinks(text, sx) {
+  // URL regex pattern
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      return (
+        <Link
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{
+            ...sx,
+            color: '#00e6ff', // Match the cyan color used elsewhere
+            textDecoration: 'underline',
+            '&:hover': {
+              color: '#00ffff',
+            }
+          }}
+        >
+          {part}
+        </Link>
+      );
+    }
+    return (
+      <Typography
+        key={index}
+        component="span"
+        sx={sx}
+      >
+        {part}
+      </Typography>
+    );
+  });
+}
 
 function computeBounds(cells = []) {
   // Simple, low-complexity version: compute min/max with fewer branches
@@ -31,27 +71,27 @@ function computeBounds(cells = []) {
 }
 
 // small LRU cache for generated preview images (data URLs)
-const PREVIEW_CACHE = new Map();
-const PREVIEW_CACHE_LIMIT = 200;
+// const PREVIEW_CACHE = new Map();
+// const PREVIEW_CACHE_LIMIT = 200;
 
-function cacheGet(id) {
-  if (!id) return null;
-  const v = PREVIEW_CACHE.get(id);
-  if (!v) return null;
-  // mark as recently used
-  PREVIEW_CACHE.delete(id);
-  PREVIEW_CACHE.set(id, v);
-  return v;
-}
+// function cacheGet(id) {
+//   if (!id) return null;
+//   const v = PREVIEW_CACHE.get(id);
+//   if (!v) return null;
+//   // mark as recently used
+//   PREVIEW_CACHE.delete(id);
+//   PREVIEW_CACHE.set(id, v);
+//   return v;
+// }
 
-function cacheSet(id, dataUrl) {
-  if (!id || !dataUrl) return;
-  PREVIEW_CACHE.set(id, dataUrl);
-  if (PREVIEW_CACHE.size > PREVIEW_CACHE_LIMIT) {
-    const firstKey = PREVIEW_CACHE.keys().next().value;
-    PREVIEW_CACHE.delete(firstKey);
-  }
-}
+// function cacheSet(id, dataUrl) {
+//   if (!id || !dataUrl) return;
+//   PREVIEW_CACHE.set(id, dataUrl);
+//   if (PREVIEW_CACHE.size > PREVIEW_CACHE_LIMIT) {
+//     const firstKey = PREVIEW_CACHE.keys().next().value;
+//     PREVIEW_CACHE.delete(firstKey);
+//   }
+// }
 
 export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, colorSchemeKey, onAddRecent }) {
   const canvasRef = useRef(null);
@@ -89,20 +129,12 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
     setCachedDataUrl(null);
     setImgError(false);
     if (!preview) return;
-    const nameSlug = preview.name ? (String(preview.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0,200)) : '';
-    const transformKey = `${transformIndex}-${rotationAngle}`;
-    const cacheId = preview.id ? `${preview.id}::${colorSchemeKey || 'default'}::${transformKey}` : `${nameSlug || JSON.stringify(cells).slice(0,200)}::${colorSchemeKey || 'default'}::${transformKey}`;
-    const existing = cacheGet(cacheId);
-    if (existing) {
-      setCachedDataUrl(existing);
-      return;
-    }
     // Use static public thumbnail path
     const scheme = colorSchemeKey || 'default';
     const size = 128;
+    const nameSlug = preview.name ? (String(preview.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0,200)) : '';
     const thumbnailUrl = nameSlug ? `/thumbnails/${size}/${scheme}/${nameSlug}.png` : null;
     if (thumbnailUrl) {
-      cacheSet(cacheId, thumbnailUrl);
       setCachedDataUrl(thumbnailUrl);
     }
     // No name-based thumbnail available. Per policy this UI should not request
@@ -134,7 +166,7 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
 
   return (
     <Box sx={{ minWidth: 260, minHeight: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} data-testid="hover-preview-panel">
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
         {cachedDataUrl && !imgError ? (
           <img src={cachedDataUrl} alt={preview.name || 'shape preview'} style={{ width: drawW, height: drawH, objectFit: 'contain', ...PREVIEW_BORDER_STYLE }}
             onError={() => setImgError(true)}
@@ -142,7 +174,7 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
         ) : (
           <canvas ref={canvasRef} width={drawW} height={drawH} style={{ width: drawW, height: drawH, ...PREVIEW_BORDER_STYLE }} />
         )}
-        <Box sx={{ maxWidth: 320, maxHeight: 200, overflow: 'auto' }}>
+        <Box sx={{ maxWidth: 320, maxHeight: 200, overflow: 'hidden', textAlign: 'center' }}>
           <Typography
             sx={{
               fontWeight: 700,
@@ -156,21 +188,22 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
             {preview.name}
           </Typography>
           {preview.description && (
-            <Typography
-              variant="body2"
+            <Box
               sx={{
                 fontSize: 13,
-                color: '#fff',
-                background: 'linear-gradient(90deg, #00e6ff 0%, #3ad6ff 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: '#ffffff',
                 fontWeight: 500,
-                textShadow: '0 1px 4px rgba(0,0,0,0.18)',
-                mt: 0.5
+                mt: 0.5,
+                lineHeight: 1.4
               }}
             >
-              {preview.description}
-            </Typography>
+              {renderTextWithLinks(preview.description, {
+                fontSize: 13,
+                color: '#ffffff',
+                fontWeight: 500,
+                lineHeight: 1.4
+              })}
+            </Box>
           )}
         </Box>
       </Box>

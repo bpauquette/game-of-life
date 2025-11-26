@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useCallback, useRef, useState, useMemo, useLayoutEffect } from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
 
@@ -85,7 +85,6 @@ const RecentShapesStrip = ({
 
   const bg = (colorScheme && (colorScheme.panelBackground || colorScheme.background)) || '#111217';
   const panelBorder = '1px solid rgba(255,255,255,0.04)';
-  const FLEX_START = 'flex-start';
 
   const statusText = (() => {
     if (persistenceError) return 'Save failed';
@@ -216,7 +215,7 @@ const RecentShapesStrip = ({
     setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 2);
   }, [setCanScrollLeft, setCanScrollRight]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     updateScrollButtons();
     const el = scrollRef.current;
     if (!el) return undefined;
@@ -227,7 +226,7 @@ const RecentShapesStrip = ({
       el.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', updateScrollButtons);
     };
-  }, [updateScrollButtons]);
+  }, [updateScrollButtons, slots]);
 
   const scrollByAmount = useCallback((delta) => {
     const el = scrollRef.current;
@@ -238,7 +237,10 @@ const RecentShapesStrip = ({
   const pageScroll = useCallback((direction = 1) => {
     const el = scrollRef.current;
     if (!el) return;
-    const amount = Math.round(el.clientWidth * 0.75) * direction;
+    // Scroll by approximately 3-4 shape slots (130px + 12px gap = 142px per slot)
+    const slotWidth = 142;
+    const slotsToScroll = 3;
+    const amount = slotWidth * slotsToScroll * direction;
     scrollByAmount(amount);
   }, [scrollByAmount]);
 
@@ -378,7 +380,7 @@ const RecentShapesStrip = ({
           style={{
             display: 'flex',
             flexDirection: 'row',
-            alignItems: FLEX_START,
+            alignItems: 'flex-start',
             gap: 12,
             width: '100%',
             overflow: 'hidden',
