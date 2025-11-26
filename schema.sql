@@ -25,6 +25,17 @@ CREATE TABLE shapes (
     search_vector TEXT                      -- FTS search data
 );
 
+-- User-saved grids (game states)
+CREATE TABLE grids (
+    id TEXT PRIMARY KEY,                    -- UUID
+    name TEXT NOT NULL,                     -- Grid name
+    data TEXT NOT NULL,                     -- JSON serialized grid data
+    user_id TEXT NOT NULL,                  -- Owner user ID
+    generation INTEGER DEFAULT 0,           -- Generation number when saved
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for common queries
 CREATE INDEX idx_shapes_user_id ON shapes(user_id);
 CREATE INDEX idx_shapes_name ON shapes(name);
@@ -32,6 +43,10 @@ CREATE INDEX idx_shapes_population ON shapes(population);
 CREATE INDEX idx_shapes_period ON shapes(period);
 CREATE INDEX idx_shapes_width_height ON shapes(width, height);
 CREATE INDEX idx_shapes_created_at ON shapes(created_at DESC);
+
+-- Indexes for grids
+CREATE INDEX idx_grids_user_id ON grids(user_id);
+CREATE INDEX idx_grids_created_at ON grids(created_at DESC);
 
 -- Full-text search virtual table for pattern names and descriptions
 CREATE VIRTUAL TABLE shapes_fts USING fts5(

@@ -39,9 +39,31 @@ Under the following terms:
 
 Full license text: https://creativecommons.org/licenses/by-sa/3.0/
 
+## LifeWiki Pattern Database
+
+This project includes patterns from **LifeWiki**, the wiki for Conway's Game of Life patterns.
+
+- **Source:** https://conwaylife.com/wiki/
+- **License:** Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0)
+- **Contributors:** The conwaylife.com community and wiki contributors
+
+### License Terms
+
+LifeWiki content is distributed under the Creative Commons Attribution-ShareAlike 3.0 Unported licence (CC BY-SA 3.0). This allows for:
+
+- **Sharing** — copy and redistribute the material in any medium or format
+- **Adapting** — remix, transform, and build upon the material for any purpose, even commercially
+
+Under the following terms:
+
+- **Attribution** — You must give appropriate credit, provide a link to the license, and indicate if changes were made
+- **ShareAlike** — If you remix, transform, or build upon the material, you must distribute your contributions under the same license
+
+Full license text: https://creativecommons.org/licenses/by-sa/3.0/
+
 ### Usage in This Project
 
-This application uses pattern data from the Life Lexicon to populate its shape catalog. The patterns have been converted from their original text-based format to JSON for use in the web application, but the original pattern definitions and metadata remain intact.
+This application uses pattern data from LifeWiki to populate its shape catalog. The patterns have been imported and converted to JSON format for use in the web application, but the original pattern definitions and metadata remain intact.
 
 ## Other Attributions
 
