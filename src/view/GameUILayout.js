@@ -55,6 +55,8 @@ function GameUILayout({
   isSmall,
   onToggleChrome,
   shapesReady
+  ,
+  startPaletteDrag
 }) {
   // measure header height so content is positioned correctly under it
   const headerRef = useRef(null);
@@ -149,6 +151,7 @@ function GameUILayout({
             recentShapesPersistence={recentShapesPersistence}
           selectShape={onSelectShape}
           drawWithOverlay={drawWithOverlay}
+              startPaletteDrag={startPaletteDrag}
         onRotateShape={onRotateShape}
         onSwitchToShapesTool={onSwitchToShapesTool}
             onSaveRecentShapes={onSaveRecentShapes}
@@ -322,6 +325,7 @@ GameUILayout.propTypes = {
   onToggleSidebar: PropTypes.func,
   isSmall: PropTypes.bool,
   onToggleChrome: PropTypes.func,
+  startPaletteDrag: PropTypes.func,
   onClearRecentShapes: PropTypes.func,
 };
 

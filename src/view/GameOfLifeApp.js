@@ -18,6 +18,7 @@ import PropTypes from 'prop-types';
 import { GameMVC } from '../controller/GameMVC';
 import { startMemoryLogger } from '../utils/memoryLogger';
 import { computePopulationChange } from '../utils/stabilityMetrics';
+import { eventToCellFromCanvas } from '../controller/utils/canvasUtils';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -290,6 +291,82 @@ function GameOfLifeApp(props) {
       console.error('drawWithOverlay error:', e);
     }
   }, [gameRef]);
+  // Start a controlled drag from the palette into the canvas. This sets the
+  // selected shape/tool on the controller and updates controller toolState
+  // as the pointer moves so the normal overlay preview code can render.
+  const startPaletteDrag = useCallback((shape, startEvent, ghostEl) => {
+    try {
+      const controller = gameRef.current && gameRef.current.controller;
+      const canvas = canvasRef.current;
+      if (!controller || !canvas) return () => {};
+
+      // Ensure selection and tool are set
+      try { gameRef.current.setSelectedShape?.(shape); } catch (e) {}
+      try { gameRef.current.setSelectedTool?.('shapes'); } catch (e) {}
+
+      // compute initial cell and set tool state
+      const updateLastFromEvent = (ev) => {
+        try {
+          const pt = eventToCellFromCanvas(ev, canvas, offsetRef, cellSize);
+          if (pt) {
+            controller._setToolState({ selectedShapeData: shape, start: pt, last: pt, dragging: true }, { updateOverlay: true });
+          }
+        } catch (err) { /* swallow */ }
+      };
+
+      // If a ghost element was provided, scale it to match canvas zoom so
+      // the DOM ghost visually matches the canvas overlay size.
+      try {
+        if (ghostEl && canvas) {
+          const maxDim = Math.max(
+            Number(shape?.width || shape?.meta?.width || 1),
+            Number(shape?.height || shape?.meta?.height || 1)
+          );
+          const thumbnailSize = 64; // matches ShapeSlot default
+          const scale = (Number(cellSize) * maxDim) / thumbnailSize || 1;
+          ghostEl.style.transform = `translate(-50%, -50%) scale(${scale})`;
+          ghostEl.style.transformOrigin = 'center center';
+        }
+      } catch (err) { /* ignore scaling failures */ }
+
+      updateLastFromEvent(startEvent);
+
+      const onMove = (ev) => updateLastFromEvent(ev);
+      const onUp = (ev) => {
+        try {
+          updateLastFromEvent(ev);
+          const finalPt = eventToCellFromCanvas(ev, canvas, offsetRef, cellSize);
+          if (finalPt) {
+            // Delegate to controller's tool mouse-up handler so undo/diffs are recorded
+            try {
+              controller.handleToolMouseUp(finalPt);
+            } catch (e) {
+              // Fallback: place directly on model
+              try { controller.model.placeShape(finalPt.x, finalPt.y, controller.model.getSelectedShape()); } catch (ee) {}
+            }
+          }
+        } catch (e) {
+          // ignore
+        } finally {
+          try { controller._setToolState({ start: null, last: null, dragging: false }, { updateOverlay: true }); } catch (e) {}
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+        }
+      };
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+
+      // return cleanup
+      return () => {
+        try { document.removeEventListener('pointermove', onMove); } catch (e) {}
+        try { document.removeEventListener('pointerup', onUp); } catch (e) {}
+        try { controller._setToolState({ start: null, last: null, dragging: false }, { updateOverlay: true }); } catch (e) {}
+      };
+    } catch (err) {
+      return () => {};
+    }
+  }, [canvasRef, gameRef, offsetRef, cellSize]);
   const shapeManager = useShapeManager({
     toolStateRef,
     drawWithOverlay,
@@ -821,6 +898,7 @@ function GameOfLifeApp(props) {
       selectedShape={selectedShape}
       onRotateShape={handleRotateShape}
       onSwitchToShapesTool={() => gameRef.current?.setSelectedTool?.('shapes')}
+      startPaletteDrag={startPaletteDrag}
       controlsProps={controlsProps}
       selectedTool={selectedTool}
     shapesReady={shapesReady}
