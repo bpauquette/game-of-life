@@ -69,6 +69,8 @@ function ControlsDialogs({
   setMaxFPS,
   maxGPS,
   setMaxGPS,
+  randomRectPercent,
+  setRandomRectPercent,
   helpOpen,
   closeHelp,
   aboutOpen,
@@ -104,6 +106,8 @@ function ControlsDialogs({
           setMaxFPS={setMaxFPS}
           maxGPS={maxGPS}
           setMaxGPS={setMaxGPS}
+          randomRectPercent={randomRectPercent}
+          setRandomRectPercent={setRandomRectPercent}
           onOk={handleOk}
           onCancel={handleCancel}
           data-testid-ok="options-ok-button"
@@ -203,6 +207,8 @@ const ControlsBar = ({
   colorSchemes,
   colorSchemeKey,
   setColorSchemeKey,
+  randomRectPercent,
+  setRandomRectPercent,
   popWindowSize,
   setPopWindowSize,
   popTolerance,
@@ -411,6 +417,8 @@ ControlsBar.propTypes = {
   colorSchemes: PropTypes.object.isRequired,
   colorSchemeKey: PropTypes.string.isRequired,
   setColorSchemeKey: PropTypes.func.isRequired,
+  randomRectPercent: PropTypes.number,
+  setRandomRectPercent: PropTypes.func,
   // Performance props
   showSpeedGauge: PropTypes.bool,
   setShowSpeedGauge: PropTypes.func,
