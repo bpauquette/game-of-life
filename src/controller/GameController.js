@@ -93,9 +93,12 @@ export class GameController {
   }
   _getDrawWhileRunning() {
     try {
-      return JSON.parse(globalThis.localStorage.getItem('drawWhileRunning') || 'false');
+      const v = globalThis.localStorage.getItem('drawWhileRunning');
+      if (v != null) return JSON.parse(v);
+      // Default to true when not set
+      return true;
     } catch {
-      return false;
+      return true;
     }
   }
   // Emit tool state changes through the model's observer mechanism

@@ -44,8 +44,8 @@ function GameOfLifeApp(props) {
 
   const defaultUIState = React.useMemo(() => ({
     showChart: false,
-    showSpeedGauge: true,
-    colorSchemeKey: 'bio',
+    showSpeedGauge: (() => { try { const v = globalThis.localStorage.getItem('showSpeedGauge'); return v == null ? true : JSON.parse(v); } catch { return true; } })(),
+    colorSchemeKey: (() => { try { const v = globalThis.localStorage.getItem('colorSchemeKey'); return v || 'bio'; } catch { return 'bio'; } })(),
     captureDialogOpen: false,
     paletteOpen: false,
     myShapesDialogOpen: false,
@@ -58,19 +58,36 @@ function GameOfLifeApp(props) {
   const [isRunning, setIsRunning] = useState(false);
   const [selectedTool, setSelectedTool] = useState(null);
   const [selectedShape, setSelectedShape] = useState(null);
-  const [popWindowSize, setPopWindowSize] = useState(50);
-  const [popTolerance, setPopTolerance] = useState(3);
+  const [popWindowSize, setPopWindowSize] = useState(() => {
+    try { const v = globalThis.localStorage.getItem('popWindowSize'); if (v != null) { const n = Number.parseInt(v, 10); if (!Number.isNaN(n) && n > 0) return n; } } catch {};
+    return 50;
+  });
+  const [popTolerance, setPopTolerance] = useState(() => {
+    try { const v = globalThis.localStorage.getItem('popTolerance'); if (v != null) { const n = Number.parseInt(v, 10); if (!Number.isNaN(n) && n >= 0) return n; } } catch {};
+    return 3;
+  });
   const [maxChartGenerations, setMaxChartGenerations] = useState(5000);
-  const [performanceCaps, setPerformanceCaps] = useState({ maxFPS: 60, maxGPS: 30, enableFPSCap: false, enableGPSCap: false });
+  const [performanceCaps, setPerformanceCaps] = useState(() => {
+    try {
+      const maxFPS = Number.parseInt(globalThis.localStorage.getItem('maxFPS'), 10);
+      const maxGPS = Number.parseInt(globalThis.localStorage.getItem('maxGPS'), 10);
+      const enableFPSCap = globalThis.localStorage.getItem('enableFPSCap');
+      const enableGPSCap = globalThis.localStorage.getItem('enableGPSCap');
+      return {
+        maxFPS: Number.isFinite(maxFPS) && maxFPS > 0 ? Math.max(1, Math.min(120, maxFPS)) : 60,
+        maxGPS: Number.isFinite(maxGPS) && maxGPS > 0 ? Math.max(1, Math.min(60, maxGPS)) : 30,
+        enableFPSCap: enableFPSCap != null ? JSON.parse(enableFPSCap) : false,
+        enableGPSCap: enableGPSCap != null ? JSON.parse(enableGPSCap) : false
+      };
+    } catch (e) {
+      return { maxFPS: 60, maxGPS: 30, enableFPSCap: false, enableGPSCap: false };
+    }
+  });
   const [detectStablePopulation, setDetectStablePopulation] = useState(() => {
     try {
       const stored = globalThis.localStorage?.getItem('detectStablePopulation');
-      if (stored === 'true' || stored === 'false') {
-        return stored === 'true';
-      }
-      if (stored != null) {
-        return Boolean(JSON.parse(stored));
-      }
+      if (stored === 'true' || stored === 'false') return stored === 'true';
+      if (stored != null) return Boolean(JSON.parse(stored));
       return false;
     } catch {
       return false;
@@ -89,6 +106,16 @@ function GameOfLifeApp(props) {
   });
   const [duplicateShape, setDuplicateShape] = useState(null);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [randomRectPercent, setRandomRectPercent] = useState(() => {
+    try {
+      const v = globalThis.localStorage.getItem('randomRectPercent');
+      if (v != null) {
+        const n = Number.parseInt(v, 10);
+        if (!Number.isNaN(n)) return Math.max(0, Math.min(100, n));
+      }
+    } catch {}
+    return 50;
+  });
   // persistent refs
   const snapshotsRef = useRef([]);
   const gameRef = useRef(null);
@@ -145,6 +172,19 @@ function GameOfLifeApp(props) {
       console.error('Failed to sync stability settings with GameMVC:', err);
     }
   }, [popWindowSize, popTolerance]);
+
+  // Sync random rectangle percent into controller tool state as a probability (0..1)
+  useEffect(() => {
+    try {
+      const p = Math.max(0, Math.min(1, (Number(randomRectPercent) || 50) / 100));
+      const ctrl = gameRef.current?.controller;
+      if (ctrl && typeof ctrl._setToolState === 'function') {
+        ctrl._setToolState({ prob: p });
+      }
+    } catch (e) {
+      // swallow
+    }
+  }, [randomRectPercent]);
 
   useEffect(() => {
     if (!detectStablePopulation) {
@@ -871,6 +911,8 @@ function GameOfLifeApp(props) {
     setMaxChartGenerations,
     memoryTelemetryEnabled,
     setMemoryTelemetryEnabled,
+    randomRectPercent,
+    setRandomRectPercent,
     maxFPS: performanceCaps.maxFPS,
     maxGPS: performanceCaps.maxGPS,
     enableFPSCap: performanceCaps.enableFPSCap,

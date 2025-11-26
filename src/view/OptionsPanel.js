@@ -11,6 +11,8 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import InputAdornment from '@mui/material/InputAdornment';
 import Tooltip from '@mui/material/Tooltip';
+import Slider from '@mui/material/Slider';
+import Typography from '@mui/material/Typography';
 import { Info as InfoIcon } from '@mui/icons-material';
 
 const OptionsPanel = ({
@@ -42,6 +44,9 @@ const OptionsPanel = ({
   setDetectStablePopulation,
   memoryTelemetryEnabled = false,
   setMemoryTelemetryEnabled,
+  // Random rectangle fill percent (0-100)
+  randomRectPercent = 50,
+  setRandomRectPercent,
   onOk,
   onCancel
 }) => {
@@ -57,9 +62,12 @@ const OptionsPanel = ({
   const [localDrawToggleMode, setLocalDrawToggleMode] = useState(false); // default to off
   const [localDrawWhileRunning, setLocalDrawWhileRunning] = useState(() => {
     try {
-      return JSON.parse(globalThis.localStorage.getItem('drawWhileRunning') || 'false');
+      const v = globalThis.localStorage.getItem('drawWhileRunning');
+      if (v != null) return JSON.parse(v);
+      // Default draw-while-running to true per user request
+      return true;
     } catch {
-      return false;
+      return true;
     }
   });
   const [localDetectStablePopulation, setLocalDetectStablePopulation] = useState(detectStablePopulation);
@@ -70,6 +78,20 @@ const OptionsPanel = ({
       if (stored === 'true' || stored === 'false') return stored === 'true';
     } catch {}
     return memoryTelemetryEnabled;
+  });
+  const [localRandomRectPercent, setLocalRandomRectPercent] = useState(() => {
+    try {
+      const stored = globalThis.localStorage.getItem('randomRectPercent');
+      if (stored != null) {
+        const s = Number.parseInt(stored, 10);
+        if (!Number.isNaN(s)) return Math.max(0, Math.min(100, s));
+      }
+    } catch (e) {
+      // ignore
+    }
+    const n = Number(randomRectPercent);
+    if (!Number.isFinite(n)) return 50;
+    return Math.max(0, Math.min(100, Math.round(n)));
   });
 
   const handleOk = () => {
@@ -82,14 +104,28 @@ const OptionsPanel = ({
   let tol = Number.parseInt(localTolerance, 10);
   if (Number.isNaN(tol) || tol < 0) tol = 0;
   try { setPopTolerance(tol); } catch (err) { logger.debug('setPopTolerance failed:', err); }
-    try { setShowSpeedGauge?.(localShowSpeedGauge); } catch (err) { logger.debug('setShowSpeedGauge failed:', err); }
+  try { setShowSpeedGauge?.(localShowSpeedGauge); } catch (err) { logger.debug('setShowSpeedGauge failed:', err); }
     try { setMaxFPS?.(Math.max(1, Math.min(120, Number(localMaxFPS) || 60))); } catch (err) { logger.debug('setMaxFPS failed:', err); }
     try { setMaxGPS?.(Math.max(1, Math.min(60, Number(localMaxGPS) || 30))); } catch (err) { logger.debug('setMaxGPS failed:', err); }
     try { setEnableFPSCap?.(!!localEnableFPSCap); } catch (err) { logger.debug('setEnableFPSCap failed:', err); }
     try { setEnableGPSCap?.(!!localEnableGPSCap); } catch (err) { logger.debug('setEnableGPSCap failed:', err); }
     try { setConfirmOnClear?.(!!localConfirmOnClear); } catch (err) { logger.debug('setConfirmOnClear failed:', err); }
     try { setMaxChartGenerations?.(Number(localMaxChartGenerations) || 5000); } catch (err) { logger.debug('setMaxChartGenerations failed:', err); }
+    try { setRandomRectPercent?.(Math.max(0, Math.min(100, Number(localRandomRectPercent) || 50))); } catch (err) { logger.debug('setRandomRectPercent failed:', err); }
+  // Persist all options so they are remembered across sessions
+  try { globalThis.localStorage.setItem('colorSchemeKey', String(localScheme)); } catch {}
+  try { globalThis.localStorage.setItem('popWindowSize', String(win)); } catch {}
+  try { globalThis.localStorage.setItem('popTolerance', String(tol)); } catch {}
+  try { globalThis.localStorage.setItem('showSpeedGauge', JSON.stringify(!!localShowSpeedGauge)); } catch {}
+  try { globalThis.localStorage.setItem('maxFPS', String(localMaxFPS)); } catch {}
+  try { globalThis.localStorage.setItem('maxGPS', String(localMaxGPS)); } catch {}
+  try { globalThis.localStorage.setItem('enableFPSCap', JSON.stringify(!!localEnableFPSCap)); } catch {}
+  try { globalThis.localStorage.setItem('enableGPSCap', JSON.stringify(!!localEnableGPSCap)); } catch {}
+  try { globalThis.localStorage.setItem('confirmOnClear', JSON.stringify(!!localConfirmOnClear)); } catch {}
+  try { globalThis.localStorage.setItem('maxChartGenerations', String(localMaxChartGenerations)); } catch {}
+  try { globalThis.localStorage.setItem('detectStablePopulation', JSON.stringify(!!localDetectStablePopulation)); } catch {}
   try { globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode)); } catch {}
+  try { globalThis.localStorage.setItem('randomRectPercent', String(Math.max(0, Math.min(100, Number(localRandomRectPercent) || 50)))); } catch {}
   try { globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning)); } catch {}
   try { setDetectStablePopulation?.(!!localDetectStablePopulation); } catch {}
   try {
@@ -364,6 +400,38 @@ const OptionsPanel = ({
                 style={{ width: 96 }}
               />
             </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="body2">Random rectangle fill (%)</Typography>
+                <Typography variant="caption" color="text.secondary">0 = all off, 100 = all on</Typography>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Slider
+                  value={localRandomRectPercent}
+                  onChange={(e, v) => setLocalRandomRectPercent(Number(v))}
+                  aria-labelledby="random-rect-percent-input"
+                  min={0}
+                  max={100}
+                  valueLabelDisplay="auto"
+                  sx={{ flex: 1 }}
+                />
+                <input
+                  id="random-rect-percent-input"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={localRandomRectPercent}
+                  onChange={(e) => {
+                    let v = Number.parseInt(e.target.value, 10);
+                    if (Number.isNaN(v)) v = 50;
+                    if (v < 0) v = 0;
+                    if (v > 100) v = 100;
+                    setLocalRandomRectPercent(v);
+                  }}
+                  style={{ width: 72 }}
+                />
+              </div>
+            </div>
           </div>
         
         </Stack>
@@ -396,6 +464,8 @@ OptionsPanel.propTypes = {
   setDetectStablePopulation: PropTypes.func,
   memoryTelemetryEnabled: PropTypes.bool,
   setMemoryTelemetryEnabled: PropTypes.func,
+  randomRectPercent: PropTypes.number,
+  setRandomRectPercent: PropTypes.func,
   onOk: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired
 };
