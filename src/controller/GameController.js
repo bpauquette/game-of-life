@@ -246,6 +246,7 @@ export class GameController {
         e.preventDefault();
         this.redo();
       }
+      
     });
   }
 
