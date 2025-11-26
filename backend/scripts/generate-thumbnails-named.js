@@ -95,17 +95,19 @@ async function main() {
       await fs.rm(outDir, { recursive: true, force: true });
     }
 
-    // read shapes (prefer DB)
+    // DB-first: require dbClient and abort if not available to avoid stale JSON
     let arr = null;
     try {
       const dbClient = await import('./dbClient.mjs');
       arr = await dbClient.getAllShapes();
     } catch (e) {
-      arr = null;
+      console.error('This script requires the SQLite DB. Populate the DB and ensure backend/scripts/dbClient.mjs is available.');
+      console.error('Run migration or imports (e.g. backend/scripts/import-lexicon-shapes.mjs or backend/scripts/bulk-import-all.mjs).');
+      process.exit(2);
     }
-    if (!arr) {
-      const txt = await fs.readFile(dataFile, 'utf8');
-      arr = JSON.parse(txt);
+    if (!Array.isArray(arr) || arr.length === 0) {
+      console.error('No shapes found in the database. Aborting.');
+      process.exit(2);
     }
 
     // prepare unique name assignment

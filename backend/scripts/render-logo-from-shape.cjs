@@ -47,23 +47,23 @@ async function main() {
   // allow passing the shape name as the first CLI arg, default to 'pulsar'
   const args = process.argv.slice(2);
   const nameToFind = args[0] || 'pulsar';
-  // prefer DB when available
+  // DB-only: require dbClient and abort if not available to avoid using stale JSON
   let arr = null;
   try {
     const clientPath = path.join(__dirname, 'dbClient.cjs');
-    if (fs.existsSync(clientPath)) {
-      const dbClient = require(clientPath);
-      arr = await dbClient.getAllShapes();
+    if (!fs.existsSync(clientPath)) {
+      throw new Error('dbClient.cjs not found');
     }
-  } catch (e) { arr = null; }
-
-  if (!arr) {
-    if (!fs.existsSync(DATA_FILE)) {
-      console.error('shapes.json not found at', DATA_FILE);
-      process.exit(2);
-    }
-    const txt = fs.readFileSync(DATA_FILE, 'utf8');
-    arr = JSON.parse(txt);
+    const dbClient = require(clientPath);
+    arr = await dbClient.getAllShapes();
+  } catch (e) {
+    console.error('This script requires the SQLite DB and backend/scripts/dbClient.cjs to be present.');
+    console.error('Populate the DB (e.g. run import-lexicon-shapes.mjs or bulk-import-all.mjs) and retry.');
+    process.exit(2);
+  }
+  if (!Array.isArray(arr) || arr.length === 0) {
+    console.error('No shapes found in the database. Aborting.');
+    process.exit(2);
   }
   const found = arr.find(s => (s.name || '').toLowerCase() === nameToFind.toLowerCase());
   if (!found) {
