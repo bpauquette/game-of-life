@@ -61,6 +61,7 @@ const CaptureShapeDialog = ({
       return;
     }
 
+    console.log('CaptureShapeDialog: Starting save process', { name: name.trim(), cellCount: captureData.cellCount });
     setSaving(true);
     setError('');
 
@@ -78,9 +79,12 @@ const CaptureShapeDialog = ({
         created: new Date().toISOString()
       };
 
+      console.log('CaptureShapeDialog: Calling onSave with shapeData', shapeData);
       await onSave(shapeData);
+      console.log('CaptureShapeDialog: Save completed successfully');
       onClose();
     } catch (err) {
+      console.error('CaptureShapeDialog: Save failed', err);
       const msg = err?.message || '';
       if (typeof msg === 'string' && msg.startsWith('DUPLICATE_NAME:')) {
         const dupName = msg.split(':')[1] || name.trim();

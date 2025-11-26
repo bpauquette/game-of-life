@@ -10,19 +10,29 @@ const __dirname = path.dirname(__filename);
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'shapes.db');
 
-// Compress/decompress cells
+// Compress/decompress cells. We store compressed BLOBs as Buffer.
 const compressCells = (cells) => {
-  if (!cells || cells.length === 0) return null;
-  const json = JSON.stringify(cells);
-  return pako.deflate(json);
+  if (!cells || (Array.isArray(cells) && cells.length === 0)) return null;
+  try {
+    const json = JSON.stringify(cells);
+    const deflated = pako.deflate(json);
+    return Buffer.from(deflated);
+  } catch (e) {
+    try { console.warn('compressCells failed:', e?.message || e); } catch {}
+    return null;
+  }
 };
 
 const decompressCells = (cellsBlob) => {
   if (!cellsBlob) return null;
   try {
-    const decompressed = pako.inflate(new Uint8Array(cellsBlob), { to: 'string' });
+    const input = (Buffer.isBuffer(cellsBlob) || cellsBlob instanceof Uint8Array)
+      ? cellsBlob
+      : Buffer.from(cellsBlob);
+    const decompressed = pako.inflate(new Uint8Array(input), { to: 'string' });
     return JSON.parse(decompressed);
   } catch (e) {
+    try { console.warn('decompressCells failed for blob (len=' + (cellsBlob?.length || 0) + '):', e?.message || e); } catch {}
     return null;
   }
 };
@@ -41,16 +51,52 @@ class SQLiteDatabase {
       driver: sqlite3.Database
     });
 
-    // Enable WAL mode for better concurrency
+    // Enable WAL mode for better concurrency and reasonable cache size.
     await this.db.exec('PRAGMA journal_mode = WAL');
     await this.db.exec('PRAGMA synchronous = NORMAL');
-    await this.db.exec('PRAGMA cache_size = 1000000'); // 1GB cache
+    // cache_size is measured in pages; keep conservative default to avoid OOM
+    await this.db.exec('PRAGMA cache_size = 20000');
 
-    // Ensure signature column exists
+    // Ensure tables and auxiliary structures exist
     await this.ensureSignatureColumn();
+    await this.ensureGridsTable();
+    await this.ensureFTS();
 
     console.log('SQLite database connected');
     return this.db;
+  }
+
+  async ensureFTS() {
+    const db = await this.db;
+    try {
+      // Create an FTS5 virtual table linked to `shapes` for name/description.
+      // Not all SQLite builds include FTS5; this is best-effort.
+      await db.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS shapes_fts USING fts5(
+          name, description, content='shapes', content_rowid='rowid'
+        )
+      `);
+
+      // Create triggers to keep the FTS table in sync with shapes
+      await db.exec(`
+        CREATE TRIGGER IF NOT EXISTS shapes_ai AFTER INSERT ON shapes BEGIN
+          INSERT INTO shapes_fts(rowid, name, description) VALUES (new.rowid, new.name, new.description);
+        END;
+      `);
+      await db.exec(`
+        CREATE TRIGGER IF NOT EXISTS shapes_ad AFTER DELETE ON shapes BEGIN
+          INSERT INTO shapes_fts(shapes_fts, rowid, name, description) VALUES('delete', old.rowid, old.name, old.description);
+        END;
+      `);
+      await db.exec(`
+        CREATE TRIGGER IF NOT EXISTS shapes_au AFTER UPDATE ON shapes BEGIN
+          INSERT INTO shapes_fts(shapes_fts, rowid, name, description) VALUES('delete', old.rowid, old.name, old.description);
+          INSERT INTO shapes_fts(rowid, name, description) VALUES (new.rowid, new.name, new.description);
+        END;
+      `);
+    } catch (err) {
+      try { console.warn('FTS setup not available or failed:', err?.message || err); } catch {}
+    }
   }
 
   async ensureSignatureColumn() {
@@ -84,6 +130,7 @@ class SQLiteDatabase {
       const columns = await db.all("PRAGMA table_info(shapes)");
       const hasSignature = columns.some(col => col.name === 'signature');
       const hasDescription = columns.some(col => col.name === 'description');
+      const hasPublic = columns.some(col => col.name === 'public');
       
       if (!hasSignature) {
         console.log('Adding signature column to shapes table');
@@ -95,8 +142,33 @@ class SQLiteDatabase {
         await db.exec('ALTER TABLE shapes ADD COLUMN description TEXT');
         console.log('Description column added');
       }
+      if (!hasPublic) {
+        console.log('Adding public column to shapes table');
+        await db.exec('ALTER TABLE shapes ADD COLUMN public INTEGER DEFAULT 0');
+        console.log('Public column added');
+      }
     } catch (err) {
       console.warn('Error ensuring columns:', err.message);
+    }
+  }
+
+  async ensureGridsTable() {
+    const db = await this.db;
+    try {
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS grids (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          data TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          generation INTEGER DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('Grids table ensured');
+    } catch (err) {
+      console.warn('Error ensuring grids table:', err.message);
     }
   }
 
@@ -213,6 +285,7 @@ class SQLiteDatabase {
     }
 
     const compressedCells = compressCells(shape.cells);
+    const cellsBlob = compressedCells ? Buffer.from(compressedCells) : null;
 
     await db.run(`
       INSERT INTO shapes (
@@ -233,7 +306,7 @@ class SQLiteDatabase {
       shape.speed || null,
       shape.userId || 'system',
       shape.rleText || null,
-      compressedCells,
+      cellsBlob,
       signature,
       shape.createdAt || new Date().toISOString(),
       shape.updatedAt || new Date().toISOString()
@@ -268,21 +341,34 @@ class SQLiteDatabase {
       `, limit, offset);
     }
 
-    // Use FTS for text search
-    const rows = await db.all(`
-      SELECT
-        s.id, s.name, s.rule, s.width, s.height, s.population,
-        s.period, s.speed, s.user_id as userId,
-        s.created_at as createdAt, s.updated_at as updatedAt
-      FROM shapes_fts fts
-      JOIN shapes s ON fts.rowid = s.rowid
-      WHERE shapes_fts MATCH ?
-        AND s.is_active = 1
-      ORDER BY rank
-      LIMIT ? OFFSET ?
-    `, query, limit, offset);
-
-    return rows;
+    // Use FTS when available; fall back to safe LIKE-based ordering.
+    try {
+      const rows = await db.all(`
+        SELECT
+          s.id, s.name, s.rule, s.width, s.height, s.population,
+          s.period, s.speed, s.user_id as userId,
+          s.created_at as createdAt, s.updated_at as updatedAt
+        FROM shapes_fts fts
+        JOIN shapes s ON fts.rowid = s.rowid
+        WHERE shapes_fts MATCH ?
+          AND s.is_active = 1
+        ORDER BY s.created_at DESC
+        LIMIT ? OFFSET ?
+      `, query, limit, offset);
+      return rows;
+    } catch (err) {
+      try { console.warn('FTS search failed, falling back to LIKE search:', err?.message || err); } catch {}
+      return await db.all(`
+        SELECT
+          id, name, rule, width, height, population,
+          period, speed, user_id as userId,
+          created_at as createdAt, updated_at as updatedAt
+        FROM shapes
+        WHERE is_active = 1 AND (name LIKE ? OR description LIKE ?)
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+      `, `%${query}%`, `%${query}%`, limit, offset);
+    }
   }
 
   // Get shapes by user
@@ -318,24 +404,40 @@ class SQLiteDatabase {
   // Grid state management (keeping compatibility)
   async listGrids() {
     const db = await this.connect();
-    return await db.all('SELECT * FROM grids ORDER BY created_at DESC');
+    const rows = await db.all('SELECT * FROM grids ORDER BY created_at DESC');
+    return rows.map(row => ({
+      ...row,
+      liveCells: row.data ? JSON.parse(row.data) : [],
+      generation: row.generation || 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
   }
 
   async getGrid(id) {
     const db = await this.connect();
-    return await db.get('SELECT * FROM grids WHERE id = ?', id);
+    const row = await db.get('SELECT * FROM grids WHERE id = ?', id);
+    if (!row) return null;
+    return {
+      ...row,
+      liveCells: row.data ? JSON.parse(row.data) : [],
+      generation: row.generation || 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
   }
 
   async saveGrid(grid) {
     const db = await this.connect();
     await db.run(`
-      INSERT OR REPLACE INTO grids (id, name, data, user_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO grids (id, name, data, user_id, generation, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
       grid.id,
       grid.name,
       JSON.stringify(grid.data),
       grid.userId,
+      grid.generation || 0,
       grid.createdAt || new Date().toISOString(),
       grid.updatedAt || new Date().toISOString()
     ]);
@@ -528,6 +630,58 @@ class SQLiteDatabase {
     });
 
     return { items, total };
+  }
+
+  // Write an array of shapes to the DB (used by migrations). This performs
+  // an INSERT OR REPLACE inside a transaction and normalizes binary blobs.
+  async writeDb(shapes) {
+    const db = await this.connect();
+    if (!Array.isArray(shapes)) throw new Error('shapes must be an array');
+
+    const sql = `INSERT OR REPLACE INTO shapes (
+      id, name, description, slug, rule, width, height, population,
+      period, speed, user_id, source_url, rle_text, cells_json, signature,
+      created_at, updated_at, is_active, public
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    await db.exec('BEGIN TRANSACTION');
+    try {
+      for (const shape of shapes) {
+        const compressed = compressCells(shape.cells);
+        const cellsBlob = compressed ? Buffer.from(compressed) : null;
+        const population = Number.isFinite(Number(shape.population))
+          ? Number(shape.population)
+          : (Array.isArray(shape.cells) ? shape.cells.length : 0);
+
+        await db.run(sql, [
+          shape.id,
+          shape.name || null,
+          shape.description || null,
+          shape.slug || null,
+          shape.rule || 'B3/S23',
+          shape.width || 0,
+          shape.height || 0,
+          population,
+          shape.period || 1,
+          shape.speed || null,
+          shape.userId || shape.user_id || 'system',
+          shape.sourceUrl || shape.source_url || null,
+          shape.rleText || shape.rle_text || null,
+          cellsBlob,
+          shape.signature || null,
+          shape.createdAt || shape.created_at || new Date().toISOString(),
+          shape.updatedAt || shape.updated_at || new Date().toISOString(),
+          typeof shape.is_active === 'number' ? shape.is_active : (shape.isActive || 1),
+          typeof shape.public === 'number' ? shape.public : (shape.public ? 1 : 0)
+        ]);
+      }
+
+      await db.exec('COMMIT');
+    } catch (err) {
+      await db.exec('ROLLBACK');
+      console.warn('writeDb failed:', err?.message || err);
+      throw err;
+    }
   }
 
   async close() {

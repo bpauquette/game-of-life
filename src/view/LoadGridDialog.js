@@ -214,13 +214,13 @@ const LoadGridDialog = ({
                             )}
                             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                               <Chip 
-                                label={`${formatCellCount(grid.liveCells)} cells`}
+                                label={`${formatCellCount(Array.isArray(grid.liveCells) ? grid.liveCells.length : 0)} cells`}
                                 size="small" 
                                 variant="outlined"
                                 color="primary"
                               />
                               <Chip 
-                                label={`Gen ${grid.generation}`}
+                                label={`Gen ${grid.generation || 0}`}
                                 size="small" 
                                 variant="outlined"
                                 color="secondary"

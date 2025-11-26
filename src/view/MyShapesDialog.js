@@ -32,20 +32,25 @@ const MyShapesDialog = ({ open, onClose }) => {
 
   // Load user's shapes
   const loadShapes = useCallback(async () => {
+    console.log('MyShapesDialog: Loading shapes, token present:', !!token);
     setLoading(true);
     setError('');
     try {
       const baseUrl = resolveBackendBase();
+      console.log('MyShapesDialog: Fetching from', `${baseUrl}/v1/shapes/my`);
       const response = await fetch(`${baseUrl}/v1/shapes/my`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      console.log('MyShapesDialog: Response status', response.status);
       if (!response.ok) throw new Error('Failed to load shapes');
       const data = await response.json();
+      console.log('MyShapesDialog: Loaded shapes', data.items?.length || 0);
       // Only user-owned shapes are returned by this endpoint
       setShapes(data.items);
     } catch (err) {
+      console.error('MyShapesDialog: Error loading shapes', err);
       setError(err.message);
     } finally {
       setLoading(false);

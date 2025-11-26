@@ -407,6 +407,13 @@ export function createApp() {
   // CREATE shape (protected)
   app.post('/v1/shapes', verifyToken, async (req, res) => {
     try {
+      console.log('POST /v1/shapes: Received request', {
+        userId: req.user?.id,
+        shapeName: req.body?.name,
+        cellCount: req.body?.cellCount,
+        hasPattern: !!req.body?.pattern
+      });
+
       const shape = req.body;
       if (!shape || typeof shape !== 'object') {
         return res.status(400).json({ error: 'shape required' });
@@ -421,9 +428,11 @@ export function createApp() {
       shape.meta.createdAt = shape.meta.createdAt || new Date().toISOString();
       shape.meta.source = shape.meta.source || 'user-created';
 
+      console.log('POST /v1/shapes: Adding shape to database', { shapeId: shape.id, userId: shape.userId });
       const result = await db.addShape(shape);
 
       if (result.duplicate) {
+        console.log('POST /v1/shapes: Shape is duplicate', result.existingShape?.id);
         return res.status(409).json({
           error: 'Shape already exists',
           duplicate: true,
@@ -431,12 +440,14 @@ export function createApp() {
         });
       }
 
+      console.log('POST /v1/shapes: Shape saved successfully', { shapeId: shape.id });
       generateThumbnailsForShape(shape).catch(e =>
         logger.error('thumbnail generation failed:', e?.message || e)
       );
 
       res.status(201).json(shape);
     } catch (err) {
+      console.error('POST /v1/shapes: Error saving shape', err);
       logger.error('add shape error:', err);
       res.status(500).json({ error: err.message });
     }
@@ -479,7 +490,7 @@ export function createApp() {
           name: g.name,
           description: g.description,
           generation: g.generation,
-          liveCells: g.liveCells ? g.liveCells.length : 0,
+          liveCells: g.liveCells,
           createdAt: g.createdAt,
           updatedAt: g.updatedAt
         }))
@@ -517,8 +528,8 @@ export function createApp() {
       const grid = {
         id: makeId(),
         name: name.trim(),
-        description: description || '',
-        liveCells,
+        data: liveCells, // Pass liveCells as data, saveGrid will JSON.stringify it
+        userId: req.user.id,
         generation: generation || 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -543,9 +554,8 @@ export function createApp() {
       const updated = {
         ...existing,
         name: name || existing.name,
-        description: description ?? existing.description,
-        liveCells: liveCells || existing.liveCells,
-        generation: generation ?? existing.generation,
+        data: liveCells || existing.data, // Use liveCells as data
+        userId: existing.userId, // Keep existing userId
         updatedAt: new Date().toISOString()
       };
 
