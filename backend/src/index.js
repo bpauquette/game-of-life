@@ -1,15 +1,11 @@
 import './clearBackendLog.js';
 import dotenv from 'dotenv';
-dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import { parseRLE } from './rleParser.js';
 import { SQLiteDatabase } from './sqlite-db.js';
-
-// Database instance
-const db = new SQLiteDatabase();
 import logger from './logger.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,6 +16,10 @@ import { generateThumbnailsForShape } from './thumbnailGenerator.js';
 import authRouter from './auth/auth.mjs';
 import { verifyToken } from './auth/jwtMiddleware.js';
 import { SYSTEM_USER_ID } from './auth/auth.mjs';
+dotenv.config();
+
+// Database instance
+const db = new SQLiteDatabase();
 
 // __dirname equivalent for ESM modules
 const __filename = fileURLToPath(import.meta.url);

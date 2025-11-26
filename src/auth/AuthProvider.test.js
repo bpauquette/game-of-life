@@ -1,6 +1,8 @@
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import { AuthProvider, useAuth } from './AuthProvider';
 
+import jwt from 'jsonwebtoken';
+
 // Mock sessionStorage
 const mockSessionStorage = {
   getItem: jest.fn(),
@@ -13,8 +15,6 @@ Object.defineProperty(window, 'sessionStorage', { value: mockSessionStorage });
 jest.mock('jsonwebtoken', () => ({
   decode: jest.fn(),
 }));
-
-import jwt from 'jsonwebtoken';
 
 const mockDecode = jwt.decode;
 

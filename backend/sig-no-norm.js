@@ -1,5 +1,8 @@
 import crypto from 'crypto';
 
+import { readFileSync } from 'fs';
+import { parseCells } from './src/rleParser.js';
+
 function generateShapeSignatureFromCellsNoNormalize(cells) {
   if (!Array.isArray(cells)) {
     throw new Error('Invalid cells input');
@@ -20,9 +23,6 @@ function generateShapeSignatureFromCellsNoNormalize(cells) {
 
   return crypto.createHash('sha256').update(cellString).digest('hex');
 }
-
-import { readFileSync } from 'fs';
-import { parseCells } from './src/rleParser.js';
 
 const cellsText = readFileSync('all/101.cells', 'utf8');
 const cellsParsed = parseCells(cellsText);
