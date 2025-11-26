@@ -174,7 +174,7 @@ const ensureUniqueName = async (baseName) => {
   while (true) {
     const conn = await db.connect();
     const existing = conn.get(
-      'SELECT id FROM shapes WHERE LOWER(name) = LOWER(?) AND is_active = 1 LIMIT 1',
+      'SELECT id FROM shapes WHERE name = ? COLLATE NOCASE AND is_active = 1 LIMIT 1',
       candidate
     );
     if (!existing) return candidate;

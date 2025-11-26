@@ -68,6 +68,7 @@ class SQLiteDatabase {
     await this.ensureSignatureColumn();
     await this.ensureGridsTable();
     await this.ensureFTS();
+    await this.ensureNameIndex();
 
     console.log('SQLite database connected');
     return this.db;
@@ -176,6 +177,17 @@ class SQLiteDatabase {
       console.log('Grids table ensured');
     } catch (err) {
       console.warn('Error ensuring grids table:', err.message);
+    }
+  }
+  
+  async ensureNameIndex() {
+    const db = await this.db;
+    try {
+      // Create a case-insensitive index on name to support fast uniqueness lookups.
+      await db.exec("CREATE INDEX IF NOT EXISTS shapes_name_idx ON shapes(name COLLATE NOCASE)");
+      console.log('Name index ensured');
+    } catch (err) {
+      console.warn('Error ensuring name index:', err?.message || err);
     }
   }
 
