@@ -103,6 +103,8 @@ async function main() {
     } catch (e) {
       console.error('This script requires the SQLite DB. Populate the DB and ensure backend/scripts/dbClient.mjs is available.');
       console.error('Run migration or imports (e.g. backend/scripts/import-lexicon-shapes.mjs or backend/scripts/bulk-import-all.mjs).');
+      console.error('Import error:');
+      console.error(e && (e.stack || e.message || e));
       process.exit(2);
     }
     if (!Array.isArray(arr) || arr.length === 0) {
