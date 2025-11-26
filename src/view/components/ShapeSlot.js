@@ -22,51 +22,105 @@ function getShapeCells(shape) {
 // helper functions left minimal: only getShapeCells is required by rotate
 
 function ShapeSlot({
-    shape,
-    index,
-    colorScheme,
-    selected,
-    onSelect,
-    onRotate,
-    title,
-    thumbnailSize = DEFAULT_THUMBNAIL_SIZE
-  }) {
-    const tRef = useRef();
-    return (
-      <div style={{
-        border: `3px solid ${selected ? SELECTED_BORDER_COLOR : '#3ad6ff'}`,
-        borderRadius: SHAPE_BORDER_RADIUS,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-        width: 130,
-        height: 110,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        justifyContent: 'flex-start',
-        background: selected ? '#222' : '#181818',
-        boxSizing: 'border-box',
-        transition: 'border-color 0.2s',
-        margin: 0,
-        position: 'relative',
-        overflow: 'visible'
-      }}>
-        {/* Label above shape, centered */}
-        <div
-          style={{
-            fontSize: '11px',
-            fontWeight: 600,
-            color: '#fff',
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            maxWidth: 110,
-            margin: '0 auto 2px auto'
-          }}
-        >
-          {title}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', flex: 1 }}>
+  shape,
+  index,
+  colorScheme,
+  selected,
+  onSelect,
+  onRotate,
+  onSwitchToShapesTool,
+  onStartPaletteDrag,
+  title,
+  thumbnailSize = DEFAULT_THUMBNAIL_SIZE
+}) {
+  const tRef = useRef();
+  // Drag-to-place ghost logic
+  const startDrag = (e) => {
+    // Only primary pointer
+    if (e && typeof e.button === 'number' && e.button !== 0) return;
+    try { e.preventDefault(); } catch (err) {}
+    // Ensure the shape is selected (onSelect also switches to shapes tool upstream)
+    if (typeof onSelect === 'function') onSelect();
+    if (typeof onSwitchToShapesTool === 'function') onSwitchToShapesTool();
+    const src = e.currentTarget || e.target;
+    const ghost = src.cloneNode(true);
+    ghost.style.position = 'fixed';
+    ghost.style.left = `${e.clientX}px`;
+    ghost.style.top = `${e.clientY}px`;
+    ghost.style.transform = 'translate(-50%, -50%)';
+    ghost.style.pointerEvents = 'none';
+    ghost.style.opacity = '0.9';
+    ghost.style.zIndex = 20000;
+    document.body.appendChild(ghost);
+
+    // Let the application register drag handlers that update controller/toolState
+    let cleanupControllerDrag = null;
+    try {
+      if (typeof onStartPaletteDrag === 'function') {
+        cleanupControllerDrag = onStartPaletteDrag(shape, e, ghost);
+      }
+    } catch (err) {
+      cleanupControllerDrag = null;
+    }
+
+    const onMove = (ev) => {
+      ghost.style.left = `${ev.clientX}px`;
+      ghost.style.top = `${ev.clientY}px`;
+    };
+
+    const onUp = (ev) => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      try {
+        // Let the controller-side cleanup run (finalize placement).
+        if (typeof cleanupControllerDrag === 'function') {
+          try { cleanupControllerDrag(); } catch (err) { /* ignore cleanup errors */ }
+        }
+      } catch (err) {
+        // swallow
+      } finally {
+        if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+      }
+    };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp, { once: true });
+  };
+  return (
+    <div style={{
+      border: `3px solid ${selected ? SELECTED_BORDER_COLOR : '#3ad6ff'}`,
+      borderRadius: SHAPE_BORDER_RADIUS,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+      width: 130,
+      height: 110,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      justifyContent: 'flex-start',
+      background: selected ? '#222' : '#181818',
+      boxSizing: 'border-box',
+      transition: 'border-color 0.2s',
+      margin: 0,
+      position: 'relative',
+      overflow: 'visible'
+    }}>
+      {/* Label above shape, centered */}
+      <div
+        style={{
+          fontSize: '11px',
+          fontWeight: 600,
+          color: '#fff',
+          textAlign: 'center',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxWidth: 110,
+          margin: '0 auto 8px auto'
+        }}
+      >
+        {title}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', flex: 1 }}>
           <button
             type="button"
             style={{
@@ -84,91 +138,93 @@ function ShapeSlot({
               position: 'relative'
             }}
             onClick={onSelect}
-            title={title}
-            onMouseEnter={(e) => {
-              if (!selected) {
-                e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_HOVER_COLOR;
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!selected) {
-                e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_COLOR;
-              }
-            }}
-          >
-            <ShapePreview
-              shape={shape}
-              colorScheme={colorScheme}
-              boxSize={thumbnailSize}
-              borderRadius={SHAPE_BORDER_RADIUS}
-              borderOpacity={0.06}
-              defaultCellColor={DEFAULT_SHAPE_COLOR}
-              t={tRef.current}
-              selected={selected}
-              source={'recent'}
-            />
-            {selected && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '2px',
-                  left: '2px',
-                  width: '16px',
-                  height: '16px',
-                  background: SELECTED_BORDER_COLOR,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '10px',
-                  color: '#000',
-                  fontWeight: 'bold',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                  zIndex: 10
-                }}
-              >
-                ✓
-              </div>
-            )}
-          </button>
-          {/* Centered rotate button */}
-          {typeof onRotate === 'function' && (
-            <button
-              key={`rotate-90-${index}`}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                // Use 270° math rotation to achieve 90° clockwise in screen (y-down) coords
-                const rotatedCells = rotateShape(getShapeCells(shape), 270);
-                const rotatedShape = { ...shape, cells: rotatedCells };
-                onRotate(rotatedShape, index);
-              }}
-              title="Rotate 90° (clockwise)"
+            onPointerDown={startDrag}
+          title={title}
+          onMouseEnter={(e) => {
+            if (!selected) {
+              e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_HOVER_COLOR;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!selected) {
+              e.currentTarget.querySelector('svg').style.borderColor = SHAPE_BORDER_COLOR;
+            }
+          }}
+        >
+          <ShapePreview
+            shape={shape}
+            colorScheme={colorScheme}
+            boxSize={thumbnailSize}
+            borderRadius={SHAPE_BORDER_RADIUS}
+            borderOpacity={0.06}
+            defaultCellColor={DEFAULT_SHAPE_COLOR}
+            t={tRef.current}
+            selected={selected}
+            source={'recent'}
+          />
+          {selected && (
+            <div
               style={{
-                fontSize: 12,
-                padding: '6px 8px',
-                borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.06)',
-                background: '#111',
-                color: '#fff',
-                cursor: 'pointer',
-                opacity: 0.95,
-                minWidth: 46,
-                textAlign: 'center',
-                marginLeft: 8,
-                height: 32,
-                alignSelf: 'center',
+                position: 'absolute',
+                top: '2px',
+                left: '2px',
+                width: '16px',
+                height: '16px',
+                background: SELECTED_BORDER_COLOR,
+                borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                fontSize: '10px',
+                color: '#000',
+                fontWeight: 'bold',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                zIndex: 10
               }}
             >
-              ⟳90
-            </button>
+              ✓
+            </div>
           )}
-        </div>
+        </button>
+        {/* Centered rotate button */}
+        {typeof onRotate === 'function' && (
+          <button
+            key={`rotate-90-${index}`}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Use 270° math rotation to achieve 90° clockwise in screen (y-down) coords
+              const rotatedCells = rotateShape(getShapeCells(shape), 270);
+              const rotatedShape = { ...shape, cells: rotatedCells };
+              onRotate(rotatedShape, index);
+            }}
+            title="Rotate 90° (clockwise)"
+            style={{
+              fontSize: 12,
+              padding: '6px 8px',
+              borderRadius: 6,
+              border: '1px solid rgba(255,255,255,0.06)',
+              background: '#111',
+              color: '#fff',
+              cursor: 'pointer',
+              opacity: 0.95,
+              minWidth: 46,
+              textAlign: 'center',
+              marginLeft: 8,
+              height: 32,
+              alignSelf: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            ⟳90
+          </button>
+        )}
+        {/* Drag from thumbnail to canvas to place; onPointerDown starts drag */}
       </div>
-    );
+    </div>
+  );
 }
 
 ShapeSlot.propTypes = {
@@ -178,6 +234,8 @@ ShapeSlot.propTypes = {
   selected: PropTypes.bool,
   onSelect: PropTypes.func.isRequired,
   onRotate: PropTypes.func.isRequired,
+  onSwitchToShapesTool: PropTypes.func,
+  onStartPaletteDrag: PropTypes.func,
   title: PropTypes.string
 };
 

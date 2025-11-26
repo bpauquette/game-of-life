@@ -62,6 +62,7 @@ export default function HeaderBar({
   selectedShape,
   onRotateShape,
   onSwitchToShapesTool,
+  startPaletteDrag,
   // game controls
   isRunning,
   setIsRunning,
@@ -297,6 +298,7 @@ export default function HeaderBar({
             selectedShape={selectedShape}
             onRotateShape={onRotateShape}
             onSwitchToShapesTool={onSwitchToShapesTool}
+            startPaletteDrag={startPaletteDrag}
             onSaveRecentShapes={onSaveRecentShapes}
               onClearRecentShapes={onClearRecentShapes}
             persistenceStatus={recentShapesPersistence}
@@ -368,6 +370,7 @@ HeaderBar.propTypes = {
   selectedShape: PropTypes.object,
   onRotateShape: PropTypes.func,
   onSwitchToShapesTool: PropTypes.func,
+  startPaletteDrag: PropTypes.func,
   onToggleChrome: PropTypes.func,
   headerRef: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
   selectedTool: PropTypes.string,

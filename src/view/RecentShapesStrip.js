@@ -29,6 +29,7 @@ const RecentShapesStrip = ({
   selectedShape = null,
   onRotateShape,
   onSwitchToShapesTool,
+  startPaletteDrag,
   onSaveRecentShapes,
   onClearRecentShapes,
   persistenceStatus = {}
@@ -72,6 +73,13 @@ const RecentShapesStrip = ({
       }
     }
     // Optionally trigger overlay redraw if needed
+    if (typeof drawWithOverlay === 'function') drawWithOverlay();
+  };
+
+  const handlePlaceButton = (shape) => {
+    // For mobile: select shape and switch to shapes tool so user can tap/drag on canvas
+    if (typeof selectShape === 'function') selectShape(shape);
+    if (typeof onSwitchToShapesTool === 'function') onSwitchToShapesTool();
     if (typeof drawWithOverlay === 'function') drawWithOverlay();
   };
 
@@ -202,6 +210,15 @@ const RecentShapesStrip = ({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const holdIntervalRef = useRef(null);
+  // Drag-to-scroll state for touch / pointer devices
+  const [isDragging, setIsDragging] = useState(false);
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startScrollRef = useRef(0);
+  const lastXRef = useRef(0);
+  const lastTimeRef = useRef(0);
+  const velocityRef = useRef(0);
+  const momentumFrameRef = useRef(null);
 
   const updateScrollButtons = useCallback(() => {
     const el = scrollRef.current;
@@ -258,6 +275,74 @@ const RecentShapesStrip = ({
       holdIntervalRef.current = null;
     }
   }, []);
+
+  // Pointer / touch handlers for swipe-to-scroll with light momentum
+  const cancelMomentum = useCallback(() => {
+    if (momentumFrameRef.current) {
+      cancelAnimationFrame(momentumFrameRef.current);
+      momentumFrameRef.current = null;
+    }
+  }, []);
+
+  const onPointerDown = useCallback((e) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    cancelMomentum();
+    try { el.setPointerCapture?.(e.pointerId); } catch (err) {}
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    startXRef.current = e.clientX;
+    startScrollRef.current = el.scrollLeft;
+    lastXRef.current = e.clientX;
+    lastTimeRef.current = performance.now();
+    velocityRef.current = 0;
+  }, [cancelMomentum]);
+
+  const onPointerMove = useCallback((e) => {
+    const el = scrollRef.current;
+    if (!el || !isDraggingRef.current) return;
+    const now = performance.now();
+    const dt = Math.max(1, now - lastTimeRef.current);
+    const dx = e.clientX - lastXRef.current;
+    // velocity in px per ms
+    velocityRef.current = dx / dt;
+    const move = e.clientX - startXRef.current;
+    el.scrollLeft = Math.max(0, startScrollRef.current - move);
+    lastXRef.current = e.clientX;
+    lastTimeRef.current = now;
+  }, []);
+
+  const startMomentum = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let v = velocityRef.current || 0; // px per ms
+    // amplify slightly so quick swipes feel responsive
+    v *= 1.6;
+    const step = () => {
+      if (!el) return;
+      // apply friction
+      v *= 0.94;
+      if (Math.abs(v) < 0.02) {
+        momentumFrameRef.current = null;
+        return;
+      }
+      // approximate frame time
+      el.scrollLeft = Math.max(0, el.scrollLeft - v * 16);
+      momentumFrameRef.current = requestAnimationFrame(step);
+    };
+    momentumFrameRef.current = requestAnimationFrame(step);
+  }, []);
+
+  const finishPointer = useCallback((e) => {
+    const el = scrollRef.current;
+    if (el) {
+      try { el.releasePointerCapture?.(e.pointerId); } catch (err) {}
+    }
+    isDraggingRef.current = false;
+    setIsDragging(false);
+    // kick off momentum if velocity is present
+    if (Math.abs(velocityRef.current) > 0.02) startMomentum();
+  }, [startMomentum]);
 
   return (
     <div
@@ -389,6 +474,11 @@ const RecentShapesStrip = ({
             }
             // allow default horizontal wheel behavior otherwise
           }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={finishPointer}
+          onPointerCancel={finishPointer}
+          onPointerLeave={finishPointer}
           style={{
             display: 'flex',
             flexDirection: 'row',
@@ -398,11 +488,17 @@ const RecentShapesStrip = ({
             overflowX: 'auto',
             overflowY: 'hidden',
             WebkitOverflowScrolling: 'touch',
-            paddingBottom: 12,
+            touchAction: 'pan-y',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            // Give extra bottom padding so native scrollbars don't overlap content
+            paddingBottom: 28,
             paddingTop: 8,
             scrollSnapType: 'x mandatory',
             paddingLeft: 4,
             paddingRight: 6,
+            // Reserve scrollbar gutter space where supported so the scrollbar
+            // doesn't overlay the content and hide labels on desktop.
+            scrollbarGutter: 'stable',
             scrollBehavior: 'smooth'
           }}
         >
@@ -445,6 +541,8 @@ const RecentShapesStrip = ({
                 selected={selected}
                 title={getShapeTitle(shape, index)}
                 onSelect={() => handleShapeClick(shape)}
+                onSwitchToShapesTool={onSwitchToShapesTool}
+                onStartPaletteDrag={startPaletteDrag}
                 onRotate={(rotatedShape, i) => {
                   if (typeof onRotateShape === 'function') onRotateShape(rotatedShape, i, { inPlace: true });
                 }}
@@ -500,6 +598,7 @@ RecentShapesStrip.propTypes = {
   selectedShape: PropTypes.object,
   onRotateShape: PropTypes.func,
   onSwitchToShapesTool: PropTypes.func,
+  startPaletteDrag: PropTypes.func,
   onSaveRecentShapes: PropTypes.func,
   onClearRecentShapes: PropTypes.func,
   persistenceStatus: PropTypes.shape({
