@@ -50,10 +50,21 @@ const main = async () => {
     };
   });
 
-  // read existing DB
+  // prefer DB when available, otherwise read JSON
   await fs.mkdir(path.dirname(dbPath), { recursive: true });
   let db = [];
-  try{ const dbtxt = await fs.readFile(dbPath, 'utf8'); db = JSON.parse(dbtxt||'[]'); }catch{ db = []; }
+  let dbClient = null;
+  try {
+    const clientPath = path.join(__dirname, 'dbClient.cjs');
+    if (require('fs').existsSync(clientPath)) {
+      dbClient = require(clientPath);
+    }
+  } catch (e) { dbClient = null; }
+  if (dbClient) {
+    db = await dbClient.getAllShapes();
+  } else {
+    try{ const dbtxt = await fs.readFile(dbPath, 'utf8'); db = JSON.parse(dbtxt||'[]'); }catch{ db = []; }
+  }
 
   const existingSig = new Set(db.map(shapeSignature));
   let added = 0;
@@ -65,8 +76,13 @@ const main = async () => {
     added++;
   }
 
-  await fs.writeFile(dbPath, JSON.stringify(db, null, 2), 'utf8');
-  console.log(`Imported ${added} shapes from src/shapes.js into ${dbPath}`);
+  if (dbClient) {
+    await dbClient.writeShapes(db);
+    console.log(`Imported ${added} shapes from src/shapes.js into database`);
+  } else {
+    await fs.writeFile(dbPath, JSON.stringify(db, null, 2), 'utf8');
+    console.log(`Imported ${added} shapes from src/shapes.js into ${dbPath}`);
+  }
 }
 
 try {

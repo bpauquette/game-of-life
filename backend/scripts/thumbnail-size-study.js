@@ -19,9 +19,18 @@ function percentile(sorted, p) {
 async function main() {
   try {
     const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-    const dataFile = path.join(scriptDir, '..', 'data', 'shapes.json');
-    const txt = await fs.readFile(dataFile, 'utf8');
-    const arr = JSON.parse(txt);
+    let arr = null;
+    try {
+      const dbClient = await import('./dbClient.mjs');
+      arr = await dbClient.getAllShapes();
+    } catch (e) {
+      arr = null;
+    }
+    if (!arr) {
+      const dataFile = path.join(scriptDir, '..', 'data', 'shapes.json');
+      const txt = await fs.readFile(dataFile, 'utf8');
+      arr = JSON.parse(txt);
+    }
     const widths = [];
     const heights = [];
     const maxDims = [];

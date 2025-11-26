@@ -47,12 +47,24 @@ async function main() {
   // allow passing the shape name as the first CLI arg, default to 'pulsar'
   const args = process.argv.slice(2);
   const nameToFind = args[0] || 'pulsar';
-  if (!fs.existsSync(DATA_FILE)) {
-    console.error('shapes.json not found at', DATA_FILE);
-    process.exit(2);
+  // prefer DB when available
+  let arr = null;
+  try {
+    const clientPath = path.join(__dirname, 'dbClient.cjs');
+    if (fs.existsSync(clientPath)) {
+      const dbClient = require(clientPath);
+      arr = await dbClient.getAllShapes();
+    }
+  } catch (e) { arr = null; }
+
+  if (!arr) {
+    if (!fs.existsSync(DATA_FILE)) {
+      console.error('shapes.json not found at', DATA_FILE);
+      process.exit(2);
+    }
+    const txt = fs.readFileSync(DATA_FILE, 'utf8');
+    arr = JSON.parse(txt);
   }
-  const txt = fs.readFileSync(DATA_FILE, 'utf8');
-  const arr = JSON.parse(txt);
   const found = arr.find(s => (s.name || '').toLowerCase() === nameToFind.toLowerCase());
   if (!found) {
     console.error('Shape not found:', nameToFind);
