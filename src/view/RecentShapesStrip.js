@@ -281,6 +281,12 @@ const RecentShapesStrip = ({
   const onPointerDown = useCallback((e) => {
     const el = scrollRef.current;
     if (!el) return;
+    // If the pointerdown originated from inside a shape slot, don't take
+    // pointer capture here so the child `ShapeSlot` can capture and start
+    // a drag/placement interaction instead of the scroll-to-pan behavior.
+    try {
+      if (e.target && typeof e.target.closest === 'function' && e.target.closest('[data-shape-slot]')) return;
+    } catch (err) {}
     cancelMomentum();
     try { el.setPointerCapture?.(e.pointerId); } catch (err) {}
     isDraggingRef.current = true;
@@ -527,6 +533,7 @@ const RecentShapesStrip = ({
               tabIndex={0}
               role="button"
               aria-label={`Select shape ${getShapeTitle(shape, index)}`}
+              data-shape-slot={true}
             >
               <ShapeSlot
                 shape={shape}
