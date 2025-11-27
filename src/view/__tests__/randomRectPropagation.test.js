@@ -2,6 +2,9 @@ import React from 'react';
 import { render, waitFor, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
+// Import the component under test after mocking
+import GameOfLifeApp from '../GameOfLifeApp';
+
 // Spy for controller._setToolState
 const mockSetToolState = jest.fn();
 
@@ -35,9 +38,6 @@ jest.mock('../../auth/useProtectedAction', () => ({
 jest.mock('../../auth/AuthProvider', () => ({
   useAuth: () => ({ token: null, email: null, logout: () => {} })
 }));
-
-// Import the component under test after mocking
-import GameOfLifeApp from '../GameOfLifeApp';
 
 afterEach(() => {
   cleanup();
