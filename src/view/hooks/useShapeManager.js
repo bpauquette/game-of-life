@@ -1,4 +1,33 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+
+// Worker setup
+let shapeWorker;
+let workerReady = false;
+let pendingWorkerRequests = new Map();
+function getShapeWorker() {
+  if (!shapeWorker) {
+    shapeWorker = new window.Worker(require('../../workers/shapeWorker.js'));
+    shapeWorker.onmessage = (e) => {
+      const { type, shapeId, result, key } = e.data;
+      if (type === 'normalized' && pendingWorkerRequests.has(shapeId)) {
+        pendingWorkerRequests.get(shapeId).resolve(result);
+        pendingWorkerRequests.delete(shapeId);
+      } else if (type === 'key' && pendingWorkerRequests.has(shapeId)) {
+        pendingWorkerRequests.get(shapeId).resolve(key);
+        pendingWorkerRequests.delete(shapeId);
+      }
+    };
+    workerReady = true;
+  }
+  return shapeWorker;
+}
+
+function normalizeRecentShapeWorker(shape) {
+  return new Promise((resolve) => {
+    getShapeWorker().postMessage({ type: 'normalize', shape });
+    pendingWorkerRequests.set(shape.id, { resolve });
+  });
+}
 import logger from '../../controller/utils/logger';
 
 const MAX_RECENT_SHAPES = 20;
@@ -31,6 +60,14 @@ const normalizeRecentShape = (shape) => {
   const sourceCells = extractCells(shape);
   if (!sourceCells.length) return shape;
 
+  // Offload normalization to worker for all shapes
+  if (typeof window !== 'undefined' && window.Worker) {
+    normalizeRecentShapeWorker(shape).then((result) => {
+      cache.set(key, result);
+    });
+    return shape;
+  }
+  // Fallback to main thread if worker not available
   let minX = Infinity;
   let minY = Infinity;
   const absoluteCells = sourceCells.map((cell) => {
@@ -40,18 +77,14 @@ const normalizeRecentShape = (shape) => {
     if (y < minY) minY = y;
     return { x, y };
   });
-
   if (!Number.isFinite(minX)) minX = 0;
   if (!Number.isFinite(minY)) minY = 0;
-
   const normalized = absoluteCells.map(({ x, y }) => [x - minX, y - minY]);
   if (!normalized.length) return shape;
-
   const xs = normalized.map(([x]) => x);
   const ys = normalized.map(([, y]) => y);
   const width = Math.max(...xs) - Math.min(...xs) + 1;
   const height = Math.max(...ys) - Math.min(...ys) + 1;
-
   const result = {
     ...shape,
     cells: normalized,
