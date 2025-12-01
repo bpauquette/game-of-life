@@ -47,6 +47,11 @@ const OptionsPanel = ({
   // Random rectangle fill percent (0-100)
   randomRectPercent = 50,
   setRandomRectPercent,
+  // Hashlife controls (optional)
+  setUseHashlife,
+  setHashlifeMaxRun,
+  setHashlifeCacheSize,
+  clearHashlifeCache,
   onOk,
   onCancel
 }) => {
@@ -93,6 +98,16 @@ const OptionsPanel = ({
     if (!Number.isFinite(n)) return 50;
     return Math.max(0, Math.min(100, Math.round(n)));
   });
+  // Hashlife UI state
+  const [localUseHashlife, setLocalUseHashlife] = useState(() => {
+    try { const v = globalThis.localStorage.getItem('useHashlife'); return v == null ? true : v === 'true'; } catch { return true; }
+  });
+  const [localHashlifeMaxRun, setLocalHashlifeMaxRun] = useState(() => {
+    try { const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeMaxRun'), 10); return Number.isFinite(v) && v > 0 ? v : 1024; } catch { return 1024; }
+  });
+  const [localHashlifeCacheSize, setLocalHashlifeCacheSize] = useState(() => {
+    try { const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeCacheSize'), 10); return Number.isFinite(v) && v >= 0 ? v : 0; } catch { return 0; }
+  });
 
   const handleOk = () => {
   try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
@@ -126,6 +141,12 @@ const OptionsPanel = ({
   try { globalThis.localStorage.setItem('detectStablePopulation', JSON.stringify(!!localDetectStablePopulation)); } catch {}
   try { globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode)); } catch {}
   try { globalThis.localStorage.setItem('randomRectPercent', String(Math.max(0, Math.min(100, Number(localRandomRectPercent))))); } catch {}
+  try { globalThis.localStorage.setItem('useHashlife', (!!localUseHashlife) ? 'true' : 'false'); } catch {}
+  try { globalThis.localStorage.setItem('hashlifeMaxRun', String(Number(localHashlifeMaxRun) || 1024)); } catch {}
+  try { globalThis.localStorage.setItem('hashlifeCacheSize', String(Number(localHashlifeCacheSize) || 0)); } catch {}
+  try { setUseHashlife?.(!!localUseHashlife); } catch (err) { logger.debug('setUseHashlife failed:', err); }
+  try { setHashlifeMaxRun?.(Number(localHashlifeMaxRun) || 1024); } catch (err) { logger.debug('setHashlifeMaxRun failed:', err); }
+  try { setHashlifeCacheSize?.(Number(localHashlifeCacheSize) || 0); } catch (err) { logger.debug('setHashlifeCacheSize failed:', err); }
   try { globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning)); } catch {}
   try { setDetectStablePopulation?.(!!localDetectStablePopulation); } catch {}
   try {
@@ -231,6 +252,40 @@ const OptionsPanel = ({
           </Stack>
 
           <div style={{ borderTop: '1px solid #ddd', paddingTop: 16, marginTop: 16 }}>
+            <h4 style={{ margin: '0 0 16px 0' }}>Hashlife (experimental)</h4>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+              <input
+                type="checkbox"
+                checked={!!localUseHashlife}
+                onChange={(e) => setLocalUseHashlife(e.target.checked)}
+                style={{ marginRight: 8 }}
+                id="use-hashlife-checkbox"
+              />
+              <label htmlFor="use-hashlife-checkbox" style={{ margin: 0 }}>
+                Use Hashlife engine for long runs
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+              <TextField
+                label="Max generations per run"
+                type="number"
+                size="small"
+                value={localHashlifeMaxRun}
+                onChange={e => setLocalHashlifeMaxRun(Number(e.target.value))}
+                helperText="Upper bound on generations per adapter.run"
+              />
+              <TextField
+                label="Cache size (entries)"
+                type="number"
+                size="small"
+                value={localHashlifeCacheSize}
+                onChange={e => setLocalHashlifeCacheSize(Number(e.target.value))}
+                helperText="0 means unlimited (use with care)"
+              />
+              <Button size="small" onClick={() => { try { clearHashlifeCache?.(); } catch (e) { /* ignore */ } }}>
+                Clear Hashlife Cache
+              </Button>
+            </div>
             <h4 style={{ margin: '0 0 16px 0' }}>Performance Settings</h4>
             
             <Stack spacing={2}>
@@ -466,6 +521,10 @@ OptionsPanel.propTypes = {
   setMemoryTelemetryEnabled: PropTypes.func,
   randomRectPercent: PropTypes.number,
   setRandomRectPercent: PropTypes.func,
+  setUseHashlife: PropTypes.func,
+  setHashlifeMaxRun: PropTypes.func,
+  setHashlifeCacheSize: PropTypes.func,
+  clearHashlifeCache: PropTypes.func,
   onOk: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired
 };

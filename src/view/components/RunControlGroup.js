@@ -21,8 +21,11 @@ export default function RunControlGroup({
   clear,
   snapshotsRef,
   setSteadyInfo,
+  onHashlifeBurst,
   confirmOnClear = true
 }) {
+  // optional hashlife burst handler
+  
   const STEADY_STATE_PERIOD_INITIAL_LOCAL = 0;
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -110,6 +113,13 @@ export default function RunControlGroup({
             <DeleteSweepIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+          {typeof onHashlifeBurst === 'function' && (
+            <Tooltip title="Hashlife burst (render every 10 generations)">
+              <IconButton size="small" aria-label="hashlife-burst" onClick={() => { try { onHashlifeBurst(); } catch (e) { /* ignore */ } }}>
+                <SkipNextIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
       </Stack>
 
       {/* Clear confirmation dialog */}
@@ -137,4 +147,6 @@ RunControlGroup.propTypes = {
   clear: PropTypes.func.isRequired,
   snapshotsRef: PropTypes.object.isRequired,
   setSteadyInfo: PropTypes.func.isRequired
+  ,
+  onHashlifeBurst: PropTypes.func
 };

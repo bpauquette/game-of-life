@@ -6,7 +6,7 @@
 // (nodeMemo/resultMemo) are in place for adding the optimized center-step
 // algorithm later.
 
-const { makeLeaf, makeNode, makeEmpty, clearMemo } = require('./node');
+const { makeLeaf, makeNode, clearMemo } = require('./node');
 
 // Helper: convert flat cell array or array of {x,y} into Set of "x,y" strings
 function cellsToSet(cells) {
@@ -309,9 +309,20 @@ function nodeStepPow2(nodeObj) {
 
 // Advance N generations using a decomposition into powers-of-two and
 // memoized node stepping where possible.
-async function advance(cells, n) {
+async function advance(cells, n, onProgress) {
   let currentCells = Array.isArray(cells) ? cells : Array.from(cells).map(s => { const [x,y]=s.split(',').map(Number); return {x,y}; });
   let remaining = n;
+  let progressed = 0;
+  const progressCb = typeof onProgress === 'function' ? onProgress : null;
+  const maybeReport = (count) => {
+    if (!progressCb) return;
+    // report each generation advanced
+    for (let i = 0; i < count; i++) {
+      progressed += 1;
+      try { progressCb(progressed); } catch (e) {}
+    }
+  };
+
   while (remaining > 0) {
     // Build the smallest tree to contain current cells
     const treeObj = buildTreeFromCells(currentCells);
@@ -321,6 +332,8 @@ async function advance(cells, n) {
       // We can step by the node's full power-of-two and benefit from caching
       const resObj = nodeStepPow2({ node, originX, originY });
       currentCells = nodeToCells(resObj.node, resObj.originX || 0, resObj.originY || 0);
+      // report progress for the stepped generations
+      maybeReport(topStep);
       remaining -= topStep;
     } else {
       // The node is larger than the remaining steps; fall back to brute force
@@ -331,6 +344,8 @@ async function advance(cells, n) {
         nextArr.push({ x, y });
       }
       currentCells = nextArr;
+      // report progress for the remaining generations
+      maybeReport(remaining);
       remaining = 0;
     }
   }

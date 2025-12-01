@@ -22,13 +22,14 @@ const hasShapeCells = (shape) => {
 };
 
 const normalizeRecentShape = (shape) => {
+  // Memoization cache (keyed by shape id or stable key)
+  if (!normalizeRecentShape._cache) normalizeRecentShape._cache = new Map();
+  const cache = normalizeRecentShape._cache;
+  let key = shape?.id || JSON.stringify({ name: shape?.name, cells: extractCells(shape).length });
+  if (cache.has(key)) return cache.get(key);
   if (!shape) return shape;
   const sourceCells = extractCells(shape);
-  console.log('[normalizeRecentShape] Shape:', shape?.id, 'sourceCells length:', sourceCells.length);
-  if (!sourceCells.length) {
-    console.log('[normalizeRecentShape] No cells found, returning original shape');
-    return shape;
-  }
+  if (!sourceCells.length) return shape;
 
   let minX = Infinity;
   let minY = Infinity;
@@ -51,7 +52,7 @@ const normalizeRecentShape = (shape) => {
   const width = Math.max(...xs) - Math.min(...xs) + 1;
   const height = Math.max(...ys) - Math.min(...ys) + 1;
 
-  return {
+  const result = {
     ...shape,
     cells: normalized,
     width: width || shape.width,
@@ -63,6 +64,8 @@ const normalizeRecentShape = (shape) => {
       cellCount: sourceCells.length
     }
   };
+  cache.set(key, result);
+  return result;
 };
 
 /**
@@ -106,6 +109,13 @@ export const useShapeManager = ({
     isDirty: false
   });
 
+  // Helper for debug logging to reduce cognitive complexity
+  const debugLog = useCallback((...args) => {
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug(...args);
+    }
+  }, []);
+
   // Removed aggressive sync of toolStateRef.current.selectedShapeData with selectedShape.
   // Tool state is now only updated on explicit selection (see selectShape).
 
@@ -147,9 +157,9 @@ export const useShapeManager = ({
 
   // Update the recent shapes list, maintaining uniqueness and max length
   const updateRecentShapesList = useCallback((newShape) => {
-    console.log('[updateRecentShapesList] Updating with shape:', newShape?.id, newShape?.name, 'has cells:', hasShapeCells(newShape), newShape?.cells?.length);
+    debugLog('[updateRecentShapesList] Updating with shape:', newShape?.id, newShape?.name, 'has cells:', hasShapeCells(newShape), newShape?.cells?.length);
     const normalized = normalizeRecentShape(newShape);
-    console.log('[updateRecentShapesList] Normalized shape has cells:', hasShapeCells(normalized), normalized?.cells?.length);
+    debugLog('[updateRecentShapesList] Normalized shape has cells:', hasShapeCells(normalized), normalized?.cells?.length);
     setRecentShapes(prev => {
       const newKey = generateShapeKey(normalized);
       // If shape already exists, do not change order
@@ -159,7 +169,7 @@ export const useShapeManager = ({
       // Insert new shape at the leftmost position
       return [normalized, ...prev].slice(0, MAX_RECENT_SHAPES);
     });
-  }, [generateShapeKey]);
+  }, [generateShapeKey, debugLog]);
 
   useEffect(() => {
     setPersistenceState(prev => {
@@ -174,13 +184,6 @@ export const useShapeManager = ({
   }, [recentShapes, computeFingerprint]);
 
   // Update shape state in both game state and tool state
-  // Helper for debug logging to reduce cognitive complexity
-  const debugLog = useCallback((...args) => {
-    // Route debug logging through the centralized logger so it's gated by log level
-    if (logger && typeof logger.debug === 'function') {
-      logger.debug(...args);
-    }
-  }, []);
 
   const getCursorFromModel = useCallback((targetModel) => {
     if (!targetModel || typeof targetModel.getCursorPosition !== 'function') {
@@ -414,7 +417,7 @@ export const useShapeManager = ({
     },
     // Add a recent shape programmatically
     addRecentShape: (shape) => {
-      console.log('[addRecentShape] Adding shape:', shape?.id, shape?.name, 'has cells:', hasShapeCells(shape), shape?.cells?.length);
+      debugLog('[addRecentShape] Adding shape:', shape?.id, shape?.name, 'has cells:', hasShapeCells(shape), shape?.cells?.length);
       if (!shape) return;
       try {
         const normalized = normalizeRecentShape(shape);
@@ -426,7 +429,7 @@ export const useShapeManager = ({
         const stubCells = Array.isArray(stubSource?.cells)
           ? stubSource.cells
           : extractCells(stubSource);
-        console.log('[addRecentShape] stubCells length:', stubCells.length, 'from', Array.isArray(stubSource?.cells) ? 'cells' : 'extractCells');
+        debugLog('[addRecentShape] stubCells length:', stubCells.length, 'from', Array.isArray(stubSource?.cells) ? 'cells' : 'extractCells');
         const stub = {
           id: stubSource?.id,
           name: stubSource?.name || stubMeta?.name,
@@ -439,7 +442,7 @@ export const useShapeManager = ({
             ? stubCells.map(cell => (Array.isArray(cell) ? [...cell] : [cell?.x ?? 0, cell?.y ?? 0]))
             : []
         };
-        console.log('[addRecentShape] Created stub with cells:', stub.cells.length);
+        debugLog('[addRecentShape] Created stub with cells:', stub.cells.length);
         setRecentShapes(prev => {
           const newKey = generateShapeKey(stub);
           // If shape already exists, do not change order

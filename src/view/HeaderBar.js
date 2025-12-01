@@ -105,6 +105,12 @@ export default function HeaderBar({
   setDetectStablePopulation,
   memoryTelemetryEnabled = false,
   setMemoryTelemetryEnabled,
+  // Hashlife controls
+  setUseHashlife,
+  setHashlifeMaxRun,
+  setHashlifeCacheSize,
+  clearHashlifeCache,
+  onHashlifeBurst,
   onSaveRecentShapes,
   onClearRecentShapes,
   onOpenMyShapes,
@@ -220,6 +226,7 @@ export default function HeaderBar({
               snapshotsRef={snapshotsRef}
               setSteadyInfo={setSteadyInfo}
               confirmOnClear={confirmOnClear}
+              onHashlifeBurst={onHashlifeBurst}
             />
           </Box>
           <Stack direction="row" spacing={0.5} alignItems="center">
@@ -327,6 +334,10 @@ export default function HeaderBar({
           setDetectStablePopulation={setDetectStablePopulation}
           memoryTelemetryEnabled={memoryTelemetryEnabled}
           setMemoryTelemetryEnabled={setMemoryTelemetryEnabled}
+          setUseHashlife={setUseHashlife}
+          setHashlifeMaxRun={setHashlifeMaxRun}
+          setHashlifeCacheSize={setHashlifeCacheSize}
+          clearHashlifeCache={clearHashlifeCache}
           onOk={handleOk}
           onCancel={handleCancel}
           data-testid-ok="options-ok-button"
@@ -381,6 +392,10 @@ HeaderBar.propTypes = {
   setDetectStablePopulation: PropTypes.func,
   memoryTelemetryEnabled: PropTypes.bool,
   setMemoryTelemetryEnabled: PropTypes.func,
+  setUseHashlife: PropTypes.func,
+  setHashlifeMaxRun: PropTypes.func,
+  setHashlifeCacheSize: PropTypes.func,
+  clearHashlifeCache: PropTypes.func,
   isRunning: PropTypes.bool.isRequired,
   setIsRunning: PropTypes.func.isRequired,
   step: PropTypes.func.isRequired,
@@ -412,4 +427,5 @@ HeaderBar.propTypes = {
   onClearRecentShapes: PropTypes.func,
   onOpenMyShapes: PropTypes.func.isRequired,
   onOpenImport: PropTypes.func.isRequired,
+  onHashlifeBurst: PropTypes.func,
 };

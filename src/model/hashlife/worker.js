@@ -12,7 +12,7 @@ function run(cells, generations, onProgress) {
     const defer = (typeof setImmediate !== 'undefined') ? setImmediate : (fn) => setTimeout(fn, 0);
     defer(async () => {
       try {
-        const res = await engine.advance(cells, generations);
+        const res = await engine.advance(cells, generations, onProgress);
         resolve(res);
       } catch (err) {
         reject(err);
