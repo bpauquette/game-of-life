@@ -1,34 +1,44 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import logger from '../../controller/utils/logger';
 
 // Worker setup
 let shapeWorker;
-let workerReady = false;
 let pendingWorkerRequests = new Map();
 function getShapeWorker() {
   if (!shapeWorker) {
-    shapeWorker = new window.Worker(require('../../workers/shapeWorker.js'));
-    shapeWorker.onmessage = (e) => {
-      const { type, shapeId, result, key } = e.data;
-      if (type === 'normalized' && pendingWorkerRequests.has(shapeId)) {
-        pendingWorkerRequests.get(shapeId).resolve(result);
-        pendingWorkerRequests.delete(shapeId);
-      } else if (type === 'key' && pendingWorkerRequests.has(shapeId)) {
-        pendingWorkerRequests.get(shapeId).resolve(key);
-        pendingWorkerRequests.delete(shapeId);
-      }
-    };
-    workerReady = true;
+    try {
+      // Load worker from public directory
+      shapeWorker = new Worker('/workers/shapeWorker.js');
+      shapeWorker.onmessage = (e) => {
+        const { type, shapeId, result, key } = e.data;
+        if (type === 'normalized' && pendingWorkerRequests.has(shapeId)) {
+          pendingWorkerRequests.get(shapeId).resolve(result);
+          pendingWorkerRequests.delete(shapeId);
+        } else if (type === 'key' && pendingWorkerRequests.has(shapeId)) {
+          pendingWorkerRequests.get(shapeId).resolve(key);
+          pendingWorkerRequests.delete(shapeId);
+        }
+      };
+    } catch (error) {
+      logger.warn('Could not create shape worker:', error);
+      return null;
+    }
   }
   return shapeWorker;
 }
 
 function normalizeRecentShapeWorker(shape) {
   return new Promise((resolve) => {
-    getShapeWorker().postMessage({ type: 'normalize', shape });
-    pendingWorkerRequests.set(shape.id, { resolve });
+    const worker = getShapeWorker();
+    if (worker) {
+      worker.postMessage({ type: 'normalize', shape });
+      pendingWorkerRequests.set(shape.id, { resolve });
+    } else {
+      // Fallback: resolve with the original shape if worker is unavailable
+      resolve(shape);
+    }
   });
 }
-import logger from '../../controller/utils/logger';
 
 const MAX_RECENT_SHAPES = 20;
 const RECENTS_STORAGE_KEY = 'gol_recentShapes_v1';

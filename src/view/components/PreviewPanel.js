@@ -93,7 +93,8 @@ function computeBounds(cells = []) {
 //   }
 // }
 
-export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, colorSchemeKey, onAddRecent }) {
+function PreviewPanel(props) {
+  const { preview, maxSvgSize = 200, colorScheme, colorSchemeKey, onAddRecent } = props;
   const canvasRef = useRef(null);
   
   const [cachedDataUrl, setCachedDataUrl] = useState(null);
@@ -119,7 +120,8 @@ export default function PreviewPanel({ preview, maxSvgSize = 200, colorScheme, c
   }, [preview, transformIndex, currentTransform, rotationAngle]);
   const bounds = useMemo(() => computeBounds(cells), [cells]);
   const { width, height } = bounds;
-  const cellSize = 8;
+  // Use provided cellSize prop or fallback to 1
+  const cellSize = typeof props.cellSize === 'number' ? props.cellSize : 1;
   const drawW = Math.min(maxSvgSize, width * cellSize + 8);
   const drawH = Math.min(maxSvgSize, height * cellSize + 8);
   const PREVIEW_BORDER_STYLE = { border: '1px solid rgba(0,0,0,0.06)', borderRadius: 4 };
@@ -250,3 +252,5 @@ PreviewPanel.propTypes = {
   colorSchemeKey: PropTypes.string,
   onAddRecent: PropTypes.func
 };
+
+export default PreviewPanel;
