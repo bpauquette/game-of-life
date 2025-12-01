@@ -435,29 +435,123 @@ export class GameModel {
     this.notifyObservers('stateImported', state);
   }
 
-  // Pattern analysis
+  // Enhanced pattern analysis with sophisticated heuristic algorithm
   isStable(windowSize = 50, tolerance = 3) {
-    if (this.populationHistory.length < windowSize) return false;
+    if (this.populationHistory.length < Math.max(windowSize, 20)) return false;
 
     const recent = this.populationHistory.slice(-windowSize);
+    
+    // Multi-criteria stability detection heuristic
+    
+    // Criterion 1: Population variance analysis (primary indicator)
     const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
-
-    return recent.every(pop => Math.abs(pop - avg) <= tolerance);
+    const variance = recent.reduce((sum, pop) => sum + Math.pow(pop - avg, 2), 0) / recent.length;
+    const stdDev = Math.sqrt(variance);
+    const populationStable = stdDev <= tolerance;
+    
+    // Criterion 2: Trend analysis (detect long-term drift)
+    let trendStable = true;
+    if (recent.length >= 10) {
+      const mid = Math.floor(recent.length / 2);
+      const firstHalf = recent.slice(0, mid);
+      const secondHalf = recent.slice(mid);
+      const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+      const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+      
+      // Allow small drift but reject significant population changes
+      trendStable = Math.abs(secondAvg - firstAvg) <= tolerance * 1.5;
+    }
+    
+    // Criterion 3: Oscillation detection (for periodic patterns)
+    let periodicStable = false;
+    if (recent.length >= 6) {
+      // Check for stable oscillations (periods 2-8)
+      for (let period = 2; period <= Math.min(8, Math.floor(recent.length / 3)); period++) {
+        let cyclicMatch = true;
+        const cyclesToCheck = Math.floor(recent.length / period) - 1;
+        
+        if (cyclesToCheck >= 2) {
+          for (let cycle = 0; cycle < cyclesToCheck && cyclicMatch; cycle++) {
+            for (let offset = 0; offset < period && cyclicMatch; offset++) {
+              const idx1 = recent.length - 1 - offset;
+              const idx2 = idx1 - period;
+              if (idx2 >= 0 && Math.abs(recent[idx1] - recent[idx2]) > tolerance) {
+                cyclicMatch = false;
+              }
+            }
+          }
+          if (cyclicMatch) {
+            periodicStable = true;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Criterion 4: Plateau detection (stable still life)
+    let plateauStable = false;
+    if (recent.length >= 10) {
+      const lastTen = recent.slice(-10);
+      const uniqueValues = [...new Set(lastTen)];
+      // If last 10 generations have at most 2 unique population values within tolerance
+      if (uniqueValues.length <= 2) {
+        plateauStable = uniqueValues.every(val => 
+          Math.abs(val - avg) <= tolerance
+        );
+      }
+    }
+    
+    // Combine criteria with weighted logic
+    // Stable if: (population variance is low AND trend is stable) OR periodic pattern OR plateau detected
+    return (populationStable && trendStable) || periodicStable || plateauStable;
   }
 
   detectPeriod(maxPeriod = 30) {
-    if (this.populationHistory.length < maxPeriod * 2) return 0;
+    const minHistoryLength = Math.max(maxPeriod * 3, 20);
+    if (this.populationHistory.length < minHistoryLength) return 0;
 
-    const recent = this.populationHistory.slice(-maxPeriod * 2);
-
+    const recent = this.populationHistory.slice(-minHistoryLength);
+    
+    // Enhanced period detection with tolerance for minor fluctuations
     for (let period = 1; period <= maxPeriod; period++) {
-      let matches = 0;
-      for (let i = 0; i < maxPeriod; i++) {
-        if (recent.at(-1 - i) === recent.at(-1 - i - period)) {
-          matches++;
+      let exactMatches = 0;
+      let tolerantMatches = 0;
+      const cyclesToCheck = Math.floor(recent.length / period) - 1;
+      
+      if (cyclesToCheck < 2) continue; // Need at least 2 complete cycles
+      
+      for (let cycle = 0; cycle < cyclesToCheck; cycle++) {
+        for (let offset = 0; offset < period; offset++) {
+          const idx1 = recent.length - 1 - offset;
+          const idx2 = idx1 - period * (cycle + 1);
+          
+          if (idx2 >= 0) {
+            const val1 = recent[idx1];
+            const val2 = recent[idx2];
+            
+            if (val1 === val2) {
+              exactMatches++;
+            } else if (Math.abs(val1 - val2) <= 1) { // Tolerance for minor fluctuations
+              tolerantMatches++;
+            }
+          }
         }
       }
-      if (matches >= maxPeriod * 0.9) { // 90% match
+      
+      const totalComparisons = cyclesToCheck * period;
+      const successRate = (exactMatches + tolerantMatches * 0.8) / totalComparisons;
+      
+      // Different thresholds based on period length
+      let threshold;
+      if (period === 1) {
+        threshold = 0.95; // Still life needs high accuracy
+      } else if (period <= 4) {
+        threshold = 0.85; // Common oscillators
+      } else {
+        threshold = 0.75; // Complex patterns may have more variation
+      }
+      
+      if (successRate >= threshold) {
         return period;
       }
     }
