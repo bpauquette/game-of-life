@@ -174,7 +174,7 @@ function GameOfLifeApp(props) {
       gameRef.current.model.setRunningModel(modelIsRunning);
     }
     
-    console.log(`🔄 setRunningState called: ${modelIsRunning}`);
+
   }, []);
 
   const setIsRunningCombined = useCallback((running) => {
@@ -249,13 +249,16 @@ function GameOfLifeApp(props) {
     try {
       setIsRunningCombined(true);
       burstRunningRef.current = true;
+      
+      // Wait a moment for state to sync
+      await new Promise(r => setTimeout(r, 50));
+      
       let remaining = total;
       let current = cellsArr;
       try {
         // Diagnostic: report burst request and serialized cell count
         try { console.info('Hashlife burst requested', { useHashlife: !!useHashlife, cellCount: cellsArr.length, hashlifeMaxRun }); } catch (e) {}
       } catch (e) {}
-      let progressedGenerations = 0;
       while (remaining > 0) {
         // Stop immediately if the user turned running off
         if (!isRunningRef.current) break;
@@ -282,13 +285,6 @@ function GameOfLifeApp(props) {
         } catch (e) {
           console.error('Failed to apply hashlife result to game', e);
         }
-        // Log when we render
-        try {
-          progressedGenerations += step;
-          if (progressedGenerations % RENDER_EVERY === 0) {
-            try { console.info('render at generation', progressedGenerations); } catch (e) {}
-          }
-        } catch (e) {}
         try { drawWithOverlay(); } catch (e) { /* ignore */ }
         // prepare for next iteration
         current = nextCells.map(c => (Array.isArray(c) ? { x: c[0], y: c[1] } : { x: c.x, y: c.y }));
@@ -381,7 +377,6 @@ function GameOfLifeApp(props) {
 
   useEffect(() => {
     if (!detectStablePopulation) {
-      console.log('🔧 Stability detection is DISABLED. Enable it in Options panel (gear icon) to use this feature.');
       setSteadyInfo((prev) => (prev === INITIAL_STEADY_INFO ? prev : INITIAL_STEADY_INFO));
       // Clear any existing dialog state when detection is disabled
       setShowStableDialog(false);
@@ -390,7 +385,6 @@ function GameOfLifeApp(props) {
       userNotifiedRef.current = false;
       return;
     }
-    console.log('✅ Stability detection is ENABLED');
     const mvc = gameRef.current;
     if (!mvc || typeof mvc.isStable !== 'function') return;
 
@@ -410,16 +404,12 @@ function GameOfLifeApp(props) {
         // Log only first detection and major milestones
         const firstDetection = steady && !steadyInfo?.steady;
         if (firstDetection) {
-          console.log(`🎉 STABILITY DETECTED! Gen: ${generation}, Population: ${modelPopHistory[modelPopHistory.length - 1]}, Period: ${period || 1}`);
-          const recent = modelPopHistory.slice(-Math.min(10, modelPopHistory.length));
-          console.log(`Recent populations: [${recent.join(', ')}], Window: ${popWindowSize}, Tolerance: ${popTolerance}`);
+          console.log(`Stability detected: Gen ${generation}, Pop ${modelPopHistory[modelPopHistory.length - 1]}, Period ${period || 1}`);
           
           // Always pause immediately when stability is detected
-          console.log(`🔄 Auto-pausing simulation (stability detected)`);
-          // Use single source of truth for running state
           setIsRunningCombined(false);
-        } else if (!steady && modelPopHistory.length % 50 === 0) {
-          console.log(`🔍 Gen ${generation}: Still evolving... (${modelPopHistory.length} generations checked)`);
+        } else if (!steady && modelPopHistory.length % 100 === 0) {
+          console.log(`Gen ${generation}: Still evolving (${modelPopHistory.length} checked)`);
         }
       } catch (err) {
         // eslint-disable-next-line no-console
@@ -451,14 +441,12 @@ function GameOfLifeApp(props) {
         setShowStableDialog(true);
         setUserNotifiedOfStability(true);
         userNotifiedRef.current = true;
-        console.log(`🔔 Showing stability dialog: ${patternType} detected`);
       }
       
       // Reset notification flag if pattern becomes unstable
       if (!nowStable && wasStable) {
         setUserNotifiedOfStability(false);
         userNotifiedRef.current = false;
-        console.log(`📈 Pattern became unstable, reset notification flag`);
       }
       
       setSteadyInfo((prev) => {
@@ -979,7 +967,6 @@ function GameOfLifeApp(props) {
           const modelIsRunning = data?.isRunning ?? false;
           setIsRunning(modelIsRunning);
           isRunningRef.current = modelIsRunning;
-          console.log(`🔄 Running state synced: ${modelIsRunning}`);
         }
       };
       
