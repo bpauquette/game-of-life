@@ -511,10 +511,14 @@ export class GameController {
   // Wheel zoom handler
   handleWheel(deltaY, event) {
     const viewport = this.model.getViewport();
-    const newCellSize = this.calculateNewCellSize(viewport.cellSize, deltaY);
+    const currentCellSize = this.view.renderer.viewport.cellSize || 8; // Get cellSize from renderer
+    const newCellSize = this.calculateNewCellSize(currentCellSize, deltaY);
 
-    if (newCellSize !== viewport.cellSize) {
-      this.model.setViewportModel(viewport.offsetX, viewport.offsetY, newCellSize);
+    if (newCellSize !== currentCellSize) {
+      // Update renderer directly since model no longer manages cellSize
+      this.view.renderer.setViewport(viewport.offsetX, viewport.offsetY, newCellSize);
+      // Update model offset if needed
+      this.model.setOffsetModel(viewport.offsetX, viewport.offsetY);
     }
 
     if (event.cancelable) {
@@ -563,7 +567,7 @@ export class GameController {
   handlePinchZoom(scaleDelta, center) {
     if (!Number.isFinite(scaleDelta) || scaleDelta <= 0) return;
     const viewport = this.model.getViewport();
-    const currentSize = viewport.cellSize || 1;
+    const currentSize = this.view.renderer.viewport.cellSize || 8; // Get cellSize from renderer
     const effectiveScale = Math.min(Math.max(scaleDelta, 0.5), 2);
     let nextSize = currentSize * effectiveScale;
     const dpr = window.devicePixelRatio || 1;
@@ -581,7 +585,9 @@ export class GameController {
 
     const newOffsetX = targetCellX - (screenX - canvasCenterX) / nextSize;
     const newOffsetY = targetCellY - (screenY - canvasCenterY) / nextSize;
-    this.model.setViewportModel(newOffsetX, newOffsetY, nextSize);
+    // Update renderer directly and model offset
+    this.view.renderer.setViewport(newOffsetX, newOffsetY, nextSize);
+    this.model.setOffsetModel(newOffsetX, newOffsetY);
   }
 
   // Keyboard handlers
@@ -813,7 +819,9 @@ export class GameController {
       const renderStart = performance.now();
 
       const liveCells = this.model.getLiveCells();
-      const viewport = this.model.getViewport();
+      const modelViewport = this.model.getViewport();
+      const cellSize = this.view.renderer.viewport.cellSize || 8;
+      const viewport = { ...modelViewport, cellSize };
       this.view.render(liveCells, viewport);
 
       const renderTime = performance.now() - renderStart;
@@ -840,7 +848,7 @@ export class GameController {
     // Overlay is managed by the model; tools provide descriptors
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
-    const cellSize = this.model.getViewport().cellSize;
+    const cellSize = this.view.renderer.viewport.cellSize;
     if (tool?.getOverlay) {
       const overlay = tool.getOverlay(this.toolState, cellSize);
       this.model.setOverlay(overlay);

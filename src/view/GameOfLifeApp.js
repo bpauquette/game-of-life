@@ -150,10 +150,11 @@ function GameOfLifeApp(props) {
   const [sidebarOpen, setSidebarOpen] = useState(!isSmall);
   useEffect(() => { setSidebarOpen(!isSmall); }, [isSmall]);
   const getViewport = useCallback(() => (
-    gameRef.current?.getViewport?.() ?? { offsetX: 0, offsetY: 0, cellSize: 8 }
+    gameRef.current?.getViewport?.() ?? { offsetX: 0, offsetY: 0 }
   ), [gameRef]);
   const initialViewport = React.useMemo(() => getViewport(), [getViewport]);
   const [viewportSnapshot, setViewportSnapshot] = useState(initialViewport);
+  // Use previous cellSize or fallback to 8 if undefined
   const cellSize = viewportSnapshot.cellSize || 8;
   const getLiveCells = useCallback(() => (
     gameRef.current?.getLiveCells?.() ?? new Map()
@@ -438,19 +439,27 @@ function GameOfLifeApp(props) {
   const offsetRef = useRef({
     x: initialViewport.offsetX ?? 0,
     y: initialViewport.offsetY ?? 0,
-    cellSize: initialViewport.cellSize ?? 8
+    cellSize: initialViewport.cellSize ?? 8, // fallback only for first load
+    zoom: initialViewport.zoom ?? 1
   });
   const lastViewportRef = useRef({
     offsetX: initialViewport.offsetX ?? 0,
     offsetY: initialViewport.offsetY ?? 0,
-    cellSize: initialViewport.cellSize ?? 8
+    cellSize: initialViewport.cellSize ?? 8,
+    zoom: initialViewport.zoom ?? 1
   });
   const updateViewportSnapshot = useCallback((nextViewport) => {
     if (!nextViewport) return;
+    // If cellSize is missing after clear, preserve previous value
     const normalized = {
       offsetX: Number.isFinite(nextViewport.offsetX) ? nextViewport.offsetX : offsetRef.current.x,
       offsetY: Number.isFinite(nextViewport.offsetY) ? nextViewport.offsetY : offsetRef.current.y,
-      cellSize: Number.isFinite(nextViewport.cellSize) ? nextViewport.cellSize : offsetRef.current.cellSize
+      cellSize: Number.isFinite(nextViewport.cellSize)
+        ? nextViewport.cellSize
+        : lastViewportRef.current.cellSize,
+      zoom: Number.isFinite(nextViewport.zoom)
+        ? nextViewport.zoom
+        : lastViewportRef.current.zoom
     };
     // Only update if the viewport actually changed
     const last = lastViewportRef.current;
@@ -497,20 +506,7 @@ function GameOfLifeApp(props) {
         } catch (err) { /* swallow */ }
       };
 
-      // If a ghost element was provided, scale it to match canvas zoom so
-      // the DOM ghost visually matches the canvas overlay size.
-      try {
-        if (ghostEl && canvas) {
-          const maxDim = Math.max(
-            Number(shape?.width || shape?.meta?.width || 1),
-            Number(shape?.height || shape?.meta?.height || 1)
-          );
-          const thumbnailSize = 64; // matches ShapeSlot default
-          const scale = (Number(cellSize) * maxDim) / thumbnailSize || 1;
-          ghostEl.style.transform = `translate(-50%, -50%) scale(${scale})`;
-          ghostEl.style.transformOrigin = 'center center';
-        }
-      } catch (err) { /* ignore scaling failures */ }
+      // Ghost element is invisible; canvas overlay provides visual feedback
 
       updateLastFromEvent(startEvent);
 
