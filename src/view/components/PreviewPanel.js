@@ -6,6 +6,12 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Link from '@mui/material/Link';
+import {
+  FlipToBack as FlipHIcon,
+  Flip as FlipVIcon,
+  RotateRight as RotateIcon,
+  Refresh as ResetIcon
+} from '@mui/icons-material';
 import { transformShape } from '../../model/shapeTransforms';
 import { rotateShape } from '../../model/shapeTransforms';
 
@@ -114,7 +120,10 @@ function PreviewPanel(props) {
       c = transformShape(c, currentTransform);
     }
     if (rotationAngle !== 0) {
-      c = rotateShape(c, rotationAngle);
+      // Convert visual clockwise rotation to math rotation
+      // Visual 90° CW = Math 270°, Visual 180° = Math 180°, Visual 270° CW = Math 90°
+      const mathAngle = rotationAngle === 90 ? 270 : rotationAngle === 270 ? 90 : rotationAngle;
+      c = rotateShape(c, mathAngle);
     }
     return c;
   }, [preview, transformIndex, currentTransform, rotationAngle]);
@@ -209,37 +218,182 @@ function PreviewPanel(props) {
           )}
         </Box>
       </Box>
-      <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        <Button variant="outlined" size="small" onClick={() => setTransformIndex(1)}>Flip H</Button>
-        <Button variant="outlined" size="small" onClick={() => setTransformIndex(2)}>Flip V</Button>
-        <Button variant="outlined" size="small" onClick={() => setTransformIndex(3)}>Diag 1</Button>
-        <Button variant="outlined" size="small" onClick={() => setTransformIndex(4)}>Diag 2</Button>
-        <Button variant="outlined" size="small" onClick={() => setRotationAngle(90)}>Rot 90</Button>
-        <Button variant="outlined" size="small" onClick={() => setRotationAngle(180)}>Rot 180</Button>
-        <Button variant="outlined" size="small" onClick={() => setRotationAngle(270)}>Rot 270</Button>
-        <Button variant="outlined" size="small" onClick={() => { setTransformIndex(0); setRotationAngle(0); }}>Reset</Button>
-        <IconButton
-          size="small"
-          sx={{ color: '#388e3c', bgcolor: 'rgba(56,142,60,0.08)', borderRadius: 1 }}
-          onClick={() => {
-            if (preview && cells.length > 0) {
-              const transformedShape = {
-                ...preview,
-                cells,
-                name: `${preview.name || 'unnamed'} (${currentTransform}${rotationAngle ? ` rot${rotationAngle}` : ''})`.trim()
-              };
-              onAddRecent?.(transformedShape);
-            }
-          }}
-          data-testid="add-transformed-recent"
-        >
-          <Tooltip title="Add Transformed to Recent">
-            <svg width={16} height={16} viewBox="0 0 20 20">
+      <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center' }}>
+        {/* Flip Horizontal */}
+        <Tooltip title="Flip Horizontal" arrow>
+          <IconButton
+            size="small"
+            onClick={() => setTransformIndex(1)}
+            sx={{ 
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'white',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+            }}
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM19 13h2v-2h-2v2zm0 4h2v-2h-2v2zM19 3v2h2V3h-2zm0 6h2V7h-2v2zm-8 8h2v-2h-2v2zM9 21h2v-2H9v2zM7 21h2v-2H7v2zM5 21h2v-2H5v2z"/>
+              <path d="M9 7H7v10h2V7z"/>
+            </svg>
+          </IconButton>
+        </Tooltip>
+
+        {/* Flip Vertical */}
+        <Tooltip title="Flip Vertical" arrow>
+          <IconButton
+            size="small"
+            onClick={() => setTransformIndex(2)}
+            sx={{ 
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'white',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+            }}
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'rotate(90deg)' }}>
+              <path d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM19 13h2v-2h-2v2zm0 4h2v-2h-2v2zM19 3v2h2V3h-2zm0 6h2V7h-2v2zm-8 8h2v-2h-2v2zM9 21h2v-2H9v2zM7 21h2v-2H7v2zM5 21h2v-2H5v2z"/>
+              <path d="M9 7H7v10h2V7z"/>
+            </svg>
+          </IconButton>
+        </Tooltip>
+
+        {/* Diagonal 1 (Main diagonal transpose) */}
+        <Tooltip title="Transpose (Main Diagonal)" arrow>
+          <IconButton
+            size="small"
+            onClick={() => setTransformIndex(3)}
+            sx={{ 
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'white',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+            }}
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 3h18v18H3V3zm16 16V5H5v14h14z"/>
+              <path d="M6 6h12l-12 12V6z" opacity="0.3"/>
+              <path d="M6 6l12 12M6 6h3M15 18v-3" stroke="currentColor" strokeWidth="2" fill="none"/>
+            </svg>
+          </IconButton>
+        </Tooltip>
+
+        {/* Diagonal 2 (Anti-diagonal transpose) */}
+        <Tooltip title="Transpose (Anti-Diagonal)" arrow>
+          <IconButton
+            size="small"
+            onClick={() => setTransformIndex(4)}
+            sx={{ 
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'white',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+            }}
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 3h18v18H3V3zm16 16V5H5v14h14z"/>
+              <path d="M18 6L6 18h12V6z" opacity="0.3"/>
+              <path d="M18 6L6 18M15 6h3M6 15v3" stroke="currentColor" strokeWidth="2" fill="none"/>
+            </svg>
+          </IconButton>
+        </Tooltip>
+
+        {/* Rotate 90° */}
+        <Tooltip title="Rotate 90° Clockwise" arrow>
+          <IconButton
+            size="small"
+            onClick={() => setRotationAngle(90)}
+            sx={{ 
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'white',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+            }}
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4V1l4 4-4 4V6c-3.31 0-6 2.69-6 6 0 1.01.25 1.97.7 2.8L5.24 16.26C4.46 15.03 4 13.57 4 12c0-4.42 3.58-8 8-8z"/>
+              <path d="M18.76 7.74C19.54 8.97 20 10.43 20 12c0 4.42-3.58 8-8 8v3l-4-4 4-4v3c3.31 0 6-2.69 6-6 0-1.01-.25-1.97-.7-2.8L18.76 7.74z"/>
+              <text x="12" y="16" textAnchor="middle" fontSize="7" fill="currentColor">90°</text>
+            </svg>
+          </IconButton>
+        </Tooltip>
+
+        {/* Rotate 180° */}
+        <Tooltip title="Rotate 180°" arrow>
+          <IconButton
+            size="small"
+            onClick={() => setRotationAngle(180)}
+            sx={{ 
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'white',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+            }}
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6z"/>
+              <path d="M18.76 7.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>
+              <circle cx="12" cy="12" r="2" fill="currentColor"/>
+              <text x="12" y="16" textAnchor="middle" fontSize="7" fill="currentColor">180°</text>
+            </svg>
+          </IconButton>
+        </Tooltip>
+
+        {/* Rotate 270° */}
+        <Tooltip title="Rotate 270° Clockwise" arrow>
+          <IconButton
+            size="small"
+            onClick={() => setRotationAngle(270)}
+            sx={{ 
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'white',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+            }}
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4V1l4 4-4 4V6c-3.31 0-6 2.69-6 6 0 1.01.25 1.97.7 2.8L5.24 16.26C4.46 15.03 4 13.57 4 12c0-4.42 3.58-8 8-8z" transform="rotate(180 12 12)"/>
+              <path d="M18.76 7.74C19.54 8.97 20 10.43 20 12c0 4.42-3.58 8-8 8v3l-4-4 4-4v3c3.31 0 6-2.69 6-6 0-1.01-.25-1.97-.7-2.8L18.76 7.74z" transform="rotate(180 12 12)"/>
+              <text x="12" y="16" textAnchor="middle" fontSize="7" fill="currentColor">270°</text>
+            </svg>
+          </IconButton>
+        </Tooltip>
+
+        {/* Reset */}
+        <Tooltip title="Reset to Original" arrow>
+          <IconButton
+            size="small"
+            onClick={() => { setTransformIndex(0); setRotationAngle(0); }}
+            sx={{ 
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'white',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+            }}
+          >
+            <ResetIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/* Add to Recent */}
+        <Tooltip title="Add Transformed to Recent" arrow>
+          <IconButton
+            size="small"
+            onClick={() => {
+              if (preview && cells.length > 0) {
+                const transformedShape = {
+                  ...preview,
+                  cells,
+                  name: `${preview.name || 'unnamed'} (${currentTransform}${rotationAngle ? ` rot${rotationAngle}` : ''})`.trim()
+                };
+                onAddRecent?.(transformedShape);
+              }
+            }}
+            sx={{ 
+              color: '#388e3c', 
+              bgcolor: 'rgba(56,142,60,0.08)', 
+              border: '1px solid rgba(56,142,60,0.3)',
+              '&:hover': { bgcolor: 'rgba(56,142,60,0.15)' }
+            }}
+            data-testid="add-transformed-recent"
+          >
+            <svg width={18} height={18} viewBox="0 0 20 20">
               <circle cx={10} cy={10} r={9} fill="#388e3c" opacity={0.15} />
               <path d="M6 10h8M10 6v8" stroke="#388e3c" strokeWidth={2} strokeLinecap="round" />
             </svg>
-          </Tooltip>
-        </IconButton>
+          </IconButton>
+        </Tooltip>
       </Box>
     </Box>
   );

@@ -281,7 +281,7 @@ The backend will start on port ${backendPort}.`);
         data-testid="shapes-palette"
       >
         <DialogTitle>Insert shape from catalog</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 2, minHeight: 900 }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 2, maxHeight: '80vh', overflowX: 'hidden' }}>
           {/* Hide the inline spinner to avoid a distracting persistent progress indicator.
             Loading state still controls network/cache behavior but we don't show
             the small spinner in the SearchBar to keep the UI calm. */}
@@ -297,8 +297,7 @@ The backend will start on port ${backendPort}.`);
               position: 'relative',
               flex: 1,
               minHeight: 260,
-              gap: isMobile ? 2 : 1,
-              ...(isMobile && { maxHeight: 320, overflowY: 'auto' })
+              gap: isMobile ? 2 : 1
             }}
             data-testid="shapes-list-scroll"
           >
