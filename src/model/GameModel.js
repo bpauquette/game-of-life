@@ -437,7 +437,9 @@ export class GameModel {
 
   // Enhanced pattern analysis with sophisticated heuristic algorithm
   isStable(windowSize = 50, tolerance = 3) {
-    if (this.populationHistory.length < Math.max(windowSize, 20)) return false;
+    // Require more history for reliable detection - prevent premature detection
+    const minHistory = Math.max(windowSize * 1.5, 40);
+    if (this.populationHistory.length < minHistory) return false;
 
     const recent = this.populationHistory.slice(-windowSize);
     
@@ -488,29 +490,47 @@ export class GameModel {
       }
     }
     
-    // Criterion 4: Plateau detection (stable still life)
+    // Criterion 4: Plateau detection (stable still life) - more strict
     let plateauStable = false;
-    if (recent.length >= 10) {
-      const lastTen = recent.slice(-10);
-      const uniqueValues = [...new Set(lastTen)];
-      // If last 10 generations have at most 2 unique population values within tolerance
-      if (uniqueValues.length <= 2) {
-        plateauStable = uniqueValues.every(val => 
-          Math.abs(val - avg) <= tolerance
-        );
+    if (recent.length >= 15) {
+      const lastFifteen = recent.slice(-15);
+      const uniqueValues = [...new Set(lastFifteen)];
+      // Require longer plateau and stricter criteria
+      // Last 15 generations must have identical populations (true still life)
+      // OR at most 2 unique values with very small variance (tight oscillation)
+      if (uniqueValues.length === 1) {
+        plateauStable = true; // Perfect still life
+      } else if (uniqueValues.length === 2) {
+        // Check if it's a tight 2-state oscillation
+        const sorted = uniqueValues.sort((a, b) => a - b);
+        plateauStable = (sorted[1] - sorted[0]) <= Math.max(1, tolerance * 0.5);
       }
     }
     
-    // Combine criteria with weighted logic
-    // Stable if: (population variance is low AND trend is stable) OR periodic pattern OR plateau detected
-    return (populationStable && trendStable) || periodicStable || plateauStable;
+    // Combine criteria with stricter logic to reduce false positives
+    // Require both population stability AND trend stability for still life
+    // OR require both periodic pattern AND population stability for oscillators
+    const stillLifeDetected = populationStable && trendStable && plateauStable;
+    const oscillatorDetected = periodicStable && populationStable;
+    
+    return stillLifeDetected || oscillatorDetected;
   }
 
   detectPeriod(maxPeriod = 30) {
-    const minHistoryLength = Math.max(maxPeriod * 3, 20);
+    const minHistoryLength = Math.max(maxPeriod * 3, 40);
     if (this.populationHistory.length < minHistoryLength) return 0;
 
     const recent = this.populationHistory.slice(-minHistoryLength);
+    
+    // Additional check: ensure pattern isn't still actively evolving
+    // Look for significant population changes in recent history
+    const veryRecent = recent.slice(-10);
+    const avg = veryRecent.reduce((a, b) => a + b, 0) / veryRecent.length;
+    const variance = veryRecent.reduce((sum, pop) => sum + Math.pow(pop - avg, 2), 0) / veryRecent.length;
+    const stdDev = Math.sqrt(variance);
+    
+    // If population is still changing significantly, don't detect periods yet
+    if (stdDev > 3) return 0;
     
     // Enhanced period detection with tolerance for minor fluctuations
     for (let period = 1; period <= maxPeriod; period++) {
@@ -541,14 +561,14 @@ export class GameModel {
       const totalComparisons = cyclesToCheck * period;
       const successRate = (exactMatches + tolerantMatches * 0.8) / totalComparisons;
       
-      // Different thresholds based on period length
+      // Stricter thresholds to reduce false positives
       let threshold;
       if (period === 1) {
-        threshold = 0.95; // Still life needs high accuracy
+        threshold = 0.98; // Still life needs very high accuracy
       } else if (period <= 4) {
-        threshold = 0.85; // Common oscillators
+        threshold = 0.92; // Common oscillators need strong evidence
       } else {
-        threshold = 0.75; // Complex patterns may have more variation
+        threshold = 0.85; // Complex patterns still need good accuracy
       }
       
       if (successRate >= threshold) {
