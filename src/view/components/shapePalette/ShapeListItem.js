@@ -107,67 +107,118 @@ const ShapeListItem = memo(function ShapeListItem({
 
   const hoverId = shape?.id ?? null;
   return (
-    <ListItem key={`${keyBase}-${idx}`} disablePadding sx={{ p: 0, minHeight: 28 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', p: 0 }}>
-        {/* Horizontal row for plus button and icon, with spacing */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40, gap: 1 }}>
-          <IconButton
-            aria-label="Add to Recent"
-            size="small"
-            sx={{ width: 24, height: 24, p: 0, color: '#388e3c', bgcolor: 'rgba(56,142,60,0.08)', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            onMouseEnter={() => onHover?.(hoverId)}
-            onMouseLeave={() => onHover?.(null)}
-            onClick={handleAddRecent}
-            data-testid={`add-recent-btn-${keyBase}`}
-          >
-            <Tooltip title="Add to Recent Shapes" placement="left">
-              <span>
-                <svg width={16} height={16} viewBox="0 0 20 20" style={{ display: 'block', margin: '0 auto' }}>
-                  <circle cx={10} cy={10} r={9} fill="#388e3c" opacity={0.15} />
-                  <path d="M6 10h8M10 6v8" stroke="#388e3c" strokeWidth={2} strokeLinecap="round" />
-                </svg>
-              </span>
-            </Tooltip>
-          </IconButton>
-          {cells.length > 0 && (
-            <canvas
-              ref={canvasRef}
-              width={16}
-              height={16}
-              style={{ display: 'block', marginLeft: 4, marginRight: 0, verticalAlign: 'middle' }}
-            />
-          )}
-        </Box>
-        {/* Description and delete button, spaced from icon */}
+    <ListItem 
+      key={`${keyBase}-${idx}`} 
+      disablePadding 
+      sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        width: '100%',
+        px: 2,
+        py: 0.5,
+        minHeight: 32,
+        '&:hover': {
+          bgcolor: 'rgba(0,0,0,0.04)'
+        }
+      }}
+    >
+      {/* Plus Button - Fixed width left */}
+      <Box sx={{ width: 32, display: 'flex', justifyContent: 'center' }}>
+        <IconButton
+          aria-label="Add to Recent"
+          size="small"
+          sx={{ 
+            width: 28, 
+            height: 28, 
+            color: '#388e3c', 
+            bgcolor: 'rgba(56,142,60,0.08)',
+            '&:hover': {
+              bgcolor: 'rgba(56,142,60,0.15)'
+            }
+          }}
+          onMouseEnter={() => onHover?.(hoverId)}
+          onMouseLeave={() => onHover?.(null)}
+          onClick={handleAddRecent}
+          data-testid={`add-recent-btn-${keyBase}`}
+        >
+          <Tooltip title="Add to Recent Shapes" placement="top">
+            <span style={{ fontSize: '16px', fontWeight: 'bold' }}>+</span>
+          </Tooltip>
+        </IconButton>
+      </Box>
+
+      {/* Shape Icon - Fixed width center */}
+      <Box sx={{ 
+        width: 32, 
+        height: 32,
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        mx: 1
+      }}>
+        {cells.length > 0 && (
+          <canvas
+            ref={canvasRef}
+            width={16}
+            height={16}
+            style={{ display: 'block' }}
+          />
+        )}
+      </Box>
+
+      {/* Shape Name - Flexible width */}
+      <Box sx={{ flex: 1, minWidth: 0, mr: 1 }}>
         <ListItemButton
           onClick={() => onSelect(shape)}
-          sx={{ flex: 1, p: 0, ml: 2, minHeight: 28, display: 'flex', alignItems: 'center' }}
+          sx={{ 
+            py: 0,
+            px: 1,
+            borderRadius: 1,
+            minHeight: 28
+          }}
           onMouseEnter={() => onHover?.(hoverId)}
           onMouseLeave={() => onHover?.(null)}
         >
-          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-            <Typography
-              variant="body1"
-              sx={{ fontWeight: 600, color: '#1976d2', mb: 0, fontFamily: 'monospace', fontSize: '0.7rem', lineHeight: 1, textAlign: 'left' }}
-              data-testid="shape-label"
-            >
-              {shape.name || '(unnamed)'}
-            </Typography>
-          </Box>
-            {user && shape.userId === user.id && (
-              <IconButton
-                edge="end"
-                aria-label="delete"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onRequestDelete(shape);
-                }}
-                sx={{ ml: 1 }}
-              >
-                <DeleteIcon />
-              </IconButton>
-            )}
+          <Typography
+            variant="body2"
+            sx={{ 
+              fontWeight: 500,
+              color: '#1976d2',
+              fontSize: '0.875rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              width: '100%'
+            }}
+            data-testid="shape-label"
+          >
+            {shape.name || '(unnamed)'}
+          </Typography>
         </ListItemButton>
+      </Box>
+
+      {/* Delete Button - Fixed width right */}
+      <Box sx={{ width: 32, display: 'flex', justifyContent: 'center' }}>
+        {user && shape.userId === user.id && (
+          <IconButton
+            aria-label="delete"
+            size="small"
+            onClick={(event) => {
+              event.stopPropagation();
+              onRequestDelete(shape);
+            }}
+            sx={{ 
+              width: 28, 
+              height: 28,
+              color: 'text.secondary',
+              '&:hover': {
+                color: 'error.main'
+              }
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        )}
       </Box>
     </ListItem>
   );

@@ -61,13 +61,17 @@ const hasShapeCells = (shape) => {
 };
 
 const normalizeRecentShape = (shape) => {
-  // Memoization cache (keyed by shape id or stable key)
+  // Memoization cache (keyed by shape id + cell positions to handle rotations)
   if (!normalizeRecentShape._cache) normalizeRecentShape._cache = new Map();
   const cache = normalizeRecentShape._cache;
-  let key = shape?.id || JSON.stringify({ name: shape?.name, cells: extractCells(shape).length });
+  // Clear cache if it gets too large to prevent memory issues
+  if (cache.size > 200) cache.clear();
+  const sourceCells = extractCells(shape);
+  // Include actual cell positions in cache key to distinguish rotated versions
+  const cellsKey = sourceCells.length > 0 ? JSON.stringify(sourceCells.slice(0, 10)) : 'empty';
+  let key = (shape?.id || shape?.name || 'unnamed') + '::' + cellsKey;
   if (cache.has(key)) return cache.get(key);
   if (!shape) return shape;
-  const sourceCells = extractCells(shape);
   if (!sourceCells.length) return shape;
 
   // Offload normalization to worker for all shapes

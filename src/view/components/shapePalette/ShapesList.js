@@ -7,7 +7,7 @@ import AutoSizer from 'react-virtualized-auto-sizer';
 import { FixedSizeList } from 'react-window';
 import ShapeListItem from './ShapeListItem';
 
-const ROW_HEIGHT = 20;
+const ROW_HEIGHT = 32; // Match ListItem minHeight + padding
 const MIN_RENDER_HEIGHT = ROW_HEIGHT * 4;
 
 const VirtualRow = memo(({ index, style, data }) => {
@@ -106,7 +106,7 @@ const ShapesList = memo(function ShapesList({
     <AutoSizer>
       {({ height, width }) => {
         const listHeight = Math.max(height || 0, MIN_RENDER_HEIGHT);
-        const listWidth = Math.max(width || 0, 240);
+        const listWidth = width || 300; // Use available width, fallback to reasonable default
         return (
           <FixedSizeList
             height={listHeight}
@@ -115,6 +115,7 @@ const ShapesList = memo(function ShapesList({
             itemSize={ROW_HEIGHT}
             itemData={itemData}
             overscanCount={4}
+            style={{ overflowX: 'hidden' }}
           >
             {VirtualRow}
           </FixedSizeList>
