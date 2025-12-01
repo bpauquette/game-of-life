@@ -354,6 +354,9 @@ function GameOfLifeApp(props) {
     if (!detectStablePopulation) {
       console.log('🔧 Stability detection is DISABLED. Enable it in Options panel (gear icon) to use this feature.');
       setSteadyInfo((prev) => (prev === INITIAL_STEADY_INFO ? prev : INITIAL_STEADY_INFO));
+      // Clear any existing dialog state when detection is disabled
+      setShowStableDialog(false);
+      setStableDetectionInfo(null);
       return;
     }
     console.log('✅ Stability detection is ENABLED');
@@ -409,8 +412,8 @@ function GameOfLifeApp(props) {
       const nowStable = nextInfo.steady;
       
       setSteadyInfo((prev) => {
-        // If we just became stable, show confirmation dialog
-        if (!wasStable && nowStable) {
+        // If we just became stable AND detection is enabled, show confirmation dialog
+        if (!wasStable && nowStable && detectStablePopulation) {
           const populationCount = modelPopHistory[modelPopHistory.length - 1] || 0;
           const patternType = period === 0 ? 'Still Life' : period === 1 ? 'Still Life' : `Period ${period} Oscillator`;
           
@@ -1267,8 +1270,8 @@ function GameOfLifeApp(props) {
         </DialogActions>
       </Dialog>
       
-      {/* Stable Pattern Detection Dialog */}
-      <Dialog open={showStableDialog} onClose={() => setShowStableDialog(false)}>
+      {/* Stable Pattern Detection Dialog - Only show if detection is enabled */}
+      <Dialog open={showStableDialog && detectStablePopulation} onClose={() => setShowStableDialog(false)}>
         <DialogTitle>🎉 Stable Pattern Detected!</DialogTitle>
         <DialogContent>
           {stableDetectionInfo && (
