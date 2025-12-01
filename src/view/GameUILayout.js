@@ -185,6 +185,14 @@ function GameUILayout({
           setHashlifeCacheSize={controlsProps?.setHashlifeCacheSize}
           clearHashlifeCache={controlsProps?.clearHashlifeCache}
           onHashlifeBurst={controlsProps?.onHashlifeBurst}
+          // Engine mode props
+          engineMode={controlsProps?.engineMode}
+          isHashlifeMode={controlsProps?.isHashlifeMode}
+          isBurstRunning={controlsProps?.isBurstRunning}
+          onStartNormalMode={controlsProps?.onStartNormalMode}
+          onStartHashlifeMode={controlsProps?.onStartHashlifeMode}
+          onStopAllEngines={controlsProps?.onStopAllEngines}
+          useHashlife={controlsProps?.useHashlife}
           getLiveCells={controlsProps?.getLiveCells}
           onLoadGrid={controlsProps?.onLoadGrid}
           generation={generation}

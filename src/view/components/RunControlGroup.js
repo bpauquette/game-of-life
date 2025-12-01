@@ -22,7 +22,15 @@ export default function RunControlGroup({
   snapshotsRef,
   setSteadyInfo,
   onHashlifeBurst,
-  confirmOnClear = true
+  confirmOnClear = true,
+  // Engine mode props
+  engineMode = 'normal',
+  isHashlifeMode = false,
+  isBurstRunning = false,
+  onStartNormalMode,
+  onStartHashlifeMode,
+  onStopAllEngines,
+  useHashlife = true
 }) {
   // optional hashlife burst handler
   
@@ -56,34 +64,87 @@ export default function RunControlGroup({
       aria-label="Run controls"
     >
       <Stack direction="row" spacing={0.5} alignItems="center">
-        <Tooltip title="Step once">
-          <IconButton size="small" aria-label="step" onClick={() => { step(); draw(); }}>
-            <SkipNextIcon fontSize="small" />
-          </IconButton>
+        <Tooltip title={isBurstRunning ? 'Step disabled during hashlife burst' : 'Step once'}>
+          <span>
+            <IconButton 
+              size="small" 
+              aria-label="step" 
+              disabled={isBurstRunning}
+              onClick={() => { step(); draw(); }}
+            >
+              <SkipNextIcon fontSize="small" />
+            </IconButton>
+          </span>
         </Tooltip>
 
-        <Tooltip title={isRunning ? 'Stop' : 'Start'}>
+        <Tooltip title={
+          isBurstRunning ? 'Stop hashlife burst' :
+          isRunning ? `Stop ${engineMode} mode` : 
+          `Start ${engineMode} mode`
+        }>
           <IconButton
             size="small"
             aria-label={isRunning ? 'stop' : 'start'}
-            color={isRunning ? 'error' : 'primary'}
-            onClick={() => setIsRunning(!isRunning)}
+            color={isRunning ? 'error' : (engineMode === 'hashlife' ? 'secondary' : 'primary')}
+            onClick={() => {
+              if (isBurstRunning || isRunning) {
+                onStopAllEngines?.();
+              } else if (engineMode === 'normal') {
+                onStartNormalMode?.();
+              } else if (engineMode === 'hashlife') {
+                onStartHashlifeMode?.();
+              } else {
+                setIsRunning(!isRunning);
+              }
+            }}
           >
             {isRunning ? <StopIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
           </IconButton>
         </Tooltip>
 
         {/* Running indicator for quick glance status (mobile-friendly) */}
-        <Tooltip title={isRunning ? 'Running' : 'Stopped'}>
+        <Tooltip title={
+          isBurstRunning ? 'Hashlife burst running' :
+          isRunning ? `Running (${engineMode} mode)` : 'Stopped'
+        }>
           <LightbulbIcon
             fontSize="small"
             sx={{
-              color: isRunning ? '#FFC107' : 'rgba(255,255,255,0.35)',
-              animation: isRunning ? `${pulse} 1.4s ease-in-out infinite` : 'none'
+              color: 
+                isBurstRunning ? '#FF5722' : // Orange-red for hashlife burst
+                isRunning && engineMode === 'hashlife' ? '#9C27B0' : // Purple for hashlife mode
+                isRunning ? '#FFC107' : // Yellow for normal mode
+                'rgba(255,255,255,0.35)', // Gray when stopped
+              animation: (isRunning || isBurstRunning) ? `${pulse} 1.4s ease-in-out infinite` : 'none'
             }}
-            aria-label={isRunning ? 'running-indicator' : 'stopped-indicator'}
+            aria-label={
+              isBurstRunning ? 'hashlife-burst-indicator' :
+              isRunning ? `${engineMode}-running-indicator` : 'stopped-indicator'
+            }
           />
         </Tooltip>
+        
+        {/* Engine mode indicator */}
+        {(isRunning || isBurstRunning) && (
+          <Tooltip title={`Engine: ${isBurstRunning ? 'Hashlife Burst' : engineMode}`}>
+            <Box sx={{ 
+              px: 0.5, 
+              py: 0.25, 
+              borderRadius: 0.5, 
+              backgroundColor: 
+                isBurstRunning ? 'rgba(255, 87, 34, 0.3)' :
+                engineMode === 'hashlife' ? 'rgba(156, 39, 176, 0.3)' : 
+                'rgba(255, 193, 7, 0.3)',
+              fontSize: '0.6rem',
+              fontWeight: 'bold',
+              color: 'white',
+              textTransform: 'uppercase',
+              letterSpacing: 0.5
+            }}>
+              {isBurstRunning ? 'BURST' : engineMode === 'hashlife' ? 'HASH' : 'NORM'}
+            </Box>
+          </Tooltip>
+        )}
 
         <Tooltip title="Clear grid">
           <IconButton
@@ -113,13 +174,41 @@ export default function RunControlGroup({
             <DeleteSweepIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-          {typeof onHashlifeBurst === 'function' && (
-            <Tooltip title="Hashlife burst (render every 10 generations)">
-              <IconButton size="small" aria-label="hashlife-burst" onClick={() => { try { onHashlifeBurst(); } catch (e) { /* ignore */ } }}>
-                <SkipNextIcon fontSize="small" />
+        
+        {/* Engine mode switching buttons */}
+        {!isRunning && !isBurstRunning && (
+          <>
+            <Tooltip title={engineMode === 'normal' ? 'Switch to Hashlife mode' : 'Switch to Normal mode'}>
+              <IconButton
+                size="small"
+                aria-label="switch-engine"
+                color="inherit"
+                onClick={() => {
+                  if (engineMode === 'normal') {
+                    onStartHashlifeMode?.();
+                  } else {
+                    onStartNormalMode?.();
+                  }
+                }}
+              >
+                <LightbulbIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-          )}
+            
+            {useHashlife && engineMode === 'hashlife' && (
+              <Tooltip title="Start Hashlife burst (fast forward with occasional rendering)">
+                <IconButton
+                  size="small"
+                  aria-label="hashlife-burst"
+                  color="secondary"
+                  onClick={() => onHashlifeBurst?.()}
+                >
+                  <SkipNextIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </>
+        )}
       </Stack>
 
       {/* Clear confirmation dialog */}
@@ -146,7 +235,14 @@ RunControlGroup.propTypes = {
   draw: PropTypes.func.isRequired,
   clear: PropTypes.func.isRequired,
   snapshotsRef: PropTypes.object.isRequired,
-  setSteadyInfo: PropTypes.func.isRequired
-  ,
-  onHashlifeBurst: PropTypes.func
+  setSteadyInfo: PropTypes.func.isRequired,
+  onHashlifeBurst: PropTypes.func,
+  // Engine mode props
+  engineMode: PropTypes.oneOf(['normal', 'hashlife']),
+  isHashlifeMode: PropTypes.bool,
+  isBurstRunning: PropTypes.bool,
+  onStartNormalMode: PropTypes.func,
+  onStartHashlifeMode: PropTypes.func,
+  onStopAllEngines: PropTypes.func,
+  useHashlife: PropTypes.bool
 };
