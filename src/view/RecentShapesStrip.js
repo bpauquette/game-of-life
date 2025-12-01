@@ -203,8 +203,16 @@ const RecentShapesStrip = ({
     if (!firstShape) return undefined;
     const id = firstShape.id || firstShape.name;
     if (!id) return undefined;
-    const t = setTimeout(() => compareSVGsAndLog(id), 250);
-    return () => clearTimeout(t);
+    // Defer SVG compare to idle time to avoid blocking paint
+    const runCompare = () => {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => compareSVGsAndLog(id), { timeout: 1000 });
+      } else {
+        setTimeout(() => compareSVGsAndLog(id), 500);
+      }
+    };
+    runCompare();
+    return () => {};
   }, [recentShapes, compareSVGsAndLog]);
 
   // --- Netflix-style strip behavior ---

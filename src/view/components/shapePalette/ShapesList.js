@@ -15,7 +15,7 @@ const VirtualRow = memo(({ index, style, data }) => {
   const shape = items[index];
   if (!shape) return null;
   return (
-    <div style={{ ...style, margin: 0, padding: 0 }}>
+    <div style={{ ...style, margin: 0, padding: 0, paddingLeft: 12 }}>
       <ShapeListItem
         shape={shape}
         idx={index}
@@ -84,7 +84,7 @@ const ShapesList = memo(function ShapesList({
 
   if (!hasResizeObserver || isTestEnv) {
     return (
-      <List dense>
+      <List dense sx={{ pl: 1.5 }}>
         {items.map((shape, idx) => (
           <ShapeListItem
             key={`${shape.id || 'shape'}-${idx}`}
