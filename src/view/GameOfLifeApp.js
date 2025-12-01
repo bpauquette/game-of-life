@@ -61,31 +61,8 @@ function GameOfLifeApp(props) {
   const isRunningRef = useRef(false);
   const burstRunningRef = useRef(false);
   
-  // Sync React state with GameModel state via observer
-  useEffect(() => {
-    const mvc = gameRef.current;
-    if (!mvc) return;
-    
-    const syncRunningState = (event, data) => {
-      if (event === 'runningStateChanged') {
-        const modelIsRunning = data?.isRunning ?? false;
-        setIsRunning(modelIsRunning);
-        isRunningRef.current = modelIsRunning;
-        console.log(`🔄 Running state synced: ${modelIsRunning}`);
-      }
-    };
-    
-    mvc.onModelChange(syncRunningState);
-    
-    // Initial sync
-    const initialRunning = mvc.model?.getIsRunning?.() ?? false;
-    setIsRunning(initialRunning);
-    isRunningRef.current = initialRunning;
-    
-    return () => {
-      mvc.offModelChange(syncRunningState);
-    };
-  }, [gameRef.current]);
+  // Keep ref in sync with state (will be enhanced with observer after gameRef is available)
+  useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
   const [selectedTool, setSelectedTool] = useState(null);
   const [selectedShape, setSelectedShape] = useState(null);
   const [popWindowSize, setPopWindowSize] = useState(() => {
@@ -300,7 +277,7 @@ function GameOfLifeApp(props) {
       burstRunningRef.current = false;
       setIsRunningCombined(false);
     }
-  }, [useHashlife, hashlifeMaxRun, hashlifeCacheSize, getLiveCells, drawWithOverlay, setIsRunning, gameRef]);
+  }, [useHashlife, hashlifeMaxRun, hashlifeCacheSize, getLiveCells, drawWithOverlay, setIsRunningCombined, gameRef]);
   const colorScheme = React.useMemo(() => getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio'), [uiState?.colorSchemeKey]);
   useEffect(() => {
     // Listen for a global "session cleared" signal (emitted by RunControlGroup
@@ -472,7 +449,7 @@ function GameOfLifeApp(props) {
     return () => {
       mvc.offModelChange(handleModelChange);
     };
-  }, [detectStablePopulation, popWindowSize, popTolerance, steadyInfo.steady]);
+  }, [detectStablePopulation, popWindowSize, popTolerance, steadyInfo.steady, setIsRunningCombined]);
 
   // Memory telemetry is opt-in; when enabled we start the logger.
   useEffect(() => {
@@ -970,6 +947,24 @@ function GameOfLifeApp(props) {
     try {
       const mvc = new GameMVC(canvasEl, {});
       gameRef.current = mvc;
+
+      // Setup running state synchronization
+      const syncRunningState = (event, data) => {
+        if (event === 'runningStateChanged') {
+          const modelIsRunning = data?.isRunning ?? false;
+          setIsRunning(modelIsRunning);
+          isRunningRef.current = modelIsRunning;
+          console.log(`🔄 Running state synced: ${modelIsRunning}`);
+        }
+      };
+      
+      mvc.onModelChange(syncRunningState);
+      mvc._runningStateSyncObserver = syncRunningState; // Store for cleanup
+      
+      // Initial sync
+      const initialRunning = mvc.model?.getIsRunning?.() ?? false;
+      setIsRunning(initialRunning);
+      isRunningRef.current = initialRunning;
 
       // Sync select React states (tool, shape, running) with the MVC model so
       // UI components simply reflect the authoritative controller state.
