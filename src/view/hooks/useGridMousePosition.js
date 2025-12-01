@@ -15,10 +15,10 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef }) => {
 
   useEffect(() => {
     if (!canvas) return undefined;
-    const defaultOffsetRef = { current: { x: 0, y: 0, cellSize: cellSize || 8 } };
+    const defaultOffsetRef = { current: { x: 0, y: 0, cellSize: cellSize } };
     const targetOffsetRef = offsetRef?.current ? offsetRef : defaultOffsetRef;
     const getEffectiveCellSize = () => {
-      const size = cellSize || targetOffsetRef.current?.cellSize || 8;
+      const size = cellSize || targetOffsetRef.current?.cellSize;
       return size > 0 ? size : 1;
     };
     const handleMove = (ev) => {

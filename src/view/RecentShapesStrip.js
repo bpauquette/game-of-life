@@ -1,3 +1,4 @@
+  const thumbnailSize = 64;
 import React, { useEffect, useCallback, useRef, useState, useMemo, useLayoutEffect } from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
@@ -86,7 +87,7 @@ const RecentShapesStrip = ({
   useEffect(() => {
     // Compute zoom factor for drag ghost scaling
     const thumbnailSize = 64;
-    const cellSize = colorScheme?.cellSize || 8;
+    const cellSize = colorScheme?.cellSize;
     const maxShapeDim = Math.max(...slots.map(s => Math.max(s?.width || s?.meta?.width || 1, s?.height || s?.meta?.height || 1)), 1);
     const newZoom = (cellSize * maxShapeDim) / thumbnailSize || 1;
     // Only update zoom if there are shapes
