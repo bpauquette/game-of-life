@@ -61,6 +61,57 @@
       "presentation": {
         "reveal": "always"
       }
+    },
+    {
+      "label": "Start Frontend (Auto-Elevate)",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}\\start-frontend.ps1"
+      ],
+      "problemMatcher": [],
+      "windows": {
+        "command": "powershell.exe"
+      },
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "Start Backend (Auto-Elevate)",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}\\start-backend.ps1"
+      ],
+      "problemMatcher": [],
+      "windows": {
+        "command": "powershell.exe"
+      },
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "Stop All Services (Auto-Elevate)",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}\\stop-services.ps1"
+      ],
+      "problemMatcher": [],
+      "windows": {
+        "command": "powershell.exe"
+      },
+      "presentation": {
+        "reveal": "always"
+      }
     }
   ]
 }
