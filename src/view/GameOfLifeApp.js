@@ -71,11 +71,11 @@ function GameOfLifeApp(props) {
       const v = globalThis.localStorage.getItem('popWindowSize'); 
       if (v != null) { 
         const n = Number.parseInt(v, 10); 
-        // If cached value is the old default (50), use new default instead
-        if (!Number.isNaN(n) && n > 0 && n !== 50) return n; 
+        // If cached value is the old default (50 or 10), use new default instead
+        if (!Number.isNaN(n) && n > 0 && n !== 50 && n !== 10) return n; 
       } 
     } catch {};
-    return 10;  // Reduced from 50 to 10 for more responsive detection
+    return 30;  // Balanced: not too slow, not too sensitive to false positives
   });
   const [popTolerance, setPopTolerance] = useState(() => {
     try { const v = globalThis.localStorage.getItem('popTolerance'); if (v != null) { const n = Number.parseInt(v, 10); if (!Number.isNaN(n) && n >= 0) return n; } } catch {};
@@ -123,6 +123,13 @@ function GameOfLifeApp(props) {
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [stableDetectionInfo, setStableDetectionInfo] = useState(null);
   const [showStableDialog, setShowStableDialog] = useState(false);
+  const [userNotifiedOfStability, setUserNotifiedOfStability] = useState(false);
+  const userNotifiedRef = useRef(false);
+  
+  // Keep ref in sync with state
+  useEffect(() => { 
+    userNotifiedRef.current = userNotifiedOfStability; 
+  }, [userNotifiedOfStability]);
   const [randomRectPercent, setRandomRectPercent] = useState(() => {
     try {
       const v = globalThis.localStorage.getItem('randomRectPercent');
@@ -155,6 +162,25 @@ function GameOfLifeApp(props) {
   // persistent refs
   const snapshotsRef = useRef([]);
   const gameRef = useRef(null);
+
+  // Running state management functions (defined early for dependency arrays)
+  const setRunningState = useCallback((running) => {
+    const modelIsRunning = !!running;
+    setIsRunning(modelIsRunning);
+    isRunningRef.current = modelIsRunning;
+    
+    // Update GameModel as single source of truth
+    if (gameRef.current?.model?.setRunningModel) {
+      gameRef.current.model.setRunningModel(modelIsRunning);
+    }
+    
+    console.log(`🔄 setRunningState called: ${modelIsRunning}`);
+  }, []);
+
+  const setIsRunningCombined = useCallback((running) => {
+    setRunningState(running);
+  }, [setRunningState]);
+
   const pendingLoadRef = useRef(null);
   const toolStateRef = useRef({});
   const popHistoryRef = useRef([]);
@@ -360,6 +386,8 @@ function GameOfLifeApp(props) {
       // Clear any existing dialog state when detection is disabled
       setShowStableDialog(false);
       setStableDetectionInfo(null);
+      setUserNotifiedOfStability(false);
+      userNotifiedRef.current = false;
       return;
     }
     console.log('✅ Stability detection is ENABLED');
@@ -383,8 +411,8 @@ function GameOfLifeApp(props) {
         const firstDetection = steady && !steadyInfo?.steady;
         if (firstDetection) {
           console.log(`🎉 STABILITY DETECTED! Gen: ${generation}, Population: ${modelPopHistory[modelPopHistory.length - 1]}, Period: ${period || 1}`);
-          const recent = modelPopHistory.slice(-Math.min(5, modelPopHistory.length));
-          console.log(`Final populations: [${recent.join(', ')}], Tolerance: ${popTolerance}`);
+          const recent = modelPopHistory.slice(-Math.min(10, modelPopHistory.length));
+          console.log(`Recent populations: [${recent.join(', ')}], Window: ${popWindowSize}, Tolerance: ${popTolerance}`);
           
           // Always pause immediately when stability is detected
           console.log(`🔄 Auto-pausing simulation (stability detected)`);
@@ -409,21 +437,31 @@ function GameOfLifeApp(props) {
       const wasStable = steadyInfo.steady;
       const nowStable = nextInfo.steady;
       
-      setSteadyInfo((prev) => {
-        // If we just became stable AND detection is enabled, show confirmation dialog
-        if (!wasStable && nowStable && detectStablePopulation) {
-          const populationCount = modelPopHistory[modelPopHistory.length - 1] || 0;
-          const patternType = period === 0 ? 'Still Life' : period === 1 ? 'Still Life' : `Period ${period} Oscillator`;
-          
-          setStableDetectionInfo({
-            generation,
-            populationCount,
-            patternType,
-            period
-          });
-          setShowStableDialog(true);
-        }
+      // Handle dialog display outside of setSteadyInfo to avoid state update complications
+      if (nowStable && detectStablePopulation && !userNotifiedRef.current) {
+        const populationCount = modelPopHistory[modelPopHistory.length - 1] || 0;
+        const patternType = period === 0 ? 'Still Life' : period === 1 ? 'Still Life' : `Period ${period} Oscillator`;
         
+        setStableDetectionInfo({
+          generation,
+          populationCount,
+          patternType,
+          period
+        });
+        setShowStableDialog(true);
+        setUserNotifiedOfStability(true);
+        userNotifiedRef.current = true;
+        console.log(`🔔 Showing stability dialog: ${patternType} detected`);
+      }
+      
+      // Reset notification flag if pattern becomes unstable
+      if (!nowStable && wasStable) {
+        setUserNotifiedOfStability(false);
+        userNotifiedRef.current = false;
+        console.log(`📈 Pattern became unstable, reset notification flag`);
+      }
+      
+      setSteadyInfo((prev) => {
         return (
           prev.steady === nextInfo.steady &&
           prev.period === nextInfo.period &&
@@ -803,20 +841,7 @@ function GameOfLifeApp(props) {
       // ignore in non-browser environments
     }
   }, []);
-  const setRunningState = useCallback((running) => {
-    try {
-      gameRef.current?.setRunning?.(running);
-    } catch (e) {
-      console.error('Error setting running state on gameRef:', e);
-    }
-  }, []);
-  // Keep local React state and model running state in sync: some UI components
-  // call `setIsRunning` while others call `setRunningState`. Provide a
-  // combined setter that updates both so cancellation and ref checks work.
-  const setIsRunningCombined = useCallback((running) => {
-    try { setIsRunning(!!running); } catch (e) {}
-    try { setRunningState(!!running); } catch (e) {}
-  }, [setRunningState]);
+  // Running state management functions moved earlier
   const openPalette = useCallback(() => {
     setUIState(prev => ({ ...prev, paletteOpen: true }));
   }, []);
@@ -1315,8 +1340,20 @@ function GameOfLifeApp(props) {
             onClick={() => {
               setShowStableDialog(false);
               setStableDetectionInfo(null);
+              // Reset notification flag so dialog can appear again if stability is re-detected
+              setUserNotifiedOfStability(false);
+              userNotifiedRef.current = false;
               // Use single source of truth for running state
               setIsRunningCombined(true);
+              
+              // Force immediate stability recheck after a brief delay to allow state to settle
+              setTimeout(() => {
+                const mvc = gameRef.current;
+                if (mvc && typeof mvc.isStable === 'function') {
+                  // Trigger a manual check after user continues
+                  console.log('🔄 Forcing stability recheck after continue...');
+                }
+              }, 100);
             }}
             variant="contained"
           >
