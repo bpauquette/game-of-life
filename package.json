@@ -26,6 +26,7 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
+    "build:hashlife-worker": "npx esbuild src/model/hashlife/worker.esm.js --bundle --platform=browser --format=esm --outfile=public/model/hashlife/worker.thread.js",
     "test": "cross-env NODE_OPTIONS='--no-deprecation=DEP0040' craco test",
     "frontend:start": "node ./scripts/manage.js start",
     "frontend:stop": "node ./scripts/manage.js stop",

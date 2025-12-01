@@ -65,3 +65,20 @@ export const step = (liveCells) => {
 
   return next;
 };
+
+// Advance N generations by repeatedly calling `step`.
+// Accepts the same `liveCells` formats as `step` and returns the final LiveCellIndex.
+export const ticks = (liveCells, n) => {
+  let s = liveCells;
+  // Accept arrays of {x,y} by converting to LiveCellIndex
+  try {
+    if (Array.isArray(liveCells) && typeof LiveCellIndex.fromCells === 'function') {
+      s = LiveCellIndex.fromCells(liveCells);
+    }
+  } catch (e) {
+    // fall through
+  }
+  const times = Number.isFinite(Number(n)) ? Math.max(0, Number(n)) : 0;
+  for (let i = 0; i < times; i++) s = step(s);
+  return s;
+};

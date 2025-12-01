@@ -18,6 +18,7 @@ import PropTypes from 'prop-types';
 import { GameMVC } from '../controller/GameMVC';
 import { startMemoryLogger } from '../utils/memoryLogger';
 import { computePopulationChange } from '../utils/stabilityMetrics';
+import hashlifeAdapter from '../model/hashlife/adapter';
 import { eventToCellFromCanvas } from '../controller/utils/canvasUtils';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -56,6 +57,9 @@ function GameOfLifeApp(props) {
   const [uiState, setUIState] = useState(props.initialUIState || defaultUIState);
   // Removed unused generation state
   const [isRunning, setIsRunning] = useState(false);
+  const isRunningRef = useRef(isRunning);
+  const burstRunningRef = useRef(false);
+  useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
   const [selectedTool, setSelectedTool] = useState(null);
   const [selectedShape, setSelectedShape] = useState(null);
   const [popWindowSize, setPopWindowSize] = useState(() => {
@@ -116,6 +120,25 @@ function GameOfLifeApp(props) {
     } catch {}
     return 50;
   });
+  // Hashlife integration settings
+  const [useHashlife, setUseHashlife] = useState(() => {
+    try { const v = globalThis.localStorage.getItem('useHashlife'); return v == null ? true : v === 'true'; } catch { return true; }
+  });
+  const [hashlifeMaxRun, setHashlifeMaxRun] = useState(() => {
+    try { const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeMaxRun'), 10); return Number.isFinite(v) && v > 0 ? v : 1024; } catch { return 1024; }
+  });
+  const [hashlifeCacheSize, setHashlifeCacheSize] = useState(() => {
+    try { const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeCacheSize'), 10); return Number.isFinite(v) && v >= 0 ? v : 0; } catch { return 0; }
+  });
+
+  const clearHashlifeCache = useCallback(() => {
+    try {
+      hashlifeAdapter.clearCache();
+      try { globalThis.console && console.debug('Hashlife cache cleared'); } catch (e) {}
+    } catch (e) {
+      try { console.error('Failed to clear hashlife cache', e); } catch (e2) {}
+    }
+  }, []);
   // persistent refs
   const snapshotsRef = useRef([]);
   const gameRef = useRef(null);
@@ -138,6 +161,109 @@ function GameOfLifeApp(props) {
   const setCellAlive = useCallback((x, y, alive) => {
     gameRef.current?.setCellAlive?.(x, y, alive);
   }, [gameRef]);
+  // drawWithOverlay delegates to the GameMVC controller to request a render
+  const drawWithOverlay = useCallback(() => {
+    try {
+      gameRef.current?.controller?.requestRender?.();
+    } catch (e) {
+      // Log render errors instead of silently ignoring them so issues are visible.
+      // eslint-disable-next-line no-console
+      console.error('drawWithOverlay error:', e);
+    }
+  }, [gameRef]);
+
+  // Canvas DOM ref (used by GameUILayout). The single renderer (GameMVC)
+  // will be instantiated when this ref's element is available.
+  const handleHashlifeBurst = useCallback(async () => {
+    if (!useHashlife) {
+      try { console.warn('Hashlife is disabled'); } catch {}
+      return;
+    }
+    // Render every N generations
+    const RENDER_EVERY = 10;
+    const total = Number(hashlifeMaxRun) || 1024;
+    // Convert current live cells to array of {x,y}
+    let cellsArr = [];
+    try {
+      const live = getLiveCells();
+      if (live instanceof Map) {
+        for (const key of live.keys()) {
+          const [x, y] = String(key).split(',').map(Number);
+          if (Number.isFinite(x) && Number.isFinite(y)) cellsArr.push({ x, y });
+        }
+      } else if (Array.isArray(live)) {
+        cellsArr = live.map(c => (Array.isArray(c) ? { x: c[0], y: c[1] } : (c && typeof c === 'object' ? { x: c.x, y: c.y } : null))).filter(Boolean);
+      } else if (live && typeof live.forEachCell === 'function') {
+        live.forEachCell((x, y) => cellsArr.push({ x, y }));
+      }
+    } catch (e) {
+      console.error('Failed to serialize live cells for hashlife burst', e);
+      return;
+    }
+
+    if (!cellsArr.length) {
+      try { console.info('No live cells to advance'); } catch {}
+      return;
+    }
+
+    try {
+      setIsRunning(true);
+      burstRunningRef.current = true;
+      let remaining = total;
+      let current = cellsArr;
+      try {
+        // Diagnostic: report burst request and serialized cell count
+        try { console.info('Hashlife burst requested', { useHashlife: !!useHashlife, cellCount: cellsArr.length, hashlifeMaxRun }); } catch (e) {}
+      } catch (e) {}
+      let progressedGenerations = 0;
+      while (remaining > 0) {
+        // Stop immediately if the user turned running off
+        if (!isRunningRef.current) break;
+        const step = Math.min(RENDER_EVERY, remaining);
+        const res = await hashlifeAdapter.run(current, step, { cacheSize: hashlifeCacheSize });
+        // If user pressed stop while the adapter was running, exit
+        if (!isRunningRef.current) break;
+        const nextCells = res && res.cells ? res.cells : [];
+        // Apply to game (replace model state when possible so hashlife
+        // results override the current world instead of merging on top).
+        try {
+          const model = gameRef.current?.model;
+          if (model && typeof model.applyExternalStepResult === 'function') {
+            try {
+              model.applyExternalStepResult({ cells: nextCells, generations: step });
+            } catch (inner) {
+              console.error('Failed to applyExternalStepResult on model', inner);
+              // fallback to additive load
+              loadGridIntoGame(gameRef, nextCells);
+            }
+          } else {
+            loadGridIntoGame(gameRef, nextCells);
+          }
+        } catch (e) {
+          console.error('Failed to apply hashlife result to game', e);
+        }
+        // Log when we render
+        try {
+          progressedGenerations += step;
+          if (progressedGenerations % RENDER_EVERY === 0) {
+            try { console.info('render at generation', progressedGenerations); } catch (e) {}
+          }
+        } catch (e) {}
+        try { drawWithOverlay(); } catch (e) { /* ignore */ }
+        // prepare for next iteration
+        current = nextCells.map(c => (Array.isArray(c) ? { x: c[0], y: c[1] } : { x: c.x, y: c.y }));
+        remaining -= step;
+        // Short pause to keep UI responsive (yield to browser)
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise(r => setTimeout(r, 0));
+      }
+    } catch (err) {
+      console.error('Hashlife burst failed', err);
+    } finally {
+      burstRunningRef.current = false;
+      setIsRunning(false);
+    }
+  }, [useHashlife, hashlifeMaxRun, hashlifeCacheSize, getLiveCells, drawWithOverlay, setIsRunning, gameRef]);
   const colorScheme = React.useMemo(() => getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio'), [uiState?.colorSchemeKey]);
   useEffect(() => {
     // Listen for a global "session cleared" signal (emitted by RunControlGroup
@@ -161,6 +287,21 @@ function GameOfLifeApp(props) {
   }, []);
 
   useEffect(() => {
+    // Forward hashlife progress messages from adapter/worker into main console
+    try {
+      // Only log progress at render intervals to avoid flooding the console.
+      let _lastLogged = 0;
+      const LOG_EVERY = 10;
+      hashlifeAdapter.onProgress((payload) => {
+        try {
+          const gen = payload && payload.generation ? Number(payload.generation) : Number(payload || 0);
+          if (Number.isFinite(gen) && gen > 0 && (gen % LOG_EVERY === 0) && gen !== _lastLogged) {
+            _lastLogged = gen;
+            try { console.info('Hashlife progress (render point)', gen); } catch (e) {}
+          }
+        } catch (e) {}
+      });
+    } catch (e) {}
     if (!gameRef.current?.setPerformanceSettings) return;
     try {
       gameRef.current.setPerformanceSettings({
@@ -172,6 +313,17 @@ function GameOfLifeApp(props) {
       console.error('Failed to sync stability settings with GameMVC:', err);
     }
   }, [popWindowSize, popTolerance]);
+
+  // If the user stops while a hashlife burst is active, request adapter cancellation
+  useEffect(() => {
+    if (!isRunning && burstRunningRef.current) {
+      try {
+        hashlifeAdapter.cancel();
+      } catch (e) {
+        try { console.warn('Failed to cancel hashlife adapter', e); } catch {}
+      }
+    }
+  }, [isRunning]);
 
   // Sync random rectangle percent into controller tool state as a probability (0..1)
   useEffect(() => {
@@ -322,16 +474,6 @@ function GameOfLifeApp(props) {
   // will be instantiated when this ref's element is available.
   const canvasRef = useRef(null);
 
-  // drawWithOverlay delegates to the GameMVC controller to request a render
-  const drawWithOverlay = useCallback(() => {
-    try {
-      gameRef.current?.controller?.requestRender?.();
-    } catch (e) {
-      // Log render errors instead of silently ignoring them so issues are visible.
-      // eslint-disable-next-line no-console
-      console.error('drawWithOverlay error:', e);
-    }
-  }, [gameRef]);
   // Start a controlled drag from the palette into the canvas. This sets the
   // selected shape/tool on the controller and updates controller toolState
   // as the pointer moves so the normal overlay preview code can render.
@@ -569,7 +711,24 @@ function GameOfLifeApp(props) {
     setUIState(prev => ({ ...prev, showChrome: !(prev.showChrome ?? true) }));
   }, []);
   const step = useCallback(() => { gameRef.current?.step?.(); }, []);
-  const clear = useCallback(() => { gameRef.current?.clear?.(); }, []);
+  const clear = useCallback(() => {
+    try {
+      // Cancel any in-flight hashlife work and clear its caches so it
+      // cannot later re-populate the view after the UI model is cleared.
+      try { hashlifeAdapter.cancel(); } catch (e) {}
+      try { hashlifeAdapter.clearCache(); } catch (e) {}
+    } catch (e) {
+      // swallow
+    }
+    try { gameRef.current?.clear?.(); } catch (e) { console.error('gameRef.clear failed', e); }
+    try {
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent('gol:sessionCleared'));
+      }
+    } catch (e) {
+      // ignore in non-browser environments
+    }
+  }, []);
   const setRunningState = useCallback((running) => {
     try {
       gameRef.current?.setRunning?.(running);
@@ -577,6 +736,13 @@ function GameOfLifeApp(props) {
       console.error('Error setting running state on gameRef:', e);
     }
   }, []);
+  // Keep local React state and model running state in sync: some UI components
+  // call `setIsRunning` while others call `setRunningState`. Provide a
+  // combined setter that updates both so cancellation and ref checks work.
+  const setIsRunningCombined = useCallback((running) => {
+    try { setIsRunning(!!running); } catch (e) {}
+    try { setRunningState(!!running); } catch (e) {}
+  }, [setRunningState]);
   const openPalette = useCallback(() => {
     setUIState(prev => ({ ...prev, paletteOpen: true }));
   }, []);
@@ -880,7 +1046,7 @@ function GameOfLifeApp(props) {
     setColorSchemeKey,
     colorSchemes,
     isRunning,
-    setIsRunning: setRunningState,
+    setIsRunning: setIsRunningCombined,
     step,
   draw: drawWithOverlay,
     clear,
@@ -914,6 +1080,14 @@ function GameOfLifeApp(props) {
     setMemoryTelemetryEnabled,
     randomRectPercent,
     setRandomRectPercent,
+    useHashlife,
+    setUseHashlife,
+    hashlifeMaxRun,
+    setHashlifeMaxRun,
+    hashlifeCacheSize,
+    setHashlifeCacheSize,
+    clearHashlifeCache,
+    onHashlifeBurst: handleHashlifeBurst,
     maxFPS: performanceCaps.maxFPS,
     maxGPS: performanceCaps.maxGPS,
     enableFPSCap: performanceCaps.enableFPSCap,
