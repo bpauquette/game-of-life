@@ -31,29 +31,40 @@ function ShapeSlot({
   onSwitchToShapesTool,
   onStartPaletteDrag,
   title,
-  thumbnailSize = DEFAULT_THUMBNAIL_SIZE
+  thumbnailSize = DEFAULT_THUMBNAIL_SIZE,
+  zoom = 1
 }) {
   const tRef = useRef();
   // Drag-to-place ghost logic
   const startDrag = (e) => {
-    // Only primary pointer
     if (e && typeof e.button === 'number' && e.button !== 0) return;
     try { e.preventDefault(); } catch (err) {}
-    // Ensure the shape is selected (onSelect also switches to shapes tool upstream)
     if (typeof onSelect === 'function') onSelect();
     if (typeof onSwitchToShapesTool === 'function') onSwitchToShapesTool();
-    const src = e.currentTarget || e.target;
-    const ghost = src.cloneNode(true);
+
+    // Remove default drag image
+    if (e.dataTransfer) {
+      e.dataTransfer.setDragImage(new Image(), 0, 0);
+    }
+
+    // Create a new SVG ghost scaled to zoom
+    const ghost = document.createElement('div');
     ghost.style.position = 'fixed';
     ghost.style.left = `${e.clientX}px`;
     ghost.style.top = `${e.clientY}px`;
-    ghost.style.transform = 'translate(-50%, -50%)';
+    ghost.style.transform = 'translate(-50%, -50%) scale(' + zoom + ')';
     ghost.style.pointerEvents = 'none';
     ghost.style.opacity = '0.9';
     ghost.style.zIndex = 20000;
+    ghost.style.width = `${thumbnailSize * zoom}px`;
+    ghost.style.height = `${thumbnailSize * zoom}px`;
+    ghost.innerHTML = `<svg width="${thumbnailSize}" height="${thumbnailSize}" viewBox="0 0 ${thumbnailSize} ${thumbnailSize}" style="width:100%;height:100%;border-radius:${SHAPE_BORDER_RADIUS}px;background:#181818;"><g>${getShapeCells(shape).map(cell => {
+      const x = Array.isArray(cell) ? cell[0] : (cell?.x ?? 0);
+      const y = Array.isArray(cell) ? cell[1] : (cell?.y ?? 0);
+      return `<rect x='${x}' y='${y}' width='1' height='1' fill='${colorScheme?.getCellColor?.(x, y) || DEFAULT_SHAPE_COLOR}'/>`;
+    }).join('')}</g></svg>`;
     document.body.appendChild(ghost);
 
-    // Let the application register drag handlers that update controller/toolState
     let cleanupControllerDrag = null;
     try {
       if (typeof onStartPaletteDrag === 'function') {
@@ -72,7 +83,6 @@ function ShapeSlot({
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       try {
-        // Let the controller-side cleanup run (finalize placement).
         if (typeof cleanupControllerDrag === 'function') {
           try { cleanupControllerDrag(); } catch (err) { /* ignore cleanup errors */ }
         }

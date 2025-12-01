@@ -83,6 +83,14 @@ const RecentShapesStrip = ({
   // Log the order of shapes every render
   useEffect(() => {
     // ...existing code...
+    // Compute zoom factor for drag ghost scaling
+    // Default thumbnail size is 64, cellSize comes from parent via props or context
+    const thumbnailSize = 64;
+    // Try to get cellSize from props, fallback to 8
+    const cellSize = colorScheme?.cellSize || 8;
+    // Use max shape dimension for scaling (matches ghost logic in GameOfLifeApp)
+    const maxShapeDim = Math.max(...slots.map(s => Math.max(s?.width || s?.meta?.width || 1, s?.height || s?.meta?.height || 1)), 1);
+    const zoom = (cellSize * maxShapeDim) / thumbnailSize || 1;
   }, [slots]);
 
   const bg = (colorScheme && (colorScheme.panelBackground || colorScheme.background)) || '#111217';
@@ -547,7 +555,8 @@ const RecentShapesStrip = ({
                 onRotate={(rotatedShape) => {
                   if (typeof onRotateShape === 'function') onRotateShape(rotatedShape, index, { inPlace: true });
                 }}
-                thumbnailSize={64}
+                thumbnailSize={thumbnailSize}
+                zoom={zoom}
               />
             </div>
           );
