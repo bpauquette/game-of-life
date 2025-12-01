@@ -304,9 +304,6 @@ const ControlsBar = ({
     }
   };
 
-  const openSaveGrid = () => {
-    openSaveDialog();
-  };
 
   // Remove unused variable warning for openSaveGrid
   // (openSaveGrid is not used, so we simply do not declare it if not needed)
@@ -315,9 +312,6 @@ const ControlsBar = ({
     openLoadDialog();
   };
 
-  const closeLoadGrid = () => {
-    closeLoadDialog();
-  };
 
   return (
     <div className="controls">
@@ -388,14 +382,14 @@ const ControlsBar = ({
         aboutOpen={aboutOpen}
         closeAbout={closeAbout}
         saveDialogOpen={saveDialogOpen}
-        closeSaveGrid={closeSaveGrid}
+        closeSaveGrid={closeSaveDialog}
         onSaveGrid={handleSaveGrid}
         gridLoading={gridLoading}
         gridError={gridError}
         liveCellsCount={getLiveCells().size}
         generation={generation}
         loadDialogOpen={loadDialogOpen}
-        closeLoadGrid={closeLoadGrid}
+        closeLoadGrid={closeLoadDialog}
         onLoadGrid={handleLoadGrid}
         onDeleteGrid={deleteGrid}
         grids={grids}

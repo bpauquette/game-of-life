@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, fireEvent, waitFor, cleanup, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ShapePaletteDialog from '../ShapePaletteDialog';
 import { useShapePaletteSearch } from '../hooks/useShapePaletteSearch';
@@ -55,7 +55,7 @@ describe('ShapePaletteDialog add-to-recent flow', () => {
     fetchShapeById.mockResolvedValue({ ok: true, data: hydrated });
     const onAddRecent = jest.fn();
 
-    const { getByTestId } = render(
+    render(
       <ShapePaletteDialog
         open
         onAddRecent={onAddRecent}
@@ -67,7 +67,7 @@ describe('ShapePaletteDialog add-to-recent flow', () => {
       />
     );
 
-    fireEvent.click(getByTestId('add-recent-btn-shape-1'));
+    fireEvent.click(screen.getByTestId('add-recent-btn-shape-1'));
 
     await waitFor(() => expect(onAddRecent).toHaveBeenCalledTimes(1));
     expect(fetchShapeById).toHaveBeenCalledWith('shape-1', '/api');
@@ -83,7 +83,7 @@ describe('ShapePaletteDialog add-to-recent flow', () => {
     useShapePaletteSearch.mockReturnValue(baseSearchState([richShape]));
     const onAddRecent = jest.fn();
 
-    const { getByTestId } = render(
+    render(
       <ShapePaletteDialog
         open
         onAddRecent={onAddRecent}
@@ -95,7 +95,7 @@ describe('ShapePaletteDialog add-to-recent flow', () => {
       />
     );
 
-    fireEvent.click(getByTestId('add-recent-btn-shape-2'));
+    fireEvent.click(screen.getByTestId('add-recent-btn-shape-2'));
 
     await waitFor(() => expect(onAddRecent).toHaveBeenCalledTimes(1));
     expect(fetchShapeById).not.toHaveBeenCalled();

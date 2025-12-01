@@ -176,7 +176,10 @@ function ShapePreviewComponent({
           const x = cell.x;
           const y = cell.y;
           const fillColor = colorScheme?.getCellColor?.(origX, origY, time) ?? defaultCellColor;
-          return <rect key={`c-${i}`} x={x} y={y} width={1} height={1} fill={fillColor} />;
+          // Add data-testid for integration tests
+          const testIdBase = shape?.id || shape?.name;
+          const testId = testIdBase ? `${testIdBase}-rect` : undefined;
+          return <rect key={`c-${i}`} x={x} y={y} width={1} height={1} fill={fillColor} data-testid={testId} />;
         })
       )}
     </svg>
