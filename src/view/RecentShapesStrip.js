@@ -81,17 +81,20 @@ const RecentShapesStrip = ({
   const slots = useMemo(() => Array.isArray(recentShapes) ? [...recentShapes] : [], [recentShapes]);
 
   // Log the order of shapes every render
+  // Persist zoom factor across clears
+  const [zoom, setZoom] = useState(1);
   useEffect(() => {
-    // ...existing code...
     // Compute zoom factor for drag ghost scaling
-    // Default thumbnail size is 64, cellSize comes from parent via props or context
     const thumbnailSize = 64;
-    // Try to get cellSize from props, fallback to 8
     const cellSize = colorScheme?.cellSize || 8;
-    // Use max shape dimension for scaling (matches ghost logic in GameOfLifeApp)
     const maxShapeDim = Math.max(...slots.map(s => Math.max(s?.width || s?.meta?.width || 1, s?.height || s?.meta?.height || 1)), 1);
-    const zoom = (cellSize * maxShapeDim) / thumbnailSize || 1;
-  }, [slots]);
+    const newZoom = (cellSize * maxShapeDim) / thumbnailSize || 1;
+    // Only update zoom if there are shapes
+    if (slots.length > 0) {
+      setZoom(newZoom);
+    }
+    // If cleared, keep previous zoom
+  }, [slots, colorScheme]);
 
   const bg = (colorScheme && (colorScheme.panelBackground || colorScheme.background)) || '#111217';
   const panelBorder = '1px solid rgba(255,255,255,0.04)';
@@ -125,17 +128,23 @@ const RecentShapesStrip = ({
   const handleClearClick = useCallback(() => {
     if (typeof onClearRecentShapes !== 'function') return;
     try {
+      const prevZoom = zoom;
       const result = onClearRecentShapes();
       if (result && typeof result.then === 'function') {
         setIsClearing(true);
         Promise.resolve(result)
           .catch(() => {})
-          .finally(() => setIsClearing(false));
+          .finally(() => {
+            setIsClearing(false);
+            setZoom(prevZoom); // Restore zoom after clear
+          });
+      } else {
+        setZoom(prevZoom);
       }
     } catch (e) {
       setIsClearing(false);
     }
-  }, [onClearRecentShapes]);
+  }, [onClearRecentShapes, zoom]);
 
   /* Diagnostic helpers (inside component so hooks are valid) */
   const svgToImageData = useCallback((svgEl) => {
