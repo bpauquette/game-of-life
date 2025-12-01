@@ -491,12 +491,7 @@ export class GameModel {
     if (this.stateHashHistory.length >= 6) {
       const recentStates = this.stateHashHistory.slice(-windowSize);
       
-      // Debug: log recent states to see what we're working with
-      if (this.generation === 45) {
-        console.log(`🔍 [State Hash Debug] Recent states:`, recentStates.slice(-10));
-        console.log(`🔍 [State Hash Debug] Current state:`, this.getStateHash());
-        console.log(`🔍 [State Hash Debug] Live cells:`, Array.from(this.liveCells.keys()));
-      }
+      // State hash debugging removed to reduce log spam
       
       // Check for stable oscillations (periods 1-8)
       for (let period = 1; period <= Math.min(8, Math.floor(recentStates.length / 3)); period++) {
@@ -518,14 +513,7 @@ export class GameModel {
             periodicStable = true;
             detectedPeriod = period;
             
-            // Debug: log when we find a match
-            if (this.generation === 45) {
-              console.log(`🔍 [Period Debug] Found period ${period}, checking states:`, {
-                lastStates: recentStates.slice(-period * 2),
-                cyclesToCheck,
-                period
-              });
-            }
+            // Period detection successful
             break;
           }
         }
@@ -565,49 +553,28 @@ export class GameModel {
     const stillLifeDetected = populationStable && trendStable && plateauStable;
     const oscillatorDetected = periodicStable && populationStable;
     
-    // RELAXED CRITERIA: If population has been perfectly stable (stdDev = 0) for a long time,
-    // treat it as stable regardless of other criteria to prevent "stability flapping"
+    // RELAXED CRITERIA: Only apply if we also have some state repetition to prevent
+    // moving patterns (like gliders) from being detected as stable just because population is constant
     const perfectlyStableForLongTime = populationStable && stdDev <= 0.1 && recent.length >= 20;
     const recentlyPerfectStable = recent.length >= 10 && 
       recent.slice(-10).every(pop => pop === recent[recent.length - 1]);
+    const hasStateRepetition = periodicStable || detectedPeriod > 0;
     
-    const finalResult = stillLifeDetected || oscillatorDetected || (perfectlyStableForLongTime && recentlyPerfectStable);
+    const finalResult = stillLifeDetected || oscillatorDetected || (perfectlyStableForLongTime && recentlyPerfectStable && hasStateRepetition);
     
-    console.log(`🔍 [Stability] Analysis:`, {
-      gen: this.generation,
-      historyLen: this.populationHistory.length,
-      stateHashHistoryLen: this.stateHashHistory.length,
-      recentPops: recent.slice(-10),
-      recentStates: this.stateHashHistory.slice(-10),
-      stdDev: stdDev.toFixed(2),
-      detectedPeriod,
-      populationStable,
-      trendStable,
-      periodicStable,
-      plateauStable,
-      perfectlyStableForLongTime,
-      recentlyPerfectStable,
-      stillLifeDetected,
-      oscillatorDetected,
-      finalResult
-    });
+    // Stability analysis complete
     
     return finalResult;
   }
 
   detectPeriod(maxPeriod = 30) {
-    console.log(`🔍 [DetectPeriod] CALLED with maxPeriod=${maxPeriod}, gen=${this.generation}, stateHistory=${this.stateHashHistory.length}`);
-    
     // Need at least 6 states minimum, and enough to check at least 2 cycles of the largest period we'll test
     const absoluteMinimum = 6;
     if (this.stateHashHistory.length < absoluteMinimum) {
-      console.log(`🔍 [DetectPeriod] Not enough state history: ${this.stateHashHistory.length} < ${absoluteMinimum}`);
       return 0;
     }
 
     const recentStates = this.stateHashHistory;
-    
-    console.log(`🔍 [DetectPeriod] Checking ${recentStates.length} states for periods up to ${maxPeriod}`);
     
     // Use state hash comparison for accurate period detection
     // Only test periods where we have enough history for at least 3 full cycles
@@ -633,13 +600,9 @@ export class GameModel {
       }
       
       if (perfectMatch) {
-        console.log(`🔍 [DetectPeriod] Found period ${period} with ${cyclesToCheck} cycles checked`);
-        console.log(`🔍 [DetectPeriod] Last ${period * 2} states:`, recentStates.slice(-period * 2));
         return period;
       }
     }
-
-    console.log(`🔍 [DetectPeriod] No period detected (max checked: ${maxPeriod})`);
     return 0;
   }
 

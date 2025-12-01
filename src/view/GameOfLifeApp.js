@@ -1537,6 +1537,8 @@ function GameOfLifeApp(props) {
             onClick={() => {
               setShowStableDialog(false);
               setStableDetectionInfo(null);
+              // Keep paused - ensure simulation stays stopped
+              setIsRunningCombined(false);
             }}
           >
             Keep Paused
