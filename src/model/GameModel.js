@@ -58,10 +58,7 @@ export class GameModel {
     this.viewport = {
       offsetX: 0,
       offsetY: 0,
-      cellSize: 20, // Default to 20 instead of 8
-      zoom: 1,
-      minCellSize: 1,
-      maxCellSize: 200
+      zoom: 1
     };
     // Performance tracking
     this.populationHistory = [];
@@ -245,12 +242,10 @@ export class GameModel {
     if (
       this.viewport.offsetX !== offsetX ||
       this.viewport.offsetY !== offsetY ||
-      this.viewport.cellSize !== cellSize ||
       (zoom !== undefined && this.viewport.zoom !== zoom)
     ) {
       this.viewport.offsetX = offsetX;
       this.viewport.offsetY = offsetY;
-      this.viewport.cellSize = cellSize;
       if (zoom !== undefined) {
         this.viewport.zoom = zoom;
       }
@@ -267,13 +262,12 @@ export class GameModel {
 
   
   setOffsetModel(offsetX, offsetY) {
-    return this.setViewportModel(offsetX, offsetY, this.viewport.cellSize, this.viewport.zoom);
+    return this.setViewportModel(offsetX, offsetY, undefined, this.viewport.zoom);
   }
 
   setCellSizeModel(cellSize) {
-    const safeCellSize = (typeof cellSize === 'number' && !Number.isNaN(cellSize)) ? cellSize : this.viewport.cellSize;
-    const clampedSize = Math.max(this.viewport.minCellSize, Math.min(this.viewport.maxCellSize, safeCellSize));
-    return this.setViewportModel(this.viewport.offsetX, this.viewport.offsetY, clampedSize, this.viewport.zoom);
+    // Cell size is not managed by the model
+    return undefined;
   }
 
   setZoomModel(zoom) {
@@ -287,7 +281,8 @@ export class GameModel {
   }
 
   getCellSize() {
-    return this.viewport.cellSize;
+    // Cell size is not managed by the model
+    return undefined;
   }
 
   getZoom() {
@@ -419,7 +414,7 @@ export class GameModel {
   }
 
   importState(state) {
-  this.clearModel();
+    this.clearModel();
 
     if (state.liveCells) {
       for (const cell of state.liveCells) {
@@ -428,11 +423,11 @@ export class GameModel {
     }
 
     this.generation = state.generation || 0;
-    // Only default to cellSize 8 on true first load
+
+    // Only set default viewport position/zoom; cellSize is not managed by the model
     if (typeof this.viewport === 'undefined' || this.viewport == null) {
-      this.viewport = state.viewport || { offsetX: 0, offsetY: 0, cellSize: 8 };
+      this.viewport = state.viewport || { offsetX: 0, offsetY: 0, zoom: 1 };
     } else {
-      // On import, preserve previous cellSize if state.viewport is missing
       this.viewport = state.viewport || { ...this.viewport };
     }
     this.populationHistory = state.populationHistory || [];
@@ -546,10 +541,7 @@ export class GameModel {
     this.viewport = {
       offsetX: 0,
       offsetY: 0,
-      cellSize: 20,
-      zoom: 1,
-      minCellSize: 1,
-      maxCellSize: 200
+      zoom: 1
     };
     this.notifyObservers('modelCleared');
     this.notifyObservers('gameCleared');

@@ -148,7 +148,9 @@ export class GameMVC {
   }
 
   setCellSize(cellSize) {
-    return this.model.setCellSizeModel(cellSize);
+    // Update renderer directly since model no longer manages cellSize
+    const viewport = this.model.getViewport();
+    return this.view.renderer.setViewport(viewport.offsetX, viewport.offsetY, cellSize);
   }
 
   setZoom(zoom) {
@@ -160,11 +162,18 @@ export class GameMVC {
   }
 
   getCellSize() {
-    return this.model.getCellSize();
+    // Get cellSize from renderer since model no longer manages it
+    return this.view.renderer.viewport.cellSize || 8;
   }
 
   getZoom() {
     return this.model.getZoom();
+  }
+
+  getViewport() {
+    const modelViewport = this.model.getViewport();
+    const cellSize = this.view.renderer.viewport.cellSize || 8;
+    return { ...modelViewport, cellSize };
   }
 
   getBounds() {

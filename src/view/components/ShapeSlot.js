@@ -47,22 +47,17 @@ function ShapeSlot({
       e.dataTransfer.setDragImage(new Image(), 0, 0);
     }
 
-    // Create a new SVG ghost scaled to zoom
+    // Create a minimal invisible ghost element (canvas overlay handles visual preview)
     const ghost = document.createElement('div');
     ghost.style.position = 'fixed';
     ghost.style.left = `${e.clientX}px`;
     ghost.style.top = `${e.clientY}px`;
-    ghost.style.transform = 'translate(-50%, -50%) scale(' + zoom + ')';
+    ghost.style.transform = 'translate(-50%, -50%)';
     ghost.style.pointerEvents = 'none';
-    ghost.style.opacity = '0.9';
-    ghost.style.zIndex = 20000;
-    ghost.style.width = `${thumbnailSize * zoom}px`;
-    ghost.style.height = `${thumbnailSize * zoom}px`;
-    ghost.innerHTML = `<svg width="${thumbnailSize}" height="${thumbnailSize}" viewBox="0 0 ${thumbnailSize} ${thumbnailSize}" style="width:100%;height:100%;border-radius:${SHAPE_BORDER_RADIUS}px;background:#181818;"><g>${getShapeCells(shape).map(cell => {
-      const x = Array.isArray(cell) ? cell[0] : (cell?.x ?? 0);
-      const y = Array.isArray(cell) ? cell[1] : (cell?.y ?? 0);
-      return `<rect x='${x}' y='${y}' width='1' height='1' fill='${colorScheme?.getCellColor?.(x, y) || DEFAULT_SHAPE_COLOR}'/>`;
-    }).join('')}</g></svg>`;
+    ghost.style.opacity = '0';
+    ghost.style.zIndex = -1;
+    ghost.style.width = '1px';
+    ghost.style.height = '1px';
     document.body.appendChild(ghost);
 
     let cleanupControllerDrag = null;
@@ -75,8 +70,7 @@ function ShapeSlot({
     }
 
     const onMove = (ev) => {
-      ghost.style.left = `${ev.clientX}px`;
-      ghost.style.top = `${ev.clientY}px`;
+      // Ghost is invisible; canvas overlay handles visual preview
     };
 
     const onUp = (ev) => {

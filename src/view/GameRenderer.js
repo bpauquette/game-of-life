@@ -183,9 +183,60 @@ export class GameRenderer {
         }
         this.drawCellArray(cells, color);
         this.ctx.globalAlpha = prevAlpha;
+      } else if (type === 'shapePreviewWithCrosshairs') {
+        this._drawShapePreviewWithCrosshairs(overlay);
       }
       
     }
+
+  _drawShapePreviewWithCrosshairs(overlay) {
+    const origin = overlay.origin || { x: 0, y: 0 };
+    const cursor = overlay.cursor || origin;
+    const cells = Array.isArray(overlay.cells) ? overlay.cells : [];
+    const color = overlay.style?.color || '#4CAF50';
+    const alpha = (typeof overlay.style?.alpha === 'number') ? overlay.style.alpha : 0.6;
+
+    this.ctx.save();
+
+    // Draw crosshairs first (so they appear behind the shape)
+    this.ctx.strokeStyle = '#00BFFF'; // Bright blue
+    this.ctx.lineWidth = 2.5;
+    this.ctx.globalAlpha = 0.95;
+
+    const screenPos = this.cellToScreen(cursor.x, cursor.y);
+    if (screenPos) {
+      const centerX = screenPos.x + this.viewport.cellSize / 2;
+      const centerY = screenPos.y + this.viewport.cellSize / 2;
+
+      // Horizontal line across the canvas
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, centerY);
+      this.ctx.lineTo(this.viewport.width, centerY);
+      this.ctx.stroke();
+
+      // Vertical line across the canvas
+      this.ctx.beginPath();
+      this.ctx.moveTo(centerX, 0);
+      this.ctx.lineTo(centerX, this.viewport.height);
+      this.ctx.stroke();
+
+      // Center dot
+      this.ctx.beginPath();
+      this.ctx.arc(centerX, centerY, this.viewport.cellSize * 0.12, 0, 2 * Math.PI);
+      this.ctx.fillStyle = '#00BFFF';
+      this.ctx.globalAlpha = 0.85;
+      this.ctx.fill();
+    }
+
+    // Draw shape preview
+    if (cells.length > 0) {
+      this.ctx.globalAlpha = alpha;
+      const shapeCells = cells.map(({ x, y }) => ({ x: x + origin.x, y: y + origin.y }));
+      this.drawCellArray(shapeCells, color);
+    }
+
+    this.ctx.restore();
+  }
 
   updateOptions(newOptions) {
     const prevGridColor = this.options.gridColor;
@@ -873,7 +924,7 @@ export class LinePreviewOverlay extends RenderOverlay {
     this.startCell = startCell;
     this.endCell = endCell;
     this.color = options.color || 'rgba(255,255,255,0.6)';
-    this.lineWidth = options.lineWidth || Math.max(1, Math.min(4, (options.cellSize || 8) / 6));
+    this.lineWidth = options.lineWidth || Math.max(1, Math.min(4, (options.cellSize || 1) / 6));
   }
 
   draw(renderer) {

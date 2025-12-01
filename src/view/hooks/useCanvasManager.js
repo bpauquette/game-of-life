@@ -1,12 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { eventToCellFromCanvas, computeComputedOffset, drawLiveCells } from '../../controller/utils/canvasUtils';
-import { getShapeCells, getCenteredOrigin } from '../../utils/shapeGeometry';
 
 const CONST_CAPTURE = 'capture';
 
 const DEFAULT_WINDOW_WIDTH = 800;
 const DEFAULT_WINDOW_HEIGHT = 600;
-const SHAPE_PREVIEW_ALPHA = 0.6;
 
 /**
  * Custom hook for managing canvas operations, drawing, and mouse interactions.
@@ -21,7 +19,6 @@ const SHAPE_PREVIEW_ALPHA = 0.6;
  * @param {Object} params.toolStateRef - Ref for tool state
  * @param {Function} params.setCellAlive - Function to set cell alive/dead
  * @param {Function} params.scheduleCursorUpdate - Function to update cursor position
- * @param {Object} params.selectedShape - Currently selected shape for placement
  * @param {Function} params.placeShape - Function to place a shape at coordinates
  * @param {Object} params.logger - Logger instance for debugging
  * 
@@ -37,7 +34,6 @@ export const useCanvasManager = ({
   toolStateRef,
   setCellAlive,
   scheduleCursorUpdate,
-  selectedShape,
   placeShape,
   logger
 }) => {
@@ -91,38 +87,6 @@ export const useCanvasManager = ({
     drawLiveCells(ctx, getLiveCells(), computedOffset, cellSize, colorScheme);
   }, [getLiveCells, cellSize, offsetRef, colorScheme]);
 
-  // Enhanced draw: call tool overlay draw after main render
-  // Helper function to draw shape preview overlay
-  const drawShapePreview = useCallback((ctx, selShape, cursor, computedOffset) => {
-    if (!cursor) return;
-    const cells = getShapeCells(selShape);
-    if (!cells?.length) return;
-
-    const origin = getCenteredOrigin(cursor, cells);
-
-    ctx.save();
-    ctx.globalAlpha = SHAPE_PREVIEW_ALPHA;
-    
-    for (const element of cells) {
-      const c = element;
-      const cx = (c?.x === undefined) ? c[0] : c.x;
-      const cy = (c?.y === undefined) ? c[1] : c.y;
-      const absoluteX = (origin.x ?? 0) + cx;
-      const absoluteY = (origin.y ?? 0) + cy;
-      const drawX = absoluteX * cellSize - computedOffset.x;
-      const drawY = absoluteY * cellSize - computedOffset.y;
-      
-      try {
-        ctx.fillStyle = colorScheme?.getCellColor?.(absoluteX, absoluteY) ?? '#222';
-      } catch (err) {
-        logger.warn(err);
-        ctx.fillStyle = '#222';
-      }
-      ctx.fillRect(drawX, drawY, cellSize, cellSize);
-    }
-    ctx.restore();
-  }, [cellSize, colorScheme, logger]);
-
   // Helper function to draw tool overlays
   const drawToolOverlay = useCallback((ctx, computedOffset) => {
     const tool = toolMap[selectedTool];
@@ -142,20 +106,11 @@ export const useCanvasManager = ({
       
       // Draw tool overlay
       drawToolOverlay(ctx, computedOffset);
-      
-      // Draw shape preview if shapes tool is active
-      if (selectedTool === 'shapes') {
-        const selShape = toolStateRef.current.selectedShapeData || selectedShape;
-        const last = toolStateRef.current.last;
-        if (selShape && last) {
-          drawShapePreview(ctx, selShape, last, computedOffset);
-        }
-      }
     } catch (err) {
       // overlay drawing should never break main render
       logger.warn('Overlay rendering failed:', err);
     }
-  }, [draw, selectedTool, cellSize, offsetRef, drawToolOverlay, drawShapePreview, selectedShape, toolStateRef, logger]);
+  }, [draw, selectedTool, cellSize, offsetRef, drawToolOverlay, toolStateRef, logger]);
 
   // Resize canvas to fill window and account for devicePixelRatio
   const resizeCanvas = useCallback(() => {

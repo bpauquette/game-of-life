@@ -8,6 +8,9 @@ export class GameView {
     this.canvas = canvas;
     this.renderer = new GameRenderer(canvas, options);
     this.model = model; // Reference to model for performance tracking
+    
+    // Initialize renderer with default cellSize
+    this.renderer.setViewport(0, 0, 8);
 
     // View state
     this.isVisible = true;
