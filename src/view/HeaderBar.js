@@ -111,6 +111,14 @@ export default function HeaderBar({
   setHashlifeCacheSize,
   clearHashlifeCache,
   onHashlifeBurst,
+  // Engine mode props
+  engineMode,
+  isHashlifeMode,
+  isBurstRunning,
+  onStartNormalMode,
+  onStartHashlifeMode,
+  onStopAllEngines,
+  useHashlife,
   onSaveRecentShapes,
   onClearRecentShapes,
   onOpenMyShapes,
@@ -227,6 +235,13 @@ export default function HeaderBar({
               setSteadyInfo={setSteadyInfo}
               confirmOnClear={confirmOnClear}
               onHashlifeBurst={onHashlifeBurst}
+              engineMode={engineMode}
+              isHashlifeMode={isHashlifeMode}
+              isBurstRunning={isBurstRunning}
+              onStartNormalMode={onStartNormalMode}
+              onStartHashlifeMode={onStartHashlifeMode}
+              onStopAllEngines={onStopAllEngines}
+              useHashlife={useHashlife}
             />
           </Box>
           <Stack direction="row" spacing={0.5} alignItems="center">
@@ -428,4 +443,12 @@ HeaderBar.propTypes = {
   onOpenMyShapes: PropTypes.func.isRequired,
   onOpenImport: PropTypes.func.isRequired,
   onHashlifeBurst: PropTypes.func,
+  // Engine mode props
+  engineMode: PropTypes.oneOf(['normal', 'hashlife']),
+  isHashlifeMode: PropTypes.bool,
+  isBurstRunning: PropTypes.bool,
+  onStartNormalMode: PropTypes.func,
+  onStartHashlifeMode: PropTypes.func,
+  onStopAllEngines: PropTypes.func,
+  useHashlife: PropTypes.bool,
 };

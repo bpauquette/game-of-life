@@ -116,8 +116,12 @@ class HashlifeAdapter {
         console.info('[hashlifeAdapter] run requested', { generations, cellCount: count });
       } catch (e) {}
     } catch (e) {}
+    
+    console.log('🔍 [hashlifeAdapter] worker availability:', { hasWorker: !!w, workerType: w ? 'WebWorker' : 'fallback' });
+    
     if (!w) {
       // fallback: in-process wrapper
+      console.log('📞 [hashlifeAdapter] using fallback worker.run()');
       return fallbackWorker.run(cells, generations, (p) => {
         if (this._progressCb) this._progressCb(p);
       });

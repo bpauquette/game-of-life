@@ -311,6 +311,7 @@ function nodeStepPow2(nodeObj) {
 // Advance N generations using a decomposition into powers-of-two and
 // memoized node stepping where possible.
 async function advance(cells, n, onProgress) {
+    console.log('🔧 [hashlife engine] advance() called:', { cellCount: cells?.length, generations: n });
     let currentCells = Array.isArray(cells) ? cells : Array.from(cells).map(s => { const [x, y] = s.split(',').map(Number); return { x, y }; });
     let remaining = n;
     let progressed = 0;
@@ -329,15 +330,19 @@ async function advance(cells, n, onProgress) {
         const treeObj = buildTreeFromCells(currentCells);
         const { node, originX, originY } = treeObj;
         const topStep = 1 << node.level;
+        console.log('🌳 [hashlife engine] loop iteration:', { remaining, nodeLevel: node.level, topStep, currentCellCount: currentCells.length });
         if (topStep <= remaining) {
             // We can step by the node's full power-of-two and benefit from caching
+            console.log('🚀 [hashlife engine] using nodeStepPow2 for', topStep, 'generations');
             const resObj = nodeStepPow2({ node, originX, originY });
             currentCells = nodeToCells(resObj.node, resObj.originX || 0, resObj.originY || 0);
+            console.log('📊 [hashlife engine] nodeStepPow2 result:', { newCellCount: currentCells.length });
             // report progress for the stepped generations
             maybeReport(topStep);
             remaining -= topStep;
         } else {
             // The node is larger than the remaining steps; fall back to brute force
+            console.log('🐌 [hashlife engine] using brute force for', remaining, 'generations');
             const nextSet = advanceBrute(new Set(currentCells.map(p => `${p.x},${p.y}`)), remaining);
             const nextArr = [];
             for (const c of nextSet) {
@@ -345,6 +350,7 @@ async function advance(cells, n, onProgress) {
                 nextArr.push({ x, y });
             }
             currentCells = nextArr;
+            console.log('📊 [hashlife engine] brute force result:', { newCellCount: currentCells.length });
             // report progress for the remaining generations
             maybeReport(remaining);
             remaining = 0;

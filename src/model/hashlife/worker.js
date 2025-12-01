@@ -7,14 +7,18 @@
 const engine = require('./engine');
 
 function run(cells, generations, onProgress) {
+  console.log('🔧 [fallback worker] run() called with:', { cellCount: cells?.length, generations });
   return new Promise((resolve, reject) => {
     // schedule the work asynchronously so the caller isn't blocked
     const defer = (typeof setImmediate !== 'undefined') ? setImmediate : (fn) => setTimeout(fn, 0);
     defer(async () => {
       try {
+        console.log('⚙️ [fallback worker] calling engine.advance()');
         const res = await engine.advance(cells, generations, onProgress);
+        console.log('✅ [fallback worker] engine.advance() completed:', { hasCells: !!(res?.cells), cellCount: res?.cells?.length });
         resolve(res);
       } catch (err) {
+        console.error('❌ [fallback worker] engine.advance() failed:', err);
         reject(err);
       }
     });

@@ -62,6 +62,7 @@ export class GameModel {
     };
     // Performance tracking
     this.populationHistory = [];
+    this.stateHashHistory = []; // Track actual cell states for proper oscillator detection
     this.maxPopulationHistory = 1000;
     // Timestamp tracking for FPS and Gen/s calculation
     this.lastRenderTime = performance.now();
@@ -176,6 +177,15 @@ export class GameModel {
 
   getCellCount() {
     return this.liveCells.size;
+  }
+
+  // Generate a hash representing the current state of all live cells
+  getStateHash() {
+    if (this.liveCells.size === 0) return 'empty';
+    
+    // Sort cell coordinates to ensure consistent hash regardless of Map iteration order
+    const sortedCells = Array.from(this.liveCells.keys()).sort();
+    return sortedCells.join('|');
   }
 
   setRunningModel(isRunning) {
@@ -314,9 +324,16 @@ export class GameModel {
     this.liveCells = nextLiveCells;
     this.generation += generationDelta;
     this.trackGeneration();
+    
+    // Track both population and state hash for proper oscillator detection
     this.populationHistory.push(this.liveCells.size);
+    this.stateHashHistory.push(this.getStateHash());
+    
     if (this.populationHistory.length > this.maxPopulationHistory) {
       this.populationHistory.shift();
+    }
+    if (this.stateHashHistory.length > this.maxPopulationHistory) {
+      this.stateHashHistory.shift();
     }
     this.notifyObservers('gameStep', {
       generation: this.generation,
@@ -439,7 +456,10 @@ export class GameModel {
   isStable(windowSize = 50, tolerance = 3) {
     // Require more history for reliable detection - prevent premature detection
     const minHistory = Math.max(windowSize * 1.5, 40);
-    if (this.populationHistory.length < minHistory) return false;
+    if (this.populationHistory.length < minHistory) {
+      console.log(`🔍 [Stability] Not enough history: ${this.populationHistory.length} < ${minHistory}`);
+      return false;
+    }
 
     const recent = this.populationHistory.slice(-windowSize);
     
@@ -464,26 +484,48 @@ export class GameModel {
       trendStable = Math.abs(secondAvg - firstAvg) <= tolerance * 1.5;
     }
     
-    // Criterion 3: Oscillation detection (for periodic patterns)
+    // Criterion 3: Oscillation detection using state hashes (proper detection for oscillators)
     let periodicStable = false;
-    if (recent.length >= 6) {
-      // Check for stable oscillations (periods 2-8)
-      for (let period = 2; period <= Math.min(8, Math.floor(recent.length / 3)); period++) {
+    let detectedPeriod = 0;
+    
+    if (this.stateHashHistory.length >= 6) {
+      const recentStates = this.stateHashHistory.slice(-windowSize);
+      
+      // Debug: log recent states to see what we're working with
+      if (this.generation === 45) {
+        console.log(`🔍 [State Hash Debug] Recent states:`, recentStates.slice(-10));
+        console.log(`🔍 [State Hash Debug] Current state:`, this.getStateHash());
+        console.log(`🔍 [State Hash Debug] Live cells:`, Array.from(this.liveCells.keys()));
+      }
+      
+      // Check for stable oscillations (periods 1-8)
+      for (let period = 1; period <= Math.min(8, Math.floor(recentStates.length / 3)); period++) {
         let cyclicMatch = true;
-        const cyclesToCheck = Math.floor(recent.length / period) - 1;
+        const cyclesToCheck = Math.floor(recentStates.length / period) - 1;
         
         if (cyclesToCheck >= 2) {
+          // Check if the pattern repeats with this period
           for (let cycle = 0; cycle < cyclesToCheck && cyclicMatch; cycle++) {
             for (let offset = 0; offset < period && cyclicMatch; offset++) {
-              const idx1 = recent.length - 1 - offset;
+              const idx1 = recentStates.length - 1 - offset;
               const idx2 = idx1 - period;
-              if (idx2 >= 0 && Math.abs(recent[idx1] - recent[idx2]) > tolerance) {
+              if (idx2 >= 0 && recentStates[idx1] !== recentStates[idx2]) {
                 cyclicMatch = false;
               }
             }
           }
           if (cyclicMatch) {
             periodicStable = true;
+            detectedPeriod = period;
+            
+            // Debug: log when we find a match
+            if (this.generation === 45) {
+              console.log(`🔍 [Period Debug] Found period ${period}, checking states:`, {
+                lastStates: recentStates.slice(-period * 2),
+                cyclesToCheck,
+                period
+              });
+            }
             break;
           }
         }
@@ -505,6 +547,16 @@ export class GameModel {
         const sorted = uniqueValues.sort((a, b) => a - b);
         plateauStable = (sorted[1] - sorted[0]) <= Math.max(1, tolerance * 0.5);
       }
+      
+      // Debug plateau detection
+      if (this.generation >= 500 && this.generation <= 505) {
+        console.log(`🔍 [Plateau Debug] Gen ${this.generation}:`, {
+          lastFifteen,
+          uniqueValues,
+          uniqueCount: uniqueValues.length,
+          plateauStable
+        });
+      }
     }
     
     // Combine criteria with stricter logic to reduce false positives
@@ -513,69 +565,81 @@ export class GameModel {
     const stillLifeDetected = populationStable && trendStable && plateauStable;
     const oscillatorDetected = periodicStable && populationStable;
     
-    return stillLifeDetected || oscillatorDetected;
+    // RELAXED CRITERIA: If population has been perfectly stable (stdDev = 0) for a long time,
+    // treat it as stable regardless of other criteria to prevent "stability flapping"
+    const perfectlyStableForLongTime = populationStable && stdDev <= 0.1 && recent.length >= 20;
+    const recentlyPerfectStable = recent.length >= 10 && 
+      recent.slice(-10).every(pop => pop === recent[recent.length - 1]);
+    
+    const finalResult = stillLifeDetected || oscillatorDetected || (perfectlyStableForLongTime && recentlyPerfectStable);
+    
+    console.log(`🔍 [Stability] Analysis:`, {
+      gen: this.generation,
+      historyLen: this.populationHistory.length,
+      stateHashHistoryLen: this.stateHashHistory.length,
+      recentPops: recent.slice(-10),
+      recentStates: this.stateHashHistory.slice(-10),
+      stdDev: stdDev.toFixed(2),
+      detectedPeriod,
+      populationStable,
+      trendStable,
+      periodicStable,
+      plateauStable,
+      perfectlyStableForLongTime,
+      recentlyPerfectStable,
+      stillLifeDetected,
+      oscillatorDetected,
+      finalResult
+    });
+    
+    return finalResult;
   }
 
   detectPeriod(maxPeriod = 30) {
-    const minHistoryLength = Math.max(maxPeriod * 3, 40);
-    if (this.populationHistory.length < minHistoryLength) return 0;
+    console.log(`🔍 [DetectPeriod] CALLED with maxPeriod=${maxPeriod}, gen=${this.generation}, stateHistory=${this.stateHashHistory.length}`);
+    
+    // Need at least 6 states minimum, and enough to check at least 2 cycles of the largest period we'll test
+    const absoluteMinimum = 6;
+    if (this.stateHashHistory.length < absoluteMinimum) {
+      console.log(`🔍 [DetectPeriod] Not enough state history: ${this.stateHashHistory.length} < ${absoluteMinimum}`);
+      return 0;
+    }
 
-    const recent = this.populationHistory.slice(-minHistoryLength);
+    const recentStates = this.stateHashHistory;
     
-    // Additional check: ensure pattern isn't still actively evolving
-    // Look for significant population changes in recent history
-    const veryRecent = recent.slice(-10);
-    const avg = veryRecent.reduce((a, b) => a + b, 0) / veryRecent.length;
-    const variance = veryRecent.reduce((sum, pop) => sum + Math.pow(pop - avg, 2), 0) / veryRecent.length;
-    const stdDev = Math.sqrt(variance);
+    console.log(`🔍 [DetectPeriod] Checking ${recentStates.length} states for periods up to ${maxPeriod}`);
     
-    // If population is still changing significantly, don't detect periods yet
-    if (stdDev > 3) return 0;
+    // Use state hash comparison for accurate period detection
+    // Only test periods where we have enough history for at least 3 full cycles
+    const effectiveMaxPeriod = Math.min(maxPeriod, Math.floor(recentStates.length / 3));
     
-    // Enhanced period detection with tolerance for minor fluctuations
-    for (let period = 1; period <= maxPeriod; period++) {
-      let exactMatches = 0;
-      let tolerantMatches = 0;
-      const cyclesToCheck = Math.floor(recent.length / period) - 1;
+    for (let period = 1; period <= effectiveMaxPeriod; period++) {
+      const cyclesToCheck = Math.floor(recentStates.length / period) - 1;
       
       if (cyclesToCheck < 2) continue; // Need at least 2 complete cycles
       
-      for (let cycle = 0; cycle < cyclesToCheck; cycle++) {
-        for (let offset = 0; offset < period; offset++) {
-          const idx1 = recent.length - 1 - offset;
-          const idx2 = idx1 - period * (cycle + 1);
+      let perfectMatch = true;
+      
+      // Check if the pattern repeats perfectly with this period
+      for (let cycle = 0; cycle < cyclesToCheck && perfectMatch; cycle++) {
+        for (let offset = 0; offset < period && perfectMatch; offset++) {
+          const idx1 = recentStates.length - 1 - offset;
+          const idx2 = idx1 - period;
           
-          if (idx2 >= 0) {
-            const val1 = recent[idx1];
-            const val2 = recent[idx2];
-            
-            if (val1 === val2) {
-              exactMatches++;
-            } else if (Math.abs(val1 - val2) <= 1) { // Tolerance for minor fluctuations
-              tolerantMatches++;
-            }
+          if (idx2 >= 0 && recentStates[idx1] !== recentStates[idx2]) {
+            perfectMatch = false;
           }
         }
       }
       
-      const totalComparisons = cyclesToCheck * period;
-      const successRate = (exactMatches + tolerantMatches * 0.8) / totalComparisons;
-      
-      // Stricter thresholds to reduce false positives
-      let threshold;
-      if (period === 1) {
-        threshold = 0.98; // Still life needs very high accuracy
-      } else if (period <= 4) {
-        threshold = 0.92; // Common oscillators need strong evidence
-      } else {
-        threshold = 0.85; // Complex patterns still need good accuracy
-      }
-      
-      if (successRate >= threshold) {
+      if (perfectMatch) {
+        console.log(`🔍 [DetectPeriod] Found period ${period} with ${cyclesToCheck} cycles checked`);
+        console.log(`🔍 [DetectPeriod] Last ${period * 2} states:`, recentStates.slice(-period * 2));
         return period;
       }
     }
 
+    console.log(`🔍 [DetectPeriod] No period detected (max checked: ${maxPeriod})`);
     return 0;
   }
 
@@ -650,6 +714,7 @@ export class GameModel {
     this.liveCells.clear();
     this.generation = 0;
     this.populationHistory = [];
+    this.stateHashHistory = [];
     // Preserve tool and interaction state
     // this.selectedTool, this.selectedShape, this.cursorPosition remain unchanged
     this.viewport = {
