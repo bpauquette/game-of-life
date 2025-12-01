@@ -56,10 +56,36 @@ function GameOfLifeApp(props) {
   }), []);
   const [uiState, setUIState] = useState(props.initialUIState || defaultUIState);
   // Removed unused generation state
+  // Running state now managed by GameModel as single source of truth
   const [isRunning, setIsRunning] = useState(false);
-  const isRunningRef = useRef(isRunning);
+  const isRunningRef = useRef(false);
   const burstRunningRef = useRef(false);
-  useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
+  
+  // Sync React state with GameModel state via observer
+  useEffect(() => {
+    const mvc = gameRef.current;
+    if (!mvc) return;
+    
+    const syncRunningState = (event, data) => {
+      if (event === 'runningStateChanged') {
+        const modelIsRunning = data?.isRunning ?? false;
+        setIsRunning(modelIsRunning);
+        isRunningRef.current = modelIsRunning;
+        console.log(`🔄 Running state synced: ${modelIsRunning}`);
+      }
+    };
+    
+    mvc.onModelChange(syncRunningState);
+    
+    // Initial sync
+    const initialRunning = mvc.model?.getIsRunning?.() ?? false;
+    setIsRunning(initialRunning);
+    isRunningRef.current = initialRunning;
+    
+    return () => {
+      mvc.offModelChange(syncRunningState);
+    };
+  }, [gameRef.current]);
   const [selectedTool, setSelectedTool] = useState(null);
   const [selectedShape, setSelectedShape] = useState(null);
   const [popWindowSize, setPopWindowSize] = useState(() => {
@@ -218,7 +244,7 @@ function GameOfLifeApp(props) {
     }
 
     try {
-      setIsRunning(true);
+      setIsRunningCombined(true);
       burstRunningRef.current = true;
       let remaining = total;
       let current = cellsArr;
@@ -272,7 +298,7 @@ function GameOfLifeApp(props) {
       console.error('Hashlife burst failed', err);
     } finally {
       burstRunningRef.current = false;
-      setIsRunning(false);
+      setIsRunningCombined(false);
     }
   }, [useHashlife, hashlifeMaxRun, hashlifeCacheSize, getLiveCells, drawWithOverlay, setIsRunning, gameRef]);
   const colorScheme = React.useMemo(() => getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio'), [uiState?.colorSchemeKey]);
@@ -385,13 +411,8 @@ function GameOfLifeApp(props) {
           
           // Always pause immediately when stability is detected
           console.log(`🔄 Auto-pausing simulation (stability detected)`);
-          // Update both React state and game controller
-          setIsRunning(false);
-          try {
-            gameRef.current?.setRunning?.(false);
-          } catch (e) {
-            console.error('Error pausing game controller:', e);
-          }
+          // Use single source of truth for running state
+          setIsRunningCombined(false);
         } else if (!steady && modelPopHistory.length % 50 === 0) {
           console.log(`🔍 Gen ${generation}: Still evolving... (${modelPopHistory.length} generations checked)`);
         }
@@ -1299,13 +1320,8 @@ function GameOfLifeApp(props) {
             onClick={() => {
               setShowStableDialog(false);
               setStableDetectionInfo(null);
-              // Update both React state and game controller
-              setIsRunning(true);
-              try {
-                gameRef.current?.setRunning?.(true);
-              } catch (e) {
-                console.error('Error resuming game controller:', e);
-              }
+              // Use single source of truth for running state
+              setIsRunningCombined(true);
             }}
             variant="contained"
           >
