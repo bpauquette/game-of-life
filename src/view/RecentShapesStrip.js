@@ -1,7 +1,8 @@
-  const thumbnailSize = 64;
 import React, { useEffect, useCallback, useRef, useState, useMemo, useLayoutEffect } from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
+
+const thumbnailSize = 64;
 
 const formatSavedStatus = (timestamp) => {
   if (!timestamp) return '';

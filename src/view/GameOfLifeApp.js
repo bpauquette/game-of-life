@@ -63,8 +63,16 @@ function GameOfLifeApp(props) {
   const [selectedTool, setSelectedTool] = useState(null);
   const [selectedShape, setSelectedShape] = useState(null);
   const [popWindowSize, setPopWindowSize] = useState(() => {
-    try { const v = globalThis.localStorage.getItem('popWindowSize'); if (v != null) { const n = Number.parseInt(v, 10); if (!Number.isNaN(n) && n > 0) return n; } } catch {};
-    return 50;
+    // Clear old cached value to ensure new default takes effect
+    try { 
+      const v = globalThis.localStorage.getItem('popWindowSize'); 
+      if (v != null) { 
+        const n = Number.parseInt(v, 10); 
+        // If cached value is the old default (50), use new default instead
+        if (!Number.isNaN(n) && n > 0 && n !== 50) return n; 
+      } 
+    } catch {};
+    return 10;  // Reduced from 50 to 10 for more responsive detection
   });
   const [popTolerance, setPopTolerance] = useState(() => {
     try { const v = globalThis.localStorage.getItem('popTolerance'); if (v != null) { const n = Number.parseInt(v, 10); if (!Number.isNaN(n) && n >= 0) return n; } } catch {};
@@ -110,6 +118,8 @@ function GameOfLifeApp(props) {
   });
   const [duplicateShape, setDuplicateShape] = useState(null);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [stableDetectionInfo, setStableDetectionInfo] = useState(null);
+  const [showStableDialog, setShowStableDialog] = useState(false);
   const [randomRectPercent, setRandomRectPercent] = useState(() => {
     try {
       const v = globalThis.localStorage.getItem('randomRectPercent');
@@ -348,30 +358,89 @@ function GameOfLifeApp(props) {
     const mvc = gameRef.current;
     if (!mvc || typeof mvc.isStable !== 'function') return;
 
-    let steady = false;
-    let period = 0;
-    try {
-      steady = !!mvc.isStable(popWindowSize, popTolerance);
-      if (steady && typeof mvc.detectPeriod === 'function') {
-        period = mvc.detectPeriod(Math.min(popWindowSize, 120)) || 0;
+    const checkStability = () => {
+      let steady = false;
+      let period = 0;
+      const generation = mvc.model?.getGeneration?.() || 0;
+      try {
+        const modelPopHistory = mvc.model?.populationHistory || [];
+        
+        steady = !!mvc.isStable(popWindowSize, popTolerance);
+        
+        if (steady && typeof mvc.detectPeriod === 'function') {
+          period = mvc.detectPeriod(Math.min(popWindowSize, 120)) || 0;
+        }
+        
+        // Log only first detection and major milestones
+        const firstDetection = steady && !steadyInfo?.steady;
+        if (firstDetection) {
+          console.log(`🎉 STABILITY DETECTED! Gen: ${generation}, Population: ${modelPopHistory[modelPopHistory.length - 1]}, Period: ${period || 1}`);
+          const recent = modelPopHistory.slice(-Math.min(5, modelPopHistory.length));
+          console.log(`Final populations: [${recent.join(', ')}], Tolerance: ${popTolerance}`);
+          
+          // Always pause immediately when stability is detected
+          console.log(`🔄 Auto-pausing simulation (stability detected)`);
+          setIsRunning(false);
+        } else if (!steady && modelPopHistory.length % 50 === 0) {
+          console.log(`🔍 Gen ${generation}: Still evolving... (${modelPopHistory.length} generations checked)`);
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to evaluate steady state:', err);
+        steady = false;
+        period = 0;
       }
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to evaluate steady state:', err);
-      steady = false;
-      period = 0;
-    }
 
-    const { popChanging } = computePopulationChange(popHistoryRef.current, popWindowSize, popTolerance);
-    const nextInfo = { steady, period, popChanging };
-    setSteadyInfo((prev) => (
-      prev.steady === nextInfo.steady &&
-      prev.period === nextInfo.period &&
-      prev.popChanging === nextInfo.popChanging
-        ? prev
-        : nextInfo
-    ));
-  }, [detectStablePopulation, popWindowSize, popTolerance]);
+      // Convert GameModel's populationHistory (numbers) for computePopulationChange
+      const modelPopHistory = mvc.model?.populationHistory || [];
+      const { popChanging } = computePopulationChange(modelPopHistory, popWindowSize, popTolerance);
+      const nextInfo = { steady, period, popChanging };
+      
+      // Check if we just detected stability for the first time
+      const wasStable = steadyInfo.steady;
+      const nowStable = nextInfo.steady;
+      
+      setSteadyInfo((prev) => {
+        // If we just became stable, show confirmation dialog
+        if (!wasStable && nowStable) {
+          const populationCount = modelPopHistory[modelPopHistory.length - 1] || 0;
+          const patternType = period === 0 ? 'Still Life' : period === 1 ? 'Still Life' : `Period ${period} Oscillator`;
+          
+          setStableDetectionInfo({
+            generation,
+            populationCount,
+            patternType,
+            period
+          });
+          setShowStableDialog(true);
+        }
+        
+        return (
+          prev.steady === nextInfo.steady &&
+          prev.period === nextInfo.period &&
+          prev.popChanging === nextInfo.popChanging
+            ? prev
+            : nextInfo
+        );
+      });
+    };
+
+    // Check immediately
+    checkStability();
+
+    // Listen to model changes to re-check when population changes
+    const handleModelChange = (event) => {
+      if (event === 'gameStep') {
+        checkStability();
+      }
+    };
+
+    mvc.onModelChange(handleModelChange);
+
+    return () => {
+      mvc.offModelChange(handleModelChange);
+    };
+  }, [detectStablePopulation, popWindowSize, popTolerance, steadyInfo.steady]);
 
   // Memory telemetry is opt-in; when enabled we start the logger.
   useEffect(() => {
@@ -1186,6 +1255,44 @@ function GameOfLifeApp(props) {
             variant="contained"
           >
             View Existing Shape
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Stable Pattern Detection Dialog */}
+      <Dialog open={showStableDialog} onClose={() => setShowStableDialog(false)}>
+        <DialogTitle>🎉 Stable Pattern Detected!</DialogTitle>
+        <DialogContent>
+          {stableDetectionInfo && (
+            <div>
+              <p><strong>Pattern Type:</strong> {stableDetectionInfo.patternType}</p>
+              <p><strong>Generation:</strong> {stableDetectionInfo.generation}</p>
+              <p><strong>Population:</strong> {stableDetectionInfo.populationCount} cells</p>
+              {stableDetectionInfo.period > 1 && (
+                <p><strong>Period:</strong> {stableDetectionInfo.period}</p>
+              )}
+              <p>The simulation has been automatically paused. Would you like to continue running or keep it paused?</p>
+            </div>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => {
+              setShowStableDialog(false);
+              setStableDetectionInfo(null);
+            }}
+          >
+            Keep Paused
+          </Button>
+          <Button
+            onClick={() => {
+              setShowStableDialog(false);
+              setStableDetectionInfo(null);
+              setIsRunning(true);
+            }}
+            variant="contained"
+          >
+            Continue Running
           </Button>
         </DialogActions>
       </Dialog>
