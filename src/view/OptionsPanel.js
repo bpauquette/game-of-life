@@ -40,7 +40,7 @@ const OptionsPanel = ({
   confirmOnClear = true,
   maxChartGenerations = 5000,
   setMaxChartGenerations,
-  detectStablePopulation = false,
+  detectStablePopulation = true,
   setDetectStablePopulation,
   memoryTelemetryEnabled = false,
   setMemoryTelemetryEnabled,
