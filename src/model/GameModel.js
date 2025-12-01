@@ -428,7 +428,13 @@ export class GameModel {
     }
 
     this.generation = state.generation || 0;
-    this.viewport = state.viewport || { offsetX: 0, offsetY: 0, cellSize: 8 };
+    // Only default to cellSize 8 on true first load
+    if (typeof this.viewport === 'undefined' || this.viewport == null) {
+      this.viewport = state.viewport || { offsetX: 0, offsetY: 0, cellSize: 8 };
+    } else {
+      // On import, preserve previous cellSize if state.viewport is missing
+      this.viewport = state.viewport || { ...this.viewport };
+    }
     this.populationHistory = state.populationHistory || [];
 
     this.notifyObservers('stateImported', state);
