@@ -380,7 +380,13 @@ function GameOfLifeApp(props) {
           
           // Always pause immediately when stability is detected
           console.log(`🔄 Auto-pausing simulation (stability detected)`);
+          // Update both React state and game controller
           setIsRunning(false);
+          try {
+            gameRef.current?.setRunning?.(false);
+          } catch (e) {
+            console.error('Error pausing game controller:', e);
+          }
         } else if (!steady && modelPopHistory.length % 50 === 0) {
           console.log(`🔍 Gen ${generation}: Still evolving... (${modelPopHistory.length} generations checked)`);
         }
@@ -1288,7 +1294,13 @@ function GameOfLifeApp(props) {
             onClick={() => {
               setShowStableDialog(false);
               setStableDetectionInfo(null);
+              // Update both React state and game controller
               setIsRunning(true);
+              try {
+                gameRef.current?.setRunning?.(true);
+              } catch (e) {
+                console.error('Error resuming game controller:', e);
+              }
             }}
             variant="contained"
           >
