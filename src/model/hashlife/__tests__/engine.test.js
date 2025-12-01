@@ -1,4 +1,4 @@
-const { buildTreeFromCells, nodeToCells, advance, clearEngineCache } = require('../engine');
+const { advance, clearEngineCache } = require('../engine');
 
 describe('hashlife engine scaffold', () => {
   beforeEach(() => clearEngineCache());

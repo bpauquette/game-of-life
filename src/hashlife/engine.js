@@ -6,7 +6,7 @@
 // (nodeMemo/resultMemo) are in place for adding the optimized center-step
 // algorithm later.
 
-const { makeLeaf, makeNode, makeEmpty, clearMemo } = require('./node');
+const { makeLeaf, makeNode, clearMemo } = require('./node');
 
 // Helper: convert flat cell array or array of {x,y} into Set of "x,y" strings
 function cellsToSet(cells) {

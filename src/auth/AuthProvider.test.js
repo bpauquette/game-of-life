@@ -101,9 +101,7 @@ describe('AuthProvider', () => {
       </AuthProvider>
     );
 
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Login' }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
 
     expect(mockSessionStorage.setItem).toHaveBeenCalledWith('authToken', 'new-token');
     expect(mockSessionStorage.setItem).toHaveBeenCalledWith('authEmail', 'test@example.com');
@@ -121,9 +119,7 @@ describe('AuthProvider', () => {
       </AuthProvider>
     );
 
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Logout' }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Logout' }));
 
     expect(mockSessionStorage.removeItem).toHaveBeenCalledWith('authToken');
     expect(mockSessionStorage.removeItem).toHaveBeenCalledWith('authEmail');

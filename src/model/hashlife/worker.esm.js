@@ -19,7 +19,7 @@ async function handleRun(id, payload) {
   }
 }
 
-self.onmessage = function (ev) {
+globalThis.onmessage = function (ev) {
   const msg = ev.data;
   const { id, type, payload } = msg;
   if (type === 'run') {

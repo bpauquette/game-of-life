@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { render, waitFor, cleanup, fireEvent } from '@testing-library/react';
+import { render, waitFor, cleanup, fireEvent, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RecentShapesStrip from '../RecentShapesStrip';
 import { useShapeManager } from '../hooks/useShapeManager';
@@ -63,10 +63,9 @@ describe('RecentShapesStrip integration', () => {
       ]
     };
 
-    const { container } = render(<StripHarness shape={shape} />);
-
+    render(<StripHarness shape={shape} />);
     await waitFor(() => {
-      const rects = container.querySelectorAll('svg[data-shape-id="pattern-shape"] rect');
+      const rects = screen.getAllByTestId('pattern-shape-rect');
       expect(rects.length).toBe(3);
     });
   });
@@ -81,17 +80,16 @@ describe('RecentShapesStrip integration', () => {
       ]
     };
 
-    const { container, getByTestId } = render(<StripHarness shape={shape} enablePersistenceControls />);
-
+    render(<StripHarness shape={shape} enablePersistenceControls />);
     await waitFor(() => {
-      const rects = container.querySelectorAll('svg[data-shape-id="clearable-shape"] rect');
+      const rects = screen.getAllByTestId('clearable-shape-rect');
       expect(rects.length).toBe(2);
     });
 
-    fireEvent.click(getByTestId('recent-clear-button'));
+    fireEvent.click(screen.getByTestId('recent-clear-button'));
 
     await waitFor(() => {
-      const rects = container.querySelectorAll('svg[data-shape-id="clearable-shape"] rect');
+      const rects = screen.queryAllByTestId('clearable-shape-rect');
       expect(rects.length).toBe(0);
     });
   });
