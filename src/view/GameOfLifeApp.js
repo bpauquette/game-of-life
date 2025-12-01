@@ -100,9 +100,9 @@ function GameOfLifeApp(props) {
       const stored = globalThis.localStorage?.getItem('detectStablePopulation');
       if (stored === 'true' || stored === 'false') return stored === 'true';
       if (stored != null) return Boolean(JSON.parse(stored));
-      return false;
+      return true; // Enable by default for better user experience
     } catch {
-      return false;
+      return true; // Enable by default for better user experience
     }
   });
   const [steadyInfo, setSteadyInfo] = useState(INITIAL_STEADY_INFO);
@@ -352,9 +352,11 @@ function GameOfLifeApp(props) {
 
   useEffect(() => {
     if (!detectStablePopulation) {
+      console.log('🔧 Stability detection is DISABLED. Enable it in Options panel (gear icon) to use this feature.');
       setSteadyInfo((prev) => (prev === INITIAL_STEADY_INFO ? prev : INITIAL_STEADY_INFO));
       return;
     }
+    console.log('✅ Stability detection is ENABLED');
     const mvc = gameRef.current;
     if (!mvc || typeof mvc.isStable !== 'function') return;
 
