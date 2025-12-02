@@ -1,10 +1,8 @@
 // Simple Hashlife engine scaffold
 // This file provides utilities to build a quadtree from a set of live cells,
-// convert back to cell lists, and advance the world by N generations. For
-// correctness the current advance implementation falls back to a brute-force
-// stepper for arbitrary N; the data structures and memoization tables
-// (nodeMemo/resultMemo) are in place for adding the optimized center-step
-// algorithm later.
+// convert back to cell lists, and advance the world by N generations. The
+// engine uses a combination of brute-force stepping for small regions and a
+// memoized center-step algorithm for larger power-of-two squares.
 
 const { makeLeaf, makeNode, clearMemo } = require('./node');
 // Only use makeLeaf and makeNode where needed, do not leave unused
@@ -125,9 +123,21 @@ function bruteStepSet(set) {
 }
 
 // Advance N generations using brute force on sets
-function advanceBrute(cells, n) {
+function advanceBrute(cells, n, onProgress) {
     let s = cellsToSet(cells);
-    for (let i = 0; i < n; i++) s = bruteStepSet(s);
+    const total = Math.max(0, Number(n) || 0);
+    for (let i = 0; i < total; i++) {
+        s = bruteStepSet(s);
+        if (onProgress && (i + 1 === total || (i + 1) % 10 === 0)) {
+            // Emit occasional progress snapshots to keep UI responsive
+            const out = [];
+            for (const c of s) {
+                const [x, y] = c.split(',').map(Number);
+                out.push({ x, y });
+            }
+            onProgress({ generation: i + 1, cells: out });
+        }
+    }
     return s; // return Set<string> of "x,y"
 }
 
@@ -309,55 +319,57 @@ function nodeStepPow2(nodeObj) {
 }
 
 // Advance N generations using a decomposition into powers-of-two and
-// memoized node stepping where possible.
+// memoized node stepping where possible. Optionally accepts onProgress
+// callback which may receive occasional snapshots { generation, cells }.
 async function advance(cells, n, onProgress) {
-    console.log('🔧 [hashlife engine] advance() called:', { cellCount: cells?.length, generations: n });
     let currentCells = Array.isArray(cells) ? cells : Array.from(cells).map(s => { const [x, y] = s.split(',').map(Number); return { x, y }; });
     let remaining = n;
     let progressed = 0;
     const progressCb = typeof onProgress === 'function' ? onProgress : null;
-    const maybeReport = (count) => {
-        if (!progressCb) return;
-        // report each generation advanced
-        for (let i = 0; i < count; i++) {
-            progressed += 1;
-            try { progressCb(progressed); } catch (e) { }
-        }
-    };
 
     while (remaining > 0) {
         // Build the smallest tree to contain current cells
         const treeObj = buildTreeFromCells(currentCells);
         const { node, originX, originY } = treeObj;
         const topStep = 1 << node.level;
-        console.log('🌳 [hashlife engine] loop iteration:', { remaining, nodeLevel: node.level, topStep, currentCellCount: currentCells.length });
         if (topStep <= remaining) {
             // We can step by the node's full power-of-two and benefit from caching
-            console.log('🚀 [hashlife engine] using nodeStepPow2 for', topStep, 'generations');
             const resObj = nodeStepPow2({ node, originX, originY });
             currentCells = nodeToCells(resObj.node, resObj.originX || 0, resObj.originY || 0);
-            console.log('📊 [hashlife engine] nodeStepPow2 result:', { newCellCount: currentCells.length });
-            // report progress for the stepped generations
-            maybeReport(topStep);
+            progressed += topStep;
             remaining -= topStep;
+            if (progressCb) {
+                try { progressCb({ generation: progressed, cells: currentCells }); } catch (e) { }
+            }
         } else {
-            // The node is larger than the remaining steps; fall back to brute force
-            console.log('🐌 [hashlife engine] using brute force for', remaining, 'generations');
-            const nextSet = advanceBrute(new Set(currentCells.map(p => `${p.x},${p.y}`)), remaining);
+            // The node is larger than the remaining steps; fall back to brute force.
+            // Capture the current progressed value in a stable local so the
+            // progress callback doesn't close over a mutating loop variable.
+            const baseProgress = progressed;
+            const progressCbLocal = progressCb;
+            const nextSet = advanceBrute(
+                new Set(currentCells.map(p => `${p.x},${p.y}`)),
+                remaining,
+                progressCbLocal
+                    ? (p) => {
+                        if (!p) return;
+                        const gen = typeof p.generation === 'number' ? baseProgress + p.generation : baseProgress;
+                        try { progressCbLocal({ generation: gen, cells: p.cells || [] }); } catch (e) { }
+                    }
+                    : null
+            );
             const nextArr = [];
             for (const c of nextSet) {
                 const [x, y] = c.split(',').map(Number);
                 nextArr.push({ x, y });
             }
             currentCells = nextArr;
-            console.log('📊 [hashlife engine] brute force result:', { newCellCount: currentCells.length });
-            // report progress for the remaining generations
-            maybeReport(remaining);
+            progressed += remaining;
             remaining = 0;
         }
     }
     const finalTreeObj = buildTreeFromCells(currentCells);
-    return { tree: finalTreeObj.node, originX: finalTreeObj.originX, originY: finalTreeObj.originY, cells: currentCells };
+    return { tree: finalTreeObj.node, originX: finalTreeObj.originX, originY: finalTreeObj.originY, cells: currentCells, generations: progressed };
 }
 
 module.exports = {

@@ -55,9 +55,6 @@ class HashlifeAdapter {
     this._pending = new Map();
     this._nextId = 1;
     this._progressCb = null;
-    // Throttle progress callback: only call every N generations
-    this._lastProgressGen = null;
-    this._progressThrottleN = 10; // Change N to adjust frequency
   }
 
   _ensureWorker() {
@@ -76,24 +73,9 @@ class HashlifeAdapter {
 
   _onMessage(msg) {
     const { id, type, payload } = msg;
-    try {
-      // Lightweight diagnostic: summarize incoming worker messages
-      let cellsCount;
-      try {
-        if (payload && payload.cells) {
-          if (Array.isArray(payload.cells)) cellsCount = payload.cells.length;
-          else if (payload.cells instanceof Map) cellsCount = payload.cells.size;
-        }
-      } catch (e) { /* ignore summary errors */ }
-      try { console.debug('[hashlifeAdapter] _onMessage', { id, type, generation: payload && payload.generation, cellsCount }); } catch (e) {}
-    } catch (e) {}
-    if (type === 'progress' && this._progressCb) {
-      // Throttle: only call progressCb every N generations
-      const gen = payload && payload.generation;
-      if (gen == null || this._lastProgressGen == null || gen - this._lastProgressGen >= this._progressThrottleN) {
-        this._lastProgressGen = gen;
-        this._progressCb(payload);
-      }
+    if (type === 'progress') {
+      // Progress messages are ignored in the current UI mode; Hashlife
+      // behaves as a jump-N-generations engine.
       return;
     }
     const entry = this._pending.get(id);
@@ -106,24 +88,11 @@ class HashlifeAdapter {
   run(cells, generations, opts = {}) {
     // Try to use platform Worker; if not available use fallback worker.run
     const w = this._ensureWorker();
-    try {
-      // Diagnostic: log run requests
-      try {
-        let count = 'unknown';
-        if (Array.isArray(cells)) count = cells.length;
-        else if (cells instanceof Map) count = cells.size;
-        else if (cells && typeof cells.forEachCell === 'function') count = 'iterable';
-        console.info('[hashlifeAdapter] run requested', { generations, cellCount: count });
-      } catch (e) {}
-    } catch (e) {}
-    
-    console.log('🔍 [hashlifeAdapter] worker availability:', { hasWorker: !!w, workerType: w ? 'WebWorker' : 'fallback' });
-    
     if (!w) {
       // fallback: in-process wrapper
-      console.log('📞 [hashlifeAdapter] using fallback worker.run()');
       return fallbackWorker.run(cells, generations, (p) => {
-        if (this._progressCb) this._progressCb(p);
+        // Progress callback is currently unused; Hashlife UI only consumes
+        // final results from a step.
       });
     }
 

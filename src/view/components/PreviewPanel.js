@@ -2,14 +2,10 @@ import React, { useMemo, useRef, useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Link from '@mui/material/Link';
 import {
-  FlipToBack as FlipHIcon,
-  Flip as FlipVIcon,
-  RotateRight as RotateIcon,
   Refresh as ResetIcon
 } from '@mui/icons-material';
 import { transformShape } from '../../model/shapeTransforms';

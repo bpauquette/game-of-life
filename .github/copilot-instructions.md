@@ -1,64 +1,47 @@
-This repository is a Conway's Game of Life implementation with a React frontend and optional Node.js backend for shape management.
+This repository is a Conway's Game of Life implementation with a React frontend and an optional Node.js/SQLite backend for shape management and tooling.
 
-## Architecture Overview
-**Frontend**: Create React App with canvas-based rendering for performance
-**Backend**: Express.js API for shapes catalog (optional, runs independently)
-**State Management**: Chunked world state for large simulations with React hooks
-**Tools System**: Modular drawing tools with unified mouse event interface
+## Architecture overview
+- **Frontend (CRA):** React app under `src/` with canvas-based rendering, chunked world state, and a controller-driven simulation loop.
+- **Backend (Express):** Optional API under `backend/` that serves shapes and accepts imports/telemetry; runs independently on `GOL_BACKEND_PORT` (default 55000).
+- **State & logic:** Core game rules live in pure model code; UI and rendering sit on top via observers and overlay descriptors.
 
-Key goals for an AI coding agent working on this repo:
-- Preserve the canvas-based rendering approach (see `src/GameOfLife.js` and `src/renderer.js`). Changes should maintain devicePixelRatio handling and the two-step draw+overlay pattern used by tools.
-- Prefer pure, testable logic in `src/gameLogic.js` and keep side-effectful rendering/DOM code in React components/hooks.
-- Performance-sensitive state uses a chunked structure in `src/chunkedGameState.js`. Avoid large, unconditional conversions between chunked and flat maps in hot paths.
+## Core frontend structure
+- `src/model/GameModel.js` — single source of truth for running state, tool/shape selection, color scheme, overlays, and viewport; emits observer events.
+- `src/view/GameOfLife.js` — main UI shell and canvas event wiring (mouse, wheel zoom, keyboard pan). Integrates with `GameModel` and owns high-level dialogs.
+- `src/view/renderer/*` or `src/renderer.js` (depending on refactor stage) — canvas drawing for grid and cells. Preserve devicePixelRatio handling and the two-step **draw + overlay** pattern.
+- `src/model/gameLogic.js` — pure game rules (neighbor calculation and step). Any rule changes must stay pure and be covered by tests in `src/new-tests/`.
+- `src/model/chunkedGameState.js` (and related) — chunked state for large worlds (chunk size 64). New features that modify cells should go through helpers such as `setCellAlive`, `placeShape`, or `applyToolOverlay` rather than mutating internal maps.
+- `src/hashlife/` and `src/model/hashlife/` — experimental Hashlife engine; keep changes isolated and backward compatible with existing chunked stepper.
 
-## Important files and what they contain:
-**Core Frontend:**
-- `src/GameOfLife.js` — main UI and canvas event wiring (mouse, wheel zoom, keyboard pan). Use this as the primary integration point for UI changes.
-- `src/renderer.js` — drawing logic for grid and cells. Follow its coordinate math and HSL coloring when adding visuals.
-- `src/gameLogic.js` — pure game rules: neighbor calculation and step function. Unit-test any changes here.
-- `src/chunkedGameState.js` — optimized state for large worlds (chunk size 64). New features that modify cells should call `setCellAlive` / `placeShape` to keep chunk invariants.
+## Tools, overlays, and observers
+- `src/model/tools/*` and `src/overlays/*` — tools emit overlay descriptors (pure data). The model stores current overlay(s); the view passes them to the renderer; the renderer only knows how to draw descriptors.
+- Tool modules follow a unified interface (`onMouseDown/onMouseMove/onMouseUp/drawOverlay`). When adding tools, copy an existing one (e.g. draw/rect/random-rect) and keep logic side-effect free except for calling model APIs.
+- React hooks such as `src/hooks/useToolStateObserver.js` and other `use*Observer` hooks subscribe to `GameModel` events instead of pulling state directly. When adding new observable state, extend `GameModel` events first, then wire a dedicated hook.
 
-**Tools & Hooks:**
-- `src/tools/*` — small, self-contained interaction helpers (draw, line, rect, etc.). Tools expose `onMouseDown/onMouseMove/onMouseUp/drawOverlay` hooks; follow that API when adding new tools.
-- `src/hooks/useCanvasManager.js` — canvas operations, drawing, and mouse interactions
-- `src/hooks/useShapeManager.js` — shape loading and management from backend
+## Backend & data flow
+- Entry point: `backend/src/index.js`; SQLite database at `backend/data/shapes.db` is the authoritative store for shapes.
+- Shape importers live under `backend/scripts/` (e.g. `import-lexicon-shapes.mjs`, `bulk-import-all.mjs`) and go through the SQLite DB, not the legacy `backend/data/shapes.json`.
+- RLE parsing/normalization is in `backend/src/rleParser.js`. Frontend and scripts should reuse this when possible instead of rolling their own.
 
-**Backend (Optional):**
-- `backend/src/index.js` — Express API for shapes catalog (health, list/get shapes, import RLE)
-- `backend/src/rleParser.js` — Run Length Encoded pattern parser for Conway patterns
-- `backend/data/shapes.json` — shape database (LowDB)
+## Build, run, and tests
+- Frontend dev: `npm start` (or `npm run frontend:start` which wraps the dev server and enforces port 3000).
+- Backend dev: `cd backend && npm install && npm start` (port via `GOL_BACKEND_PORT` → `PORT` → `55000`).
+- Tests (model/overlay-focused): `npm run test:coverage` (preferred) or `npm test` for watch mode. New logic in `src/model/*`, `src/overlays/*`, or observer hooks should be covered in `src/new-tests/` rather than legacy `src/*test.js`.
+- SonarQube: `docker compose -f docker-compose.sonarqube.yml up -d`, then use the helper scripts under `scripts/sonar-*.sh` when adjusting quality gates.
+- Windows LAN testing: use `scripts/windows/run-setup.cmd` / `run-refresh.cmd` / `run-cleanup.cmd` to manage firewall and portproxy rules; do not duplicate this logic in Node.
 
-## Project-specific conventions:
-- Keep pure logic (game step, neighbor math) in `src/gameLogic.js` so it can be used by both chunked and non-chunked state implementations.
-- UI state lives in hooks (`useChunkedGameState`, `useGameState`). Prefer `chunksRef` and `liveCellsRef` patterns used in those files when adding non-reactive, fast-access state.
-- Drawing routines receive refs and pixel sizes rather than reading global component state; pass explicit parameters when calling `drawScene`/draw helpers.
-- When changing zoom/size, carefully handle `window.devicePixelRatio`. See `resizeCanvas` and wheel zoom code in `src/GameOfLife.js` for exact math.
+## Project-specific conventions
+- **Model-first:** `GameModel` is authoritative for running state, selection, overlays, and options. Avoid duplicating these in React component state; instead, observe the model.
+- **Pure core logic:** Keep rules, coordinate transforms, symmetry/analysis helpers, and overlay descriptor builders pure and easily unit-testable. Side effects belong in controllers, hooks, or the backend.
+- **Chunked performance:** Avoid O(n²) scans over all cells on hot paths (e.g. animation loop). Prefer working in terms of chunks or changed regions; if a global operation is needed, consider worker offload.
+- **Canvas & DPR:** Preserve `devicePixelRatio` math and `ctx.setTransform` usage when changing zoom/resize behavior. Tests and mocks rely on current patterns.
+- **Overlay safety:** Overlay drawing must never throw and break the main render; follow the existing try/catch pattern around `drawWithOverlay`.
 
-## Build, test, and run commands:
-**Frontend:**
-- Start dev server: `npm start` (Create React App)
-- Run tests: `npm test` (project uses react-scripts/jest; tests are under `src/*.test.js`). When running tests in CI/non-interactive mode, always set `CI=true` first (PowerShell: `$env:CI="true"; npm test -- --watch=false`) so the runner exits without waiting for keyboard input.
-- Build production bundle: `npm run build`
-- Process management: `npm run frontend:start|stop|status` (uses `scripts/manage.js`)
+## Useful reference patterns
+- World stepping: see `src/model/chunkedGameState.js` `step()` calling `gameStep(getLiveCells())` and then reconciling chunks.
+- Tool implementation: see an existing tool such as `src/model/tools/drawTool.js` for the expected mouse handler and overlay contract.
+- Backend API usage: `README.md` and `backend/README.md` list the `/v1/shapes`, `/v1/import-rle`, and memory telemetry endpoints used by the frontend and scripts.
 
-**Backend:**
-- Start backend: `cd backend && npm start` (runs on port 55000 by default)
-- Or use env: `GOL_BACKEND_PORT=4001 bash backend/start.sh`
-- Process management: `npm run backend:start|stop|status`
+If you change global behavior (rendering cadence, state shape, observer contracts, or backend API), keep changes minimal, update the relevant tests in `src/new-tests/`, and, when in doubt, ask the maintainer before large refactors.
 
-**Both:**
-- SonarQube analysis: `docker compose -f docker-compose.sonarqube.yml up -d`
-
-## Edge-cases and priorities for fixes/PRs:
-- Avoid introducing synchronous O(n^2) conversions over all cells on the main animation path. If you must, throttle or run in a worker.
-- Ensure canvas transforms and DPR scaling remain correct in tests that mock canvas (see comments in `GameOfLife.js` about `ctx.setTransform`).
-- Preserve tool overlay isolation: overlay drawing must never throw and break the main render (see the try/catch in `drawWithOverlay`).
-
-## Example snippets to refer to:
-- Stepping the world: `src/chunkedGameState.js` -> `step()` calls `gameStep(getLiveCells())` then converts to chunks.
-- Tool interface: `src/tools/drawTool.js` exports `onMouseDown/onMouseMove/onMouseUp/drawOverlay` used by `GameOfLife.js`.
-
-If you modify global behavior (rendering, state shape, or public API of hooks), add or update tests in `src/*.test.js` and keep changes minimal and well-scoped.
-
-If anything above is ambiguous or you need deeper context (preferred behaviors for large-world performance, intended UX for new tools, or color-scheme rules), ask the repo owner before large changes.
-\nSee also: `.github/SONAR_GUIDANCE.md` for SonarQube-specific guidance and rules (logger usage, tests, stable keys).\n
+See also: `.github/SONAR_GUIDANCE.md` for SonarQube-specific guidance (logger usage, tests, stable keys).

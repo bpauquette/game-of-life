@@ -9,6 +9,11 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
 import { PlayArrow as PlayArrowIcon, Stop as StopIcon, SkipNext as SkipNextIcon, DeleteSweep as DeleteSweepIcon, Lightbulb as LightbulbIcon } from '@mui/icons-material';
 import { keyframes } from '@emotion/react';
 
@@ -21,18 +26,14 @@ export default function RunControlGroup({
   clear,
   snapshotsRef,
   setSteadyInfo,
-  onHashlifeBurst,
   confirmOnClear = true,
-  // Engine mode props
+  // Engine mode props (Hashlife UI disabled; always normal)
   engineMode = 'normal',
   isHashlifeMode = false,
-  isBurstRunning = false,
   onStartNormalMode,
-  onStartHashlifeMode,
-  onStopAllEngines,
-  useHashlife = true
+  onStopAllEngines
 }) {
-  // optional hashlife burst handler
+
   
   const STEADY_STATE_PERIOD_INITIAL_LOCAL = 0;
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -64,37 +65,44 @@ export default function RunControlGroup({
       aria-label="Run controls"
     >
       <Stack direction="row" spacing={0.5} alignItems="center">
-        <Tooltip title={isBurstRunning ? 'Step disabled during hashlife burst' : 'Step once'}>
-          <span>
-            <IconButton 
-              size="small" 
-              aria-label="step" 
-              disabled={isBurstRunning}
-              onClick={() => { step(); draw(); }}
-            >
-              <SkipNextIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
+        {/* Engine selection and Hashlife controls are temporarily disabled; UI
+            always uses the normal engine. */}
+        {/* Step button - only for normal engine */}
+        {engineMode === 'normal' && (
+          <Tooltip title="Step once">
+            <span>
+              <IconButton 
+                size="small" 
+                aria-label="step" 
+                disabled={false}
+                onClick={async () => { 
+                  try {
+                    await step(); 
+                    draw(); 
+                  } catch (error) {
+                    console.error('Step failed:', error);
+                  }
+                }}
+              >
+                <SkipNextIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
 
+        {/* Universal Play/Pause button */}
         <Tooltip title={
-          isBurstRunning ? 'Stop hashlife burst' :
-          isRunning ? `Stop ${engineMode} mode` : 
-          `Start ${engineMode} mode`
+          isRunning ? 'Stop normal' : 'Start normal simulation'
         }>
           <IconButton
             size="small"
             aria-label={isRunning ? 'stop' : 'start'}
-            color={isRunning ? 'error' : (engineMode === 'hashlife' ? 'secondary' : 'primary')}
+            color={isRunning ? 'error' : 'primary'}
             onClick={() => {
-              if (isBurstRunning || isRunning) {
+              if (isRunning) {
                 onStopAllEngines?.();
-              } else if (engineMode === 'normal') {
-                onStartNormalMode?.();
-              } else if (engineMode === 'hashlife') {
-                onStartHashlifeMode?.();
               } else {
-                setIsRunning(!isRunning);
+                onStartNormalMode?.();
               }
             }}
           >
@@ -102,38 +110,34 @@ export default function RunControlGroup({
           </IconButton>
         </Tooltip>
 
+
+
         {/* Running indicator for quick glance status (mobile-friendly) */}
-        <Tooltip title={
-          isBurstRunning ? 'Hashlife burst running' :
-          isRunning ? `Running (${engineMode} mode)` : 'Stopped'
-        }>
+        <Tooltip
+          title={isRunning ? 'Running (normal mode)' : 'Stopped'}
+        >
           <LightbulbIcon
             fontSize="small"
             sx={{
-              color: 
-                isBurstRunning ? '#FF5722' : // Orange-red for hashlife burst
-                isRunning && engineMode === 'hashlife' ? '#9C27B0' : // Purple for hashlife mode
-                isRunning ? '#FFC107' : // Yellow for normal mode
+              color:
+                isRunning ? '#FFC107' : // Yellow when running
                 'rgba(255,255,255,0.35)', // Gray when stopped
-              animation: (isRunning || isBurstRunning) ? `${pulse} 1.4s ease-in-out infinite` : 'none'
+              animation: isRunning ? `${pulse} 1.4s ease-in-out infinite` : 'none'
             }}
             aria-label={
-              isBurstRunning ? 'hashlife-burst-indicator' :
               isRunning ? `${engineMode}-running-indicator` : 'stopped-indicator'
             }
           />
         </Tooltip>
         
         {/* Engine mode indicator */}
-        {(isRunning || isBurstRunning) && (
-          <Tooltip title={`Engine: ${isBurstRunning ? 'Hashlife Burst' : engineMode}`}>
+        {isRunning && (
+          <Tooltip title="Engine: normal">
             <Box sx={{ 
               px: 0.5, 
               py: 0.25, 
               borderRadius: 0.5, 
               backgroundColor: 
-                isBurstRunning ? 'rgba(255, 87, 34, 0.3)' :
-                engineMode === 'hashlife' ? 'rgba(156, 39, 176, 0.3)' : 
                 'rgba(255, 193, 7, 0.3)',
               fontSize: '0.6rem',
               fontWeight: 'bold',
@@ -141,7 +145,7 @@ export default function RunControlGroup({
               textTransform: 'uppercase',
               letterSpacing: 0.5
             }}>
-              {isBurstRunning ? 'BURST' : engineMode === 'hashlife' ? 'HASH' : 'NORM'}
+              NORM
             </Box>
           </Tooltip>
         )}
@@ -175,40 +179,6 @@ export default function RunControlGroup({
           </IconButton>
         </Tooltip>
         
-        {/* Engine mode switching buttons */}
-        {!isRunning && !isBurstRunning && (
-          <>
-            <Tooltip title={engineMode === 'normal' ? 'Switch to Hashlife mode' : 'Switch to Normal mode'}>
-              <IconButton
-                size="small"
-                aria-label="switch-engine"
-                color="inherit"
-                onClick={() => {
-                  if (engineMode === 'normal') {
-                    onStartHashlifeMode?.();
-                  } else {
-                    onStartNormalMode?.();
-                  }
-                }}
-              >
-                <LightbulbIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            
-            {useHashlife && engineMode === 'hashlife' && (
-              <Tooltip title="Start Hashlife burst (fast forward with occasional rendering)">
-                <IconButton
-                  size="small"
-                  aria-label="hashlife-burst"
-                  color="secondary"
-                  onClick={() => onHashlifeBurst?.()}
-                >
-                  <SkipNextIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            )}
-          </>
-        )}
       </Stack>
 
       {/* Clear confirmation dialog */}
@@ -236,13 +206,15 @@ RunControlGroup.propTypes = {
   clear: PropTypes.func.isRequired,
   snapshotsRef: PropTypes.object.isRequired,
   setSteadyInfo: PropTypes.func.isRequired,
-  onHashlifeBurst: PropTypes.func,
   // Engine mode props
   engineMode: PropTypes.oneOf(['normal', 'hashlife']),
   isHashlifeMode: PropTypes.bool,
-  isBurstRunning: PropTypes.bool,
   onStartNormalMode: PropTypes.func,
   onStartHashlifeMode: PropTypes.func,
   onStopAllEngines: PropTypes.func,
-  useHashlife: PropTypes.bool
+  onSetEngineMode: PropTypes.func,
+  useHashlife: PropTypes.bool,
+  // Hashlife batch size
+  generationBatchSize: PropTypes.number,
+  onSetGenerationBatchSize: PropTypes.func
 };

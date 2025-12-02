@@ -654,8 +654,8 @@ export class GameController {
   }
 
   // Game control methods
-  step() {
-    this.model.step();
+  async step() {
+    await this.model.step();
   }
 
   clear() {
@@ -703,7 +703,7 @@ export class GameController {
   startGameLoop() {
     if (this.animationId) return; // Already running
 
-    const loop = (timestamp) => {
+    const loop = async (timestamp) => {
       if (!this.model.getIsRunning()) {
         this.animationId = null;
         return;
@@ -715,7 +715,12 @@ export class GameController {
       if (shouldStep) {
         const frameStart = performance.now();
 
-        this.model.step();
+        try {
+          await this.model.step();
+        } catch (error) {
+          // Log error but continue game loop
+          console.warn('Game step failed:', error);
+        }
         this.requestRender();
 
         const frameTime = performance.now() - frameStart;
