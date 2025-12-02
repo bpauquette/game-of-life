@@ -28,8 +28,8 @@ export class GameMVC {
     }
   }
   // Game step
-  step() {
-    return this.model.step();
+  async step() {
+    return await this.model.step();
   }
 
   // Population history

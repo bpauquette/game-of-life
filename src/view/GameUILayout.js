@@ -180,19 +180,18 @@ function GameUILayout({
           setMaxFPS={controlsProps?.setMaxFPS}
           maxGPS={controlsProps?.maxGPS}
           setMaxGPS={controlsProps?.setMaxGPS}
-          setUseHashlife={controlsProps?.setUseHashlife}
-          setHashlifeMaxRun={controlsProps?.setHashlifeMaxRun}
-          setHashlifeCacheSize={controlsProps?.setHashlifeCacheSize}
-          clearHashlifeCache={controlsProps?.clearHashlifeCache}
-          onHashlifeBurst={controlsProps?.onHashlifeBurst}
+
           // Engine mode props
           engineMode={controlsProps?.engineMode}
           isHashlifeMode={controlsProps?.isHashlifeMode}
-          isBurstRunning={controlsProps?.isBurstRunning}
           onStartNormalMode={controlsProps?.onStartNormalMode}
           onStartHashlifeMode={controlsProps?.onStartHashlifeMode}
           onStopAllEngines={controlsProps?.onStopAllEngines}
+          onSetEngineMode={controlsProps?.onSetEngineMode}
           useHashlife={controlsProps?.useHashlife}
+          // Hashlife batch size
+          generationBatchSize={controlsProps?.generationBatchSize}
+          onSetGenerationBatchSize={controlsProps?.onSetGenerationBatchSize}
           getLiveCells={controlsProps?.getLiveCells}
           onLoadGrid={controlsProps?.onLoadGrid}
           generation={generation}

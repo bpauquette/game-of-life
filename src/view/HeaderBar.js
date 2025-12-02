@@ -106,19 +106,18 @@ export default function HeaderBar({
   memoryTelemetryEnabled = false,
   setMemoryTelemetryEnabled,
   // Hashlife controls
-  setUseHashlife,
-  setHashlifeMaxRun,
-  setHashlifeCacheSize,
-  clearHashlifeCache,
-  onHashlifeBurst,
+
   // Engine mode props
   engineMode,
   isHashlifeMode,
-  isBurstRunning,
   onStartNormalMode,
   onStartHashlifeMode,
   onStopAllEngines,
+  onSetEngineMode,
   useHashlife,
+  // Hashlife batch size
+  generationBatchSize,
+  onSetGenerationBatchSize,
   onSaveRecentShapes,
   onClearRecentShapes,
   onOpenMyShapes,
@@ -234,14 +233,15 @@ export default function HeaderBar({
               snapshotsRef={snapshotsRef}
               setSteadyInfo={setSteadyInfo}
               confirmOnClear={confirmOnClear}
-              onHashlifeBurst={onHashlifeBurst}
               engineMode={engineMode}
               isHashlifeMode={isHashlifeMode}
-              isBurstRunning={isBurstRunning}
               onStartNormalMode={onStartNormalMode}
               onStartHashlifeMode={onStartHashlifeMode}
               onStopAllEngines={onStopAllEngines}
+              onSetEngineMode={onSetEngineMode}
               useHashlife={useHashlife}
+              generationBatchSize={generationBatchSize}
+              onSetGenerationBatchSize={onSetGenerationBatchSize}
             />
           </Box>
           <Stack direction="row" spacing={0.5} alignItems="center">
@@ -349,10 +349,7 @@ export default function HeaderBar({
           setDetectStablePopulation={setDetectStablePopulation}
           memoryTelemetryEnabled={memoryTelemetryEnabled}
           setMemoryTelemetryEnabled={setMemoryTelemetryEnabled}
-          setUseHashlife={setUseHashlife}
-          setHashlifeMaxRun={setHashlifeMaxRun}
-          setHashlifeCacheSize={setHashlifeCacheSize}
-          clearHashlifeCache={clearHashlifeCache}
+
           onOk={handleOk}
           onCancel={handleCancel}
           data-testid-ok="options-ok-button"
@@ -407,10 +404,7 @@ HeaderBar.propTypes = {
   setDetectStablePopulation: PropTypes.func,
   memoryTelemetryEnabled: PropTypes.bool,
   setMemoryTelemetryEnabled: PropTypes.func,
-  setUseHashlife: PropTypes.func,
-  setHashlifeMaxRun: PropTypes.func,
-  setHashlifeCacheSize: PropTypes.func,
-  clearHashlifeCache: PropTypes.func,
+
   isRunning: PropTypes.bool.isRequired,
   setIsRunning: PropTypes.func.isRequired,
   step: PropTypes.func.isRequired,
@@ -442,13 +436,15 @@ HeaderBar.propTypes = {
   onClearRecentShapes: PropTypes.func,
   onOpenMyShapes: PropTypes.func.isRequired,
   onOpenImport: PropTypes.func.isRequired,
-  onHashlifeBurst: PropTypes.func,
   // Engine mode props
   engineMode: PropTypes.oneOf(['normal', 'hashlife']),
   isHashlifeMode: PropTypes.bool,
-  isBurstRunning: PropTypes.bool,
   onStartNormalMode: PropTypes.func,
   onStartHashlifeMode: PropTypes.func,
   onStopAllEngines: PropTypes.func,
+  onSetEngineMode: PropTypes.func,
   useHashlife: PropTypes.bool,
+  // Hashlife batch size
+  generationBatchSize: PropTypes.number,
+  onSetGenerationBatchSize: PropTypes.func,
 };

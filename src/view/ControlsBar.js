@@ -228,12 +228,8 @@ const ControlsBar = ({
   setMaxFPS,
   maxGPS,
   setMaxGPS,
-  // Hashlife props (forwarded to OptionsPanel)
-  setUseHashlife = () => {},
-  setHashlifeMaxRun = () => {},
-  setHashlifeCacheSize = () => {},
-  clearHashlifeCache = () => {},
-  onHashlifeBurst,
+
+
   // Optional model to drive ToolStatus observer
   model
 }) => {
@@ -327,7 +323,7 @@ const ControlsBar = ({
           clear={clear}
           snapshotsRef={snapshotsRef}
           setSteadyInfo={setSteadyInfo}
-            onHashlifeBurst={onHashlifeBurst}
+
         />
 
         {/* Tool toggles: put them back here, with Shapes first */}
@@ -394,10 +390,7 @@ const ControlsBar = ({
         onDeleteGrid={deleteGrid}
         grids={grids}
         loadingGrids={loadingGrids}
-        setUseHashlife={setUseHashlife}
-        setHashlifeMaxRun={setHashlifeMaxRun}
-        setHashlifeCacheSize={setHashlifeCacheSize}
-        clearHashlifeCache={clearHashlifeCache}
+
       />
     </div>
   );
@@ -443,11 +436,8 @@ ControlsBar.propTypes = {
   popTolerance: PropTypes.number.isRequired,
   setPopTolerance: PropTypes.func.isRequired
   ,
-  setUseHashlife: PropTypes.func,
-  setHashlifeMaxRun: PropTypes.func,
-  setHashlifeCacheSize: PropTypes.func,
-  clearHashlifeCache: PropTypes.func,
-  onHashlifeBurst: PropTypes.func,
+
+
   // Optional model for tool state observation
   model: PropTypes.object
 };

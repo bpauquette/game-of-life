@@ -59,7 +59,6 @@ function GameOfLifeApp(props) {
   // Running state now managed by GameModel as single source of truth
   const [isRunning, setIsRunning] = useState(false);
   const isRunningRef = useRef(false);
-  const burstRunningRef = useRef(false);
   
   // Keep ref in sync with state (will be enhanced with observer after gameRef is available)
   useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
@@ -141,10 +140,10 @@ function GameOfLifeApp(props) {
     return 50;
   });
   // Hashlife integration settings
-  const [useHashlife, setUseHashlife] = useState(() => {
+  const [useHashlife] = useState(() => {
     try { const v = globalThis.localStorage.getItem('useHashlife'); return v == null ? true : v === 'true'; } catch { return true; }
   });
-  const [hashlifeMaxRun, setHashlifeMaxRun] = useState(() => {
+  const [hashlifeMaxRun] = useState(() => {
     try { 
       const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeMaxRun'), 10); 
       // Limit to reasonable maximum (1 million generations)
@@ -155,14 +154,32 @@ function GameOfLifeApp(props) {
       return 1024;
     } catch { return 1024; }
   });
-  const [hashlifeCacheSize, setHashlifeCacheSize] = useState(() => {
+  const [hashlifeCacheSize] = useState(() => {
     try { const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeCacheSize'), 10); return Number.isFinite(v) && v >= 0 ? v : 0; } catch { return 0; }
   });
   
-  // Engine mode: 'normal' or 'hashlife'
+  // Engine mode is currently fixed to 'normal' in the UI; Hashlife
+  // remains experimental and is not user-selectable.
   const [engineMode, setEngineMode] = useState('normal');
-  const isHashlifeMode = engineMode === 'hashlife';
-  const [isBurstRunning, setIsBurstRunning] = useState(false);
+  const isHashlifeMode = false;
+  
+  // Generation batch size for hashlife (generations per frame)
+  const [generationBatchSize, setGenerationBatchSize] = useState(() => {
+    try {
+      const v = Number.parseInt(globalThis.localStorage.getItem('generationBatchSize'), 10);
+      if (Number.isFinite(v) && v >= 1 && v <= 10000) {
+        return v;
+      }
+      return 50; // Default: good balance of speed and smoothness
+    } catch { return 50; }
+  });
+  
+  // Save generation batch size to localStorage
+  useEffect(() => {
+    try {
+      globalThis.localStorage.setItem('generationBatchSize', generationBatchSize.toString());
+    } catch {}
+  }, [generationBatchSize]);
 
   const clearHashlifeCache = useCallback(() => {
     try {
@@ -173,25 +190,7 @@ function GameOfLifeApp(props) {
     }
   }, []);
 
-  // Wrapper for setHashlifeMaxRun that validates input
-  const setHashlifeMaxRunSafe = useCallback((value) => {
-    const MAX_SAFE_GENERATIONS = 1000000;
-    const numValue = Number(value);
-    
-    if (!Number.isFinite(numValue) || numValue <= 0) {
-      console.warn(`Invalid hashlife max run value: ${value}. Using default 1024.`);
-      setHashlifeMaxRun(1024);
-      return;
-    }
-    
-    if (numValue > MAX_SAFE_GENERATIONS) {
-      console.warn(`Hashlife max run (${numValue}) exceeds safety limit. Capping at ${MAX_SAFE_GENERATIONS}.`);
-      setHashlifeMaxRun(MAX_SAFE_GENERATIONS);
-      return;
-    }
-    
-    setHashlifeMaxRun(numValue);
-  }, []);
+
   // persistent refs
   const snapshotsRef = useRef([]);
   const gameRef = useRef(null);
@@ -251,265 +250,37 @@ function GameOfLifeApp(props) {
 
   // Canvas DOM ref (used by GameUILayout). The single renderer (GameMVC)
   // will be instantiated when this ref's element is available.
-  const handleHashlifeBurst = useCallback(async () => {
-    console.log('🚀 Hashlife burst button clicked!', { useHashlife, engineMode, isBurstRunning });
-    
-    if (!useHashlife) {
-      console.warn('❌ Hashlife is disabled');
-      return;
-    }
-    
-    // Render every N generations (this controls the 1-in-N rendering you expect)
-    const RENDER_EVERY = 20; // Changed back to 20 as you expected
-    const MAX_SAFE_GENERATIONS = 1000000; // 1 million generation safety limit
-    let total = Number(hashlifeMaxRun) || 1024;
-    
-    console.log('🎯 Initial burst parameters:', { 
-      hashlifeMaxRun, 
-      total, 
-      RENDER_EVERY, 
-      MAX_SAFE_GENERATIONS 
-    });
-    
-    // Safety check: prevent excessively large values that would cause apparent infinite loops
-    if (total > MAX_SAFE_GENERATIONS) {
-      console.warn(`Hashlife max run (${total}) exceeds safety limit. Capping at ${MAX_SAFE_GENERATIONS} generations.`);
-      total = MAX_SAFE_GENERATIONS;
-    }
-    
-    // Store original running state and stop normal game loop
-    const wasRunning = isRunningRef.current;
-    const controller = gameRef.current?.controller;
-    
-    console.log('🔍 Running state check:', { 
-      wasRunning, 
-      isRunningRefCurrent: isRunningRef.current,
-      shouldAllowBurst: true 
-    });
-    
-    // Pause normal game loop to prevent interference with hashlife burst
-    if (controller && typeof controller.stopGameLoop === 'function') {
-      controller.stopGameLoop();
-    }
-    
-    // Convert current live cells to array of {x,y}
-    let cellsArr = [];
-    try {
-      const live = getLiveCells();
-      if (live instanceof Map) {
-        for (const key of live.keys()) {
-          const [x, y] = String(key).split(',').map(Number);
-          if (Number.isFinite(x) && Number.isFinite(y)) cellsArr.push({ x, y });
-        }
-      } else if (Array.isArray(live)) {
-        cellsArr = live.map(c => (Array.isArray(c) ? { x: c[0], y: c[1] } : (c && typeof c === 'object' ? { x: c.x, y: c.y } : null))).filter(Boolean);
-      } else if (live && typeof live.forEachCell === 'function') {
-        live.forEachCell((x, y) => cellsArr.push({ x, y }));
-      }
-    } catch (e) {
-      console.error('❌ Failed to serialize live cells for hashlife burst', e);
-      return;
-    }
-
-    if (!cellsArr.length) {
-      console.warn('❌ No live cells to advance - grid appears empty');
-      return;
-    }
-    
-    console.log('✅ Found cells for hashlife burst:', cellsArr.length);
-
-    try {
-      burstRunningRef.current = true;
-      setIsBurstRunning(true);
-      
-      let remaining = total;
-      let current = cellsArr;
-      let iterationCount = 0;
-      let totalGenerationsProcessed = 0;
-      const MAX_ITERATIONS = Math.ceil(total / RENDER_EVERY) + 100; // Safety limit on iterations
-      
-      console.log('🎮 Loop setup:', { 
-        total, 
-        remaining, 
-        iterationCount, 
-        MAX_ITERATIONS,
-        currentCellCount: current.length 
-      });
-      
-      console.info('Hashlife burst started', {
-        totalGenerations: total,
-        renderEvery: RENDER_EVERY,
-        expectedRenders: Math.ceil(total / RENDER_EVERY),
-        cellCount: cellsArr.length
-      });
-      
-      console.log('🔄 Loop conditions before while:', { 
-        remaining, 
-        iterationCount, 
-        MAX_ITERATIONS, 
-        shouldEnter: remaining > 0 && iterationCount < MAX_ITERATIONS 
-      });
-      
-      while (remaining > 0 && iterationCount < MAX_ITERATIONS) {
-        console.log('🌀 Entering loop iteration', { iteration: iterationCount + 1, remaining });
-        iterationCount++;
-        // Stop immediately if the user stopped the burst specifically
-        // Use burstRunningRef to track burst state independently of normal game running
-        if (!burstRunningRef.current) {
-          console.log('🛑 Breaking loop: burst was stopped');
-          break;
-        }
-        
-        const step = Math.min(RENDER_EVERY, remaining);
-        console.log(`🔄 Calling hashlife adapter:`, { 
-          step, 
-          cellCount: current.length, 
-          remaining, 
-          cacheSize: hashlifeCacheSize,
-          sampleCells: current.slice(0, 3) 
-        });
-        
-        console.log('🔍 hashlifeAdapter object:', { 
-          adapterExists: !!hashlifeAdapter, 
-          runExists: typeof hashlifeAdapter.run,
-          adapterType: typeof hashlifeAdapter 
-        });
-        
-        let res;
-        try {
-          res = await hashlifeAdapter.run(current, step, { cacheSize: hashlifeCacheSize });
-          console.log('🎯 hashlifeAdapter.run() returned:', res);
-        } catch (adapterError) {
-          console.error('💥 hashlifeAdapter.run() threw error:', adapterError);
-          console.log('🔍 Error details:', { 
-            errorMessage: adapterError.message, 
-            errorStack: adapterError.stack,
-            errorName: adapterError.name 
-          });
-          throw adapterError;
-        }
-        
-        console.log('📊 Hashlife adapter result:', { 
-          hasResult: !!res, 
-          hasCells: !!(res && res.cells), 
-          cellCount: res && res.cells ? res.cells.length : 0,
-          step,
-          rawResult: res 
-        });
-        
-        // If user pressed stop while the adapter was running, exit
-        if (!burstRunningRef.current) break;
-        
-        const nextCells = res && res.cells ? res.cells : [];
-        
-        if (!res || !res.cells) {
-          console.warn('⚠️ Hashlife adapter returned no cells, stopping burst');
-          break;
-        }
-        
-        totalGenerationsProcessed += step;
-        console.log(`✨ Processing step: ${step} generations, got ${nextCells.length} cells`);
-        
-        // Apply to game (replace model state when possible so hashlife
-        // results override the current world instead of merging on top).
-        console.log('🎮 Applying results to game model...');
-        try {
-          const model = gameRef.current?.model;
-          if (model && typeof model.applyExternalStepResult === 'function') {
-            try {
-              model.applyExternalStepResult({ cells: nextCells, generations: step });
-            } catch (inner) {
-              console.error('Failed to applyExternalStepResult on model', inner);
-              // fallback to additive load
-              loadGridIntoGame(gameRef, nextCells);
-            }
-          } else {
-            loadGridIntoGame(gameRef, nextCells);
-          }
-        } catch (e) {
-          console.error('Failed to apply hashlife result to game', e);
-        }
-        
-        // CRITICAL FIX: Only render every RENDER_EVERY generations
-        // This achieves the 1-in-20 rendering you expected
-        if (iterationCount % 1 === 0 || remaining <= step) { // Render on each iteration since each iteration processes RENDER_EVERY generations
-          try { drawWithOverlay(); } catch (e) { /* ignore */ }
-          console.log(`Hashlife render ${iterationCount}: Gen ${totalGenerationsProcessed} (${remaining} remaining)`);
-        }
-        
-        // Progress feedback for long-running bursts
-        if (total > 10000 && iterationCount % 100 === 0) {
-          const progress = Math.round(((total - remaining) / total) * 100);
-          console.log(`Hashlife progress: ${progress}% (${total - remaining}/${total} generations)`);
-        }
-        
-        // prepare for next iteration
-        current = nextCells.map(c => (Array.isArray(c) ? { x: c[0], y: c[1] } : { x: c.x, y: c.y }));
-        remaining -= step;
-        
-        console.log('🔄 End of loop iteration:', { 
-          remainingAfter: remaining, 
-          iterationCount, 
-          nextCurrentCells: current.length 
-        });
-        // Short pause to keep UI responsive (yield to browser)
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise(r => setTimeout(r, 0));
-      }
-      
-      // Warn if we hit the safety limit
-      if (iterationCount >= MAX_ITERATIONS) {
-        console.warn(`Hashlife burst stopped at safety limit (${MAX_ITERATIONS} iterations). Consider reducing hashlifeMaxRun value.`);
-      }
-      
-      console.info('Hashlife burst completed', {
-        totalIterations: iterationCount,
-        generationsProcessed: totalGenerationsProcessed,
-        rendersPerformed: iterationCount
-      });
-      
-    } catch (err) {
-      console.error('Hashlife burst failed', err);
-    } finally {
-      burstRunningRef.current = false;
-      setIsBurstRunning(false);
-      setEngineMode('normal'); // Always return to normal mode after burst
-      
-      // Resume normal game loop if it was running before burst
-      if (wasRunning && controller && typeof controller.startGameLoop === 'function') {
-        controller.startGameLoop();
-      }
-    }
-  }, [useHashlife, hashlifeMaxRun, hashlifeCacheSize, getLiveCells, drawWithOverlay, gameRef]);
   
   // Engine switching functions
   const startNormalMode = useCallback(() => {
-    if (burstRunningRef.current) {
-      console.warn('Cannot switch to normal mode while hashlife burst is running');
-      return;
-    }
     setEngineMode('normal');
+    // Set engine mode on model
+    if (gameRef.current?.model?.setEngineMode) {
+      gameRef.current.model.setEngineMode('normal');
+    }
     setIsRunningCombined(true, 'normal');
   }, [setIsRunningCombined]);
   
   const startHashlifeMode = useCallback(() => {
-    if (!useHashlife) {
-      console.warn('Hashlife is disabled');
-      return;
-    }
-    // Stop normal mode first
-    setIsRunningCombined(false);
-    setEngineMode('hashlife');
-    // Start hashlife burst
-    handleHashlifeBurst();
-  }, [useHashlife, setIsRunningCombined, handleHashlifeBurst]);
+    // Hashlife mode is currently disabled in the UI.
+    console.warn('Hashlife engine is temporarily disabled');
+  }, []);
   
   const stopAllEngines = useCallback(() => {
     setIsRunningCombined(false);
-    burstRunningRef.current = false;
-    setIsBurstRunning(false);
-    setEngineMode('normal');
   }, [setIsRunningCombined]);
+
+  // Simple engine mode setter for dropdown
+  const setEngineModeDirect = useCallback(() => {
+    // Engine mode selection is disabled; always use normal engine.
+  }, []);
+
+  // Sync generation batch size with GameModel
+  useEffect(() => {
+    if (gameRef.current?.model?.setGenerationBatchSize) {
+      gameRef.current.model.setGenerationBatchSize(generationBatchSize);
+    }
+  }, [generationBatchSize]);
 
   const colorScheme = React.useMemo(() => getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio'), [uiState?.colorSchemeKey]);
   useEffect(() => {
@@ -534,21 +305,9 @@ function GameOfLifeApp(props) {
   }, []);
 
   useEffect(() => {
-    // Forward hashlife progress messages from adapter/worker into main console
-    try {
-      // Only log progress at render intervals to avoid flooding the console.
-      let _lastLogged = 0;
-      const LOG_EVERY = 10;
-      hashlifeAdapter.onProgress((payload) => {
-        try {
-          const gen = payload && payload.generation ? Number(payload.generation) : Number(payload || 0);
-          if (Number.isFinite(gen) && gen > 0 && (gen % LOG_EVERY === 0) && gen !== _lastLogged) {
-            _lastLogged = gen;
-            try { console.info('Hashlife progress (render point)', gen); } catch (e) {}
-          }
-        } catch (e) {}
-      });
-    } catch (e) {}
+    // Hashlife progress updates are disabled; we only use final results
+    // from GameModel._stepHashlife() so intermediate generations are not
+    // applied to the model.
     if (!gameRef.current?.setPerformanceSettings) return;
     try {
       gameRef.current.setPerformanceSettings({
@@ -561,16 +320,7 @@ function GameOfLifeApp(props) {
     }
   }, [popWindowSize, popTolerance]);
 
-  // If the user stops while a hashlife burst is active, request adapter cancellation
-  useEffect(() => {
-    if (!isRunning && burstRunningRef.current) {
-      try {
-        hashlifeAdapter.cancel();
-      } catch (e) {
-        try { console.warn('Failed to cancel hashlife adapter', e); } catch {}
-      }
-    }
-  }, [isRunning]);
+
 
   // Sync random rectangle percent into controller tool state as a probability (0..1)
   useEffect(() => {
@@ -1021,7 +771,13 @@ function GameOfLifeApp(props) {
   const toggleChrome = useCallback(() => {
     setUIState(prev => ({ ...prev, showChrome: !(prev.showChrome ?? true) }));
   }, []);
-  const step = useCallback(() => { gameRef.current?.step?.(); }, []);
+  const step = useCallback(async () => { 
+    try {
+      await gameRef.current?.step?.();
+    } catch (error) {
+      console.error('Step failed:', error);
+    }
+  }, []);
   const clear = useCallback(() => {
     try {
       // Cancel any in-flight hashlife work and clear its caches so it
@@ -1396,20 +1152,19 @@ function GameOfLifeApp(props) {
     randomRectPercent,
     setRandomRectPercent,
     useHashlife,
-    setUseHashlife,
     hashlifeMaxRun,
-    setHashlifeMaxRun: setHashlifeMaxRunSafe,
     hashlifeCacheSize,
-    setHashlifeCacheSize,
     clearHashlifeCache,
-    onHashlifeBurst: handleHashlifeBurst,
     // Engine mode props
     engineMode,
     isHashlifeMode,
-    isBurstRunning,
     onStartNormalMode: startNormalMode,
     onStartHashlifeMode: startHashlifeMode,
     onStopAllEngines: stopAllEngines,
+    onSetEngineMode: setEngineModeDirect,
+    // Hashlife batch size
+    generationBatchSize,
+    onSetGenerationBatchSize: setGenerationBatchSize,
     maxFPS: performanceCaps.maxFPS,
     maxGPS: performanceCaps.maxGPS,
     enableFPSCap: performanceCaps.enableFPSCap,

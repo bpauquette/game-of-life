@@ -54,6 +54,7 @@ export class GameModel {
     this.liveCells = new Map();
     this.generation = 0;
     this.isRunning = false;
+    this.engineMode = 'normal'; // 'normal' or 'hashlife'
     // Viewport state
     this.viewport = {
       offsetX: 0,
@@ -194,6 +195,30 @@ export class GameModel {
   this.notifyObservers('runningStateChanged', { isRunning });
   }
 
+  setEngineMode(mode) {
+    if (mode === 'normal' || mode === 'hashlife') {
+      logger.debug('[GameModel] setEngineMode called:', mode);
+      this.engineMode = mode;
+      this.notifyObservers('engineModeChanged', { engineMode: mode });
+    }
+  }
+
+  getEngineMode() {
+    return this.engineMode;
+  }
+
+  setGenerationBatchSize(size) {
+    if (typeof size === 'number' && size >= 1 && size <= 10000) {
+      logger.debug('[GameModel] setGenerationBatchSize called:', size);
+      this.generationBatchSize = size;
+      this.notifyObservers('generationBatchSizeChanged', { generationBatchSize: size });
+    }
+  }
+
+  getGenerationBatchSize() {
+    return this.generationBatchSize;
+  }
+
   setColorSchemeModel(colorScheme) {
     logger.debug('[GameModel] setColorSchemeModel called:', colorScheme);
     this.colorScheme = colorScheme;
@@ -299,15 +324,54 @@ export class GameModel {
     return this.viewport.zoom;
   }
 
-  // Game evolution
-  step() {
-    const nextLiveCells = this.liveCells.size > 0
-      ? gameStep(this.liveCells)
-      : new Map();
-    this._applyStepResult(nextLiveCells, 1);
+  // Game evolution  
+  async step() {
+    if (this.engineMode === 'hashlife') {
+      await this._stepHashlife();
+    } else {
+      const nextLiveCells = this.liveCells.size > 0
+        ? gameStep(this.liveCells)
+        : new Map();
+      this._applyStepResult(nextLiveCells, 1);
+    }
   }
 
-  applyExternalStepResult(result) {
+  async _stepHashlife() {
+    if (this.liveCells.size === 0) {
+      // No cells to step - advance generations but keep empty state
+      this._applyStepResult(new Map(), this.generationBatchSize);
+      return;
+    }
+
+    try {
+      // Convert live cells to array format for hashlife
+      const cellsArray = Array.from(this.liveCells.keys()).map(key => {
+        const [x, y] = key.split(',').map(Number);
+        return { x, y };
+      });
+
+      // Use hashlife adapter to step multiple generations based on batch size
+      const hashlifeAdapter = require('./hashlife/adapter');
+      const result = await hashlifeAdapter.run(cellsArray, this.generationBatchSize);
+      
+      if (result && result.cells) {
+        this.applyExternalStepResult(result, this.generationBatchSize);
+      } else {
+        // Fallback to normal step if hashlife fails
+        const nextLiveCells = gameStep(this.liveCells);
+        this._applyStepResult(nextLiveCells, 1);
+      }
+    } catch (error) {
+      logger.warn('[GameModel] Hashlife step failed, falling back to normal step:', error);
+      // Fallback to normal step
+      const nextLiveCells = this.liveCells.size > 0
+        ? gameStep(this.liveCells)
+        : new Map();
+      this._applyStepResult(nextLiveCells, 1);
+    }
+  }
+
+  applyExternalStepResult(result, generations = 1) {
     if (!result || !Array.isArray(result.cells)) {
       return;
     }
@@ -325,10 +389,14 @@ export class GameModel {
     this.generation += generationDelta;
     this.trackGeneration();
     
-    // Track both population and state hash for proper oscillator detection
-    this.populationHistory.push(this.liveCells.size);
-    this.stateHashHistory.push(this.getStateHash());
-    
+    // Record one history entry per applied step. For Hashlife batch
+    // stepping we rely on generationDelta to track how many
+    // generations were advanced, without faking intermediate states.
+    const currentPop = this.liveCells.size;
+    const currentHash = this.getStateHash();
+    this.populationHistory.push(currentPop);
+    this.stateHashHistory.push(currentHash);
+
     if (this.populationHistory.length > this.maxPopulationHistory) {
       this.populationHistory.shift();
     }
@@ -454,22 +522,37 @@ export class GameModel {
 
   // Enhanced pattern analysis with sophisticated heuristic algorithm
   isStable(windowSize = 50, tolerance = 3) {
-    // Require more history for reliable detection - prevent premature detection
-    const minHistory = Math.max(windowSize * 1.5, 40);
+    // Adjust parameters for hashlife batch stepping
+    const isHashlife = this.engineMode === 'hashlife';
+    const batchSize = isHashlife ? this.generationBatchSize : 1;
+    
+    // Adjust window size and tolerance for batch stepping
+    const effectiveWindowSize = isHashlife ? 
+      Math.min(windowSize, Math.max(10, Math.floor(windowSize / Math.max(1, batchSize / 10)))) :
+      windowSize;
+    const effectiveTolerance = isHashlife ? 
+      Math.max(tolerance, tolerance * Math.min(2, Math.sqrt(batchSize / 10))) :
+      tolerance;
+    
+    // Require less history for hashlife due to batch stepping
+    const minHistory = isHashlife ? 
+      Math.max(effectiveWindowSize, 15) : 
+      Math.max(windowSize * 1.5, 40);
+      
     if (this.populationHistory.length < minHistory) {
-      console.log(`🔍 [Stability] Not enough history: ${this.populationHistory.length} < ${minHistory}`);
+      console.log(`🔍 [Stability] Not enough history: ${this.populationHistory.length} < ${minHistory} (${isHashlife ? 'hashlife' : 'normal'})`);
       return false;
     }
 
-    const recent = this.populationHistory.slice(-windowSize);
+    const recent = this.populationHistory.slice(-effectiveWindowSize);
     
-    // Multi-criteria stability detection heuristic
+    // Multi-criteria stability detection heuristic (adjusted for batch stepping)
     
     // Criterion 1: Population variance analysis (primary indicator)
     const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
     const variance = recent.reduce((sum, pop) => sum + Math.pow(pop - avg, 2), 0) / recent.length;
     const stdDev = Math.sqrt(variance);
-    const populationStable = stdDev <= tolerance;
+    const populationStable = stdDev <= effectiveTolerance;
     
     // Criterion 2: Trend analysis (detect long-term drift)
     let trendStable = true;
@@ -481,7 +564,7 @@ export class GameModel {
       const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
       
       // Allow small drift but reject significant population changes
-      trendStable = Math.abs(secondAvg - firstAvg) <= tolerance * 1.5;
+      trendStable = Math.abs(secondAvg - firstAvg) <= effectiveTolerance * 1.5;
     }
     
     // Criterion 3: Oscillation detection using state hashes (proper detection for oscillators)
@@ -489,7 +572,7 @@ export class GameModel {
     let detectedPeriod = 0;
     
     if (this.stateHashHistory.length >= 6) {
-      const recentStates = this.stateHashHistory.slice(-windowSize);
+      const recentStates = this.stateHashHistory.slice(-effectiveWindowSize);
       
       // State hash debugging removed to reduce log spam
       
@@ -520,29 +603,33 @@ export class GameModel {
       }
     }
     
-    // Criterion 4: Plateau detection (stable still life) - more strict
+    // Criterion 4: Plateau detection (stable still life) - adjusted for batch stepping
     let plateauStable = false;
-    if (recent.length >= 15) {
-      const lastFifteen = recent.slice(-15);
-      const uniqueValues = [...new Set(lastFifteen)];
-      // Require longer plateau and stricter criteria
-      // Last 15 generations must have identical populations (true still life)
+    const plateauWindow = this.engineMode === 'hashlife' ? Math.min(15, Math.max(5, effectiveWindowSize)) : 15;
+    if (recent.length >= plateauWindow) {
+      const lastSample = recent.slice(-plateauWindow);
+      const uniqueValues = [...new Set(lastSample)];
+      // Require plateau with adjusted criteria for batch stepping
+      // Sample must have identical populations (true still life)
       // OR at most 2 unique values with very small variance (tight oscillation)
       if (uniqueValues.length === 1) {
         plateauStable = true; // Perfect still life
       } else if (uniqueValues.length === 2) {
         // Check if it's a tight 2-state oscillation
         const sorted = uniqueValues.sort((a, b) => a - b);
-        plateauStable = (sorted[1] - sorted[0]) <= Math.max(1, tolerance * 0.5);
+        plateauStable = (sorted[1] - sorted[0]) <= Math.max(1, effectiveTolerance * 0.5);
       }
       
       // Debug plateau detection
       if (this.generation >= 500 && this.generation <= 505) {
         console.log(`🔍 [Plateau Debug] Gen ${this.generation}:`, {
-          lastFifteen,
+          lastSample,
           uniqueValues,
           uniqueCount: uniqueValues.length,
-          plateauStable
+          plateauStable,
+          isHashlife: this.engineMode === 'hashlife',
+          batchSize: this.generationBatchSize,
+          effectiveTolerance
         });
       }
     }
