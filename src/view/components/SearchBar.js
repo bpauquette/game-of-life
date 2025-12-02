@@ -1,17 +1,25 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import { Close as CloseIcon } from '@mui/icons-material';
 
 export default function SearchBar({ value, onChange, onClose }) {
+  const inputRef = useRef(null);
 
-
+  useEffect(() => {
+    try {
+      inputRef.current?.focus();
+    } catch {
+      // ignore focus errors in non-DOM environments
+    }
+  }, []);
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>
       <div style={{ flex: 1 }}>
         <TextField
           label="Search shapes"
+          inputRef={inputRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           fullWidth
