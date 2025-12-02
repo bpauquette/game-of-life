@@ -411,7 +411,15 @@ const OptionsPanel = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Slider
                   value={localRandomRectPercent}
-                  onChange={(e, v) => setLocalRandomRectPercent(Number(v))}
+                  onChange={(e, v) => {
+                    const clamped = Math.max(0, Math.min(100, Number(v)));
+                    setLocalRandomRectPercent(clamped);
+                    try {
+                      setRandomRectPercent?.(clamped);
+                    } catch (err) {
+                      logger.debug('setRandomRectPercent live update failed:', err);
+                    }
+                  }}
                   aria-labelledby="random-rect-percent-input"
                   min={0}
                   max={100}
@@ -430,6 +438,11 @@ const OptionsPanel = ({
                     if (v < 0) v = 0;
                     if (v > 100) v = 100;
                     setLocalRandomRectPercent(v);
+                    try {
+                      setRandomRectPercent?.(v);
+                    } catch (err) {
+                      logger.debug('setRandomRectPercent live input update failed:', err);
+                    }
                   }}
                   style={{ width: 72 }}
                 />

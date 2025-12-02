@@ -47,9 +47,9 @@ export const randomRectTool = {
     if (typeof state.prob === 'number' && Number.isFinite(state.prob)) {
       p = Math.max(0, Math.min(1, state.prob));
     } else {
-      // If prob is missing or invalid, default to 0 (no cells)
-      p = 0;
-      logger.debug('randomRectTool: state.prob is missing or invalid; defaulting to 0');
+      // If prob is missing or invalid, default to a useful 50% fill
+      p = 0.5;
+      logger.debug('randomRectTool: state.prob is missing or invalid; defaulting to 0.5');
     }
 
     // Always use controller buffer for double buffering

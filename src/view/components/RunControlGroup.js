@@ -45,12 +45,18 @@ export default function RunControlGroup({
   `;
 
   const handleConfirmClear = useCallback(() => {
+    // Always stop the simulation when clearing the grid
+    try {
+      setIsRunning(false);
+    } catch {
+      // ignore if setter is unavailable in tests
+    }
     clear();
     draw();
     if (snapshotsRef) snapshotsRef.current = [];
     if (setSteadyInfo) setSteadyInfo({ steady: false, period: STEADY_STATE_PERIOD_INITIAL_LOCAL, popChanging: false });
     setConfirmOpen(false);
-  }, [clear, draw, snapshotsRef, setSteadyInfo]);
+  }, [clear, draw, snapshotsRef, setSteadyInfo, setIsRunning]);
 
   return (
     <Box
@@ -159,6 +165,11 @@ export default function RunControlGroup({
                 setConfirmOpen(true);
               } else {
                 // immediate clear without confirmation
+                try {
+                  setIsRunning(false);
+                } catch {
+                  // ignore if setter is unavailable in tests
+                }
                 clear();
                 draw();
                 if (snapshotsRef) snapshotsRef.current = [];
