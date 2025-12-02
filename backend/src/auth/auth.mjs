@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
 import Joi from "joi";
+import { verifyToken } from "./jwtMiddleware.js";
 
 // --- CONFIG -------------------------------------------------------
 const JWT_SECRET = process.env.JWT_SECRET || "replace_this_with_strong_secret";
@@ -107,6 +108,36 @@ const registerSchema = Joi.object({
 const loginSchema = Joi.object({
 	email: Joi.string().email().required(),
 	password: Joi.string().required(),
+});
+
+// --- CURRENT USER -------------------------------------------------
+router.get("/me", verifyToken, (req, res) => {
+	try {
+		// req.user is populated by verifyToken(jwtMiddleware)
+		const { id, email } = req.user || {};
+		if (!id || !email) {
+			return res.status(401).json({ error: "Invalid auth token" });
+		}
+
+		const user = db.prepare(`SELECT id, email, first_name, last_name, about_me, login_count, last_login FROM users WHERE id = ?`).get(id);
+		if (!user) {
+			return res.status(404).json({ error: "User not found" });
+		}
+
+		// Never return password or reset-token fields
+		res.json({
+			id: user.id,
+			email: user.email,
+			firstName: user.first_name || "",
+			lastName: user.last_name || "",
+			aboutMe: user.about_me || "",
+			loginCount: user.login_count || 0,
+			lastLogin: user.last_login || null
+		});
+	} catch (err) {
+		logger.error('[ME] Error:', err);
+		return res.status(500).json({ error: "Failed to load current user" });
+	}
 });
 
 // --- REGISTER ------------------------------------------------------

@@ -250,6 +250,24 @@ export function createApp() {
     }
   });
 
+    // Current user info (minimal shim around /auth/me)
+    app.get('/v1/me', verifyToken, (req, res) => {
+      try {
+        const { id, email } = req.user || {};
+        if (!id || !email) {
+          return res.status(401).json({ error: 'Invalid auth token' });
+        }
+
+        // For now, mirror the data shape from /auth/me by delegating
+        // to the auth DB indirectly via the JWT payload. The frontend
+        // can rely on /v1/me without needing to know about /auth.
+        res.json({ id, email });
+      } catch (e) {
+        logger.error('v1/me failed', e?.message || e);
+        return res.status(500).json({ error: 'Failed to load current user' });
+      }
+    });
+
   app.post('/v1/memory-samples', (req, res) => {
     try {
       const raw = Array.isArray(req.body?.samples)
