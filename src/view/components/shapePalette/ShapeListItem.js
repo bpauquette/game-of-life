@@ -114,16 +114,17 @@ const ShapeListItem = memo(function ShapeListItem({
         display: 'flex', 
         alignItems: 'center', 
         width: '100%',
-        px: 2,
+        px: 1,
         py: 0.5,
         minHeight: 32,
+        justifyContent: 'center',
         '&:hover': {
           bgcolor: 'rgba(0,0,0,0.04)'
         }
       }}
     >
       {/* Plus Button - Fixed width left */}
-      <Box sx={{ width: 32, display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ width: 40, display: 'flex', justifyContent: 'center' }}>
         <IconButton
           aria-label="Add to Recent"
           size="small"
@@ -149,12 +150,12 @@ const ShapeListItem = memo(function ShapeListItem({
 
       {/* Shape Icon - Fixed width center */}
       <Box sx={{ 
-        width: 32, 
+        width: 40, 
         height: 32,
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        mx: 1
+        mx: 0.5
       }}>
         {cells.length > 0 && (
           <canvas
@@ -166,15 +167,25 @@ const ShapeListItem = memo(function ShapeListItem({
         )}
       </Box>
 
-      {/* Shape Name - Flexible width */}
-      <Box sx={{ flex: 1, minWidth: 0, mr: 1 }}>
+      {/* Shape Name - Constrained width centered */}
+      <Box sx={{ 
+        flex: '0 1 200px', 
+        minWidth: 120,
+        maxWidth: 250,
+        display: 'flex', 
+        justifyContent: 'center', 
+        px: 0.5 
+      }}>
         <ListItemButton
           onClick={() => onSelect(shape)}
           sx={{ 
             py: 0,
             px: 1,
             borderRadius: 1,
-            minHeight: 28
+            minHeight: 28,
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center'
           }}
           onMouseEnter={() => onHover?.(hoverId)}
           onMouseLeave={() => onHover?.(null)}
@@ -188,7 +199,8 @@ const ShapeListItem = memo(function ShapeListItem({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              width: '100%'
+              textAlign: 'center',
+              maxWidth: '100%'
             }}
             data-testid="shape-label"
           >
@@ -198,7 +210,7 @@ const ShapeListItem = memo(function ShapeListItem({
       </Box>
 
       {/* Delete Button - Fixed width right */}
-      <Box sx={{ width: 32, display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ width: 40, display: 'flex', justifyContent: 'center' }}>
         {user && shape.userId === user.id && (
           <IconButton
             aria-label="delete"
