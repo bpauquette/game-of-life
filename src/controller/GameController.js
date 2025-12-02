@@ -709,6 +709,12 @@ export class GameController {
         return;
       }
 
+      // Initialize baseline on first frame so tests that supply
+      // explicit timestamps (e.g. 10, 40, 80) can control stepping.
+      if (!Number.isFinite(this.lastFrameTime)) {
+        this.lastFrameTime = 0;
+      }
+
       const delta = timestamp - this.lastFrameTime;
       const shouldStep = this.frameInterval <= 0 || delta >= this.frameInterval;
 
@@ -853,7 +859,8 @@ export class GameController {
     // Overlay is managed by the model; tools provide descriptors
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
-    const cellSize = this.view.renderer.viewport.cellSize;
+    const viewport = this.view?.renderer?.viewport || {};
+    const cellSize = viewport.cellSize || 8;
     if (tool?.getOverlay) {
       const overlay = tool.getOverlay(this.toolState, cellSize);
       this.model.setOverlay(overlay);

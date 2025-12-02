@@ -284,7 +284,11 @@ export class GameModel {
       if (zoom !== undefined) {
         this.viewport.zoom = zoom;
       }
-      this.notifyObservers('viewportChanged', { ...this.viewport });
+      const payload = { offsetX: this.viewport.offsetX, offsetY: this.viewport.offsetY };
+      if (typeof cellSize === 'number') {
+        payload.cellSize = cellSize;
+      }
+      this.notifyObservers('viewportChanged', payload);
       return true;
     }
     return false;
