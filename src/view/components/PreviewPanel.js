@@ -231,8 +231,11 @@ function PreviewPanel(props) {
             }}
           >
             <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor">
-              <path d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM19 13h2v-2h-2v2zm0 4h2v-2h-2v2zM19 3v2h2V3h-2zm0 6h2V7h-2v2zm-8 8h2v-2h-2v2zM9 21h2v-2H9v2zM7 21h2v-2H7v2zM5 21h2v-2H5v2z"/>
-              <path d="M9 7H7v10h2V7z"/>
+              {/* Two shapes with horizontal arrows showing left-right mirroring */}
+              <rect x="3" y="8" width="6" height="8" fill="currentColor" opacity="0.6"/>
+              <rect x="15" y="8" width="6" height="8" fill="currentColor" opacity="0.6"/>
+              <path d="M10 10l2 2-2 2M14 10l-2 2 2 2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+              <line x1="12" y1="6" x2="12" y2="18" stroke="currentColor" strokeWidth="2" strokeDasharray="2,2" opacity="0.5"/>
             </svg>
           </IconButton>
         </Tooltip>
@@ -248,9 +251,12 @@ function PreviewPanel(props) {
               '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
             }}
           >
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'rotate(90deg)' }}>
-              <path d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM19 13h2v-2h-2v2zm0 4h2v-2h-2v2zM19 3v2h2V3h-2zm0 6h2V7h-2v2zm-8 8h2v-2h-2v2zM9 21h2v-2H9v2zM7 21h2v-2H7v2zM5 21h2v-2H5v2z"/>
-              <path d="M9 7H7v10h2V7z"/>
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor">
+              {/* Two shapes with vertical arrows showing up-down mirroring */}
+              <rect x="8" y="3" width="8" height="6" fill="currentColor" opacity="0.6"/>
+              <rect x="8" y="15" width="8" height="6" fill="currentColor" opacity="0.6"/>
+              <path d="M10 10l2-2 2 2M10 14l2 2 2-2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+              <line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" strokeWidth="2" strokeDasharray="2,2" opacity="0.5"/>
             </svg>
           </IconButton>
         </Tooltip>
