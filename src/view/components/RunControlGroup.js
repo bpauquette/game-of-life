@@ -9,11 +9,6 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
 import { PlayArrow as PlayArrowIcon, Stop as StopIcon, SkipNext as SkipNextIcon, DeleteSweep as DeleteSweepIcon, Lightbulb as LightbulbIcon } from '@mui/icons-material';
 import { keyframes } from '@emotion/react';
 
