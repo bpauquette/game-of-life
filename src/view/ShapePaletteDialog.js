@@ -232,13 +232,12 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     setBackendStarting(true);
     setBackendError('');
     try {
-      const backendPort = process.env.REACT_APP_BACKEND_PORT || '55000';
       setBackendError(`To start the backend server, please run one of these commands in your terminal:
 
 1. From the project root: npm run backend:start
 2. From the backend directory: cd backend && npm start
 
-The backend will start on port ${backendPort}.`);
+The backend will start on the configured port.`);
     } catch (error) {
       logger.error('Backend start instructions shown:', error);
       setBackendError('Please start the backend manually: npm run backend:start');
@@ -256,8 +255,7 @@ The backend will start on port ${backendPort}.`);
         setShowBackendDialog(false);
         retry();
       } else {
-        const backendPort = process.env.REACT_APP_BACKEND_PORT || '55000';
-        setBackendError(`Backend server is still not responding. Please make sure it's running on port ${backendPort}.`);
+        setBackendError(`Backend server is still not responding. Please make sure it's running.`);
       }
     } catch (error) {
       logger.warn('Backend health check failed:', error.message);

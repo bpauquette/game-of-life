@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import PropTypes from 'prop-types';
 import { useAuth } from '../../auth/AuthProvider';
+import { resolveBackendBase } from '../../utils/backendApi';
 
 const ImportShapeDialog = ({ open, onClose, onImportSuccess }) => {
   const { token } = useAuth();
@@ -29,9 +30,8 @@ const ImportShapeDialog = ({ open, onClose, onImportSuccess }) => {
     setError('');
 
     try {
-      // For now, assume token is stored in localStorage or something
-      // In a real app, you'd get it from auth context
-      const response = await fetch('http://localhost:55000/v1/import-rle', {
+      const base = resolveBackendBase();
+      const response = await fetch(`${base}/v1/import-rle`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

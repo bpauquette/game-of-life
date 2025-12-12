@@ -110,36 +110,26 @@ Simple Game of Life in react
 
 ## Additional project notes
 
-This repository contains two main pieces:
+This repository contains the **frontend** for the Game of Life app.
 
-- Frontend: a React (Create React App) app in the repository root `src/` folder.
-- Backend: a small Express-based API inside the `backend/` folder used to store and serve predefined shapes.
+The backend is now maintained in a separate repository:
 
-### Configurable backend port
+- Frontend (this repo): React (Create React App) app in the root `src/` folder.
+- Backend (separate repo): small Express-based API used to store and serve predefined shapes.
 
-The backend server binds to a port chosen using the following precedence (highest to lowest):
-1. `GOL_BACKEND_PORT` environment variable
-2. `PORT` environment variable
-3. default `55000`
+Backend repository:
 
-Example (bash):
+- `https://github.com/bpauquette/game-of-life-backend` (clone and manage it independently from this frontend repo).
 
-```bash
-GOL_BACKEND_PORT=55000 node src/index.js
-```
+### Backend runtime & data (separate repo)
 
-### Backend runtime & data
+See the backend repository's README for details on:
 
-- Entry point: `backend/src/index.js`
-- Persistent data file: `backend/data/shapes.json` (an array of shape objects)
-- Simple filesystem-backed DB wrapper: `backend/src/db.js`
-- Persistent storage: `backend/data/shapes.db` (SQLite DB). The legacy `backend/data/shapes.json` is kept as a local snapshot/backup only and is no longer used at runtime by the API.
-- Simple filesystem-backed DB wrapper: `backend/src/db.js` (keeps compatibility for small tooling)
+- Entry point (`src/index.js` in the backend repo).
+- Persistent storage (`data/shapes.db` SQLite DB and related files).
+- Any backend-specific scripts, importers, and operational notes.
 
-There are convenience start/stop scripts provided:
-
-- `backend/start.sh` — starts the backend as a background process and writes a PID file to `backend/backend.pid` and logs to `backend/backend.log`.
-- `backend/stop.sh` — stops the running backend using the PID file.
+In local development, the frontend expects the backend to be reachable on the configured backend base URL (typically `http://localhost:55000`); you can override this using the environment variables documented in the frontend config.
 
 ### Frontend development scripts
 

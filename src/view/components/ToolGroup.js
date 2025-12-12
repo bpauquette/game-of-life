@@ -3,12 +3,11 @@ import PropTypes from 'prop-types';
 import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import { Widgets as WidgetsIcon, Edit as EditIcon, Backspace as BackspaceIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Colorize as ColorizeIcon, HorizontalRule as HorizontalRuleIcon, Stop as StopIcon } from '@mui/icons-material';
 import RubberEraserIcon from './icons/RubberEraserIcon';
 import TOOL_DESCRIPTIONS from './toolDescriptions';
 // icons are imported above from @mui/icons-material
 import OvalIcon from '../components/OvalIcon';
-// HorizontalRuleIcon is imported above as HorizontalRuleIcon from @mui/icons-material
+import { Widgets as WidgetsIcon, Edit as EditIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Colorize as ColorizeIcon, HorizontalRule as HorizontalRuleIcon } from '@mui/icons-material';
 
 // ToolGroup groups the primary tools into a single, reusable control
 export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = false, shapesEnabled = true }) {

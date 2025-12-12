@@ -21,7 +21,10 @@ import {
 } from '@mui/material';
 import { Delete as DeleteIcon, Public as PublicIcon, Lock as LockIcon } from '@mui/icons-material';
 import { useAuth } from '../auth/AuthProvider';
-import { resolveBackendBase } from '../utils/backendApi';
+
+const baseUrl = (typeof window !== 'undefined' && window.location)
+  ? window.location.origin + '/api'
+  : process.env.REACT_APP_API_BASE || 'http://localhost:55000';
 
 const MyShapesDialog = ({ open, onClose }) => {
   const { token } = useAuth();
@@ -36,7 +39,6 @@ const MyShapesDialog = ({ open, onClose }) => {
     setLoading(true);
     setError('');
     try {
-      const baseUrl = resolveBackendBase();
       console.log('MyShapesDialog: Fetching from', `${baseUrl}/v1/shapes/my`);
       const response = await fetch(`${baseUrl}/v1/shapes/my`, {
         headers: {
@@ -47,7 +49,6 @@ const MyShapesDialog = ({ open, onClose }) => {
       if (!response.ok) throw new Error('Failed to load shapes');
       const data = await response.json();
       console.log('MyShapesDialog: Loaded shapes', data.items?.length || 0);
-      // Only user-owned shapes are returned by this endpoint
       setShapes(data.items);
     } catch (err) {
       console.error('MyShapesDialog: Error loading shapes', err);
@@ -66,7 +67,6 @@ const MyShapesDialog = ({ open, onClose }) => {
   const togglePublic = async (shapeId, currentPublic) => {
     setToggling(shapeId);
     try {
-      const baseUrl = resolveBackendBase();
       const response = await fetch(`${baseUrl}/v1/shapes/${shapeId}/public`, {
         method: 'PATCH',
         headers: {
@@ -94,17 +94,13 @@ const MyShapesDialog = ({ open, onClose }) => {
     if (!confirm('Are you sure you want to delete this shape?')) return;
 
     try {
-      const baseUrl = resolveBackendBase();
       const response = await fetch(`${baseUrl}/v1/shapes/${shapeId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-
       if (!response.ok) throw new Error('Failed to delete shape');
-
-      // Remove from local state
       setShapes(shapes.filter(shape => shape.id !== shapeId));
     } catch (err) {
       setError(err.message);
@@ -112,94 +108,54 @@ const MyShapesDialog = ({ open, onClose }) => {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>My Shapes</DialogTitle>
       <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {loading ? (
-          <Box display="flex" justifyContent="center" p={4}>
-            <CircularProgress />
-          </Box>
-        ) : shapes.length === 0 ? (
-          <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
-            You haven't saved any shapes yet. Use the capture tool to save interesting patterns!
-          </Typography>
-        ) : (
-          <List>
-            {shapes.map((shape) => (
-              <ListItem key={shape.id} divider>
-                <ListItemText
-                  primary={
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Typography variant="subtitle1">{shape.name}</Typography>
-                      {shape.public ? (
-                        <Chip
-                          icon={<PublicIcon />}
-                          label="Public"
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      ) : (
-                        <Chip
-                          icon={<LockIcon />}
-                          label="Private"
-                          size="small"
-                          color="default"
-                          variant="outlined"
-                        />
-                      )}
-                    </Box>
-                  }
-                  secondary={
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">
-                        {shape.width} × {shape.height} • {shape.cellCount} cells
-                      </Typography>
-                      {shape.description && (
-                        <Typography variant="body2" color="text.secondary">
-                          {shape.description}
-                        </Typography>
-                      )}
-                      <Typography variant="caption" color="text.secondary">
-                        Created: {new Date(shape.meta?.createdAt || shape.created).toLocaleDateString()}
-                      </Typography>
-                    </Box>
-                  }
-                />
-                <ListItemSecondaryAction>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={shape.public}
-                        onChange={() => togglePublic(shape.id, shape.public)}
-                        disabled={toggling === shape.id}
-                        size="small"
-                      />
-                    }
-                    label="Public"
-                    labelPlacement="start"
-                  />
-                  <IconButton
-                    onClick={() => deleteShape(shape.id)}
-                    color="error"
-                    size="small"
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </ListItemSecondaryAction>
-              </ListItem>
-            ))}
-          </List>
-        )}
+        {loading && <CircularProgress size={24} />}
+        {error && <Alert severity="error">{error}</Alert>}
+        <List>
+          {shapes.map(shape => (
+            <ListItem key={shape.id}>
+              <ListItemText
+                primary={shape.name}
+                secondary={
+                  <Box display="flex" alignItems="center">
+                    <Typography variant="body2" color="textSecondary" style={{ marginRight: 8 }}>
+                      {shape.public ? 'Public' : 'Private'}
+                    </Typography>
+                    <Chip
+                      label={shape.type}
+                      size="small"
+                      style={{ backgroundColor: shape.color, color: '#fff' }}
+                    />
+                  </Box>
+                }
+              />
+              <ListItemSecondaryAction>
+                <IconButton
+                  edge="end"
+                  aria-label="toggle public"
+                  onClick={() => togglePublic(shape.id, shape.public)}
+                  disabled={toggling === shape.id}
+                >
+                  {shape.public ? <PublicIcon /> : <LockIcon />}
+                </IconButton>
+                <IconButton
+                  edge="end"
+                  aria-label="delete"
+                  onClick={() => deleteShape(shape.id)}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </ListItemSecondaryAction>
+            </ListItem>
+          ))}
+        </List>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Close</Button>
+        <Button onClick={onClose} color="primary">
+          Close
+        </Button>
       </DialogActions>
     </Dialog>
   );

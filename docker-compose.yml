@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ../game-of-life-backend
+    container_name: gol-backend
+    environment:
+      # align this with backend/src/index.js expectations
+      PORT: 55000
+      # add your DB env vars here if needed
+    ports:
+      - "55000:55000"
+    volumes:
+      # if backend uses a SQLite file, keep it persisted
+      - backend-data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      args:
+        # This will be passed to the Dockerfile build stage
+        # When fronted by HTTPS proxy, point to public origin
+        REACT_APP_API_BASE: "https://gol-conway.hopto.org"
+    container_name: gol-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+  proxy:
+    image: nginx:1.27-alpine
+    container_name: gol-proxy
+    depends_on:
+      - frontend
+      - backend
+    environment:
+      - SERVER_NAME=gol-conway.hopto.org
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot-wwww:/var/www/certbot
+      - certbot-etc:/etc/letsencrypt
+    restart: unless-stopped
+
+volumes:
+  backend-data:
+  certbot-wwww:
+  certbot-etc:

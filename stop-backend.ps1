@@ -1,23 +1,32 @@
 # Game of Life Backend Stop Script with Auto-Elevation
 # This script automatically requests elevation to stop backend processes
-
 param(
-    [switch]$Force
+    [int] $Port = 55000
 )
 
-# Check if running as Administrator
-function Test-Administrator {
-    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
-    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+Write-Host ("Stopping Game of Life backend on port {0}..." -f $Port)
+
+try {
+    $processes = netstat -ano | Select-String ":$Port" | ForEach-Object {
+        ($_ -split '\s+')[-1]
+    } | Select-Object -Unique | Where-Object { $_ -match '^\d+$' }
+
+    foreach ($pid in $processes) {
+        Write-Host ("Stopping process {0} on port {1}" -f $pid, $Port)
+        Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+    }
+} catch {
+    Write-Warning ("Could not stop processes on port {0} - {1}" -f $Port, $_.Exception.Message)
 }
 
-# Function to kill processes on a specific port
-function Stop-ProcessOnPort {
-    param([int]$Port)
-    
-    try {
-        $processes = netstat -ano | Select-String ":$Port" | ForEach-Object {
+# Also try to stop any npm backend dev server in the separate backend repo
+$repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$backendRepo = Join-Path (Split-Path $repoRoot -Parent) 'game-of-life-backend'
+
+if (Test-Path $backendRepo) {
+    Write-Host ("Checking for npm backend dev server in '{0}'..." -f $backendRepo)
+    # This relies on port-based kill above for actual termination; no direct PID file.
+}
             ($_ -split '\s+')[-1]
         } | Select-Object -Unique | Where-Object { $_ -match '^\d+$' }
         

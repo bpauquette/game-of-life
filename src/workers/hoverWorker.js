@@ -5,6 +5,10 @@
 let currentId = null;
 let currentAbort = null;
 
+const base = (typeof self !== 'undefined' && self.location && self.location.origin)
+  ? self.location.origin + '/api'
+  : (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE) ? process.env.REACT_APP_API_BASE : 'http://localhost:55000';
+
 self.addEventListener('message', async (ev) => {
   const msg = ev.data || {};
   if (!msg) return;
@@ -21,7 +25,7 @@ self.addEventListener('message', async (ev) => {
     currentId = id;
     if (currentAbort) try { currentAbort.abort(); } catch (_) {}
     currentAbort = new AbortController();
-    const url = new URL('/v1/shapes/' + encodeURIComponent(id), msg.base).toString();
+    const url = new URL('/v1/shapes/' + encodeURIComponent(id), base).toString();
     try {
       const res = await fetch(url, { signal: currentAbort.signal });
       if (!res.ok) { if (currentId === id) self.postMessage({ type: 'error', message: 'HTTP ' + res.status }); return; }

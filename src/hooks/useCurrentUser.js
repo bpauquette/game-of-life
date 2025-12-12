@@ -2,12 +2,9 @@ import { useEffect, useState } from 'react';
 
 // Simple helper to resolve backend base URL.
 // Adjust if you already have a central backend config.
-function resolveBackendBase() {
-  const env = process.env;
-  if (env.REACT_APP_GOL_BACKEND_BASE) return env.REACT_APP_GOL_BACKEND_BASE;
-  const port = env.REACT_APP_GOL_BACKEND_PORT || env.GOL_BACKEND_PORT || '55000';
-  return `http://localhost:${port}`;
-}
+const backendBase = (typeof window !== 'undefined' && window.location)
+  ? window.location.origin + '/api'
+  : process.env.REACT_APP_API_BASE || 'http://localhost:55000';
 
 export function useCurrentUser(token) {
   const [user, setUser] = useState(null);
@@ -29,8 +26,7 @@ export function useCurrentUser(token) {
       setStatus('loading');
       setError(null);
       try {
-        const base = resolveBackendBase();
-        const res = await fetch(`${base}/v1/me`, {
+        const res = await fetch(`${backendBase}/v1/me`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal
         });

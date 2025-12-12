@@ -59,4 +59,11 @@ describe('API post function', () => {
 
     await expect(post('/test', {})).rejects.toThrow('Network error');
   });
+
+  test('uses browser /api/auth if in browser', () => {
+    const originalWindow = global.window;
+    global.window = { location: { origin: 'https://example.com' } };
+    expect(getAuthApiBase()).toBe('https://example.com/api/auth');
+    global.window = originalWindow;
+  });
 });
