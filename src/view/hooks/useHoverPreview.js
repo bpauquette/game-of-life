@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import logger from '../../controller/utils/logger';
-import { getBaseUrl } from '../../utils/backendApi';
+import { resolveBackendBase } from '../../utils/backendApi';
 import { createHoverWorker } from '../../utils/workerFactories';
 
 function normalizePreview(shape) {
@@ -15,7 +15,7 @@ function normalizePreview(shape) {
   return { id: shape.id, name, description, cells };
 }
 
-export function useHoverPreview(backendBase) {
+export function useHoverPreview() {
   const [preview, setPreview] = useState(null);
   const workerRef = useRef(null);
   const debounceRef = useRef(null);
@@ -37,7 +37,7 @@ export function useHoverPreview(backendBase) {
       return;
     }
     try {
-      const res = await fetch(`${getBaseUrl(backendBase)}/v1/shapes/${encodeURIComponent(id)}`);
+      const res = await fetch(`${resolveBackendBase()}/v1/shapes/${encodeURIComponent(id)}`);
       if (!res.ok) return;
       const data = await res.json();
       const normalized = normalizePreview(data);
@@ -46,14 +46,14 @@ export function useHoverPreview(backendBase) {
     } catch (err) {
       logger.warn('[useHoverPreview] direct fetch failed', err);
     }
-  }, [backendBase]);
+  }, []);
 
   const ensureWorker = useCallback(() => {
     if (!workerRef.current) {
-      workerRef.current = createHoverWorker(getBaseUrl(backendBase));
+      workerRef.current = createHoverWorker(resolveBackendBase());
     }
     return workerRef.current;
-  }, [backendBase]);
+  }, []);
 
   const startWorker = useCallback((id) => {
     if (!id) return;
@@ -75,12 +75,12 @@ export function useHoverPreview(backendBase) {
     worker.onerror = () => fetchDirect(id);
     worker.onmessageerror = () => fetchDirect(id);
     try {
-      worker.postMessage({ type: 'start', id, base: getBaseUrl(backendBase) });
+      worker.postMessage({ type: 'start', id, base: resolveBackendBase() });
     } catch (err) {
       logger.warn('[useHoverPreview] worker.postMessage failed', err);
       fetchDirect(id);
     }
-  }, [backendBase, ensureWorker, fetchDirect]);
+  }, [ensureWorker, fetchDirect]);
 
   const handleHover = useCallback((id) => {
     if (debounceRef.current) {

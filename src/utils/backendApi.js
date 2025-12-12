@@ -1,15 +1,17 @@
 import logger from '../controller/utils/logger';
-// Helper to get auth token from sessionStorage
+
 function getAuthToken() {
   return sessionStorage.getItem('authToken');
 }
+// Resolve the backend base URL in a way that works for local dev and production.
+// Ensures local HTTPS calls go through Caddy (/api) and production uses same origin.
 export function resolveBackendBase() {
-  const envBase = process.env.REACT_APP_BACKEND_BASE;
-  if (envBase && typeof envBase === 'string' && envBase.trim().length > 0) return envBase;
-  const { protocol, hostname } = globalThis.window?.location || { protocol: 'http:', hostname: 'localhost' };
-  const port = process.env.REACT_APP_BACKEND_PORT || '55000';
-  return `${protocol}//${hostname}:${port}`;
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin + '/api';
+  }
+  return process.env.REACT_APP_API_BASE || 'http://localhost:55000';
 }
+
 
 export async function saveCapturedShapeToBackend(shapeData, logout) {
   const shapeForBackend = {
@@ -72,9 +74,12 @@ export function getBaseUrl(backendBase) {
   if (typeof backendBase === 'string' && backendBase.length > 0) {
     return backendBase;
   }
-  return globalThis.window?.location?.origin 
-    ? String(globalThis.window.location.origin) 
-    : 'http://localhost';
+  // Only return a value if running in a browser (window defined)
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    return String(window.location.origin);
+  }
+  // In Node.js/test, return undefined so resolveBackendBase is used
+  return undefined;
 }
 
 // Fetch shapes list
@@ -119,7 +124,7 @@ export async function fetchShapeNames(base, q = '', limit = 50, offset = 0) {
 
 // Fetch shape by ID
 export async function fetchShapeById(id, backendBase) {
-  const base = getBaseUrl(backendBase);
+  const base = getBaseUrl(backendBase) || resolveBackendBase();
   const url = new URL(`/v1/shapes/${encodeURIComponent(id)}`, base);
   const res = await fetch(url.toString());
   if (!res.ok) return { ok: false };
@@ -134,7 +139,7 @@ export async function fetchShapeById(id, backendBase) {
 
 // Delete shape by ID
 export async function deleteShapeById(id, backendBase) {
-  const base = getBaseUrl(backendBase);
+  const base = getBaseUrl(backendBase) || resolveBackendBase();
   const url = new URL(`/v1/shapes/${encodeURIComponent(id)}`, base);
   const res = await fetch(url.toString(), { method: 'DELETE' });
   let bodyText = '';
@@ -148,7 +153,7 @@ export async function deleteShapeById(id, backendBase) {
 
 // Create shape
 export async function createShape(shape, backendBase) {
-  const base = getBaseUrl(backendBase);
+  const base = getBaseUrl(backendBase) || resolveBackendBase();
   const url = new URL('/v1/shapes', base);
   const token = getAuthToken();
   const headers = {
@@ -166,14 +171,24 @@ export async function createShape(shape, backendBase) {
 // Health check
 export async function checkBackendHealth(backendBase) {
   try {
-    const base = getBaseUrl(backendBase);
+    // Always use resolveBackendBase (hardcoded for container)
+    const base = resolveBackendBase();
     const healthUrl = new URL('/v1/health', base);
+    // Debug log: print the URL being used
+    // eslint-disable-next-line no-console
+    console.log('[checkBackendHealth] Fetching:', healthUrl.toString());
     const response = await fetch(healthUrl.toString(), {
       method: 'GET',
       timeout: 3000 // 3 second timeout
     });
+    // Debug log: print status
+    // eslint-disable-next-line no-console
+    console.log('[checkBackendHealth] Response status:', response.status);
     return response.ok;
   } catch (error) {
+    // Debug log: print error
+    // eslint-disable-next-line no-console
+    console.error('[checkBackendHealth] Error:', error);
     logger.warn('Backend health check failed:', error);
     return false;
   }

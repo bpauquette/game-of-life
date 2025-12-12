@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import logger from '../../controller/utils/logger';
-import { getBaseUrl } from '../../utils/backendApi';
+import { resolveBackendBase } from '../../utils/backendApi';
 import { createNamesWorker, createFauxNamesWorker } from '../../utils/workerFactories';
 
 const DEFAULT_LIMIT = 50;
@@ -47,7 +47,7 @@ export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT
     setLoading(true);
     setResults([]);
     setTotal(0);
-    const base = getBaseUrl(backendBase);
+    const base = resolveBackendBase();
     let worker;
     try {
       worker = createNamesWorker(base, '', limit);
@@ -95,7 +95,7 @@ export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT
       logger.error('[useShapePaletteSearch] worker.postMessage failed', postErr);
       handleWorkerFailure(postErr?.message || 'Shapes catalog worker error');
     }
-  }, [backendBase, limit, handleWorkerFailure, stopWorker]);
+  }, [limit, handleWorkerFailure, stopWorker]);
 
   const shouldStartWorker = open || prefetchOnMount;
 

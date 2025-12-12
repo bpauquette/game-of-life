@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gol-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gol-proxy
+  template:
+    metadata:
+      labels:
+        app: gol-proxy
+    spec:
+      containers:
+        - name: gol-proxy
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: gol-nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gol-proxy
+spec:
+  type: LoadBalancer
+  selector:
+    app: gol-proxy
+  ports:
+    - port: 80
+      targetPort: 80

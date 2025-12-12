@@ -5,9 +5,7 @@ import logger from '../../controller/utils/logger';
  * Hook for managing grid file operations (save/load)
  */
 const useGridFileManager = (config = {}) => {
-  const { 
-    // If not explicitly provided, derive from the current window location so mobile clients don't hit localhost
-    backendBase = process.env.REACT_APP_BACKEND_BASE || null,
+  const {
     getLiveCells = null,
     generation = 0
   } = config;
@@ -19,21 +17,13 @@ const useGridFileManager = (config = {}) => {
   const abortControllerRef = useRef(null);
   const inFlightSaveRef = useRef(null);
 
-  // Helper to get base URL consistently
+  // Always use the correct base URL, never allow override
   const getBaseUrl = useCallback(() => {
-    if (typeof backendBase === 'string' && backendBase.length > 0) {
-      return backendBase;
+    if (typeof window !== 'undefined' && window.location) {
+      return window.location.origin + '/api';
     }
-    const loc = globalThis.window?.location;
-    const port = process.env.REACT_APP_BACKEND_PORT || '55000';
-    if (loc?.hostname) {
-      const protocol = loc.protocol || 'http:';
-      const host = loc.hostname; // works on phone: uses Windows LAN IP
-      return `${protocol}//${host}:${port}`;
-    }
-    // Last resort (dev-only fallback)
-    return `http://127.0.0.1:${port}`;
-  }, [backendBase]);
+    return process.env.REACT_APP_API_BASE || 'http://localhost:55000';
+  }, []);
 
   // Convert live cells to serializable format
   const serializeLiveCells = useCallback((liveCells) => {

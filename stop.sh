@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Game of Life Stop Script
-echo "🛑 Stopping Game of Life services..."
+# Game of Life Stop Script (frontend repo)
+echo "🛑 Stopping Game of Life services (frontend + optional backend)..."
 
-# Kill frontend and backend processes
+# Kill frontend and any backend dev processes
 pkill -f "react-scripts\|npm.*start" 2>/dev/null
 pkill -f "node.*index.js" 2>/dev/null
 
@@ -23,4 +23,4 @@ BACKEND_PORT="${GOL_BACKEND_PORT:-55000}"
 lsof -ti:"$FRONTEND_PORT" | xargs kill -9 2>/dev/null
 lsof -ti:"$BACKEND_PORT" | xargs kill -9 2>/dev/null
 
-echo "✅ Services stopped"
+echo "✅ Frontend stopped; backend (if running in separate repo) also signalled on port $BACKEND_PORT"

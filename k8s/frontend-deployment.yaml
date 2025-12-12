@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gol-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gol-frontend
+  template:
+    metadata:
+      labels:
+        app: gol-frontend
+    spec:
+      containers:
+        - name: gol-frontend
+          image: gol-frontend:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: REACT_APP_API_BASE
+              value: "http://gol-backend:55000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gol-frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: gol-frontend
+  ports:
+    - port: 80
+      targetPort: 80

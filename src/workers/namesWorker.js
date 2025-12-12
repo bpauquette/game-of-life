@@ -18,7 +18,9 @@ addEventListener('message', async (ev) => {
 });
 
 async function runNamesWorkerLoop(msg) {
-  const base = msg.base;
+  const base = (typeof self !== 'undefined' && self.location && self.location.origin)
+    ? self.location.origin + '/api'
+    : (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE) ? process.env.REACT_APP_API_BASE : 'http://localhost:55000';
   const q = msg.q || '';
   const limit = Number(msg.limit) || 50;
   let offset = 0;

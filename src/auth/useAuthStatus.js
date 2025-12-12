@@ -2,7 +2,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './AuthProvider';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:55000';
+const API_BASE = (typeof window !== 'undefined' && window.location)
+  ? window.location.origin + '/api'
+  : process.env.REACT_APP_API_BASE || 'http://localhost:55000';
 
 export function useAuthStatus() {
   const { token } = useAuth();

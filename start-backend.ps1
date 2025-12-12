@@ -1,4 +1,15 @@
-# Minimal Game of Life Backend Start Script
+<#
+ Minimal Game of Life Backend Start Script (frontend repo)
+
+ NOTE: The backend code now lives in a separate repository
+         (e.g. `game-of-life-backend`). This script only attempts
+         to start a backend if that repository is checked out
+         as a sibling directory.
+
+ Expected layout (generic example):
+     <some-root>\game-of-life           (this repo - frontend)
+     <some-root>\game-of-life-backend   (separate backend repo)
+#>
 
 function Get-BackendPort {
     $default = 55000
@@ -37,5 +48,13 @@ Write-Host ("Starting Game of Life backend on port {0}..." -f $backendPort)
 Stop-ProcessOnPort -Port $backendPort
 Start-Sleep 2
 
-Set-Location (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'backend')
+$repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$backendRepo = Join-Path (Split-Path $repoRoot -Parent) 'game-of-life-backend'
+
+if (-not (Test-Path $backendRepo)) {
+    Write-Error "Backend repository not found at '$backendRepo'. Clone the backend repo (game-of-life-backend) alongside this frontend repo."
+    exit 1
+}
+
+Set-Location $backendRepo
 npm start

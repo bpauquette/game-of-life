@@ -62,23 +62,60 @@ const computeEllipsePerimeter = (x0, y0, x1, y1) => {
   const xMax = Math.max(x0, x1);
   const yMin = Math.min(y0, y1);
   const yMax = Math.max(y0, y1);
+
+  // Radii based on dragged rectangle, ensure at least 1 so small drags still draw something
   const rx = Math.max(1, Math.floor((xMax - xMin) / 2));
   const ry = Math.max(1, Math.floor((yMax - yMin) / 2));
+
+  // Center in cell coordinates
   const cx = xMin + rx;
   const cy = yMin + ry;
+
   const pts = [];
 
-  // Iterate angle steps and compute integer points on ellipse perimeter
-  // Choose step based on perimeter approximation to ensure continuity
-  const steps = Math.max(8, Math.ceil(2 * Math.PI * Math.max(rx, ry))); 
-  for (let i = 0; i < steps; i++) {
-    const theta = (i / steps) * 2 * Math.PI;
-    const fx = Math.round(cx + rx * Math.cos(theta));
-    const fy = Math.round(cy + ry * Math.sin(theta));
-    pts.push([fx, fy]);
+  const plot4 = (px, py) => {
+    pts.push([cx + px, cy + py]);
+    pts.push([cx - px, cy + py]);
+    pts.push([cx + px, cy - py]);
+    pts.push([cx - px, cy - py]);
+  };
+
+  // Midpoint ellipse algorithm (integer, symmetric in all quadrants)
+  let x = 0;
+  let y = ry;
+
+  const rx2 = rx * rx;
+  const ry2 = ry * ry;
+
+  // Region 1
+  let d1 = ry2 - rx2 * ry + 0.25 * rx2;
+  while (2 * ry2 * x <= 2 * rx2 * y) {
+    plot4(x, y);
+    if (d1 < 0) {
+      x += 1;
+      d1 += 2 * ry2 * x + ry2;
+    } else {
+      x += 1;
+      y -= 1;
+      d1 += 2 * ry2 * x - 2 * rx2 * y + ry2;
+    }
   }
 
-  // Deduplicate
+  // Region 2
+  let d2 = ry2 * (x + 0.5) * (x + 0.5) + rx2 * (y - 1) * (y - 1) - rx2 * ry2;
+  while (y >= 0) {
+    plot4(x, y);
+    if (d2 > 0) {
+      y -= 1;
+      d2 += -2 * rx2 * y + rx2;
+    } else {
+      x += 1;
+      y -= 1;
+      d2 += 2 * ry2 * x - 2 * rx2 * y + rx2;
+    }
+  }
+
+  // Deduplicate points (dragging on a discrete grid can revisit the same cell)
   const seen = new Set();
   const unique = [];
   for (const p of pts) {
