@@ -6,7 +6,10 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import ListItemButton from '@mui/material/ListItemButton';
 import Typography from '@mui/material/Typography';
-import { Delete as DeleteIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Public as PublicIcon, PublicOff as PublicOffIcon } from '@mui/icons-material';
+import Checkbox from '@mui/material/Checkbox';
+import Tooltip from '@mui/material/Tooltip';
+import { updateShapePublic } from '../../../utils/backendApi';
 import logger from '../../../controller/utils/logger';
 import { fetchShapeById } from '../../../utils/backendApi';
 
@@ -17,6 +20,8 @@ const hasShapeCells = (shape) => {
 };
 
 const ShapeListItem = memo(function ShapeListItem({
+    const [publicLoading, setPublicLoading] = useState(false);
+    const [isPublic, setIsPublic] = useState(!!shape.public);
   shape,
   idx,
   colorScheme,
@@ -123,6 +128,34 @@ const ShapeListItem = memo(function ShapeListItem({
         }
       }}
     >
+      {/* Public/Private Checkbox for user shapes */}
+      {user && (
+        <Tooltip title={isPublic ? 'Public (click to make private)' : 'Private (click to make public)'}>
+          <span>
+            <Checkbox
+              icon={<PublicOffIcon fontSize="small" />}
+              checkedIcon={<PublicIcon fontSize="small" />}
+              checked={!!isPublic}
+              disabled={publicLoading || (isPublic && shape.userId !== user.id)}
+              onChange={async (e) => {
+                e.stopPropagation();
+                setPublicLoading(true);
+                try {
+                  const result = await updateShapePublic(shape.id, !isPublic);
+                  setIsPublic(result.public);
+                } catch (err) {
+                  logger.warn('Failed to update public status:', err.message);
+                } finally {
+                  setPublicLoading(false);
+                }
+              }}
+              size="small"
+              sx={{ p: 0.5, mr: 1 }}
+              inputProps={{ 'aria-label': isPublic ? 'Make private' : 'Make public' }}
+            />
+          </span>
+        </Tooltip>
+      )}
       {/* Plus Button - Fixed width left */}
       <Box sx={{ width: 40, display: 'flex', justifyContent: 'center' }}>
         <IconButton

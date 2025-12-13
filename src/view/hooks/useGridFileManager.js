@@ -193,7 +193,7 @@ const useGridFileManager = (config = {}) => {
   }, []);
 
   const saveGrid = useCallback(
-    async (name, description = '') => {
+    async (name, description = '', publicFlag = false) => {
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
         throw new Error('Grid name is required');
       }
@@ -210,10 +210,11 @@ const useGridFileManager = (config = {}) => {
           description: description.trim(),
           liveCells: cells,
           generation: generation || 0,
+          public: !!publicFlag,
         };
 
-            const base = getBaseUrl();
-            const url = `${base}/v1/grids?_ts=${Date.now()}`;
+        const base = getBaseUrl();
+        const url = `${base}/v1/grids?_ts=${Date.now()}`;
 
         const response = await postGridWithRetry(url, gridData, 3, 30000);
 
