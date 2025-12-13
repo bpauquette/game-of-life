@@ -15,6 +15,8 @@ import {
 } from '@mui/material';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { Save as SaveIcon, Cancel as CancelIcon, GridOn as GridOnIcon } from '@mui/icons-material';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
 import { BUTTONS, STATUS } from '../utils/Constants';
 import logger from '../controller/utils/logger';
@@ -26,11 +28,15 @@ const SaveGridDialog = ({
   loading = false,
   error = null,
   liveCellsCount = 0,
-  generation = 0
+  generation = 0,
+  userId = null,
+  currentUserId = null,
+  initialPublic = false
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
+  const [isPublic, setIsPublic] = useState(!!initialPublic);
   const isSmall = useMediaQuery('(max-width:600px)');
 
   const handleNameChange = (event) => {
@@ -53,23 +59,21 @@ const SaveGridDialog = ({
 
   const handleSave = async () => {
     const trimmedName = name.trim();
-    
     if (trimmedName.length === 0) {
       setNameError('Name is required');
       return;
     }
-    
     if (trimmedName.length > 100) {
       setNameError('Name must be 100 characters or less');
       return;
     }
-
     try {
-      await onSave(trimmedName, description.trim());
+      await onSave(trimmedName, description.trim(), isPublic);
       // Reset form on successful save
       setName('');
       setDescription('');
       setNameError('');
+      setIsPublic(false);
       onClose();
     } catch (saveError) {
       // Error handling is managed by the parent component
@@ -82,6 +86,7 @@ const SaveGridDialog = ({
     setName('');
     setDescription('');
     setNameError('');
+    setIsPublic(false);
     onClose();
   };
 
@@ -156,6 +161,18 @@ const SaveGridDialog = ({
           sx={{ mb: 2 }}
           slotProps={{ htmlInput: { maxLength: 100 } }}
         />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={isPublic}
+              onChange={e => setIsPublic(e.target.checked)}
+              disabled={!!userId && currentUserId !== userId}
+              color="primary"
+            />
+          }
+          label={isPublic ? 'Public grid (visible to all users)' : 'Private grid (only you can see)'}
+          sx={{ mb: 2 }}
+        />
 
         <TextField
           margin="dense"
@@ -206,7 +223,10 @@ SaveGridDialog.propTypes = {
   loading: PropTypes.bool,
   error: PropTypes.string,
   liveCellsCount: PropTypes.number,
-  generation: PropTypes.number
+  generation: PropTypes.number,
+  userId: PropTypes.string,
+  currentUserId: PropTypes.string,
+  initialPublic: PropTypes.bool
 };
 
 export default SaveGridDialog;

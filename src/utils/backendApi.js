@@ -1,3 +1,22 @@
+// Update shape public/private status
+export async function updateShapePublic(id, isPublic) {
+  const url = `${getBackendApiBase()}/v1/shapes/${encodeURIComponent(id)}/public`;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ public: isPublic })
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status}: ${res.statusText}`);
+  }
+  return await res.json();
+}
 import logger from '../controller/utils/logger';
 
 export function getBackendApiBase() {

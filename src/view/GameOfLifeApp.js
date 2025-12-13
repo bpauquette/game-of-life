@@ -56,8 +56,29 @@ function GameOfLifeApp(props) {
     showChrome: true
   }), []);
   const [uiState, setUIState] = useState(props.initialUIState || defaultUIState);
-  // Removed unused generation state
-  // Running state now managed by GameModel as single source of truth
+  // Track the current generation from the model
+  const [generation, setGeneration] = useState(0);
+
+  // Keep generation in sync with the model
+  useEffect(() => {
+    const updateGeneration = () => {
+      const gen = gameRef.current?.model?.getGeneration?.() ?? 0;
+      setGeneration(gen);
+    };
+    updateGeneration();
+    // Listen for model changes
+    const mvc = gameRef.current;
+    if (mvc && typeof mvc.onModelChange === 'function') {
+      const handler = (event) => {
+        if (event === 'gameStep' || event === 'reset' || event === 'loadGrid') updateGeneration();
+      };
+      mvc.onModelChange(handler);
+      return () => mvc.offModelChange(handler);
+    }
+    // Fallback: poll every 500ms if observer not available
+    const interval = setInterval(updateGeneration, 500);
+    return () => clearInterval(interval);
+  }, []);
   const [isRunning, setIsRunning] = useState(false);
   const isRunningRef = useRef(false);
   
@@ -577,6 +598,12 @@ function GameOfLifeApp(props) {
       updateLastFromEvent(startEvent);
 
       const onMove = (ev) => updateLastFromEvent(ev);
+      const cleanup = () => {
+        try { document.removeEventListener('pointermove', onMove); } catch (e) {}
+        try { document.removeEventListener('pointerup', onUp); } catch (e) {}
+        try { document.removeEventListener('pointercancel', onCancel); } catch (e) {}
+        try { controller._setToolState({ start: null, last: null, dragging: false }, { updateOverlay: true }); } catch (e) {}
+      };
       const onUp = (ev) => {
         try {
           updateLastFromEvent(ev);
@@ -593,21 +620,19 @@ function GameOfLifeApp(props) {
         } catch (e) {
           // ignore
         } finally {
-          try { controller._setToolState({ start: null, last: null, dragging: false }, { updateOverlay: true }); } catch (e) {}
-          document.removeEventListener('pointermove', onMove);
-          document.removeEventListener('pointerup', onUp);
+          cleanup();
         }
+      };
+      const onCancel = (ev) => {
+        cleanup();
       };
 
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onCancel);
 
       // return cleanup
-      return () => {
-        try { document.removeEventListener('pointermove', onMove); } catch (e) {}
-        try { document.removeEventListener('pointerup', onUp); } catch (e) {}
-        try { controller._setToolState({ start: null, last: null, dragging: false }, { updateOverlay: true }); } catch (e) {}
-      };
+      return cleanup;
     } catch (err) {
       return () => {};
     }
@@ -651,9 +676,11 @@ function GameOfLifeApp(props) {
   // --- Overlay tracking effect ---
   useEffect(() => {
     // Only show overlay if a shape is selected and cursor is on the grid
+    const dragging = toolStateRef.current && toolStateRef.current.dragging;
     if (
       gameRef.current &&
       gameRef.current.model &&
+      typeof gameRef.current.model.setOverlay === 'function' &&
       selectedShape &&
       Array.isArray(selectedShape.cells) &&
       selectedShape.cells.length > 0 &&
@@ -672,19 +699,31 @@ function GameOfLifeApp(props) {
       const offsetX = Math.floor(shapeWidth / 2) + minX;
       const offsetY = Math.floor(shapeHeight / 2) + minY;
       const origin = { x: cursorCell.x - offsetX, y: cursorCell.y - offsetY };
-      const overlay = makeShapePreviewWithCrosshairsOverlay(
-        selectedShape.cells,
-        origin,
-        cursorCell
-      );
+      let overlay;
+      if (dragging) {
+        overlay = makeShapePreviewWithCrosshairsOverlay(
+          selectedShape.cells,
+          origin,
+          cursorCell
+        );
+      } else {
+        overlay = makeShapePreviewOverlay(
+          selectedShape.cells,
+          origin
+        );
+      }
       gameRef.current.model.setOverlay(overlay);
       gameRef.current.controller?.requestRender?.();
-    } else if (gameRef.current && gameRef.current.model) {
+    } else if (
+      gameRef.current &&
+      gameRef.current.model &&
+      typeof gameRef.current.model.setOverlay === 'function'
+    ) {
       // Clear overlay if no shape or cursor
       gameRef.current.model.setOverlay(null);
       gameRef.current.controller?.requestRender?.();
     }
-  }, [cursorCell, selectedShape]);
+  }, [cursorCell, selectedShape, toolStateRef]);
 
   // --- Handlers ---
   const handleSelectShape = useCallback(shape => {
@@ -1214,7 +1253,9 @@ function GameOfLifeApp(props) {
     setEnableFPSCap,
     setEnableGPSCap,
   backendBase: getBackendApiBase(),
-    onAddRecent: handleAddRecent
+    onAddRecent: handleAddRecent,
+    liveCellsCount: getLiveCells().size,
+    generation
   };
 
   // --- Render ---

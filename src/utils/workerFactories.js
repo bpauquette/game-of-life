@@ -40,7 +40,8 @@ async function runNamesLoop(msg, faux) {
     if (!page.items.length || (page.total && offset >= page.total)) break;
     await new Promise(r => setTimeout(r, 30));
   }
-  setTimeout(() => { if (faux.onmessage) faux.onmessage({ data: { type: 'done' } }); }, 0);
+  // Add a small delay to ensure 'page' is delivered before 'done'
+  setTimeout(() => { if (faux.onmessage) faux.onmessage({ data: { type: 'done' } }); }, 10);
 }
 
 function postPage(faux, items, total, offset) {

@@ -39,8 +39,7 @@
   },
   "jest": {
     "collectCoverageFrom": [
-      "src/gameLogic.js",
-      "src/utils/populationUtils.js"
+      "src/**/*.{js,jsx,ts,tsx}"
     ]
   },
   "eslintConfig": {
