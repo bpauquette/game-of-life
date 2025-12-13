@@ -37,7 +37,11 @@ function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpe
       <IconButton size="small" onClick={onOpenImport} aria-label="import"><Tooltip title="Import Shape"><ImportIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={openLifeWiki} aria-label="lifewiki"><Tooltip title="LifeWiki"><LanguageIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
-      <IconButton size="small" onClick={onOpenAbout} aria-label="about"><Tooltip title="About"><InfoIcon fontSize="small" /></Tooltip></IconButton>
+      <Tooltip title={`Version: v${FRONTEND_VERSION}\nBuild: ${FRONTEND_TIMESTAMP}`.replace(/\n/g, '\u000A')} placement="bottom">
+        <span>
+          <IconButton size="small" onClick={onOpenAbout} aria-label="about"><InfoIcon fontSize="small" /></IconButton>
+        </span>
+      </Tooltip>
       <IconButton size="small" onClick={onOpenOptions} aria-label="options" data-testid="options-icon-button"><SettingsIcon fontSize="small" /></IconButton>
       {/* User profile icon to the right of settings */}
       <IconButton size="small" onClick={onOpenUser} aria-label="user-profile" data-testid="user-profile-icon">
@@ -255,10 +259,7 @@ export default function HeaderBar({
               onOpenUser={handleUserIconClick}
               loggedIn={!!token}
             />
-            {/* Version info right-aligned in header */}
-            <Box sx={{ ml: 2, color: '#eee', fontSize: 12, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-              v{FRONTEND_VERSION} | {FRONTEND_TIMESTAMP}
-            </Box>
+            {/* Version info is now shown as a tooltip on the About icon */}
             {/* User authentication dialog/modal */}
             {userDialogOpen && (
               <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, background: 'rgba(0,0,0,0.5)' }}>
