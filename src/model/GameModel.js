@@ -544,7 +544,7 @@ export class GameModel {
       Math.max(windowSize * 1.5, 40);
       
     if (this.populationHistory.length < minHistory) {
-      console.log(`🔍 [Stability] Not enough history: ${this.populationHistory.length} < ${minHistory} (${isHashlife ? 'hashlife' : 'normal'})`);
+      // console.log(`🔍 [Stability] Not enough history: ${this.populationHistory.length} < ${minHistory} (${isHashlife ? 'hashlife' : 'normal'})`);
       return false;
     }
 
@@ -626,15 +626,7 @@ export class GameModel {
       
       // Debug plateau detection
       if (this.generation >= 500 && this.generation <= 505) {
-        console.log(`🔍 [Plateau Debug] Gen ${this.generation}:`, {
-          lastSample,
-          uniqueValues,
-          uniqueCount: uniqueValues.length,
-          plateauStable,
-          isHashlife: this.engineMode === 'hashlife',
-          batchSize: this.generationBatchSize,
-          effectiveTolerance
-        });
+        // Plateau debug logging removed
       }
     }
     

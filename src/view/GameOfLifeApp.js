@@ -2,6 +2,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 // canvas manager removed in favor of single MVC renderer
 import { useShapeManager } from './hooks/useShapeManager';
 import useGridMousePosition from './hooks/useGridMousePosition';
+import { makeShapePreviewOverlay, makeShapePreviewWithCrosshairsOverlay } from '../overlays/overlayTypes';
 import useInitialShapeLoader from '../hooks/useInitialShapeLoader';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
@@ -365,12 +366,12 @@ function GameOfLifeApp(props) {
         // Log only first detection and major milestones
         const firstDetection = steady && !steadyInfo?.steady;
         if (firstDetection) {
-          console.log(`Stability detected: Gen ${generation}, Pop ${modelPopHistory[modelPopHistory.length - 1]}, Period ${period || 1}`);
+          // Stability detected log removed
           
           // Always pause immediately when stability is detected
           setIsRunningCombined(false);
         } else if (!steady && modelPopHistory.length % 100 === 0) {
-          console.log(`Gen ${generation}: Still evolving (${modelPopHistory.length} checked)`);
+          // Still evolving log removed
         }
       } catch (err) {
         // eslint-disable-next-line no-console
@@ -647,11 +648,50 @@ function GameOfLifeApp(props) {
   // track cursor using the canvas DOM element
   const cursorCell = useGridMousePosition({ canvasRef, cellSize, offsetRef });
 
+  // --- Overlay tracking effect ---
+  useEffect(() => {
+    // Only show overlay if a shape is selected and cursor is on the grid
+    if (
+      gameRef.current &&
+      gameRef.current.model &&
+      selectedShape &&
+      Array.isArray(selectedShape.cells) &&
+      selectedShape.cells.length > 0 &&
+      cursorCell &&
+      typeof cursorCell.x === 'number' && typeof cursorCell.y === 'number'
+    ) {
+      // Compute shape bounds to center overlay on cursor
+      const xs = selectedShape.cells.map(c => c.x);
+      const ys = selectedShape.cells.map(c => c.y);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const shapeWidth = maxX - minX + 1;
+      const shapeHeight = maxY - minY + 1;
+      const offsetX = Math.floor(shapeWidth / 2) + minX;
+      const offsetY = Math.floor(shapeHeight / 2) + minY;
+      const origin = { x: cursorCell.x - offsetX, y: cursorCell.y - offsetY };
+      const overlay = makeShapePreviewWithCrosshairsOverlay(
+        selectedShape.cells,
+        origin,
+        cursorCell
+      );
+      gameRef.current.model.setOverlay(overlay);
+      gameRef.current.controller?.requestRender?.();
+    } else if (gameRef.current && gameRef.current.model) {
+      // Clear overlay if no shape or cursor
+      gameRef.current.model.setOverlay(null);
+      gameRef.current.controller?.requestRender?.();
+    }
+  }, [cursorCell, selectedShape]);
+
   // --- Handlers ---
   const handleSelectShape = useCallback(shape => {
     gameRef.current?.setSelectedShape?.(shape);
     shapeManager.selectShape(shape);
   }, [shapeManager]);
+
   const handleAddRecent = useCallback((shape) => {
     shapeManager.addRecentShape?.(shape);
   }, [shapeManager]);
