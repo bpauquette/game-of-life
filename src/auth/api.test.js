@@ -14,7 +14,7 @@ describe('API post function', () => {
 
     const result = await post('/test', { key: 'value' });
 
-    expect(fetch).toHaveBeenCalledWith('http://localhost:55000/auth/test', {
+    expect(fetch).toHaveBeenCalledWith('http://localhost/api/auth/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: 'value' }),
@@ -23,13 +23,17 @@ describe('API post function', () => {
   });
 
   test('uses REACT_APP_API_BASE if set', async () => {
+    // Simulate Node environment (no window)
+    delete global.window;
     process.env.REACT_APP_API_BASE = 'https://api.example.com';
+    jest.resetModules();
+    const { post } = require('./api');
     const mockResponse = { ok: true, json: () => Promise.resolve({}) };
     fetch.mockResolvedValue(mockResponse);
 
     await post('/test', {});
 
-    expect(fetch).toHaveBeenCalledWith('https://api.example.com/test', expect.any(Object));
+    expect(fetch).toHaveBeenCalledWith('https://api.example.com/api/auth/test', expect.any(Object));
     delete process.env.REACT_APP_API_BASE;
   });
 
@@ -41,17 +45,16 @@ describe('API post function', () => {
   });
 
   test('dispatches logout event on token expiry', async () => {
+    // Ensure window exists for this test
+    if (!global.window) global.window = {};
+    global.window.dispatchEvent = jest.fn();
     const mockResponse = { ok: true, json: () => Promise.resolve({ error: 'Invalid or expired token' }) };
     fetch.mockResolvedValue(mockResponse);
 
-    const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
-
     await post('/test', {});
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(expect.any(CustomEvent));
-    expect(dispatchEventSpy.mock.calls[0][0].type).toBe('auth:logout');
-
-    dispatchEventSpy.mockRestore();
+    expect(global.window.dispatchEvent).toHaveBeenCalledWith(expect.any(CustomEvent));
+    expect(global.window.dispatchEvent.mock.calls[0][0].type).toBe('auth:logout');
   });
 
   test('handles fetch errors', async () => {
@@ -63,6 +66,8 @@ describe('API post function', () => {
   test('uses browser /api/auth if in browser', () => {
     const originalWindow = global.window;
     global.window = { location: { origin: 'https://example.com' } };
+    jest.resetModules();
+    const { getAuthApiBase } = require('./api');
     expect(getAuthApiBase()).toBe('https://example.com/api/auth');
     global.window = originalWindow;
   });

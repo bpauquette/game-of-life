@@ -9,7 +9,7 @@ import LoadingShapesOverlay from './LoadingShapesOverlay';
 import { loadGridIntoGame, rotateAndApply } from './utils/gameUtils';
 import { colorSchemes } from '../model/colorSchemes';
 // tools are registered by GameMVC; no direct tool imports needed here
-import { saveCapturedShapeToBackend, resolveBackendBase } from '../utils/backendApi';
+import { saveCapturedShapeToBackend, getBackendApiBase } from '../utils/backendApi';
 import { useProtectedAction } from '../auth/useProtectedAction';
 import GameUILayout from './GameUILayout';
 import './GameOfLife.css';
@@ -443,7 +443,7 @@ function GameOfLifeApp(props) {
     if (!memoryTelemetryEnabled) {
       return undefined;
     }
-    const base = resolveBackendBase() || '';
+    const base = getBackendApiBase() || '';
     const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
     const stopLogger = startMemoryLogger({
       label: 'GOL Memory',
@@ -1173,7 +1173,7 @@ function GameOfLifeApp(props) {
     setMaxGPS,
     setEnableFPSCap,
     setEnableGPSCap,
-  backendBase: resolveBackendBase(),
+  backendBase: getBackendApiBase(),
     onAddRecent: handleAddRecent
   };
 

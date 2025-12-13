@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import PropTypes from 'prop-types';
 import { useAuth } from '../../auth/AuthProvider';
-import { resolveBackendBase } from '../../utils/backendApi';
+import { getBackendApiBase } from '../../utils/backendApi';
 
 const ImportShapeDialog = ({ open, onClose, onImportSuccess }) => {
   const { token } = useAuth();
@@ -30,7 +30,7 @@ const ImportShapeDialog = ({ open, onClose, onImportSuccess }) => {
     setError('');
 
     try {
-      const base = resolveBackendBase();
+      const base = getBackendApiBase();
       const response = await fetch(`${base}/v1/import-rle`, {
         method: 'POST',
         headers: {

@@ -3,17 +3,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 
-// Mock the backendApi module used by ShapePaletteDialog
-jest.mock('../view/../utils/backendApi', () => {
-  return {
-    fetchShapeNames: jest.fn(),
-    getBaseUrl: (b) => (b || ''),
-    fetchShapeById: jest.fn(),
-    createShape: jest.fn(),
-    checkBackendHealth: jest.fn().mockResolvedValue(true),
-    deleteShapeById: jest.fn()
-  };
-});
+// (Removed broken/stray return and duplicate mock)
+jest.mock('../view/../utils/backendApi', () => ({
+  fetchShapeNames: jest.fn(),
+  getBackendApiBase: () => 'http://localhost:55000/api',
+  fetchShapeById: jest.fn(),
+  createShape: jest.fn(),
+  checkBackendHealth: jest.fn().mockResolvedValue(true),
+  deleteShapeById: jest.fn()
+}));
 
 // The module under test must be imported after the mocked module is declared.
 /* eslint-disable import/first */

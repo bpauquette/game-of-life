@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { FRONTEND_VERSION, FRONTEND_TIMESTAMP } from '../version';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -217,7 +218,7 @@ export default function HeaderBar({
   return (
     <>
       {/* Three-row header: RunControlGroup, ToolGroup, RecentShapesStrip */}
-  <Box ref={headerRef} sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30, width: '100vw', backgroundColor: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+      <Box ref={headerRef} sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30, width: '100vw', backgroundColor: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
         {/* First row: Save/Load and Run controls */}
         <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, gap: 0.5 }}>
           <Stack direction="row" spacing={0.5} alignItems="center">
@@ -254,6 +255,10 @@ export default function HeaderBar({
               onOpenUser={handleUserIconClick}
               loggedIn={!!token}
             />
+            {/* Version info right-aligned in header */}
+            <Box sx={{ ml: 2, color: '#eee', fontSize: 12, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+              v{FRONTEND_VERSION} | {FRONTEND_TIMESTAMP}
+            </Box>
             {/* User authentication dialog/modal */}
             {userDialogOpen && (
               <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, background: 'rgba(0,0,0,0.5)' }}>

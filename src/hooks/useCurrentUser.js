@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
 
-// Simple helper to resolve backend base URL.
-// Adjust if you already have a central backend config.
-const backendBase = (typeof window !== 'undefined' && window.location)
-  ? window.location.origin + '/api'
-  : process.env.REACT_APP_API_BASE || 'http://localhost:55000';
+import { getBackendApiBase } from '../utils/backendApi';
+const backendBase = getBackendApiBase();
 
 export function useCurrentUser(token) {
   const [user, setUser] = useState(null);
