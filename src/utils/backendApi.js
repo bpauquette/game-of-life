@@ -1,3 +1,4 @@
+import logger from '../controller/utils/logger';
 // Update shape public/private status
 export async function updateShapePublic(id, isPublic) {
   const url = `${getBackendApiBase()}/v1/shapes/${encodeURIComponent(id)}/public`;
@@ -17,7 +18,6 @@ export async function updateShapePublic(id, isPublic) {
   }
   return await res.json();
 }
-import logger from '../controller/utils/logger';
 
 export function getBackendApiBase() {
     // Log the computed API base for debugging

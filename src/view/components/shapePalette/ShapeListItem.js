@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import ListItem from '@mui/material/ListItem';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
-// ...existing code...
 import ListItemButton from '@mui/material/ListItemButton';
 import Typography from '@mui/material/Typography';
 import { Delete as DeleteIcon, Public as PublicIcon, PublicOff as PublicOffIcon } from '@mui/icons-material';
@@ -12,16 +11,7 @@ import Tooltip from '@mui/material/Tooltip';
 import { updateShapePublic } from '../../../utils/backendApi';
 import logger from '../../../controller/utils/logger';
 import { fetchShapeById } from '../../../utils/backendApi';
-
-const hasShapeCells = (shape) => {
-  if (!shape) return false;
-  const has = (cells) => Array.isArray(cells) && cells.length > 0;
-  return has(shape.cells) || has(shape.pattern) || has(shape.liveCells);
-};
-
 const ShapeListItem = memo(function ShapeListItem({
-    const [publicLoading, setPublicLoading] = useState(false);
-    const [isPublic, setIsPublic] = useState(!!shape.public);
   shape,
   idx,
   colorScheme,
@@ -32,6 +22,15 @@ const ShapeListItem = memo(function ShapeListItem({
   user,
   backendBase,
 }) {
+  const hasShapeCells = (shape) => {
+    if (!shape) return false;
+    const has = (cells) => Array.isArray(cells) && cells.length > 0;
+    return has(shape.cells) || has(shape.pattern) || has(shape.liveCells);
+  };
+
+  const [publicLoading, setPublicLoading] = useState(false);
+  const [isPublic, setIsPublic] = useState(!!shape.public);
+
   const tRef = useRef(Date.now());
   const canvasRef = useRef(null);
   const [fullShape, setFullShape] = useState(null);
@@ -58,7 +57,7 @@ const ShapeListItem = memo(function ShapeListItem({
     if (!canvasRef.current || !cells.length) return;
     const ctx = canvasRef.current.getContext('2d');
     ctx.clearRect(0, 0, 16, 16);
-    
+
     // Compute bounds
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const cell of cells) {
@@ -72,7 +71,7 @@ const ShapeListItem = memo(function ShapeListItem({
     const width = maxX - minX + 1;
     const height = maxY - minY + 1;
     const scale = Math.min(16 / width, 16 / height);
-    
+
     ctx.save();
     ctx.scale(scale, scale);
     const cellSize = 1;
@@ -112,12 +111,12 @@ const ShapeListItem = memo(function ShapeListItem({
 
   const hoverId = shape?.id ?? null;
   return (
-    <ListItem 
-      key={`${keyBase}-${idx}`} 
-      disablePadding 
-      sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
+    <ListItem
+      key={`${keyBase}-${idx}`}
+      disablePadding
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
         width: '100%',
         px: 1,
         py: 0.5,
@@ -161,10 +160,10 @@ const ShapeListItem = memo(function ShapeListItem({
         <IconButton
           aria-label="Add to Recent"
           size="small"
-          sx={{ 
-            width: 28, 
-            height: 28, 
-            color: '#388e3c', 
+          sx={{
+            width: 28,
+            height: 28,
+            color: '#388e3c',
             bgcolor: 'rgba(56,142,60,0.08)',
             '&:hover': {
               bgcolor: 'rgba(56,142,60,0.15)'
@@ -182,11 +181,11 @@ const ShapeListItem = memo(function ShapeListItem({
       </Box>
 
       {/* Shape Icon - Fixed width center */}
-      <Box sx={{ 
-        width: 40, 
+      <Box sx={{
+        width: 40,
         height: 32,
-        display: 'flex', 
-        alignItems: 'center', 
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'center',
         mx: 0.5
       }}>
@@ -201,17 +200,17 @@ const ShapeListItem = memo(function ShapeListItem({
       </Box>
 
       {/* Shape Name - Constrained width centered */}
-      <Box sx={{ 
-        flex: '0 1 200px', 
+      <Box sx={{
+        flex: '0 1 200px',
         minWidth: 120,
         maxWidth: 250,
-        display: 'flex', 
-        justifyContent: 'center', 
-        px: 0.5 
+        display: 'flex',
+        justifyContent: 'center',
+        px: 0.5
       }}>
         <ListItemButton
           onClick={() => onSelect(shape)}
-          sx={{ 
+          sx={{
             py: 0,
             px: 1,
             borderRadius: 1,
@@ -225,7 +224,7 @@ const ShapeListItem = memo(function ShapeListItem({
         >
           <Typography
             variant="body2"
-            sx={{ 
+            sx={{
               fontWeight: 500,
               color: '#1976d2',
               fontSize: '0.875rem',
@@ -252,8 +251,8 @@ const ShapeListItem = memo(function ShapeListItem({
               event.stopPropagation();
               onRequestDelete(shape);
             }}
-            sx={{ 
-              width: 28, 
+            sx={{
+              width: 28,
               height: 28,
               color: 'text.secondary',
               '&:hover': {
