@@ -18,11 +18,15 @@ const useGridFileManager = (config = {}) => {
   const inFlightSaveRef = useRef(null);
 
   // Always use the correct base URL, never allow override
+  // Always use the correct base URL, never allow override
+  const getBackendApiBaseRef = useRef(null);
+  if (!getBackendApiBaseRef.current) {
+    getBackendApiBaseRef.current = require('../../utils/backendApi').getBackendApiBase;
+  }
   const getBaseUrl = useCallback(() => {
-    if (typeof window !== 'undefined' && window.location) {
-      return window.location.origin + '/api';
-    }
-    return process.env.REACT_APP_API_BASE || 'http://localhost:55000';
+    const base = getBackendApiBaseRef.current();
+    logger.info('[useGridFileManager] getBaseUrl:', base);
+    return base;
   }, []);
 
   // Convert live cells to serializable format
@@ -74,21 +78,21 @@ const useGridFileManager = (config = {}) => {
       
       abortControllerRef.current = new AbortController();
       const base = getBaseUrl();
-      const url = new URL('/v1/grids', base);
-      url.searchParams.set('_ts', String(Date.now()));
-      
-      const response = await fetch(url.toString(), {
-        signal: abortControllerRef.current.signal,
+      const url = `${base}/v1/grids?_ts=${Date.now()}`;
+      logger.info('[useGridFileManager] Fetching grids list:', url);
+      const response = await fetch(url, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' }
       });
-      
+      logger.info('[useGridFileManager] Response status:', response.status, response.statusText);
       if (response.ok === false) {
+        let errorText = '';
+        try { errorText = await response.text(); } catch {}
+        logger.error('[useGridFileManager] Failed to load grids, status:', response.status, 'body:', errorText);
         throw new Error(`Failed to load grids: ${response.status}`);
       }
-      
       const grids = await response.json();
-      logger.info('Loaded grids from backend:', grids.length, 'grids');
+      logger.info('[useGridFileManager] Loaded grids from backend:', grids.length, 'grids');
       setSavedGrids(grids);
     } catch (error_) {
       if (error_.name !== 'AbortError') {
@@ -123,6 +127,7 @@ const useGridFileManager = (config = {}) => {
       'Cache-Control': 'no-cache',
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     };
+    logger.info('[useGridFileManager] Posting grid to:', url.toString(), 'data:', gridData);
     const response = await fetch(url.toString(), {
       method: 'POST',
       headers,
@@ -130,8 +135,10 @@ const useGridFileManager = (config = {}) => {
       signal: ac.signal,
       cache: 'no-store',
     });
+    logger.info('[useGridFileManager] POST response status:', response.status, response.statusText);
     if (!response.ok) {
       const errorText = await extractErrorText(response);
+      logger.error('[useGridFileManager] Failed to save grid, status:', response.status, 'error:', errorText);
       if (errorText === 'Invalid or expired token') {
         try {
           const { logout } = require('../../auth/AuthProvider');
@@ -205,9 +212,8 @@ const useGridFileManager = (config = {}) => {
           generation: generation || 0,
         };
 
-        const base = getBaseUrl();
-        const url = new URL('/v1/grids', base);
-        url.searchParams.set('_ts', String(Date.now()));
+            const base = getBaseUrl();
+            const url = `${base}/v1/grids?_ts=${Date.now()}`;
 
         const response = await postGridWithRetry(url, gridData, 3, 30000);
 
@@ -247,28 +253,27 @@ const useGridFileManager = (config = {}) => {
     setError(null);
 
     try {
-  const base = getBaseUrl();
-  const url = new URL(`/v1/grids/${encodeURIComponent(gridId)}`, base);
-  url.searchParams.set('_ts', String(Date.now()));
-      
-  const response = await fetch(url.toString(), { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
-
-      if (response.ok === false) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to load grid: ${response.status}`);
-      }
-
-      const gridData = await response.json();
-      const liveCells = deserializeLiveCells(gridData.liveCells);
-      
-      // Return grid data with deserialized live cells
-      const result = {
-        ...gridData,
-        liveCells
-      };
-      
-      logger.info('Grid loaded successfully:', gridData.name);
-      return result;
+    const base = getBaseUrl();
+    const url = `${base}/v1/grids/${encodeURIComponent(gridId)}?_ts=${Date.now()}`;
+    logger.info('[useGridFileManager] Loading grid:', url);
+    const response = await fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+    logger.info('[useGridFileManager] Load grid response status:', response.status, response.statusText);
+    if (response.ok === false) {
+      let errorText = '';
+      try { errorText = await response.text(); } catch {}
+      logger.error('[useGridFileManager] Failed to load grid, status:', response.status, 'body:', errorText);
+      const errorData = (() => { try { return JSON.parse(errorText); } catch { return {}; } })();
+      throw new Error(errorData.error || `Failed to load grid: ${response.status}`);
+    }
+    const gridData = await response.json();
+    const liveCells = deserializeLiveCells(gridData.liveCells);
+    // Return grid data with deserialized live cells
+    const result = {
+      ...gridData,
+      liveCells
+    };
+    logger.info('[useGridFileManager] Grid loaded successfully:', gridData.name);
+    return result;
     } catch (error_) {
       logger.error('Failed to load grid:', error_.message);
       setError('Failed to load grid: ' + error_.message);
@@ -289,22 +294,22 @@ const useGridFileManager = (config = {}) => {
 
     try {
       const base = getBaseUrl();
-      const url = new URL(`/v1/grids/${encodeURIComponent(gridId)}`, base);
-      url.searchParams.set('_ts', String(Date.now()));
-      
-      const response = await fetch(url.toString(), {
+      const url = `${base}/v1/grids/${encodeURIComponent(gridId)}?_ts=${Date.now()}`;
+      logger.info('[useGridFileManager] Deleting grid:', url);
+      const response = await fetch(url, {
         method: 'DELETE',
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' }
       });
-
+      logger.info('[useGridFileManager] Delete grid response status:', response.status, response.statusText);
       if (response.ok === false) {
-        const errorData = await response.json().catch(() => ({}));
+        let errorText = '';
+        try { errorText = await response.text(); } catch {}
+        logger.error('[useGridFileManager] Failed to delete grid, status:', response.status, 'body:', errorText);
+        const errorData = (() => { try { return JSON.parse(errorText); } catch { return {}; } })();
         throw new Error(errorData.error || `Failed to delete grid: ${response.status}`);
       }
-
-      logger.info('Grid deleted successfully:', gridId);
-      
+      logger.info('[useGridFileManager] Grid deleted successfully:', gridId);
       // Refresh the grids list
       await loadGridsList();
       

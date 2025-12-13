@@ -54,7 +54,9 @@ function postError(faux, message) {
 
 async function fetchNamesPage(base, qVal, limitVal, offset) {
   try {
-    const r = await fetchShapeNames(base, qVal, limitVal, offset);
+    const { getBackendApiBase } = require('./backendApi');
+    const baseUrl = base || getBackendApiBase();
+    const r = await fetchShapeNames(baseUrl, qVal, limitVal, offset);
     if (!r || !r.ok) return { ok: false, error: 'Backend error', items: [], total: 0 };
     return { ok: true, items: r.items || [], total: Number(r.total) || 0 };
   } catch (err) {

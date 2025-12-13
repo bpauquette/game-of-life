@@ -2,9 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './AuthProvider';
 
-const API_BASE = (typeof window !== 'undefined' && window.location)
-  ? window.location.origin + '/api'
-  : process.env.REACT_APP_API_BASE || 'http://localhost:55000';
+import { getBackendApiBase } from '../utils/backendApi';
+const API_BASE = getBackendApiBase();
 
 export function useAuthStatus() {
   const { token } = useAuth();
@@ -24,7 +23,8 @@ export function useAuthStatus() {
     async function checkMe() {
       setStatus('checking');
       try {
-        const res = await fetch(`${API_BASE}/v1/me`, {
+        const url = API_BASE.endsWith('/') ? API_BASE + 'v1/me' : API_BASE + '/v1/me';
+        const res = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
         });

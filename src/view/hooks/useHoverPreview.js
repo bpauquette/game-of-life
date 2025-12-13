@@ -19,7 +19,7 @@ export function useHoverPreview() {
   const [preview, setPreview] = useState(null);
   const workerRef = useRef(null);
   const debounceRef = useRef(null);
-  const cacheRef = useRef(new Map());
+    const cacheRef = useRef(new Map());
 
   const stopWorker = useCallback(() => {
     if (workerRef.current) {
@@ -74,8 +74,8 @@ export function useHoverPreview() {
     };
     worker.onerror = () => fetchDirect(id);
     worker.onmessageerror = () => fetchDirect(id);
-    try {
-      worker.postMessage({ type: 'start', id, base: resolveBackendBase() });
+      try {
+        worker.postMessage({ type: 'start', id, base: getBackendApiBase() });
     } catch (err) {
       logger.warn('[useHoverPreview] worker.postMessage failed', err);
       fetchDirect(id);

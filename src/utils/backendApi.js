@@ -1,15 +1,27 @@
 import logger from '../controller/utils/logger';
 
+export function getBackendApiBase() {
+    // Log the computed API base for debugging
+    if (typeof window !== 'undefined' && window.location) {
+    } else if (typeof process !== 'undefined' && process.env) {
+    }
+  // If REACT_APP_API_BASE is set, use it (for test or explicit override)
+  if (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE) {
+    return process.env.REACT_APP_API_BASE;
+  }
+  // Always append /api to window.location.origin in the browser
+  if (typeof window !== 'undefined' && window.location) {
+    let base = window.location.origin;
+    // Avoid double /api if already present
+    if (!base.endsWith('/api')) base += '/api';
+    return base;
+  }
+  // Fallback for non-browser/test
+  return 'http://localhost:55000/api';
+}
+
 function getAuthToken() {
   return sessionStorage.getItem('authToken');
-}
-// Resolve the backend base URL in a way that works for local dev and production.
-// Ensures local HTTPS calls go through Caddy (/api) and production uses same origin.
-export function resolveBackendBase() {
-  if (typeof window !== 'undefined' && window.location) {
-    return window.location.origin + '/api';
-  }
-  return process.env.REACT_APP_API_BASE || 'http://localhost:55000';
 }
 
 
@@ -22,7 +34,7 @@ export async function saveCapturedShapeToBackend(shapeData, logout) {
   delete shapeForBackend.pattern;
   // Check for duplicate name first (prefer client-side validation to avoid confusion)
   try {
-    const base = resolveBackendBase();
+    const base = getBackendApiBase();
     const nameToCheck = (shapeForBackend.name || '').trim();
     if (nameToCheck.length > 0) {
       const nameRes = await fetchShapeNames(base, nameToCheck, 1, 0);
@@ -47,7 +59,7 @@ export async function saveCapturedShapeToBackend(shapeData, logout) {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {})
   };
-  const response = await fetch(`${resolveBackendBase()}/v1/shapes`, {
+  const response = await fetch(`${getBackendApiBase()}/v1/shapes`, {
     method: 'POST',
     headers,
     body: JSON.stringify(shapeForBackend)
@@ -69,26 +81,11 @@ export async function saveCapturedShapeToBackend(shapeData, logout) {
   }
   return await response.json();
 }
-// Helper to resolve base URL
-export function getBaseUrl(backendBase) {
-  if (typeof backendBase === 'string' && backendBase.length > 0) {
-    return backendBase;
-  }
-  // Only return a value if running in a browser (window defined)
-  if (typeof window !== 'undefined' && window.location && window.location.origin) {
-    return String(window.location.origin);
-  }
-  // In Node.js/test, return undefined so resolveBackendBase is used
-  return undefined;
-}
 
 // Fetch shapes list
 export async function fetchShapes(base, q, limit, offset) {
-  const url = new URL('/v1/shapes', base);
-  url.searchParams.set('q', q);
-  url.searchParams.set('limit', String(limit));
-  url.searchParams.set('offset', String(offset));
-  const res = await fetch(url.toString());
+  const url = `${getBackendApiBase()}/v1/shapes?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`;
+  const res = await fetch(url);
   if (!res.ok) {
     return { ok: false, status: res.status, items: [], total: 0 };
   }
@@ -106,12 +103,10 @@ export async function fetchShapes(base, q, limit, offset) {
 // Fetch only shape names (id + name) in a single call when supported by the backend.
 // Falls back to fetching a large page of shapes and mapping to minimal metadata.
 export async function fetchShapeNames(base, q = '', limit = 50, offset = 0) {
+    // eslint-disable-next-line no-console
   try {
-    const url = new URL('/v1/shapes/names', base);
-    url.searchParams.set('q', q || '');
-    url.searchParams.set('limit', String(limit));
-    url.searchParams.set('offset', String(offset));
-    const res = await fetch(url.toString());
+    const url = `${getBackendApiBase()}/v1/shapes/names?q=${encodeURIComponent(q || '')}&limit=${limit}&offset=${offset}`;
+    const res = await fetch(url);
     if (!res.ok) return { ok: false, items: [], total: 0 };
     const data = await res.json().catch(() => ({}));
     const items = Array.isArray(data.items) ? data.items : [];
@@ -124,9 +119,9 @@ export async function fetchShapeNames(base, q = '', limit = 50, offset = 0) {
 
 // Fetch shape by ID
 export async function fetchShapeById(id, backendBase) {
-  const base = getBaseUrl(backendBase) || resolveBackendBase();
-  const url = new URL(`/v1/shapes/${encodeURIComponent(id)}`, base);
-  const res = await fetch(url.toString());
+    // eslint-disable-next-line no-console
+  const url = `${getBackendApiBase()}/v1/shapes/${encodeURIComponent(id)}`;
+  const res = await fetch(url);
   if (!res.ok) return { ok: false };
   try {
     const data = await res.json();
@@ -139,9 +134,8 @@ export async function fetchShapeById(id, backendBase) {
 
 // Delete shape by ID
 export async function deleteShapeById(id, backendBase) {
-  const base = getBaseUrl(backendBase) || resolveBackendBase();
-  const url = new URL(`/v1/shapes/${encodeURIComponent(id)}`, base);
-  const res = await fetch(url.toString(), { method: 'DELETE' });
+  const url = `${getBackendApiBase()}/v1/shapes/${encodeURIComponent(id)}`;
+  const res = await fetch(url, { method: 'DELETE' });
   let bodyText = '';
   try { bodyText = await res.text(); } catch { /* ignore */ }
   return {
@@ -153,14 +147,14 @@ export async function deleteShapeById(id, backendBase) {
 
 // Create shape
 export async function createShape(shape, backendBase) {
-  const base = getBaseUrl(backendBase) || resolveBackendBase();
-  const url = new URL('/v1/shapes', base);
+    // eslint-disable-next-line no-console
+  const url = `${getBackendApiBase()}/v1/shapes`;
   const token = getAuthToken();
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {})
   };
-  const res = await fetch(url.toString(), {
+  const res = await fetch(url, {
     method: 'POST',
     headers,
     body: JSON.stringify(shape)
@@ -170,20 +164,19 @@ export async function createShape(shape, backendBase) {
 
 // Health check
 export async function checkBackendHealth(backendBase) {
+    // eslint-disable-next-line no-console
   try {
-    // Always use resolveBackendBase (hardcoded for container)
-    const base = resolveBackendBase();
-    const healthUrl = new URL('/v1/health', base);
+    // Always use getBackendApiBase (hardcoded for container)
+    const base = getBackendApiBase();
+    const healthUrl = base.replace(/\/$/, '') + '/v1/health';
     // Debug log: print the URL being used
     // eslint-disable-next-line no-console
-    console.log('[checkBackendHealth] Fetching:', healthUrl.toString());
-    const response = await fetch(healthUrl.toString(), {
+    const response = await fetch(healthUrl, {
       method: 'GET',
       timeout: 3000 // 3 second timeout
     });
     // Debug log: print status
     // eslint-disable-next-line no-console
-    console.log('[checkBackendHealth] Response status:', response.status);
     return response.ok;
   } catch (error) {
     // Debug log: print error

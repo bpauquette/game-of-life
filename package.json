@@ -28,7 +28,7 @@
     "build:version": "node ./scripts/write-version.js",
     "build": "npm run build:version && craco build",
     "build:hashlife-worker": "npx esbuild src/model/hashlife/worker.esm.js --bundle --platform=browser --format=esm --outfile=public/model/hashlife/worker.thread.js",
-    "test": "cross-env NODE_OPTIONS='--no-deprecation=DEP0040' craco test",
+    "test": "npm run build:version && cross-env CI=true NODE_OPTIONS='--no-deprecation=DEP0040' craco test --watchAll=false",
     "frontend:start": "node ./scripts/manage.js start",
     "frontend:stop": "node ./scripts/manage.js stop",
     "frontend:status": "node ./scripts/manage.js status",

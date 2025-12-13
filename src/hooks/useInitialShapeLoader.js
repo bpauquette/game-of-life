@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import logger from '../controller/utils/logger';
-import { fetchShapes, getBaseUrl } from '../utils/backendApi';
+import { fetchShapes, getBackendApiBase } from '../utils/backendApi';
 
 // Fetch the full catalog from the backend in paged requests and write to IDB.
 export default function useInitialShapeLoader({ strategy = 'background', batchSize = 200, autoStart = false, backendBase } = {}) {
@@ -16,7 +16,8 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
     setLoading(true);
     setReady(false);
     try {
-      const base = getBaseUrl(backendBase);
+      // Ignore backendBase, always use getBackendApiBase
+      const base = getBackendApiBase();
       const page = batchSize || 200;
       const all = await fetchAllPages(base, page, aborted, setProgress);
       if (!aborted.current) {

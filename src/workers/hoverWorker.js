@@ -1,13 +1,14 @@
 /* eslint-env worker */
 /* eslint-disable no-console */
+import { getBackendApiBase } from '../utils/backendApi.js';
 // hoverWorker.js - module worker to fetch a single shape preview
 // Keep a single active request and support aborting when a new start arrives.
 let currentId = null;
 let currentAbort = null;
 
-const base = (typeof self !== 'undefined' && self.location && self.location.origin)
-  ? self.location.origin + '/api'
-  : (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE) ? process.env.REACT_APP_API_BASE : 'http://localhost:55000';
+function resolveBase(msg) {
+  return (typeof msg.base === 'string' && msg.base.length > 0) ? msg.base : getBackendApiBase();
+}
 
 self.addEventListener('message', async (ev) => {
   const msg = ev.data || {};
@@ -25,7 +26,8 @@ self.addEventListener('message', async (ev) => {
     currentId = id;
     if (currentAbort) try { currentAbort.abort(); } catch (_) {}
     currentAbort = new AbortController();
-    const url = new URL('/v1/shapes/' + encodeURIComponent(id), base).toString();
+    const base = resolveBase(msg);
+    const url = `${base}/v1/shapes/${encodeURIComponent(id)}`;
     try {
       const res = await fetch(url, { signal: currentAbort.signal });
       if (!res.ok) { if (currentId === id) self.postMessage({ type: 'error', message: 'HTTP ' + res.status }); return; }

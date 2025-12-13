@@ -11,8 +11,6 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   IconButton,
-  Switch,
-  FormControlLabel,
   Typography,
   Box,
   Chip,
@@ -21,10 +19,9 @@ import {
 } from '@mui/material';
 import { Delete as DeleteIcon, Public as PublicIcon, Lock as LockIcon } from '@mui/icons-material';
 import { useAuth } from '../auth/AuthProvider';
+import { getBackendApiBase } from '../utils/backendApi';
 
-const baseUrl = (typeof window !== 'undefined' && window.location)
-  ? window.location.origin + '/api'
-  : process.env.REACT_APP_API_BASE || 'http://localhost:55000';
+const baseUrl = getBackendApiBase();
 
 const MyShapesDialog = ({ open, onClose }) => {
   const { token } = useAuth();
@@ -35,20 +32,16 @@ const MyShapesDialog = ({ open, onClose }) => {
 
   // Load user's shapes
   const loadShapes = useCallback(async () => {
-    console.log('MyShapesDialog: Loading shapes, token present:', !!token);
     setLoading(true);
     setError('');
     try {
-      console.log('MyShapesDialog: Fetching from', `${baseUrl}/v1/shapes/my`);
       const response = await fetch(`${baseUrl}/v1/shapes/my`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      console.log('MyShapesDialog: Response status', response.status);
       if (!response.ok) throw new Error('Failed to load shapes');
       const data = await response.json();
-      console.log('MyShapesDialog: Loaded shapes', data.items?.length || 0);
       setShapes(data.items);
     } catch (err) {
       console.error('MyShapesDialog: Error loading shapes', err);
