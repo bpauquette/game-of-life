@@ -105,7 +105,13 @@ const MyShapesDialog = ({ open, onClose }) => {
       <DialogTitle>My Shapes</DialogTitle>
       <DialogContent>
         {loading && <CircularProgress size={24} />}
-        {error && <Alert severity="error">{error}</Alert>}
+        {/* Only show error if not a 404/empty response */}
+        {error && error !== 'No shapes found' && <Alert severity="error">{error}</Alert>}
+        {!loading && shapes.length === 0 && !error && (
+          <Typography variant="body2" color="textSecondary">
+            No shapes for your user.
+          </Typography>
+        )}
         <List>
           {shapes.map(shape => (
             <ListItem key={shape.id}>

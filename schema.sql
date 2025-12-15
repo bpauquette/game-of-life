@@ -17,11 +17,11 @@ CREATE TABLE shapes (
     source_url TEXT,                        -- Original source URL
     rle_text TEXT,                          -- RLE encoded pattern (compact storage)
     cells_json TEXT,                        -- Parsed cells as compressed JSON blob
-    thumbnail_svg TEXT,                     -- SVG thumbnail (small)
-    thumbnail_png BLOB,                     -- PNG thumbnail (medium)
+    signature TEXT UNIQUE,                  -- Shape signature for deduplication
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN DEFAULT 1,            -- Soft delete flag
+    public BOOLEAN DEFAULT 0,               -- Public visibility flag
     search_vector TEXT                      -- FTS search data
 );
 
