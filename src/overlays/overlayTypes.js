@@ -30,8 +30,9 @@ export function makeShapePreviewOverlay(cells, origin, style = {}) {
     cells: normalizedCells,
     origin: normalizedOrigin,
     style: {
-      color: style.color || '#4CAF50',
+      color: style.color,
       alpha: typeof style.alpha === 'number' ? style.alpha : 0.6,
+      getCellColor: style.getCellColor,
     },
   };
 }
@@ -75,8 +76,9 @@ export function makeShapePreviewWithCrosshairsOverlay(cells, origin, cursor, sty
     origin: origin ? { x: origin.x, y: origin.y } : { x: 0, y: 0 },
     cursor: cursor ? { x: cursor.x, y: cursor.y } : { x: 0, y: 0 },
     style: {
-      color: style.color || '#4CAF50',
+      color: style.color,
       alpha: typeof style.alpha === 'number' ? style.alpha : 0.6,
+      getCellColor: style.getCellColor,
     },
   };
 }

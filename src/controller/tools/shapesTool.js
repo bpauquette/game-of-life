@@ -3,7 +3,7 @@ import { getShapeCells, getCenteredOrigin } from '../../utils/shapeGeometry';
 import { makeShapePreviewWithCrosshairsOverlay } from '../../overlays/overlayTypes';
 
 export const shapesTool = {
-  getOverlay(toolState) {
+  getOverlay(toolState, colorScheme) {
     const sel = toolState?.selectedShapeData;
     const last = toolState?.last;
     if (!sel || !last) return null;
@@ -13,8 +13,17 @@ export const shapesTool = {
     
     const origin = getCenteredOrigin(last, cells);
     const cursor = { x: last.x, y: last.y };
-    
-    return makeShapePreviewWithCrosshairsOverlay(cells, origin, cursor);
+    return makeShapePreviewWithCrosshairsOverlay(
+      cells,
+      origin,
+      cursor,
+      {
+        color: typeof colorScheme?.getCellColor === 'function'
+          ? colorScheme.getCellColor(0, 0)
+          : colorScheme?.cellColor || '#4CAF50',
+        alpha: 0.6,
+      }
+    );
   },
   onMouseDown(toolState, x, y) {
     toolState.start = { x, y };
