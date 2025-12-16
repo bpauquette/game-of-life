@@ -209,7 +209,12 @@ export class GameRenderer {
     this.ctx.lineWidth = 2.5;
     this.ctx.globalAlpha = 0.95;
 
-    const screenPos = this.cellToScreen(cursor.x, cursor.y);
+    // Prefer fractional cursor coordinates (fx/fy) when available so crosshairs
+    // track the pointer smoothly between cells and across zoom changes.
+    const effectiveCursorX = (cursor && Number.isFinite(cursor.fx)) ? cursor.fx : cursor.x;
+    const effectiveCursorY = (cursor && Number.isFinite(cursor.fy)) ? cursor.fy : cursor.y;
+
+    const screenPos = this.cellToScreen(effectiveCursorX, effectiveCursorY);
     if (screenPos) {
       const centerX = screenPos.x + this.viewport.cellSize / 2;
       const centerY = screenPos.y + this.viewport.cellSize / 2;

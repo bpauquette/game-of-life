@@ -703,8 +703,20 @@ function GameOfLifeApp(props) {
       const offsetX = Math.floor(shapeWidth / 2) + minX;
       const offsetY = Math.floor(shapeHeight / 2) + minY;
       // Prefer fractional cursor coords when available so crosshairs track
-      // the pointer precisely even at small cell sizes.
-      const cursorForOverlay = (cursorCell && typeof cursorCell.fx === 'number') ? { x: cursorCell.fx, y: cursorCell.fy } : cursorCell;
+      // the pointer precisely even at small cell sizes. Preserve both the
+      // integer and fractional fields so the overlay factory can consume
+      // sub-cell precision while retaining legacy integer coordinates.
+      const cursorForOverlay = cursorCell
+        ? {
+            x: (typeof cursorCell.fx === 'number' ? cursorCell.fx : cursorCell.x),
+            y: (typeof cursorCell.fy === 'number' ? cursorCell.fy : cursorCell.y),
+            fx: typeof cursorCell.fx === 'number' ? cursorCell.fx : cursorCell.x,
+            fy: typeof cursorCell.fy === 'number' ? cursorCell.fy : cursorCell.y,
+            // include integer coords too
+            ix: cursorCell.x,
+            iy: cursorCell.y,
+          }
+        : null;
       const origin = { x: (cursorForOverlay?.x ?? cursorCell.x) - offsetX, y: (cursorForOverlay?.y ?? cursorCell.y) - offsetY };
       let overlay;
       const authoritativeColorScheme = getAuthoritativeColorScheme();
@@ -712,7 +724,9 @@ function GameOfLifeApp(props) {
         overlay = makeShapePreviewWithCrosshairsOverlay(
           selectedShape.cells,
           origin,
-          cursorForOverlay || cursorCell,
+          // Pass a cursor descriptor that includes both integer and fractional
+          // coordinates so downstream rendering can prefer fractional values.
+          (cursorForOverlay || (cursorCell ? { x: cursorCell.x, y: cursorCell.y, fx: cursorCell.x, fy: cursorCell.y } : null)),
           {
             color: authoritativeColorScheme.cellColor || '#4CAF50',
             alpha: 0.6,

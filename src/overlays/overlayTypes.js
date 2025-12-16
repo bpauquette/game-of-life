@@ -74,7 +74,11 @@ export function makeShapePreviewWithCrosshairsOverlay(cells, origin, cursor, sty
     type: OVERLAY_TYPES.SHAPE_PREVIEW_WITH_CROSSHAIRS,
     cells: normalizedCells,
     origin: origin ? { x: origin.x, y: origin.y } : { x: 0, y: 0 },
-    cursor: cursor ? { x: cursor.x, y: cursor.y } : { x: 0, y: 0 },
+    // Preserve fractional cursor coordinates (fx/fy) when provided so the
+    // renderer can draw crosshairs at sub-cell precision during drags/zooms.
+    cursor: cursor
+      ? { x: cursor.x, y: cursor.y, fx: (typeof cursor.fx === 'number' ? cursor.fx : cursor.x), fy: (typeof cursor.fy === 'number' ? cursor.fy : cursor.y) }
+      : { x: 0, y: 0, fx: 0, fy: 0 },
     style: {
       color: style.color,
       alpha: typeof style.alpha === 'number' ? style.alpha : 0.6,
