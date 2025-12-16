@@ -17,9 +17,14 @@ export function eventToCellFromCanvas(e, canvas, offsetRef, cellSize) {
   const rect = canvas.getBoundingClientRect() || { width: 0, height: 0, left: 0, top: 0 };
   const centerX = (rect.width || 0) / 2;
   const centerY = (rect.height || 0) / 2;
-  const x = Math.floor(offsetRef.current.x + (e.clientX - rect.left - centerX) / cellSize);
-  const y = Math.floor(offsetRef.current.y + (e.clientY - rect.top - centerY) / cellSize);
-  return { x, y };
+  // Compute fractional (exact) cell coordinates first so callers can render
+  // overlays at sub-cell precision. Also provide integer cell indices for
+  // legacy callers that expect snapped values.
+  const fx = offsetRef.current.x + (e.clientX - rect.left - centerX) / cellSize;
+  const fy = offsetRef.current.y + (e.clientY - rect.top - centerY) / cellSize;
+  const x = Math.floor(fx);
+  const y = Math.floor(fy);
+  return { x, y, fx, fy };
 }
 
 export function drawLiveCells(ctx, liveMap, computedOffset, cellSize, colorScheme) {

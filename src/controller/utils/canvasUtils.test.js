@@ -32,7 +32,13 @@ describe('canvasUtils', () => {
     // centerX = 50, centerY = 50
     // x = 2 + (60-10-50)/10 = 2 + 0 = 2
     // y = 3 + (70-20-50)/10 = 3 + 0 = 3
-    expect(eventToCellFromCanvas(e, canvas, offsetRef, cellSize)).toEqual({ x: 2, y: 3 });
+    const result = eventToCellFromCanvas(e, canvas, offsetRef, cellSize);
+    // integer cell indices still match
+    expect(result.x).toBe(2);
+    expect(result.y).toBe(3);
+    // fractional coordinates should also be present and numeric
+    expect(typeof result.fx).toBe('number');
+    expect(typeof result.fy).toBe('number');
   });
 
   it('eventToCellFromCanvas returns null for missing args', () => {
