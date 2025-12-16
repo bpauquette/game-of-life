@@ -55,7 +55,9 @@ const ShapeListItem = memo(function ShapeListItem({
   // Draw mini preview
   useEffect(() => {
     if (!canvasRef.current || !cells.length) return;
-    const ctx = canvasRef.current.getContext('2d');
+    const getCtx = canvasRef.current.getContext;
+    const ctx = (typeof getCtx === 'function') ? getCtx.call(canvasRef.current, '2d') : null;
+    if (!ctx || typeof ctx.clearRect !== 'function') return;
     ctx.clearRect(0, 0, 16, 16);
 
     // Compute bounds
@@ -128,7 +130,7 @@ const ShapeListItem = memo(function ShapeListItem({
       }}
     >
       {/* Public/Private Checkbox for user shapes */}
-      {user && (
+      {user && shape?.userId !== 'system' && (
         <Tooltip title={isPublic ? 'Public (click to make private)' : 'Private (click to make public)'}>
           <span>
             <Checkbox
@@ -138,11 +140,16 @@ const ShapeListItem = memo(function ShapeListItem({
               disabled={publicLoading || (isPublic && shape.userId !== user.id)}
               onChange={async (e) => {
                 e.stopPropagation();
+                const prev = isPublic;
+                // optimistic UI update
+                setIsPublic(!prev);
                 setPublicLoading(true);
                 try {
-                  const result = await updateShapePublic(shape.id, !isPublic);
+                  const result = await updateShapePublic(shape.id, !prev);
                   setIsPublic(result.public);
                 } catch (err) {
+                  // revert on error
+                  setIsPublic(prev);
                   logger.warn('Failed to update public status:', err.message);
                 } finally {
                   setPublicLoading(false);

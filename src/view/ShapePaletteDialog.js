@@ -31,7 +31,7 @@ const hasShapeCells = (shape) => {
   return has(shape.cells) || has(shape.pattern) || has(shape.liveCells);
 };
 
-export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, colorSchemeKey = 'bio', onAddRecent, prefetchOnMount = false, recentShapes = [] }) {
+export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, colorSchemeKey = 'bio', onAddRecent, prefetchOnMount = false, recentShapes = [], fetchShapes, checkBackendHealth }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useAuth();
@@ -51,7 +51,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     hydrateShape,
     deleteShape,
     createShapeInBackend
-  } = useShapePaletteSearch({ open, backendBase, prefetchOnMount });
+  } = useShapePaletteSearch({ open, backendBase, prefetchOnMount, fetchShapes, checkBackendHealth });
 
     // Local preview state for selected shape
     const [selectedShape, setSelectedShape] = useState(null);

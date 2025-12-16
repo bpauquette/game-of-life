@@ -587,9 +587,10 @@ function GameOfLifeApp(props) {
       try { gameRef.current.setSelectedTool?.('shapes'); } catch (e) {}
 
       // compute initial cell and set tool state
+      const getEffectiveCellSize = () => (offsetRef?.current?.cellSize || cellSize);
       const updateLastFromEvent = (ev) => {
         try {
-          const pt = eventToCellFromCanvas(ev, canvas, offsetRef, cellSize);
+          const pt = eventToCellFromCanvas(ev, canvas, offsetRef, getEffectiveCellSize());
           if (pt) {
             controller._setToolState({ selectedShapeData: shape, start: pt, last: pt, dragging: true }, { updateOverlay: true });
           }
@@ -610,7 +611,7 @@ function GameOfLifeApp(props) {
       const onUp = (ev) => {
         try {
           updateLastFromEvent(ev);
-          const finalPt = eventToCellFromCanvas(ev, canvas, offsetRef, cellSize);
+          const finalPt = eventToCellFromCanvas(ev, canvas, offsetRef, getEffectiveCellSize());
           if (finalPt) {
             // Delegate to controller's tool mouse-up handler so undo/diffs are recorded
             try {
@@ -701,14 +702,17 @@ function GameOfLifeApp(props) {
       const shapeHeight = maxY - minY + 1;
       const offsetX = Math.floor(shapeWidth / 2) + minX;
       const offsetY = Math.floor(shapeHeight / 2) + minY;
-      const origin = { x: cursorCell.x - offsetX, y: cursorCell.y - offsetY };
+      // Prefer fractional cursor coords when available so crosshairs track
+      // the pointer precisely even at small cell sizes.
+      const cursorForOverlay = (cursorCell && typeof cursorCell.fx === 'number') ? { x: cursorCell.fx, y: cursorCell.fy } : cursorCell;
+      const origin = { x: (cursorForOverlay?.x ?? cursorCell.x) - offsetX, y: (cursorForOverlay?.y ?? cursorCell.y) - offsetY };
       let overlay;
       const authoritativeColorScheme = getAuthoritativeColorScheme();
       if (dragging) {
         overlay = makeShapePreviewWithCrosshairsOverlay(
           selectedShape.cells,
           origin,
-          cursorCell,
+          cursorForOverlay || cursorCell,
           {
             color: authoritativeColorScheme.cellColor || '#4CAF50',
             alpha: 0.6,

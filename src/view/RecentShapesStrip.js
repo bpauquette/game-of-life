@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useRef, useState, useMemo, useLayoutEffect } from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
+import useInputType from './hooks/useInputType';
 
 const thumbnailSize = 64;
 
@@ -97,6 +98,10 @@ const RecentShapesStrip = ({
     }
     // If cleared, keep previous zoom
   }, [slots, colorScheme]);
+
+  // Detect current input device (mouse, touch, pen) so child components
+  // can adjust interactions for touch vs mouse if needed.
+  const inputType = useInputType();
 
   const bg = (colorScheme && (colorScheme.panelBackground || colorScheme.background)) || '#111217';
   const panelBorder = '1px solid rgba(255,255,255,0.04)';
