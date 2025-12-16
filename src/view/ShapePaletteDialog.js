@@ -9,12 +9,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import logger from '../controller/utils/logger';
-import {
-  fetchShapeById,
-  createShape,
-  checkBackendHealth,
-  deleteShapeById,
-} from '../utils/backendApi';
+import { fetchShapeById, createShape, deleteShapeById, checkBackendHealth } from '../utils/backendApi';
 import SearchBar from './components/SearchBar';
 import PreviewPanel from './components/PreviewPanel';
 import { useShapePaletteSearch } from './hooks/useShapePaletteSearch';
@@ -25,6 +20,7 @@ import {
   SnackMessage,
   BackendServerDialog,
 } from './components/shapePalette';
+import ShapePaletteView from './ShapePaletteView';
 import { useAuth } from '../auth/AuthProvider';
 
 const LARGE_CATALOG_THRESHOLD = 1000;
@@ -51,7 +47,10 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     setBackendError,
     showBackendDialog,
     setShowBackendDialog,
-    retry
+    retry,
+    hydrateShape,
+    deleteShape,
+    createShapeInBackend
   } = useShapePaletteSearch({ open, backendBase, prefetchOnMount });
 
     // Local preview state for selected shape
@@ -83,63 +82,36 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
   const [snackUndoShape, setSnackUndoShape] = useState(null);
   const [snackDetails, setSnackDetails] = useState(null);
 
-  const ensureShapeHasCells = useCallback(async (shape) => {
-    if (!shape?.id || hasShapeCells(shape)) {
-      console.log('[ensureShapeHasCells] Shape already has cells:', shape?.id, hasShapeCells(shape));
-      return shape;
-    }
-    try {
-      console.log('[ensureShapeHasCells] Fetching shape:', shape?.id);
-      const res = await fetchShapeById(shape.id, backendBase);
-      console.log('[ensureShapeHasCells] Fetch result:', res?.ok, res?.data ? 'has data' : 'no data');
-      if (res?.ok && res.data) {
-        const hasCells = hasShapeCells(res.data);
-        console.log('[ensureShapeHasCells] Fetched shape has cells:', hasCells, res.data?.cells?.length);
-        if (hasCells) {
-          return res.data;
-        } else {
-          console.log('[ensureShapeHasCells] Fetched shape missing cells, rejecting');
-        }
-      } else {
-        console.log('[ensureShapeHasCells] Fetch failed:', res);
-      }
-    } catch (err) {
-      console.log('[ensureShapeHasCells] Fetch error:', err);
-      logger.warn('[ShapePaletteDialog] failed to hydrate shape for recents:', err);
-    }
-    return null; // Return null if we can't get cells
-  }, [backendBase]);
+  // hydration handled by hook: hydrateShape(id)
 
   const safeAddRecent = useCallback(async (shape) => {
     if (!shape) return;
-    console.log('[safeAddRecent] Starting for shape:', shape?.id, shape?.name);
     try {
-      const hydrated = await ensureShapeHasCells(shape);
-      console.log('[safeAddRecent] Hydrated shape:', hydrated?.id, hydrated ? 'has cells: ' + hasShapeCells(hydrated) : 'null');
+      const hydrate = hydrateShape || (async (s) => {
+        if (!s?.id || hasShapeCells(s)) return s;
+        const res = await fetchShapeById(s.id, backendBase);
+        return (res?.ok && res.data && hasShapeCells(res.data)) ? res.data : null;
+      });
+      const hydrated = await hydrate(shape);
       if (!hydrated) {
-        console.log('[safeAddRecent] No hydrated shape, showing error');
         setSnackMsg('Unable to load shape details');
         setSnackOpen(true);
         return;
       }
-      // Check if shape is already in recents BEFORE adding
       const alreadyInRecents = recentShapes.some(s => s.id === hydrated.id);
-      console.log('[safeAddRecent] Already in recents:', alreadyInRecents);
       if (alreadyInRecents) {
         setSnackMsg('Already in recents');
       } else {
-        console.log('[safeAddRecent] Adding to recents:', hydrated.id, hydrated.cells?.length, 'cells');
         onAddRecent?.(hydrated);
         setSnackMsg('Shape added to recents');
       }
       setSnackOpen(true);
     } catch (e) {
-      console.log('[safeAddRecent] Error:', e);
       logger.warn('onAddRecent failed:', e);
       setSnackMsg('Failed to add shape');
       setSnackOpen(true);
     }
-  }, [onAddRecent, ensureShapeHasCells, recentShapes]);
+  }, [onAddRecent, hydrateShape, recentShapes, backendBase]);
 
   const handleDeleteRequest = useCallback((shape) => {
     setToDelete(shape);
@@ -151,76 +123,66 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     setToDelete(null);
   }, []);
 
-  // Hydrate shape details before updating preview panel
+  // Hydrate shape details before updating preview panel (use hook)
   const handleShapeSelect = useCallback(async (shape) => {
     if (!shape?.id || hasShapeCells(shape)) {
       setSelectedShape(shape);
       return;
     }
     try {
-      const res = await fetchShapeById(shape.id, backendBase);
-      if (res?.ok && res.data && hasShapeCells(res.data)) {
-        setSelectedShape(res.data);
-      } else {
-        setSelectedShape(shape);
-      }
+      const hydrate = hydrateShape || (async (s) => {
+        if (!s?.id) return null;
+        const res = await fetchShapeById(s.id, backendBase);
+        return (res?.ok && res.data && hasShapeCells(res.data)) ? res.data : null;
+      });
+      const hydrated = await hydrate(shape);
+      setSelectedShape(hydrated || shape);
     } catch (err) {
       logger.warn('[ShapePaletteDialog] failed to hydrate shape for preview:', err);
       setSelectedShape(shape);
     }
-  }, [backendBase]);
+  }, [hydrateShape, backendBase]);
 
   const handleDelete = useCallback(async (shape) => {
     if (!shape) return;
     const id = shape.id;
     const old = results.slice();
-    // optimistic removal
-    setResults(results.filter(r => r.id !== id));
     setConfirmOpen(false);
     setToDelete(null);
     try {
-      const outcome = await deleteShapeById(id, backendBase);
-      if (outcome.ok) {
-        setSnackMsg('Shape deleted');
-        setSnackUndoShape(old.find(x => x.id === id) || null);
-        setSnackDetails(null);
-        setSnackOpen(true);
-      } else {
-        logger.warn('Delete failed:', outcome.status);
-        setSnackMsg('Delete failed');
-        setSnackDetails(outcome.details);
-        setSnackOpen(true);
-        // restore on failure
-        setResults(old);
-      }
+      const del = deleteShape || (async (iid) => {
+        const outcome = await deleteShapeById(iid, backendBase);
+        if (!outcome || !outcome.ok) throw new Error(outcome?.details || 'delete failed');
+        return outcome;
+      });
+      await del(id);
+      setSnackMsg('Shape deleted');
+      setSnackUndoShape(old.find(x => x.id === id) || null);
+      setSnackDetails(null);
+      setSnackOpen(true);
     } catch (err) {
-      setResults(old);
-      logger.error('Delete error:', err);
-      setSnackMsg('Delete error');
-      setSnackDetails(err?.stack ?? String(err));
+      logger.warn('Delete failed:', err);
+      setSnackMsg('Delete failed');
+      setSnackDetails(err?.message || String(err));
       setSnackOpen(true);
     }
-  }, [results, backendBase, setResults]);
-
-  const createShapeCb = useCallback(async (shape) => createShape(shape, backendBase), [backendBase]);
+  }, [results, deleteShape]);
 
   const handleUndo = useCallback(async () => {
     const shape = snackUndoShape;
     if (!shape) return;
     try {
-      const ok = await createShapeCb(shape);
-      if (ok) {
-        setResults(prev => [shape, ...prev]);
-        setSnackMsg('Restored');
-        setSnackUndoShape(null);
-      } else {
-        setSnackMsg('Restore failed');
-      }
+      const createCb = createShapeInBackend || (async (s) => createShape(s, backendBase));
+      const created = await createCb(shape);
+      const toInsert = created && created.id ? created : shape;
+      setResults(prev => [toInsert, ...prev]);
+      setSnackMsg('Restored');
+      setSnackUndoShape(null);
     } catch (err) {
       logger.error('Restore error:', err);
       setSnackMsg('Restore error');
     }
-  }, [snackUndoShape, createShapeCb, setResults]);
+  }, [snackUndoShape, createShapeInBackend, setResults]);
 
   const handleSnackClose = useCallback(() => {
     setSnackOpen(false);
@@ -266,115 +228,41 @@ The backend will start on the configured port.`);
   };
 
   return (
-    <>
-
-      {/* Intercept onClose to prevent closing while caching is in progress */}
-      <Dialog
-        open={open}
-        onClose={onClose}
-        disableEscapeKeyDown={false}
-        maxWidth={isMobile ? 'xs' : 'md'}
-        fullWidth
-        fullScreen={isMobile}
-        data-testid="shapes-palette"
-      >
-        <DialogTitle>Insert shape from catalog</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 2, maxHeight: '80vh', overflowX: 'hidden' }}>
-          {/* Hide the inline spinner to avoid a distracting persistent progress indicator.
-            Loading state still controls network/cache behavior but we don't show
-            the small spinner in the SearchBar to keep the UI calm. */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <SearchBar value={inputValue} onChange={setInputValue} onClose={onClose} />
-            <Box sx={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 1, p: 0 }}>
-              <PreviewPanel preview={selectedShape} colorScheme={colorScheme} colorSchemeKey={colorSchemeKey} onAddRecent={onAddRecent} compact={true} maxSvgSize={80} />
-            </Box>
-          </Box>
-          {/* Virtualized list keeps the palette responsive even with thousands of shapes */}
-          <Box
-            sx={{
-              position: 'relative',
-              flex: 1,
-              minHeight: 260,
-              gap: isMobile ? 2 : 1
-            }}
-            data-testid="shapes-list-scroll"
-          >
-            <ShapesList
-              items={shapesForRender}
-              colorScheme={colorScheme}
-              loading={loading}
-              onSelect={handleShapeSelect}
-              onDeleteRequest={handleDeleteRequest}
-              onAddRecent={safeAddRecent}
-              shapeSize={isMobile ? 64 : 40}
-              showShapeNames={isMobile}
-              user={user}
-              backendBase={backendBase}
-            />
-            {isInitialMobileLoad && (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 0.5,
-                  bgcolor: 'rgba(0,0,0,0.35)',
-                  borderRadius: 1,
-                  textAlign: 'center',
-                  px: 2
-                }}
-                aria-live="polite"
-              >
-                <CircularProgress size={32} thickness={4} />
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  Loading shapes catalog…
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  This may take a few seconds on mobile networks. The list will populate automatically.
-                </Typography>
-              </Box>
-            )}
-          </Box>
-          <FooterControls
-            total={total}
-            threshold={LARGE_CATALOG_THRESHOLD}
-            canLoadMore={false}
-            onLoadMore={() => {}}
-            loading={loading}
-          />
-          <DeleteConfirmDialog
-            open={confirmOpen}
-            shape={toDelete}
-            onCancel={handleDeleteCancel}
-            onConfirm={handleDelete}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Global snackbar so the user sees cache completion even if loader was shown */}
-      <SnackMessage
-        open={snackOpen}
-        message={snackMsg}
-        details={snackDetails}
-        canUndo={!!snackUndoShape}
-        onUndo={handleUndo}
-        onClose={handleSnackClose}
-      />
-      
-
-      {/* Backend Server Start Dialog */}
-      <BackendServerDialog
-        open={showBackendDialog}
-        onClose={() => setShowBackendDialog(false)}
-        backendError={backendError}
-        backendStarting={backendStarting}
-        onRetry={retryBackendConnection}
-        onShowInstructions={startBackendServer}
-      />
-    </>
+    <ShapePaletteView
+      open={open}
+      onClose={onClose}
+      isMobile={isMobile}
+      inputValue={inputValue}
+      setInputValue={setInputValue}
+      selectedShape={selectedShape}
+      onSelectShape={handleShapeSelect}
+      onAddRecent={safeAddRecent}
+      shapesForRender={shapesForRender}
+      loading={loading}
+      isInitialMobileLoad={isInitialMobileLoad}
+      onDeleteRequest={handleDeleteRequest}
+      confirmOpen={confirmOpen}
+      toDelete={toDelete}
+      onDeleteCancel={handleDeleteCancel}
+      onDeleteConfirm={handleDelete}
+      total={total}
+      threshold={LARGE_CATALOG_THRESHOLD}
+      onLoadMore={() => {}}
+      snackOpen={snackOpen}
+      snackMsg={snackMsg}
+      snackDetails={snackDetails}
+      snackUndoShape={snackUndoShape}
+      onUndo={handleUndo}
+      onSnackClose={handleSnackClose}
+      showBackendDialog={showBackendDialog}
+      backendError={backendError}
+      backendStarting={backendStarting}
+      onRetryBackend={retryBackendConnection}
+      onShowBackendInstructions={startBackendServer}
+      colorScheme={colorScheme}
+      colorSchemeKey={colorSchemeKey}
+      user={user}
+    />
   );
 }
 

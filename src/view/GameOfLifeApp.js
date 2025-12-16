@@ -304,7 +304,10 @@ function GameOfLifeApp(props) {
     }
   }, [generationBatchSize]);
 
-  const colorScheme = React.useMemo(() => getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio'), [uiState?.colorSchemeKey]);
+  // Always pull the authoritative colorScheme from the GameModel for overlays
+  const getAuthoritativeColorScheme = () => {
+    return gameRef.current?.model?.getColorScheme?.() || getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio');
+  };
   useEffect(() => {
     // Listen for a global "session cleared" signal (emitted by RunControlGroup
     // when the user taps Clear grid) so we can reset React-side history and
@@ -700,16 +703,27 @@ function GameOfLifeApp(props) {
       const offsetY = Math.floor(shapeHeight / 2) + minY;
       const origin = { x: cursorCell.x - offsetX, y: cursorCell.y - offsetY };
       let overlay;
+      const authoritativeColorScheme = getAuthoritativeColorScheme();
       if (dragging) {
         overlay = makeShapePreviewWithCrosshairsOverlay(
           selectedShape.cells,
           origin,
-          cursorCell
+          cursorCell,
+          {
+            color: authoritativeColorScheme.cellColor || '#4CAF50',
+            alpha: 0.6,
+            getCellColor: authoritativeColorScheme.getCellColor,
+          }
         );
       } else {
         overlay = makeShapePreviewOverlay(
           selectedShape.cells,
-          origin
+          origin,
+          {
+            color: authoritativeColorScheme.cellColor || '#4CAF50',
+            alpha: 0.6,
+            getCellColor: authoritativeColorScheme.getCellColor,
+          }
         );
       }
       gameRef.current.model.setOverlay(overlay);
@@ -770,7 +784,12 @@ function GameOfLifeApp(props) {
   const setShowChart = useCallback((show) => {
     setUIState(prev => ({ ...prev, showChart: show }));
   }, []);
-   useEffect(() => {
+  // Derive the effective color scheme from the model (if available)
+  // or fall back to the selected UI key. This ensures `colorScheme` is
+  // defined for effects and render paths.
+  const colorScheme = gameRef.current?.model?.getColorScheme?.() || getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio');
+
+  useEffect(() => {
         if (typeof drawWithOverlay === 'function') {
           drawWithOverlay();
         }

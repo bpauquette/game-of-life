@@ -164,15 +164,20 @@ export class GameRenderer {
       if (type === 'shapePreview') {
         const origin = overlay.origin || { x: 0, y: 0 };
         const cells = Array.isArray(overlay.cells) ? overlay.cells : [];
+        const getCellColor = overlay.style?.getCellColor;
         const color = overlay.style?.color || '#4CAF50';
         const alpha = (typeof overlay.style?.alpha === 'number') ? overlay.style.alpha : 0.6;
-        
         // Translate to absolute cells once
         const shapeCells = cells.map(({ x, y }) => ({ x: x + origin.x, y: y + origin.y }));
-        // Default path: draw each cell (already fairly fast without strokes)
         const prevAlpha = this.ctx.globalAlpha;
         this.ctx.globalAlpha = alpha;
-        this.drawCellArray(shapeCells, color);
+        if (typeof getCellColor === 'function') {
+          for (const cell of shapeCells) {
+            this.drawCellArray([cell], getCellColor(cell.x, cell.y));
+          }
+        } else {
+          this.drawCellArray(shapeCells, color);
+        }
         this.ctx.globalAlpha = prevAlpha;
       } else if (type === 'cellsHighlight') {
         const cells = Array.isArray(overlay.cells) ? overlay.cells : [];
@@ -193,6 +198,7 @@ export class GameRenderer {
     const origin = overlay.origin || { x: 0, y: 0 };
     const cursor = overlay.cursor || origin;
     const cells = Array.isArray(overlay.cells) ? overlay.cells : [];
+    const getCellColor = overlay.style?.getCellColor;
     const color = overlay.style?.color || '#4CAF50';
     const alpha = (typeof overlay.style?.alpha === 'number') ? overlay.style.alpha : 0.6;
 
@@ -232,7 +238,13 @@ export class GameRenderer {
     if (cells.length > 0) {
       this.ctx.globalAlpha = alpha;
       const shapeCells = cells.map(({ x, y }) => ({ x: x + origin.x, y: y + origin.y }));
-      this.drawCellArray(shapeCells, color);
+      if (typeof getCellColor === 'function') {
+        for (const cell of shapeCells) {
+          this.drawCellArray([cell], getCellColor(cell.x, cell.y));
+        }
+      } else {
+        this.drawCellArray(shapeCells, color);
+      }
     }
 
     this.ctx.restore();
