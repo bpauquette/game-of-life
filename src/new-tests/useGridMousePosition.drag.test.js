@@ -3,8 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import useGridMousePosition from '../../src/view/hooks/useGridMousePosition';
 
-function TestComp({ canvasRef, offset }) {
-  const offsetRef = useRef(offset);
+function TestComp({ canvasRef, offsetRef }) {
   const pos = useGridMousePosition({ canvasRef, cellSize: 16, offsetRef });
   return (
     <div>
@@ -23,7 +22,8 @@ describe('useGridMousePosition during drag', () => {
     canvasEl.addEventListener = jest.fn();
     canvasEl.removeEventListener = jest.fn();
     const canvasRef = { current: canvasEl };
-    render(<TestComp canvasRef={canvasRef} offset={{ x: 0, y: 0, cellSize: 16 }} />);
+    const offsetRef = { current: { x: 0, y: 0, cellSize: 16 } };
+    render(<TestComp canvasRef={canvasRef} offsetRef={offsetRef} />);
 
     // initial move
     window.dispatchEvent(new MouseEvent('pointermove', { clientX: 120, clientY: 110, bubbles: true }));
@@ -35,8 +35,11 @@ describe('useGridMousePosition during drag', () => {
 
     const first = screen.getByTestId('pos').textContent;
 
-    // simulate dragging further
-    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 160, clientY: 140, bubbles: true }));
+    // simulate zoom change (wheel) while pointer is stationary
+    // update the shared offsetRef to represent a zoom change
+    offsetRef.current.cellSize = 32;
+    // fire a wheel event to trigger recompute using lastClientRef
+    window.dispatchEvent(new WheelEvent('wheel', { clientX: 160, clientY: 140, bubbles: true }));
 
     await waitFor(() => {
       const second = screen.getByTestId('pos').textContent;
