@@ -12,7 +12,9 @@ export const shapesTool = {
     if (!cells?.length) return null;
     
     const origin = getCenteredOrigin(last, cells);
-    const cursor = { x: last.x, y: last.y };
+    const cursor = last
+      ? { x: last.x, y: last.y, fx: (typeof last.fx === 'number' ? last.fx : last.x), fy: (typeof last.fy === 'number' ? last.fy : last.y) }
+      : { x: 0, y: 0, fx: 0, fy: 0 };
     return makeShapePreviewWithCrosshairsOverlay(
       cells,
       origin,
