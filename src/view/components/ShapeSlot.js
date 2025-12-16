@@ -24,6 +24,7 @@ function getShapeCells(shape) {
 function ShapeSlot({
   shape,
   index,
+  inputType,
   colorScheme,
   selected,
   onSelect,
@@ -240,6 +241,7 @@ ShapeSlot.propTypes = {
   onRotate: PropTypes.func.isRequired,
   onSwitchToShapesTool: PropTypes.func,
   onStartPaletteDrag: PropTypes.func,
+  inputType: PropTypes.string,
   title: PropTypes.string
 };
 
