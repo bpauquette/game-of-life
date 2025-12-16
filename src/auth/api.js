@@ -10,20 +10,36 @@ export function getAuthApiBase() {
 
 export async function post(path, body) {
   try {
+    const headers = { "Content-Type": "application/json" };
+    // Propagate existing X-Request-Id if present on window for end-to-end correlation
+    const existingReqId = window && window.__REQUEST_ID__;
+    if (existingReqId) headers['X-Request-Id'] = existingReqId;
+
     const res = await fetch(`${getAuthApiBase()}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body)
     });
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (e) {
+      // ignore JSON parse errors; we'll still throw below with status
     }
-    const data = await res.json();
+    if (!res.ok) {
+      const serverMsg = data && data.error ? data.error : (data && typeof data === 'string' ? data : res.statusText || `HTTP ${res.status}`);
+      const err = new Error(`HTTP ${res.status}: ${serverMsg}`);
+      err.status = res.status;
+      err.body = data;
+      console.error('API request failed:', err.message, err.body);
+      throw err;
+    }
+    const parsed = data || {};
     if (data.error === 'Invalid or expired token') {
       // Trigger logout via window event or callback
       window.dispatchEvent(new CustomEvent('auth:logout'));
     }
-    return data;
+    return parsed;
   } catch (error) {
     console.error('API request failed:', error.message);
     throw error;
