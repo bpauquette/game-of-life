@@ -679,8 +679,14 @@ function GameOfLifeApp(props) {
 
   // --- Overlay tracking effect ---
   useEffect(() => {
-    // Only show overlay if a shape is selected and cursor is on the grid
+    // Only show overlay if a shape is selected and there's a cursor position
+    // either from the grid mouse (`cursorCell`) or from an active drag
+    // operation stored in the controller tool state (`toolStateRef`). When
+    // dragging from the palette the pointer may not be over the canvas, so
+    // prefer the tool state's `last` position when `dragging` is true.
     const dragging = toolStateRef.current && toolStateRef.current.dragging;
+    const toolLast = toolStateRef.current && toolStateRef.current.last;
+    const haveCursor = (cursorCell && typeof cursorCell.x === 'number' && typeof cursorCell.y === 'number') || (dragging && toolLast && typeof toolLast.x === 'number');
     if (
       gameRef.current &&
       gameRef.current.model &&
@@ -688,8 +694,7 @@ function GameOfLifeApp(props) {
       selectedShape &&
       Array.isArray(selectedShape.cells) &&
       selectedShape.cells.length > 0 &&
-      cursorCell &&
-      typeof cursorCell.x === 'number' && typeof cursorCell.y === 'number'
+      haveCursor
     ) {
       // Compute shape bounds to center overlay on cursor
       const xs = selectedShape.cells.map(c => c.x);
@@ -702,22 +707,20 @@ function GameOfLifeApp(props) {
       const shapeHeight = maxY - minY + 1;
       const offsetX = Math.floor(shapeWidth / 2) + minX;
       const offsetY = Math.floor(shapeHeight / 2) + minY;
-      // Prefer fractional cursor coords when available so crosshairs track
-      // the pointer precisely even at small cell sizes. Preserve both the
-      // integer and fractional fields so the overlay factory can consume
-      // sub-cell precision while retaining legacy integer coordinates.
-      const cursorForOverlay = cursorCell
+      // Prefer the tool state's `last` when dragging (it contains fx/fy),
+      // otherwise fall back to the grid `cursorCell`.
+      const sourceCursor = (dragging && toolLast) ? toolLast : cursorCell;
+      const cursorForOverlay = sourceCursor
         ? {
-            x: (typeof cursorCell.fx === 'number' ? cursorCell.fx : cursorCell.x),
-            y: (typeof cursorCell.fy === 'number' ? cursorCell.fy : cursorCell.y),
-            fx: typeof cursorCell.fx === 'number' ? cursorCell.fx : cursorCell.x,
-            fy: typeof cursorCell.fy === 'number' ? cursorCell.fy : cursorCell.y,
-            // include integer coords too
-            ix: cursorCell.x,
-            iy: cursorCell.y,
+            x: (typeof sourceCursor.fx === 'number' ? sourceCursor.fx : sourceCursor.x),
+            y: (typeof sourceCursor.fy === 'number' ? sourceCursor.fy : sourceCursor.y),
+            fx: typeof sourceCursor.fx === 'number' ? sourceCursor.fx : sourceCursor.x,
+            fy: typeof sourceCursor.fy === 'number' ? sourceCursor.fy : sourceCursor.y,
+            ix: sourceCursor.x,
+            iy: sourceCursor.y,
           }
         : null;
-      const origin = { x: (cursorForOverlay?.x ?? cursorCell.x) - offsetX, y: (cursorForOverlay?.y ?? cursorCell.y) - offsetY };
+      const origin = { x: (cursorForOverlay?.x ?? (cursorCell && cursorCell.x) ?? (toolLast && toolLast.x) ?? 0) - offsetX, y: (cursorForOverlay?.y ?? (cursorCell && cursorCell.y) ?? (toolLast && toolLast.y) ?? 0) - offsetY };
       let overlay;
       const authoritativeColorScheme = getAuthoritativeColorScheme();
       if (dragging) {
