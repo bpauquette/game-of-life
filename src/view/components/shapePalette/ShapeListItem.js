@@ -39,16 +39,30 @@ const ShapeListItem = memo(function ShapeListItem({
   const displayShape = fullShape || shape;
   const cells = useMemo(() => (displayShape?.cells || []), [displayShape]);
 
-  // Fetch full shape if needed
+  // BUGFIX: Fetch full shape if needed (with debug logging)
+  // Some name-only items arrive without `cells`; this effect ensures a
+  // per-item hydration attempt so previews render correctly when the
+  // hook-level background hydration has not completed yet.
   useEffect(() => {
     if (shape.id && !hasShapeCells(shape) && !fullShape && backendBase) {
-      fetchShapeById(shape.id, backendBase).then(res => {
-        if (res.ok && res.data) {
-          setFullShape(res.data);
+      (async () => {
+        logger.debug('[ShapeListItem] hydrate: fetching', { id: shape.id, backendBase });
+        try {
+          const res = await fetchShapeById(shape.id, backendBase);
+          logger.debug('[ShapeListItem] hydrate: fetch result', {
+            id: shape.id,
+            ok: !!(res && res.ok),
+            hasData: !!(res && res.data),
+            cellsLen: Array.isArray(res && res.data && res.data.cells) ? res.data.cells.length : null,
+          });
+          if (res && res.ok && res.data) {
+            setFullShape(res.data);
+            logger.debug('[ShapeListItem] hydrate: setFullShape', { id: shape.id });
+          }
+        } catch (err) {
+          logger.warn('[ShapeListItem] failed to fetch shape:', shape.id, err);
         }
-      }).catch(err => {
-        logger.warn('[ShapeListItem] failed to fetch shape:', shape.id, err);
-      });
+      })();
     }
   }, [shape.id, shape, fullShape, backendBase]);
 

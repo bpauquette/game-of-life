@@ -50,11 +50,16 @@ export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT
   const hydrateShape = useCallback(async (shapeOrId) => {
     try {
       const id = typeof shapeOrId === 'string' || typeof shapeOrId === 'number' ? shapeOrId : shapeOrId?.id;
+      logger.debug('[useShapePaletteSearch] hydrateShape called', { id, backendBase });
       if (!id) return null;
       // If we already have the shape in results with cells, return it
       const found = resultsRef.current.find(s => s.id === id);
-      if (found && hasShapeCells(found)) return found;
+      if (found && hasShapeCells(found)) {
+        logger.debug('[useShapePaletteSearch] hydrateShape: found in results with cells', { id });
+        return found;
+      }
       const res = await fetchShapeById(id, backendBase);
+      logger.debug('[useShapePaletteSearch] hydrateShape: fetch result', { id, ok: !!res?.ok, hasData: !!res?.data, cellsLen: Array.isArray(res?.data?.cells) ? res.data.cells.length : null });
       if (res?.ok && res.data && hasShapeCells(res.data)) return res.data;
       return null;
     } catch (err) {
@@ -149,11 +154,48 @@ export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT
       const payload = event.data || {};
       if (payload.type === 'page') {
         const items = Array.isArray(payload.items) ? payload.items : [];
-        setResults(prev => [...prev, ...items]);
+        logger.debug('[useShapePaletteSearch] worker page received', { itemsLen: items.length, offset: payload.offset, total: payload.total });
+        setResults(prev => {
+          const next = [...prev, ...items];
+          logger.debug('[useShapePaletteSearch] results length now', { nextLen: next.length });
+          return next;
+        });
+        // BUGFIX: Hydrate missing shapes from this page in background (batched)
+        // Previously the names worker populated items but did not trigger
+        // hydration for items lacking cell data, so previews and selection
+        // couldn't render full shapes. This block performs safe, batched
+        // hydration and merges full-shape data into `results`.
+        (async () => {
+          try {
+            const toHydrate = (items || []).filter(it => it && !(it.cells || it.pattern || it.liveCells));
+            if (!toHydrate.length) return;
+            logger.debug('[useShapePaletteSearch] scheduling hydration for page', { offset: payload.offset, count: toHydrate.length });
+            const BATCH = 10;
+            for (let i = 0; i < toHydrate.length; i += BATCH) {
+              const batch = toHydrate.slice(i, i + BATCH);
+              await Promise.all(batch.map(async (item) => {
+                try {
+                  const full = await hydrateShape(item.id || item);
+                  if (full) {
+                    setResults(prev => prev.map(r => (r.id === (full.id || item.id) ? { ...r, ...full } : r)));
+                    logger.debug('[useShapePaletteSearch] hydrated shape updated in results', { id: full.id });
+                  }
+                } catch (err) {
+                  logger.warn('[useShapePaletteSearch] hydrate batch item failed', err);
+                }
+              }));
+              // small delay to let UI breathe
+              await new Promise(res => setTimeout(res, 50));
+            }
+          } catch (err) {
+            logger.warn('[useShapePaletteSearch] hydration worker failed', err);
+          }
+        })();
         setTotal(prevTotal => (typeof payload.total === 'number' ? payload.total : prevTotal + items.length));
       } else if (payload.type === 'error') {
         handleWorkerFailure(payload.message || 'Shapes catalog error');
       } else if (payload.type === 'done') {
+        logger.debug('[useShapePaletteSearch] worker done');
         setLoading(false);
         stopWorker();
       }
