@@ -89,7 +89,9 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     try {
       const hydrate = hydrateShape || (async (s) => {
         if (!s?.id || hasShapeCells(s)) return s;
+        logger.debug('[ShapePaletteDialog] safeAddRecent: fetching shape by id', { id: s.id, base: backendBase });
         const res = await fetchShapeById(s.id, backendBase);
+        logger.debug('[ShapePaletteDialog] safeAddRecent: fetch result', { id: s.id, ok: !!res?.ok, hasData: !!res?.data, cellsLen: Array.isArray(res?.data?.cells) ? res.data.cells.length : null });
         return (res?.ok && res.data && hasShapeCells(res.data)) ? res.data : null;
       });
       const hydrated = await hydrate(shape);
@@ -132,7 +134,9 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     try {
       const hydrate = hydrateShape || (async (s) => {
         if (!s?.id) return null;
+        logger.debug('[ShapePaletteDialog] handleShapeSelect: fetching shape by id', { id: s.id, base: backendBase });
         const res = await fetchShapeById(s.id, backendBase);
+        logger.debug('[ShapePaletteDialog] handleShapeSelect: fetch result', { id: s.id, ok: !!res?.ok, hasData: !!res?.data, cellsLen: Array.isArray(res?.data?.cells) ? res.data.cells.length : null });
         return (res?.ok && res.data && hasShapeCells(res.data)) ? res.data : null;
       });
       const hydrated = await hydrate(shape);
@@ -258,6 +262,7 @@ The backend will start on the configured port.`);
       backendError={backendError}
       backendStarting={backendStarting}
       onRetryBackend={retryBackendConnection}
+      onBackendClose={() => setShowBackendDialog(false)}
       onShowBackendInstructions={startBackendServer}
       colorScheme={colorScheme}
       colorSchemeKey={colorSchemeKey}

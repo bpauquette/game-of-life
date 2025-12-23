@@ -19,6 +19,7 @@ import {
 export default function ShapePaletteView({
   open,
   onClose,
+  onBackendClose,
   isMobile,
   inputValue,
   setInputValue,
@@ -148,7 +149,7 @@ export default function ShapePaletteView({
 
       <BackendServerDialog
         open={showBackendDialog}
-        onClose={() => {}}
+        onClose={onBackendClose}
         backendError={backendError}
         backendStarting={backendStarting}
         onRetry={onRetryBackend}
@@ -189,6 +190,7 @@ ShapePaletteView.propTypes = {
   backendStarting: PropTypes.bool,
   onRetryBackend: PropTypes.func,
   onShowBackendInstructions: PropTypes.func,
+  onBackendClose: PropTypes.func,
   colorScheme: PropTypes.object,
   colorSchemeKey: PropTypes.string,
   user: PropTypes.object,
