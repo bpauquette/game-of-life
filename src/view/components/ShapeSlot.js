@@ -109,19 +109,25 @@ function ShapeSlot({
       position: 'relative',
       overflow: 'visible'
     }}>
-      {/* Label above shape, centered */}
+      {/* Label above shape, centered with improved visibility */}
       <div
         style={{
-          fontSize: '11px',
-          fontWeight: 600,
-          color: '#fff',
+          fontSize: '12px',
+          fontWeight: 700,
+          color: '#ffffff',
           textAlign: 'center',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          maxWidth: 110,
-          margin: '0 auto 8px auto'
+          maxWidth: 116,
+          margin: '0 auto 8px auto',
+          padding: '2px 6px',
+          borderRadius: 6,
+          background: 'linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.35))',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.6)',
+          textShadow: '0 1px 2px rgba(0,0,0,0.9)'
         }}
+        title={title}
       >
         {title}
       </div>
