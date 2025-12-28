@@ -328,18 +328,30 @@ export class GameController {
       return;
     }
     // Ensure start/last/dragging set for two-point flows
+    // Preserve fractional coordinates (fx/fy) when available so tools and
+    // overlays can render precise crosshairs while dragging or when the
+    // pointer stops moving.
+    const makePoint = (c) => {
+      if (!c) return { x: 0, y: 0 };
+      return {
+        x: c.x,
+        y: c.y,
+        ...(typeof c.fx === 'number' ? { fx: c.fx } : {}),
+        ...(typeof c.fy === 'number' ? { fy: c.fy } : {}),
+      };
+    };
     if (selectedTool === CONST_SHAPES) {
       const selectedShape = this.model.getSelectedShape();
       this._setToolState({
         selectedShapeData: selectedShape || null,
-        start: { x: cellCoords.x, y: cellCoords.y },
-        last: { x: cellCoords.x, y: cellCoords.y },
+        start: makePoint(cellCoords),
+        last: makePoint(cellCoords),
         dragging: true
       });
     } else {
       this._setToolState({
-        start: { x: cellCoords.x, y: cellCoords.y },
-        last: { x: cellCoords.x, y: cellCoords.y },
+        start: makePoint(cellCoords),
+        last: makePoint(cellCoords),
         dragging: true
       });
     }
@@ -387,7 +399,16 @@ export class GameController {
       this.emitToolStateChanged();
     }
     // Update last position and overlay for preview-enabled tools
-    this._setToolState({ last: { x: cellCoords.x, y: cellCoords.y } }, { updateOverlay: !!tool?.getOverlay });
+    // Preserve fractional coords on move so overlays remain stable when the
+    // pointer stops moving (we may still have a fractional position from
+    // pointer events or derived grid computations).
+    const lastPoint = {
+      x: cellCoords.x,
+      y: cellCoords.y,
+      ...(typeof cellCoords.fx === 'number' ? { fx: cellCoords.fx } : {}),
+      ...(typeof cellCoords.fy === 'number' ? { fy: cellCoords.fy } : {}),
+    };
+    this._setToolState({ last: lastPoint }, { updateOverlay: !!tool?.getOverlay });
   }
 
   handleMouseUp(cellCoords, event) {
