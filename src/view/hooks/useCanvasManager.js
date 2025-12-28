@@ -266,6 +266,9 @@ export const useCanvasManager = ({
     if (!pt) return;
     scheduleCursorUpdate(pt);
 
+    // Ensure toolState carries fractional coords so overlays can render
+    // crosshairs even if the pointer leaves the canvas or stops moving.
+    toolStateRef.current.last = { x: pt.x, y: pt.y, fx: pt.fx, fy: pt.fy };
     tool.onMouseDown?.(toolStateRef.current, pt.x, pt.y);
     
     // Special handling for capture tool which needs getLiveCells
@@ -281,7 +284,7 @@ export const useCanvasManager = ({
 
   const handleShapeToolMove = useCallback((e, tool, pt) => {
     if (!pt) return;
-    toolStateRef.current.last = { x: pt.x, y: pt.y };
+    toolStateRef.current.last = { x: pt.x, y: pt.y, fx: pt.fx, fy: pt.fy };
     
     // Special handling for capture tool which needs getLiveCells
     if (selectedTool === CONST_CAPTURE) {
@@ -323,7 +326,7 @@ export const useCanvasManager = ({
     if (shouldToolMove(e)) {
       handleShapeToolMove(e, tool, pt);
     } else if (toolStateRef.current.last && pt) {
-      toolStateRef.current.last = { x: pt.x, y: pt.y };
+      toolStateRef.current.last = { x: pt.x, y: pt.y, fx: pt.fx, fy: pt.fy };
       drawWithOverlay();
     }
     
