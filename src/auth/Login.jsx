@@ -3,6 +3,7 @@ import { useState } from "react";
 import { post } from "./api";
 import { useAuth } from "./AuthProvider";
 import validator from "validator";
+import ResetRequest from './ResetRequest';
 import IconButton from "@mui/material/IconButton";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
@@ -14,6 +15,7 @@ export default function Login({ onSuccess, onError, showRegisterLink = true }) {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showResetRequest, setShowResetRequest] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -62,6 +64,17 @@ export default function Login({ onSuccess, onError, showRegisterLink = true }) {
     }
   }
 
+  if (showResetRequest) {
+    return (
+      <div style={{ maxWidth: 300 }}>
+        <ResetRequest />
+        <div style={{ marginTop: 8 }}>
+          <button onClick={() => setShowResetRequest(false)}>Back to login</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: 300 }}>
       <h2>Login</h2>
@@ -93,7 +106,10 @@ export default function Login({ onSuccess, onError, showRegisterLink = true }) {
         <br/>
         <button type="submit">Login</button>
       </form>
-      <div>{msg}</div>
+      <div style={{ marginTop: 8 }}>{msg}</div>
+      <div style={{ marginTop: 8 }}>
+        <a href="#" onClick={(e) => { e.preventDefault(); setShowResetRequest(true); }}>Forgot password?</a>
+      </div>
     </div>
   );
 }

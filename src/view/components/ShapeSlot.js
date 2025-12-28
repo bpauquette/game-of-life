@@ -112,8 +112,8 @@ function ShapeSlot({
       {/* Label above shape, centered with improved visibility */}
       <div
         style={{
-          fontSize: '12px',
-          fontWeight: 700,
+          fontSize: '14px',
+          fontWeight: 800,
           color: '#ffffff',
           textAlign: 'center',
           whiteSpace: 'nowrap',
@@ -121,7 +121,7 @@ function ShapeSlot({
           textOverflow: 'ellipsis',
           maxWidth: 116,
           margin: '0 auto 8px auto',
-          padding: '2px 6px',
+          padding: '4px 8px',
           borderRadius: 6,
           background: 'linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.35))',
           boxShadow: '0 2px 6px rgba(0,0,0,0.6)',

@@ -11,7 +11,8 @@ const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 // 1) REACT_APP_LOG_LEVEL (CRA env) if present
 // 2) window.GOL_LOG_LEVEL if set at runtime
 // 3) NODE_ENV fallback: 'debug' for development, 'warn' otherwise (includes test/production)
-let currentLevel = LEVELS.warn;
+// Default to debug for now to ensure verbose logs during troubleshooting.
+let currentLevel = LEVELS.debug;
 const envLevel = typeof process !== 'undefined' && process?.env?.REACT_APP_LOG_LEVEL;
 const nodeEnv = typeof process !== 'undefined' && process?.env?.NODE_ENV;
 const runtimeLevel = globalThis.window?.GOL_LOG_LEVEL;

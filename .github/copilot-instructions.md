@@ -1,47 +1,81 @@
-This repository is a Conway's Game of Life implementation with a React frontend and an optional Node.js/SQLite backend for shape management and tooling.
+Short guidance for AI coding agents working on Game of Life (frontend + two backends).
 
-## Architecture overview
-- **Frontend (CRA):** React app under `src/` with canvas-based rendering, chunked world state, and a controller-driven simulation loop.
-- **Backend (Express):** Optional API under `backend/` that serves shapes and accepts imports/telemetry; runs independently on `GOL_BACKEND_PORT` (default 55000).
-- **State & logic:** Core game rules live in pure model code; UI and rendering sit on top via observers and overlay descriptors.
+1) Big picture
+- Frontend: Create React App under `src/` — canvas renderer + controller loop. Key model: `src/model/GameModel.js` (single source of truth).
+- Backends: `game-of-life-backend` (Node/Express + SQLite) and `gol-backend` (Java/Gradle/Spring Boot, work-in-progress).
 
-## Core frontend structure
-- `src/model/GameModel.js` — single source of truth for running state, tool/shape selection, color scheme, overlays, and viewport; emits observer events.
-- `src/view/GameOfLife.js` — main UI shell and canvas event wiring (mouse, wheel zoom, keyboard pan). Integrates with `GameModel` and owns high-level dialogs.
-- `src/view/renderer/*` or `src/renderer.js` (depending on refactor stage) — canvas drawing for grid and cells. Preserve devicePixelRatio handling and the two-step **draw + overlay** pattern.
-- `src/model/gameLogic.js` — pure game rules (neighbor calculation and step). Any rule changes must stay pure and be covered by tests in `src/new-tests/`.
-- `src/model/chunkedGameState.js` (and related) — chunked state for large worlds (chunk size 64). New features that modify cells should go through helpers such as `setCellAlive`, `placeShape`, or `applyToolOverlay` rather than mutating internal maps.
-- `src/hashlife/` and `src/model/hashlife/` — experimental Hashlife engine; keep changes isolated and backward compatible with existing chunked stepper.
+2) Key developer flows (copyable commands)
+- Start frontend dev: `npm start` (or `npm run frontend:start`).
+- Start Node backend dev (shapes + import scripts):
+  - `cd game-of-life-backend && npm install && npm start`
+  - port via `GOL_BACKEND_PORT` (historically 55000).
+- Start Java backend dev (WIP):
+  - `cd gol-backend && ./gradlew bootRun` (Windows: `gradlew.bat bootRun`).
+- Run tests: `npm run test:coverage` (preferred) or `npm test` for watch mode.
+- Sonar: `docker compose -f docker-compose.sonarqube.yml up -d` then use `scripts/sonar-*.sh`.
 
-## Tools, overlays, and observers
-- `src/model/tools/*` and `src/overlays/*` — tools emit overlay descriptors (pure data). The model stores current overlay(s); the view passes them to the renderer; the renderer only knows how to draw descriptors.
-- Tool modules follow a unified interface (`onMouseDown/onMouseMove/onMouseUp/drawOverlay`). When adding tools, copy an existing one (e.g. draw/rect/random-rect) and keep logic side-effect free except for calling model APIs.
-- React hooks such as `src/hooks/useToolStateObserver.js` and other `use*Observer` hooks subscribe to `GameModel` events instead of pulling state directly. When adding new observable state, extend `GameModel` events first, then wire a dedicated hook.
+3) Project-specific conventions (do not deviate)
+- Model-first: `GameModel` is authoritative — avoid duplicating running state in React components; use `use*Observer` hooks.
+- Pure core logic: `src/model/*` and `src/hashlife/*` are pure, unit-testable. Side effects belong in controllers/hooks/backends.
+- Chunked state: `src/model/chunkedGameState.js` uses chunk size 64 — prefer chunk/region operations over global scans.
+- Tools/overlays: `src/model/tools/*` produce overlay descriptors; tools implement `onMouseDown/onMouseMove/onMouseUp/drawOverlay`.
+- Rendering: preserve `devicePixelRatio` math and `ctx.setTransform`; use the two-step draw + overlay pattern and keep overlays non-throwing.
 
-## Backend & data flow
-- Entry point: `backend/src/index.js`; SQLite database at `backend/data/shapes.db` is the authoritative store for shapes.
-- Shape importers live under `backend/scripts/` (e.g. `import-lexicon-shapes.mjs`, `bulk-import-all.mjs`) and go through the SQLite DB, not the legacy `backend/data/shapes.json`.
-- RLE parsing/normalization is in `backend/src/rleParser.js`. Frontend and scripts should reuse this when possible instead of rolling their own.
+4) Integration & data flows
+- Shapes import: `game-of-life-backend/scripts/*` → write into SQLite (`game-of-life-backend/data/shapes.db`). Frontend loads shapes from `/v1/shapes` endpoints exposed by the Node backend.
+- RLE parsing: reuse `game-of-life-backend/src/rleParser.js` (if present) for normalization.
+- Java backend: `gol-backend` is a migration target — schema, endpoints, and ports may differ; consult `gol-backend/README.md` before changes.
 
-## Build, run, and tests
-- Frontend dev: `npm start` (or `npm run frontend:start` which wraps the dev server and enforces port 3000).
-- Backend dev: `cd backend && npm install && npm start` (port via `GOL_BACKEND_PORT` → `PORT` → `55000`).
-- Tests (model/overlay-focused): `npm run test:coverage` (preferred) or `npm test` for watch mode. New logic in `src/model/*`, `src/overlays/*`, or observer hooks should be covered in `src/new-tests/` rather than legacy `src/*test.js`.
-- SonarQube: `docker compose -f docker-compose.sonarqube.yml up -d`, then use the helper scripts under `scripts/sonar-*.sh` when adjusting quality gates.
-- Windows LAN testing: use `scripts/windows/run-setup.cmd` / `run-refresh.cmd` / `run-cleanup.cmd` to manage firewall and portproxy rules; do not duplicate this logic in Node.
+5) Where to look for examples
+- World stepping: `src/model/chunkedGameState.js` (calls `gameStep(getLiveCells())`).
+- Tool example: `src/model/tools/drawTool.js`.
+- Renderer: `src/view/renderer/*` or `src/renderer.js` (devicePixelRatio handling).
+- Node backend: `game-of-life-backend/scripts/` and `game-of-life-backend/src/`.
+- Java backend: `gol-backend/build.gradle` and `gol-backend/src/main/java/`.
 
-## Project-specific conventions
-- **Model-first:** `GameModel` is authoritative for running state, selection, overlays, and options. Avoid duplicating these in React component state; instead, observe the model.
-- **Pure core logic:** Keep rules, coordinate transforms, symmetry/analysis helpers, and overlay descriptor builders pure and easily unit-testable. Side effects belong in controllers, hooks, or the backend.
-- **Chunked performance:** Avoid O(n²) scans over all cells on hot paths (e.g. animation loop). Prefer working in terms of chunks or changed regions; if a global operation is needed, consider worker offload.
-- **Canvas & DPR:** Preserve `devicePixelRatio` math and `ctx.setTransform` usage when changing zoom/resize behavior. Tests and mocks rely on current patterns.
-- **Overlay safety:** Overlay drawing must never throw and break the main render; follow the existing try/catch pattern around `drawWithOverlay`.
+6) When you change behavior
+- If altering rendering cadence, state shape, observer events, or backend API: update `src/new-tests/` and coordinate with maintainers before broad refactors.
 
-## Useful reference patterns
-- World stepping: see `src/model/chunkedGameState.js` `step()` calling `gameStep(getLiveCells())` and then reconciling chunks.
-- Tool implementation: see an existing tool such as `src/model/tools/drawTool.js` for the expected mouse handler and overlay contract.
-- Backend API usage: `README.md` and `backend/README.md` list the `/v1/shapes`, `/v1/import-rle`, and memory telemetry endpoints used by the frontend and scripts.
+7) Windows & infra notes
+- Use repo scripts for Windows LAN/testing: `start-backend.ps1`, `start-frontend.ps1`, and `scripts/windows/*` (they auto-elevate where needed).
 
-If you change global behavior (rendering cadence, state shape, observer contracts, or backend API), keep changes minimal, update the relevant tests in `src/new-tests/`, and, when in doubt, ask the maintainer before large refactors.
+Follow these rules to stay consistent with existing tests and performance assumptions.
 
-See also: `.github/SONAR_GUIDANCE.md` for SonarQube-specific guidance (logger usage, tests, stable keys).
+---
+
+Notes: I couldn't update the original file automatically; this proposed file is ready to be moved into place, or I can try the patch again if you want me to overwrite the existing `.github/copilot-instructions.md` directly.
+
+8) Reverse-proxy infrastructure (repo `reverse-proxy`)
+- Purpose: A Docker + Caddy reverse-proxy that fronts the frontend and backend services, provides TLS, logging, and local/test/prod hostnames via `Caddyfile`.
+- Key files: `reverse-proxy/Caddyfile`, `reverse-proxy/docker-compose.yml`, `reverse-proxy/rebuild-and-up.ps1`.
+- Behavior:
+  - `Caddyfile` routes `/*` to `gol-frontend:80` and `/api/*` to `gol-backend:55000` (internal service names used by Docker compose). Domains are injected via env vars `CADDY_PROD_DOMAIN`, `CADDY_TEST_DOMAIN`, `CADDY_EMAIL`.
+  - `docker-compose.yml` defines three services: `caddy-proxy`, `gol-backend` (built from `../game-of-life-backend`), and `gol-frontend` (built from `../game-of-life`). They share `gol-network` so Caddy can address backend/frontend by service name.
+  - `rebuild-and-up.ps1` tears down, rebuilds with `--no-cache`, and brings the stack up detached.
+
+9) Recommendations for agent docs and multi-build setups
+- Per-project instructions: yes — each major project/folder should include its own `.github/copilot-instructions.md` (or README section) focusing on build/run/test specifics and service boundaries. Reason: different languages, build tools, and dev flows (CRA npm vs Gradle) need concise guidance local to the code.
+- Top-level repo instruction: keep a concise top-level `.github/copilot-instructions.md` that links to per-project instructions and describes cross-project flows (e.g., reverse-proxy dev stack, docker-compose orchestration, env var expectations).
+- Multi-build handling (how to present to AI agents):
+  - Document canonical dev orchestration commands: e.g., run frontend alone (`npm start`), run Node backend alone, run Java backend (`./gradlew bootRun`), or run proxy stack (`cd reverse-proxy && ./rebuild-and-up.ps1` / `docker compose up --build`).
+  - Describe image build contexts and ports (see `reverse-proxy/docker-compose.yml` build contexts pointing to `../game-of-life` and `../game-of-life-backend`). Agents should prefer using the repo-provided compose task for multi-service integration tests/local QA.
+  - Note common env vars and file-backed volumes (e.g., `${GOL_DB_PATH}`) so agents know where to persist/test data.
+
+10) Quick examples for cross-project tasks
+- Rebuild proxy + services (Windows PowerShell):
+```powershell
+cd reverse-proxy
+.\rebuild-and-up.ps1
+```
+- Run frontend only (dev):
+```bash
+cd game-of-life
+npm start
+```
+- Run Java backend (WIP):
+```bash
+cd gol-backend
+./gradlew bootRun
+```
+
+Keep per-project docs small and focused; link them from the top-level instructions so agents can land in the right place quickly.
