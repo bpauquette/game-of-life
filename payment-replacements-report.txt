@@ -1,0 +1,14 @@
+Dry-run report for replacements.txt matches in game-of-life frontend
+
+Matches found:
+- docker-compose.yml:25:        REACT_APP_API_BASE: "https://gol-conway.hopto.org"
+- docker-compose.yml:40:      - SERVER_NAME=gol-conway.hopto.org
+- nginx.conf:7:    server_name gol-conway.hopto.org _;
+- nginx.conf:23:    server_name gol-conway.hopto.org _;
+- src/view/PaymentDialog.js:33:          <Button href="/donate" variant="contained" color="primary">Donate</Button>
+
+Notes:
+- No explicit patreon/opencollective/github.com/sponsors/buymeacoffee/paypal domains found in tracked frontend source files (excludes package-lock.json and node_modules).
+- package-lock.json and dependencies contain many sponsorship/opencollective/patreon entries (normal for dependencies) — these are not user content but will be touched by a history rewrite if you include them.
+
+File created: payment-replacements-report.txt

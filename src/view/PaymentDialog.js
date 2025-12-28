@@ -14,13 +14,10 @@ export default function PaymentDialog({ open, onClose }) {
   const repoUrl = 'https://github.com/bpauquette/game-of-life';
   const issuesUrl = repoUrl + '/issues/new/choose';
 
+  // Keep frontend links minimal to avoid exposing donation targets.
   const links = [
-    { label: 'Project Website', url: 'https://gol-conway.hopto.org' },
     { label: 'Project (GitHub)', url: repoUrl },
-    { label: 'Report a bug / Request a feature', url: issuesUrl },
-    { label: 'GitHub Sponsors', url: 'https://github.com/sponsors/yourusername' },
-    { label: 'Open Collective', url: 'https://opencollective.com/yourproject' },
-    { label: 'Patreon', url: 'https://patreon.com/yourproject' }
+    { label: 'Report a bug / Request a feature', url: issuesUrl }
   ];
 
   return (

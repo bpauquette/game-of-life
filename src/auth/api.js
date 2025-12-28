@@ -12,7 +12,7 @@ export async function post(path, body) {
   try {
     const headers = { "Content-Type": "application/json" };
     // Propagate existing X-Request-Id if present on window for end-to-end correlation
-    const existingReqId = window && window.__REQUEST_ID__;
+    const existingReqId = (typeof window !== 'undefined' && window.__REQUEST_ID__) ? window.__REQUEST_ID__ : null;
     if (existingReqId) headers['X-Request-Id'] = existingReqId;
 
     const res = await fetch(`${getAuthApiBase()}${path}`, {
@@ -36,8 +36,10 @@ export async function post(path, body) {
     }
     const parsed = data || {};
     if (data.error === 'Invalid or expired token') {
-      // Trigger logout via window event or callback
-      window.dispatchEvent(new CustomEvent('auth:logout'));
+      // Trigger logout via window event or callback (guard for non-browser envs)
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent('auth:logout'));
+      }
     }
     return parsed;
   } catch (error) {
