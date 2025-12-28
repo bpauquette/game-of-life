@@ -82,17 +82,42 @@ export default function Register({ onSuccess, onError, showLoginLink = true, onS
         onError?.(data.error);
         return;
       }
-      if (!data.token) {
-        const error = "Registration failed: No token received";
-        setMsg(error);
-        onError?.(error);
+
+      // If server returns a token (legacy behavior), use it.
+      if (data.token) {
+        login(email.trim(), data.token);
+        onSuccess?.();
         return;
       }
 
-      login(email.trim(), data.token);
-      onSuccess?.();
+      // New behavior: server returns success without token. Attempt to log in
+      // automatically using the provided credentials. If that fails, show a
+      // clear message and switch to the login view so the user can sign in.
+      if (data.ok) {
+        try {
+          const loginResp = await post('/login', { email: email.trim(), password });
+          if (loginResp && loginResp.token) {
+            login(email.trim(), loginResp.token);
+            onSuccess?.();
+            return;
+          }
+        } catch (loginErr) {
+          // Fall through to show success message below
+        }
+
+        const successMsg = 'Registration successful — please log in.';
+        setMsg(successMsg);
+        onSuccess?.();
+        // If caller provided a switch callback, open the login view
+        if (typeof onSwitchToLogin === 'function') onSwitchToLogin();
+        return;
+      }
+
+      const error = 'Registration failed: unexpected server response';
+      setMsg(error);
+      onError?.(error);
     } catch (error) {
-      const errorMsg = "Registration failed: " + error.message;
+      const errorMsg = 'Registration failed: ' + (error?.message || String(error));
       setMsg(errorMsg);
       onError?.(errorMsg);
     }

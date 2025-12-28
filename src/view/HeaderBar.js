@@ -5,7 +5,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { BarChart as BarChartIcon, Help as HelpIcon, Info as InfoIcon, Settings as SettingsIcon, CloudDownload as ImportIcon, Language as LanguageIcon } from '@mui/icons-material';
+import { BarChart as BarChartIcon, Help as HelpIcon, Info as InfoIcon, Settings as SettingsIcon, CloudDownload as ImportIcon, Language as LanguageIcon, VolunteerActivism as DonateIcon } from '@mui/icons-material';
 import { PsychologyAlt as UserIcon, LockPerson as UserLoggedInIcon } from '@mui/icons-material';
 import { useAuth } from '../auth/AuthProvider';
 import Login from '../auth/Login';
@@ -23,10 +23,11 @@ import AboutDialog from './AboutDialog';
 import SaveGridDialog from './SaveGridDialog';
 import LoadGridDialog from './LoadGridDialog';
 import useGridFileManager from './hooks/useGridFileManager';
+import PaymentDialog from './PaymentDialog';
 
 // Tool toggles extracted into ToolGroup component
 
-function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, onOpenImport, loggedIn }) {
+function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, onOpenImport, onOpenDonate, loggedIn }) {
   const openLifeWiki = () => {
     window.open('https://conwaylife.com/wiki/Main_Page', '_blank');
   };
@@ -36,6 +37,7 @@ function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpe
       <IconButton size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
       <IconButton size="small" onClick={onOpenImport} aria-label="import"><Tooltip title="Import Shape"><ImportIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={openLifeWiki} aria-label="lifewiki"><Tooltip title="LifeWiki"><LanguageIcon fontSize="small" /></Tooltip></IconButton>
+      <IconButton size="small" onClick={onOpenDonate} aria-label="donate"><Tooltip title="Donate"><DonateIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
       <Tooltip title={`Version: v${FRONTEND_VERSION}\nBuild: ${FRONTEND_TIMESTAMP}`.replace(/\n/g, '\u000A')} placement="bottom">
         <span>
@@ -55,7 +57,8 @@ AuxActions.propTypes = {
   onOpenImport: PropTypes.func.isRequired,
   onOpenHelp: PropTypes.func.isRequired,
   onOpenAbout: PropTypes.func.isRequired,
-  onOpenOptions: PropTypes.func.isRequired
+  onOpenOptions: PropTypes.func.isRequired,
+  onOpenDonate: PropTypes.func
 };
 
 export default function HeaderBar({
@@ -138,6 +141,7 @@ export default function HeaderBar({
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [donateOpen, setDonateOpen] = useState(false);
   const [wasRunningBeforeOptions, setWasRunningBeforeOptions] = useState(false);
 
   // Listen for login required event
@@ -256,6 +260,7 @@ export default function HeaderBar({
               onOpenHelp={() => setHelpOpen(true)}
               onOpenAbout={() => setAboutOpen(true)}
               onOpenOptions={openOptions}
+              onOpenDonate={() => setDonateOpen(true)}
               onOpenUser={handleUserIconClick}
               loggedIn={!!token}
             />
@@ -275,7 +280,7 @@ export default function HeaderBar({
                     </>
                   ) : showRegister ? (
                     <>
-                      <Register />
+                      <Register onSwitchToLogin={() => setShowRegister(false)} onSuccess={() => { setShowRegister(false); }} />
                       <button onClick={() => setShowRegister(false)} style={{ marginTop: 8 }}>Already have an account? Login</button>
                     </>
                   ) : (
@@ -317,7 +322,7 @@ export default function HeaderBar({
           </Box>
         )}
   {/* Third row: RecentShapesStrip (increased height to fit thumbnails + controls) */}
-  <Box sx={{ position: 'relative', left: 0, right: 0, height: 120, minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(30,30,40,0.85)', borderBottom: '1px solid rgba(255,255,255,0.12)', zIndex: 41, pointerEvents: 'auto', overflowX: 'auto', overflowY: 'hidden' }}>
+  <Box sx={{ position: 'relative', left: 0, right: 0, height: 120, minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(30,30,40,0.85)', borderBottom: '1px solid rgba(255,255,255,0.12)', zIndex: 41, pointerEvents: 'auto', overflowX: 'auto', overflowY: 'hidden', mt: '45px' }}>
           <RecentShapesStrip
             recentShapes={recentShapes}
             selectShape={selectShape}
@@ -365,6 +370,7 @@ export default function HeaderBar({
 
       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <PaymentDialog open={donateOpen} onClose={() => setDonateOpen(false)} />
 
       <SaveGridDialog
         open={saveDialogOpen}
