@@ -22,7 +22,8 @@ services:
       args:
         # This will be passed to the Dockerfile build stage
         # When fronted by HTTPS proxy, point to public origin
-        REACT_APP_API_BASE: "https://gol-conway.hopto.org"
+        # Use the production domain provided via env (set CADDY_PROD_DOMAIN)
+        REACT_APP_API_BASE: "https://${CADDY_PROD_DOMAIN}"
     container_name: gol-frontend
     depends_on:
       - backend
@@ -37,7 +38,8 @@ services:
       - frontend
       - backend
     environment:
-      - SERVER_NAME=gol-conway.hopto.org
+      # Use the server name from environment (set CADDY_PROD_DOMAIN)
+      - SERVER_NAME=${CADDY_PROD_DOMAIN}
     ports:
       - "80:80"
       - "443:443"
