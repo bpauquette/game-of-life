@@ -44,8 +44,14 @@ const RecentShapesStrip = ({
     isDirty = false,
     error: persistenceError = null
   } = persistenceStatus || {};
-  const [isSaving, setIsSaving] = useState(false);
-  const [isClearing, setIsClearing] = useState(false);
+  const [lastSavedAtLocal, setLastSavedAtLocal] = useState(() => {
+    try {
+      const raw = localStorage.getItem('gol_recent_shapes_ts');
+      return raw ? Number(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  });
 
   const getShapeTitle = (shape, index) => {
     return shape?.name || shape?.meta?.name || shape?.id || `shape ${index}`;
@@ -108,50 +114,22 @@ const RecentShapesStrip = ({
 
   const statusText = (() => {
     if (persistenceError) return 'Save failed';
-    if (isSaving) return 'Saving…';
-    if (isDirty) return 'Changes not saved';
-    if (lastSavedAt) return formatSavedStatus(lastSavedAt);
-    if (hasSavedState) return 'Saved to disk';
-    if (loadedFromStorage) return 'Loaded from disk';
     if (!slots.length) return 'No recent shapes yet';
+    if (lastSavedAtLocal) return formatSavedStatus(lastSavedAtLocal);
     return 'Not saved yet';
   })();
 
-  const handleSaveClick = useCallback(() => {
-    if (typeof onSaveRecentShapes !== 'function') return;
+  // Autosave recent shapes to localStorage whenever `slots` changes.
+  useEffect(() => {
     try {
-      const result = onSaveRecentShapes();
-      if (result && typeof result.then === 'function') {
-        setIsSaving(true);
-        Promise.resolve(result)
-          .catch(() => {})
-          .finally(() => setIsSaving(false));
-      }
+      localStorage.setItem('gol_recent_shapes', JSON.stringify(slots || []));
+      const ts = Date.now();
+      localStorage.setItem('gol_recent_shapes_ts', String(ts));
+      setLastSavedAtLocal(ts);
     } catch (e) {
-      setIsSaving(false);
+      // ignore
     }
-  }, [onSaveRecentShapes]);
-
-  const handleClearClick = useCallback(() => {
-    if (typeof onClearRecentShapes !== 'function') return;
-    try {
-      const prevZoom = zoom;
-      const result = onClearRecentShapes();
-      if (result && typeof result.then === 'function') {
-        setIsClearing(true);
-        Promise.resolve(result)
-          .catch(() => {})
-          .finally(() => {
-            setIsClearing(false);
-            setZoom(prevZoom); // Restore zoom after clear
-          });
-      } else {
-        setZoom(prevZoom);
-      }
-    } catch (e) {
-      setIsClearing(false);
-    }
-  }, [onClearRecentShapes, zoom]);
+  }, [slots]);
 
   /* Diagnostic helpers (inside component so hooks are valid) */
   const svgToImageData = useCallback((svgEl) => {
@@ -399,72 +377,7 @@ const RecentShapesStrip = ({
         gap: 16
       }}
     >
-      {typeof onSaveRecentShapes === 'function' && (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            gap: 6,
-            minWidth: 180,
-            maxWidth: 240,
-            paddingRight: 12,
-            alignSelf: 'stretch'
-          }}
-        >
-          <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.6, color: '#f3f6f5' }}>Recent shapes</span>
-          <div style={{ display: 'flex', gap: 8, width: '100%', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={handleSaveClick}
-              disabled={!slots.length || isSaving || (!isDirty && hasSavedState)}
-              data-testid="recent-save-button"
-              style={{
-                border: 'none',
-                borderRadius: 999,
-                padding: '8px 16px',
-                fontSize: 12,
-                fontWeight: 700,
-                color: '#031b16',
-                background: (!slots.length || (!isDirty && hasSavedState))
-                  ? 'rgba(255,255,255,0.25)'
-                  : 'linear-gradient(135deg, #00f5a0, #00d9f5)',
-                cursor: (!slots.length || (!isDirty && hasSavedState)) ? 'not-allowed' : 'pointer',
-                opacity: isSaving ? 0.8 : 1,
-                transition: 'opacity 120ms ease',
-                flex: '0 0 auto'
-              }}
-            >
-              {isSaving ? 'Saving…' : isDirty ? 'Save recent shapes' : 'Saved'}
-            </button>
-            {typeof onClearRecentShapes === 'function' && (
-              <button
-                type="button"
-                onClick={handleClearClick}
-                disabled={!slots.length || isClearing}
-                data-testid="recent-clear-button"
-                style={{
-                  border: '1px solid rgba(255,255,255,0.35)',
-                  borderRadius: 999,
-                  padding: '8px 14px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#f3f6f5',
-                  background: 'transparent',
-                  cursor: (!slots.length || isClearing) ? 'not-allowed' : 'pointer',
-                  opacity: isClearing ? 0.7 : 1,
-                  transition: 'opacity 120ms ease',
-                  flex: '0 0 auto'
-                }}
-              >
-                {isClearing ? 'Clearing…' : 'Clear'}
-              </button>
-            )}
-          </div>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.68)' }}>{statusText}</span>
-        </div>
-      )}
+      
       <div style={{ position: 'relative', width: '100%' }}>
         {/* Left nav button */}
         <button
