@@ -389,7 +389,7 @@ const RecentShapesStrip = ({
         background: `linear-gradient(180deg, ${bg} 0%, rgba(0,0,0,0.45) 100%)`,
         borderRadius: 8,
         border: panelBorder,
-        padding: '10px 10px 14px 10px',
+        padding: '12px 10px',
         maxWidth: '100%',
         overflow: 'visible',
         overflowY: 'hidden',
@@ -522,9 +522,9 @@ const RecentShapesStrip = ({
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-y',
             cursor: isDragging ? 'grabbing' : 'grab',
-            // Give extra bottom padding so native scrollbars don't overlap content
-            paddingBottom: 28,
-            paddingTop: 8,
+            // Balanced vertical padding so slots appear visually centered
+            paddingBottom: 12,
+            paddingTop: 12,
             scrollSnapType: 'x mandatory',
             paddingLeft: 4,
             paddingRight: 6,
