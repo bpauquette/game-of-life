@@ -512,9 +512,9 @@ const RecentShapesStrip = ({
           onPointerCancel={finishPointer}
           onPointerLeave={finishPointer}
           style={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'flex-start',
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
             gap: 12,
             width: '100%',
             overflowX: 'auto',
