@@ -117,9 +117,20 @@ export default function Register({ onSuccess, onError, showLoginLink = true, onS
       setMsg(error);
       onError?.(error);
     } catch (error) {
-      const errorMsg = 'Registration failed: ' + (error?.message || String(error));
-      setMsg(errorMsg);
-      onError?.(errorMsg);
+        const status = error && error.status ? error.status : null;
+        const serverMessage = error && error.message ? error.message : String(error);
+        const errorMsg = 'Registration failed: ' + serverMessage;
+        setMsg(errorMsg);
+        onError?.(errorMsg);
+        // If account already exists, surface the login view so the user can sign in
+        if (status === 409 && typeof onSwitchToLogin === 'function') {
+          // small delay so message renders in modal before switching
+          try {
+            onSwitchToLogin();
+          } catch (e) {
+            // ignore
+          }
+        }
     }
   }
 
