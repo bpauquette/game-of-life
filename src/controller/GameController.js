@@ -269,7 +269,18 @@ export class GameController {
       try { globalThis.__GOL_PUSH_CANVAS_LOG__ && globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info)); } catch (e) {}
     } catch (e) {}
     logger.debug(`[GameController] setSelectedTool: toolName=${toolName}`);
+    const prevTool = this.model.getSelectedTool();
     this.model.setSelectedToolModel(toolName);
+
+    // If switching away from the shapes tool, clear the selected shape
+    // so overlays and selection state tied to shapes are removed.
+    try {
+      if (prevTool === CONST_SHAPES && toolName !== CONST_SHAPES) {
+        this.setSelectedShape(null);
+      }
+    } catch (e) {
+      // swallow any error to avoid breaking tool switch
+    }
     // If user selects the capture (pick) tool, pause the simulation for precise selection
     if (toolName === 'capture' && this.model.getIsRunning?.() === true) {
       this.model.setRunningModel(false);
@@ -682,6 +693,8 @@ export class GameController {
   clear() {
     this.model.clear();
     this.clearToolState();
+    // Also clear any selected shape when the board is cleared
+    try { this.setSelectedShape(null); } catch (e) { /* ignore */ }
   }
 
   // Reset transient tool state and clear overlay

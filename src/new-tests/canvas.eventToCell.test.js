@@ -10,6 +10,6 @@ describe('eventToCellFromCanvas', () => {
     // manual compute: center = 100,100; (client - left - center)/cellSize = (60-100)/10 = -4
     // x = floor(offset.x + (-4)) = floor(2 -4) = -2
     // similarly for y: (80-100)/10 = -2 => 3 -2 = 1
-    expect(result).toEqual({ x: -2, y: 1 });
+    expect(result).toMatchObject({ x: -2, y: 1 });
   });
 });

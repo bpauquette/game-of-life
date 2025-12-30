@@ -674,8 +674,16 @@ function GameOfLifeApp(props) {
     return () => window.removeEventListener('auth:needLogin', handleNeedLogin);
   }, []);
 
-  // track cursor using the canvas DOM element
-  const cursorCell = useGridMousePosition({ canvasRef, cellSize, offsetRef });
+  // track cursor using the canvas DOM element and push canonical cursor
+  // updates into the model so the renderer can use a single source of truth
+  const cursorCell = useGridMousePosition({
+    canvasRef,
+    cellSize,
+    offsetRef,
+    onCursor: (pt) => {
+      try { gameRef.current?.model?.setCursorPositionModel?.(pt); } catch (e) {}
+    }
+  });
 
   // --- Overlay tracking effect ---
   useEffect(() => {
@@ -687,15 +695,29 @@ function GameOfLifeApp(props) {
     const dragging = toolStateRef.current && toolStateRef.current.dragging;
     const toolLast = toolStateRef.current && toolStateRef.current.last;
     const haveCursor = (cursorCell && typeof cursorCell.x === 'number' && typeof cursorCell.y === 'number') || (dragging && toolLast && typeof toolLast.x === 'number');
+    const hasSelectedShape = selectedShape && Array.isArray(selectedShape.cells) && selectedShape.cells.length > 0;
+    const shouldShowOverlay = hasSelectedShape && (haveCursor || dragging);
+
     if (
       gameRef.current &&
       gameRef.current.model &&
       typeof gameRef.current.model.setOverlay === 'function' &&
-      selectedShape &&
-      Array.isArray(selectedShape.cells) &&
-      selectedShape.cells.length > 0 &&
-      haveCursor
+      shouldShowOverlay
     ) {
+      // Avoid setting the model overlay when the currently selected tool
+      // already provides its own overlay (to prevent duplicate drawing).
+      try {
+        const activeToolName = gameRef.current.model.getSelectedTool && gameRef.current.model.getSelectedTool();
+        const activeTool = activeToolName && gameRef.current.controller && gameRef.current.controller.toolMap
+          ? gameRef.current.controller.toolMap[activeToolName]
+          : null;
+        if (activeTool && typeof activeTool.getOverlay === 'function') {
+          // Let the tool manage its own overlay; do not overwrite model overlay.
+          return;
+        }
+      } catch (e) {
+        // If anything goes wrong, fall back to the legacy behavior.
+      }
       // Compute shape bounds to center overlay on cursor
       const xs = selectedShape.cells.map(c => c.x);
       const ys = selectedShape.cells.map(c => c.y);
@@ -708,8 +730,10 @@ function GameOfLifeApp(props) {
       const offsetX = Math.floor(shapeWidth / 2) + minX;
       const offsetY = Math.floor(shapeHeight / 2) + minY;
       // Prefer the tool state's `last` when dragging (it contains fx/fy),
-      // otherwise fall back to the grid `cursorCell`.
-      const sourceCursor = (dragging && toolLast) ? toolLast : cursorCell;
+      // otherwise fall back to the model's canonical cursor (updated
+      // by the `onCursor` callback) or the grid `cursorCell` as a last resort.
+      const modelCursor = gameRef.current?.model?.getCursorPosition?.();
+      const sourceCursor = (dragging && toolLast) ? toolLast : (modelCursor || cursorCell);
       const cursorForOverlay = sourceCursor
         ? {
             x: (typeof sourceCursor.fx === 'number' ? sourceCursor.fx : sourceCursor.x),
@@ -754,11 +778,114 @@ function GameOfLifeApp(props) {
       gameRef.current.model &&
       typeof gameRef.current.model.setOverlay === 'function'
     ) {
-      // Clear overlay if no shape or cursor
-      gameRef.current.model.setOverlay(null);
-      gameRef.current.controller?.requestRender?.();
+      // Only clear overlay when there is no selected shape and no active drag.
+      // This prevents pointer-idle from accidentally clearing the preview overlay.
+      if (!hasSelectedShape && !dragging) {
+        gameRef.current.model.setOverlay(null);
+        gameRef.current.controller?.requestRender?.();
+      }
+      // Otherwise leave the existing overlay in place (do not clear on idle).
     }
   }, [cursorCell, selectedShape, toolStateRef]);
+
+  // --- Model observer to keep overlays in sync with fractional tool state ---
+  useEffect(() => {
+    const model = gameRef.current?.model;
+    const controller = gameRef.current?.controller;
+    if (!model || typeof model.addObserver !== 'function') return undefined;
+
+    const observer = (event, data) => {
+      // Only handle events that can affect overlay position/visibility
+      if (!['toolStateChanged', 'cursorPositionChanged', 'selectedToolChanged', 'selectedShapeChanged'].includes(event)) return;
+      try {
+        if (typeof model.getSelectedShape !== 'function' || typeof model.setOverlay !== 'function') return;
+
+        // If the active tool provides its own overlay, let the controller/tool handle it
+        const activeToolName = model.getSelectedTool && model.getSelectedTool();
+        const activeTool = activeToolName && controller && controller.toolMap ? controller.toolMap[activeToolName] : null;
+        if (activeTool && typeof activeTool.getOverlay === 'function') {
+          // Ask controller to update tool overlay (this will call tool.getOverlay)
+          if (controller && typeof controller.updateToolOverlay === 'function') controller.updateToolOverlay();
+          return;
+        }
+
+        // Otherwise recompute the shape-preview overlay using authoritative model state
+        const selectedShapeFromModel = model.getSelectedShape ? model.getSelectedShape() : null;
+        const toolStateSnapshot = (event === 'toolStateChanged' && data) ? data : null;
+        const dragging = !!(toolStateSnapshot && toolStateSnapshot.dragging);
+        const toolLast = toolStateSnapshot ? toolStateSnapshot.last : null;
+        const modelCursor = model.getCursorPosition ? model.getCursorPosition() : null;
+        const sourceCursor = (dragging && toolLast) ? toolLast : (modelCursor || null);
+        const cursorForOverlay = sourceCursor
+          ? {
+              x: (typeof sourceCursor.fx === 'number' ? sourceCursor.fx : sourceCursor.x),
+              y: (typeof sourceCursor.fy === 'number' ? sourceCursor.fy : sourceCursor.y),
+              fx: typeof sourceCursor.fx === 'number' ? sourceCursor.fx : sourceCursor.x,
+              fy: typeof sourceCursor.fy === 'number' ? sourceCursor.fy : sourceCursor.y,
+              ix: sourceCursor.x,
+              iy: sourceCursor.y,
+            }
+          : null;
+
+        const hasSelectedShape = selectedShapeFromModel && Array.isArray(selectedShapeFromModel.cells) && selectedShapeFromModel.cells.length > 0;
+        const shouldShowOverlay = hasSelectedShape && (cursorForOverlay || dragging);
+
+        if (!shouldShowOverlay) {
+          if (!hasSelectedShape && !dragging) {
+            model.setOverlay(null);
+            controller?.requestRender?.();
+          }
+          return;
+        }
+
+        // Compute centered origin for the preview
+        const xs = selectedShapeFromModel.cells.map(c => c.x);
+        const ys = selectedShapeFromModel.cells.map(c => c.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const shapeWidth = maxX - minX + 1;
+        const shapeHeight = maxY - minY + 1;
+        const offsetX = Math.floor(shapeWidth / 2) + minX;
+        const offsetY = Math.floor(shapeHeight / 2) + minY;
+        const origin = { x: (cursorForOverlay?.x ?? (modelCursor && modelCursor.x) ?? (toolLast && toolLast.x) ?? 0) - offsetX, y: (cursorForOverlay?.y ?? (modelCursor && modelCursor.y) ?? (toolLast && toolLast.y) ?? 0) - offsetY };
+
+        let overlay;
+        const authoritativeColorScheme = getAuthoritativeColorScheme();
+        if (dragging) {
+          overlay = makeShapePreviewWithCrosshairsOverlay(
+            selectedShapeFromModel.cells,
+            origin,
+            (cursorForOverlay || (modelCursor ? { x: modelCursor.x, y: modelCursor.y, fx: modelCursor.x, fy: modelCursor.y } : null)),
+            {
+              color: authoritativeColorScheme.cellColor || '#4CAF50',
+              alpha: 0.6,
+              getCellColor: authoritativeColorScheme.getCellColor,
+            }
+          );
+        } else {
+          overlay = makeShapePreviewOverlay(
+            selectedShapeFromModel.cells,
+            origin,
+            {
+              color: authoritativeColorScheme.cellColor || '#4CAF50',
+              alpha: 0.6,
+              getCellColor: authoritativeColorScheme.getCellColor,
+            }
+          );
+        }
+        model.setOverlay(overlay);
+        controller?.requestRender?.();
+      } catch (e) {
+        // don't let observer failures crash the app
+        try { console.error('[GameOfLifeApp] overlay observer error:', e); } catch (err) {}
+      }
+    };
+
+    model.addObserver(observer);
+    return () => model.removeObserver(observer);
+  }, []);
 
   // --- Handlers ---
   const handleSelectShape = useCallback(shape => {
