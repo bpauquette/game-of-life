@@ -390,6 +390,7 @@ const RecentShapesStrip = ({
         borderRadius: 8,
         border: panelBorder,
         padding: '12px 10px',
+        boxSizing: 'border-box',
         maxWidth: '100%',
         overflow: 'visible',
         overflowY: 'hidden',

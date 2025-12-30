@@ -226,7 +226,7 @@ export default function HeaderBar({
   return (
     <>
       {/* Three-row header: RunControlGroup, ToolGroup, RecentShapesStrip */}
-      <Box ref={headerRef} sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30, width: '100vw', backgroundColor: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+      <Box ref={headerRef} sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30, width: '100%', backgroundColor: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.2)', overflowX: 'hidden' }}>
         {/* First row: Save/Load and Run controls */}
         <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, gap: 0.5 }}>
           <Stack direction="row" spacing={0.5} alignItems="center">
@@ -297,7 +297,7 @@ export default function HeaderBar({
         </Box>
         {/* Second row: ToolGroup */}
         {showToolsRow && (
-          <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(0,0,0,0.28)', borderBottom: '1px solid rgba(255,255,255,0.18)', zIndex: 40, pointerEvents: 'auto', overflowX: 'auto' }}>
+          <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(0,0,0,0.28)', borderBottom: '1px solid rgba(255,255,255,0.18)', zIndex: 40, pointerEvents: 'auto', overflowX: 'hidden' }}>
             <ToolGroup selectedTool={selectedTool} setSelectedTool={setSelectedTool} isSmall={isSmall} shapesEnabled={shapesReady} />
             {/* Only show chip if enough space for both chip and tool icons */}
             {(!isSmall || (globalThis.window !== undefined && window.innerWidth > 520)) && (
@@ -322,7 +322,7 @@ export default function HeaderBar({
           </Box>
         )}
   {/* Third row: RecentShapesStrip (increased height to fit thumbnails + controls) */}
-  <Box sx={{ position: 'relative', left: 0, right: 0, py: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(30,30,40,0.85)', borderBottom: '1px solid rgba(255,255,255,0.12)', zIndex: 41, pointerEvents: 'auto', overflowX: 'auto', overflowY: 'hidden', mt: 0 }}>
+  <Box sx={{ position: 'relative', left: 0, right: 0, py: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(30,30,40,0.85)', borderBottom: '1px solid rgba(255,255,255,0.12)', zIndex: 41, pointerEvents: 'auto', overflowX: 'hidden', overflowY: 'hidden', mt: 0 }}>
           <RecentShapesStrip
             recentShapes={recentShapes}
             selectShape={selectShape}
