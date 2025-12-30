@@ -523,8 +523,8 @@ const RecentShapesStrip = ({
             touchAction: 'pan-y',
             cursor: isDragging ? 'grabbing' : 'grab',
             // Balanced vertical padding so slots appear visually centered
-            paddingBottom: 12,
-            paddingTop: 12,
+            paddingBottom: 8,
+            paddingTop: 8,
             scrollSnapType: 'x mandatory',
             paddingLeft: 4,
             paddingRight: 6,
@@ -545,10 +545,10 @@ const RecentShapesStrip = ({
           const selected = isShapeSelected(shape);
           // Simplified: no scaling, shadow, or scrollIntoView
           const slotStyle = {
-            width: 130,
-            height: 110,
-            minWidth: 130,
-            maxWidth: 130,
+            width: 124,
+            height: 96,
+            minWidth: 124,
+            maxWidth: 124,
             flexShrink: 0,
             scrollSnapAlign: 'center',
             display: 'flex',
