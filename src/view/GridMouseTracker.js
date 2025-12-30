@@ -5,21 +5,31 @@ const containerStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: '16px',
-  fontFamily: 'monospace',
+  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   fontSize: '0.95rem'
 };
 
 const badgeStyle = {
   display: 'flex',
-  flexDirection: 'column',
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: '8px'
+};
+
+const labelStyle = {
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
-  color: '#aaa'
+  color: '#aaa',
+  fontSize: '0.85rem',
+  lineHeight: 1
 };
 
 const valueStyle = {
   color: '#fff',
-  fontSize: '1.4rem'
+  fontSize: '1.05rem',
+  fontFamily: 'monospace',
+  fontWeight: 700,
+  lineHeight: 1
 };
 
 const formatValue = (val) => (Number.isFinite(val) ? val : '—');
@@ -36,12 +46,8 @@ const GridMouseTracker = ({ position }) => {
   return (
     <div style={containerStyle}>
       <div style={badgeStyle}>
-        <span>Grid X</span>
-        <span style={valueStyle}>{x}</span>
-      </div>
-      <div style={badgeStyle}>
-        <span>Grid Y</span>
-        <span style={valueStyle}>{y}</span>
+        <span style={labelStyle}>X,Y</span>
+        <span style={valueStyle}>{`${x}, ${y}`}</span>
       </div>
     </div>
   );
