@@ -95,16 +95,16 @@ function ShapeSlot({
     <div style={{
       border: `3px solid ${selected ? SELECTED_BORDER_COLOR : '#3ad6ff'}`,
       borderRadius: SHAPE_BORDER_RADIUS,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
       width: 130,
       height: 110,
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'stretch',
-      justifyContent: 'flex-start',
+      alignItems: 'center',
+      justifyContent: 'center',
       background: selected ? '#222' : '#181818',
       boxSizing: 'border-box',
-      transition: 'border-color 0.2s',
+      transition: 'border-color 0.18s, transform 0.12s',
       margin: 0,
       position: 'relative',
       overflow: 'visible'
@@ -112,26 +112,24 @@ function ShapeSlot({
       {/* Label above shape, centered with improved visibility */}
       <div
         style={{
-          fontSize: '14px',
-          fontWeight: 800,
-          color: '#ffffff',
+          fontSize: 12,
+          fontWeight: 700,
+          color: 'rgba(255,255,255,0.92)',
           textAlign: 'center',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          maxWidth: 116,
-          margin: '0 auto 8px auto',
-          padding: '4px 8px',
-          borderRadius: 6,
-          background: 'linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.35))',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.6)',
-          textShadow: '0 1px 2px rgba(0,0,0,0.9)'
+          maxWidth: 112,
+          margin: '0 0 6px 0',
+          padding: '2px 6px',
+          borderRadius: 4,
+          background: 'rgba(0,0,0,0.28)'
         }}
         title={title}
       >
         {title}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', flex: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', flex: 1, gap: 8 }}>
           <button
             type="button"
             style={{
