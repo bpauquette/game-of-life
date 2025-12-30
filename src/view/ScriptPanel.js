@@ -218,6 +218,58 @@ export default function ScriptPanel({ open, onClose }) {
     input.click();
   }, []);
 
+  // Simple in-memory Game of Life stepper to allow demo runs inside ScriptPanel
+  const stepGOL = useCallback((cellsSet) => {
+    const neighbors = new Map();
+    const addNeighbor = (k) => neighbors.set(k, (neighbors.get(k) || 0) + 1);
+    for (const s of cellsSet) {
+      const [x, y] = s.split(',').map(Number);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        addNeighbor(`${x + dx},${y + dy}`);
+      }
+    }
+    const next = new Set();
+    for (const [k, count] of neighbors.entries()) {
+      const alive = cellsSet.has(k);
+      if (alive && (count === 2 || count === 3)) next.add(k);
+      if (!alive && count === 3) next.add(k);
+    }
+    return next;
+  }, []);
+
+  const runUntilSteady = useCallback((startSet, maxSteps = 1000) => {
+    let seen = new Map();
+    let current = new Set(startSet);
+    for (let step = 0; step < maxSteps; step++) {
+      const key = Array.from(current).sort().join('|');
+      if (seen.has(key)) return { steady: true, steps: step, final: current };
+      seen.set(key, step);
+      const next = stepGOL(current);
+      // detect identical
+      const nxtKey = Array.from(next).sort().join('|');
+      if (nxtKey === key) return { steady: true, steps: step + 1, final: next };
+      current = next;
+    }
+    return { steady: false, steps: maxSteps, final: current };
+  }, [stepGOL]);
+
+  const runSquareGrowthDemo = useCallback(async (maxSize = 8) => {
+    const results = [];
+    for (let s = 1; s <= maxSize; s++) {
+      // build centered square at origin (top-left at -floor(s/2))
+      const cells = new Set();
+      const ox = -Math.floor(s / 2);
+      const oy = -Math.floor(s / 2);
+      for (let x = 0; x < s; x++) for (let y = 0; y < s; y++) cells.add(`${ox + x},${oy + y}`);
+      const res = runUntilSteady(cells, 200);
+      results.push({ size: s, steady: res.steady, steps: res.steps, finalCount: res.final.size });
+      // small delay so UI remains responsive
+      await new Promise(r => setTimeout(r, 50));
+    }
+    alert('Square growth demo results:\n' + results.map(r => `size=${r.size} -> steady=${r.steady}, steps=${r.steps}, finalCells=${r.finalCount}`).join('\n'));
+  }, [runUntilSteady]);
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Script Playground</DialogTitle>
@@ -233,6 +285,7 @@ export default function ScriptPanel({ open, onClose }) {
         <Button startIcon={<LoadIcon />} onClick={handleLoad}>Load</Button>
         <Button startIcon={<SaveIcon />} onClick={handleSave}>Save</Button>
         <Button startIcon={<RunIcon />} variant="contained" onClick={handleRun}>Run</Button>
+        <Button onClick={() => runSquareGrowthDemo(8)}>Run Square Growth Demo</Button>
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
     </Dialog>
