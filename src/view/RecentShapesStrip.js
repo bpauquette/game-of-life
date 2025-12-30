@@ -525,7 +525,7 @@ const RecentShapesStrip = ({
             cursor: isDragging ? 'grabbing' : 'grab',
             // Balanced vertical padding so slots appear visually centered
             paddingBottom: 12,
-            paddingTop: 12,
+            paddingTop: 8,
             scrollSnapType: 'x mandatory',
             paddingLeft: 4,
             paddingRight: 6,
@@ -617,7 +617,9 @@ const RecentShapesStrip = ({
       </div>
       <style>{`
         .recent-shapes-scroll::-webkit-scrollbar { height: 8px; }
-        .recent-shapes-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 8px; }
+        .recent-shapes-scroll::-webkit-scrollbar-track { background: transparent; }
+        .recent-shapes-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 8px; }
+        .recent-shapes-scroll { scrollbar-color: rgba(255,255,255,0.06) transparent; }
         .recent-shapes-scroll > div:focus-within { outline: 2px solid rgba(255,255,255,0.06); border-radius: 6px; }
         .recent-shapes-scroll > div:hover { transform: translateY(-2px); }
       `}</style>
