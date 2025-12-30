@@ -408,7 +408,8 @@ const RecentShapesStrip = ({
             gap: 6,
             minWidth: 180,
             maxWidth: 240,
-            paddingRight: 12
+            paddingRight: 12,
+            alignSelf: 'stretch'
           }}
         >
           <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.6, color: '#f3f6f5' }}>Recent shapes</span>
