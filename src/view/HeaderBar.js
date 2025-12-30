@@ -322,7 +322,7 @@ export default function HeaderBar({
           </Box>
         )}
   {/* Third row: RecentShapesStrip (increased height to fit thumbnails + controls) */}
-  <Box sx={{ position: 'relative', left: 0, right: 0, height: 120, minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(30,30,40,0.85)', borderBottom: '1px solid rgba(255,255,255,0.12)', zIndex: 41, pointerEvents: 'auto', overflowX: 'auto', overflowY: 'hidden', mt: 0 }}>
+  <Box sx={{ position: 'relative', left: 0, right: 0, py: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(30,30,40,0.85)', borderBottom: '1px solid rgba(255,255,255,0.12)', zIndex: 41, pointerEvents: 'auto', overflowX: 'auto', overflowY: 'hidden', mt: 0 }}>
           <RecentShapesStrip
             recentShapes={recentShapes}
             selectShape={selectShape}
