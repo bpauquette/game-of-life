@@ -93,7 +93,7 @@ function ShapeSlot({
   };
   return (
     <div style={{
-      border: `3px solid ${selected ? SELECTED_BORDER_COLOR : '#3ad6ff'}`,
+      border: `2px solid ${selected ? SELECTED_BORDER_COLOR : '#3ad6ff'}`,
       borderRadius: SHAPE_BORDER_RADIUS,
       boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
       width: 130,
