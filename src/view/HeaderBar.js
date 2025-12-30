@@ -6,6 +6,7 @@ import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import { BarChart as BarChartIcon, Help as HelpIcon, Info as InfoIcon, Settings as SettingsIcon, CloudDownload as ImportIcon, Language as LanguageIcon, VolunteerActivism as DonateIcon } from '@mui/icons-material';
+import CodeIcon from '@mui/icons-material/Code';
 import { PsychologyAlt as UserIcon, LockPerson as UserLoggedInIcon } from '@mui/icons-material';
 import { useAuth } from '../auth/AuthProvider';
 import Login from '../auth/Login';
@@ -143,6 +144,7 @@ export default function HeaderBar({
   const [aboutOpen, setAboutOpen] = useState(false);
   const [donateOpen, setDonateOpen] = useState(false);
   const [wasRunningBeforeOptions, setWasRunningBeforeOptions] = useState(false);
+  const [scriptOpen, setScriptOpen] = useState(false);
 
   // Listen for login required event
   useEffect(() => {
@@ -264,6 +266,9 @@ export default function HeaderBar({
               onOpenUser={handleUserIconClick}
               loggedIn={!!token}
             />
+            <Tooltip title="Script Playground">
+              <IconButton size="small" onClick={() => setScriptOpen(true)} aria-label="script-playground"><CodeIcon fontSize="small" /></IconButton>
+            </Tooltip>
             {/* Version info is now shown as a tooltip on the About icon */}
             {/* User authentication dialog/modal */}
             {userDialogOpen && (
@@ -338,6 +343,11 @@ export default function HeaderBar({
           />
         </Box>
       </Box>
+
+      {/* Script playground dialog */}
+      {scriptOpen && (
+        <ScriptPanel open={scriptOpen} onClose={() => setScriptOpen(false)} />
+      )}
 
       {optionsOpen && (
         <OptionsPanel
