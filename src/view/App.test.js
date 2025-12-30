@@ -4,8 +4,9 @@ import App from './App';
 
 describe('App', () => {
   it('renders without crashing and shows version info', () => {
-    const { getByText } = render(<App />);
-    expect(getByText(/Version:/)).toBeInTheDocument();
-    expect(getByText(/Built:/)).toBeInTheDocument();
+    const { getByLabelText } = render(<App />);
+    // App no longer renders version metadata in the root; ensure core UI mounts
+    expect(getByLabelText(/Load saved grid state/i)).toBeInTheDocument();
+    expect(getByLabelText(/Save current grid state/i)).toBeInTheDocument();
   });
 });

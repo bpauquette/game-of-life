@@ -9,7 +9,7 @@ import { eventToCellFromCanvas } from '../../controller/utils/canvasUtils';
  * @param {React.RefObject} offsetRef - Ref containing world offset and zoom info
  * @returns {{ x: number, y: number } | null} Grid coordinates
  */
-const useGridMousePosition = ({ canvasRef, cellSize, offsetRef }) => {
+const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor }) => {
   const [gridPosition, setGridPosition] = useState(null);
   const canvas = canvasRef?.current;
   const lastClientRef = useRef(null);
@@ -38,6 +38,7 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef }) => {
       const fy = targetOffsetRef.current.y + (ev.clientY - rect.top - centerY) / eff;
       const point = { x: Math.floor(fx), y: Math.floor(fy), fx, fy };
       setGridPosition((prev) => (prev && prev.x === point.x && prev.y === point.y && prev.fx === point.fx && prev.fy === point.fy ? prev : point));
+      try { if (typeof onCursor === 'function') onCursor(point); } catch (e) {}
     };
     const handleWheel = (ev) => {
       // When zooming (wheel) the mouse may not move; recompute grid pos
@@ -50,6 +51,7 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef }) => {
       const fy = targetOffsetRef.current.y + (last.y - rect.top - centerY) / eff;
       const point = { x: Math.floor(fx), y: Math.floor(fy), fx, fy };
       setGridPosition((prev) => (prev && prev.x === point.x && prev.y === point.y && prev.fx === point.fx && prev.fy === point.fy ? prev : point));
+      try { if (typeof onCursor === 'function') onCursor(point); } catch (e) {}
     };
     const handleLeave = () => setGridPosition(null);
     // Listen to pointer events as well so dragging (pointermove) updates the
@@ -70,7 +72,10 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef }) => {
       const fx = targetOffsetRef.current.x + (lastClientRef.current.x - rect.left - centerX) / eff;
       const fy = targetOffsetRef.current.y + (lastClientRef.current.y - rect.top - centerY) / eff;
       const pt = { x: Math.floor(fx), y: Math.floor(fy), fx, fy };
-      if (pt) setGridPosition((prev) => (prev && prev.x === pt.x && prev.y === pt.y && prev.fx === pt.fx && prev.fy === pt.fy ? prev : pt));
+      if (pt) {
+        setGridPosition((prev) => (prev && prev.x === pt.x && prev.y === pt.y && prev.fx === pt.fx && prev.fy === pt.fy ? prev : pt));
+        try { if (typeof onCursor === 'function') onCursor(pt); } catch (e) {}
+      }
     }
 
     return () => {

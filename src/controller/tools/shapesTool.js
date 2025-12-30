@@ -28,13 +28,14 @@ export const shapesTool = {
     );
   },
   onMouseDown(toolState, x, y) {
-    toolState.start = { x, y };
-    toolState.last = { x, y };
+    // Preserve fractional coords when available (fx/fy may be provided by callers)
+    toolState.start = { x, y, ...(typeof toolState.start?.fx === 'number' ? { fx: toolState.start.fx } : {}) };
+    toolState.last = { x, y, ...(typeof toolState.last?.fx === 'number' ? { fx: toolState.last.fx } : {}) };
     toolState.dragging = true;
   },
 
   onMouseMove(toolState, x, y) {
-    toolState.last = { x, y };
+    toolState.last = { x, y, ...(typeof toolState.last?.fx === 'number' ? { fx: toolState.last.fx } : {}) };
   },
 
   onMouseUp(toolState, x, y, setCellAlive, placeShape) {
