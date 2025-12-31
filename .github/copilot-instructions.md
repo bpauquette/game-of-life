@@ -39,6 +39,8 @@ Short guidance for AI coding agents working on Game of Life (frontend + two back
 7) Windows & infra notes
 - Use repo scripts for Windows LAN/testing: `start-backend.ps1`, `start-frontend.ps1`, and `scripts/windows/*` (they auto-elevate where needed).
 
+- Agent runtime preference: The workspace owner prefers that the AI avoid using PowerShell for commands or automation. When possible use WSL/bash, plain shell commands, or provide alternative non-PowerShell instructions. This note reflects the user's preference that the agent may not understand PowerShell and should avoid it.
+
 Follow these rules to stay consistent with existing tests and performance assumptions.
 
 ---

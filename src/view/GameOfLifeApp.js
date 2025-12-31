@@ -896,6 +896,149 @@ function GameOfLifeApp(props) {
   const handleAddRecent = useCallback((shape) => {
     shapeManager.addRecentShape?.(shape);
   }, [shapeManager]);
+
+  // ScriptPanel integration: listen for script events and route them into the app
+  useEffect(() => {
+    const onPlace = (ev) => {
+      try {
+        const detail = ev && ev.detail ? ev.detail : {};
+        const { idOrName, x, y, shape } = detail;
+        const controller = gameRef.current && gameRef.current.controller;
+        const model = controller && controller.model;
+
+        // If caller provided a full shape object, select it first
+        if (shape) {
+          try { shapeManager.selectShape(shape); } catch (e) {}
+        } else if (idOrName && shapeManager && typeof shapeManager.selectShape === 'function') {
+          // try to select by id or name if possible; selectShape will also add to recents
+          try {
+            // shapeManager may expose a shapes cache; try best-effort lookup
+            const found = (shapeManager.shapes || []).find(s => String(s.id) === String(idOrName) || String(s.name) === String(idOrName));
+            if (found) shapeManager.selectShape(found);
+          } catch (e) {}
+        }
+
+        if (model && typeof model.placeShape === 'function' && typeof x === 'number' && typeof y === 'number') {
+          try {
+            model.placeShape(Math.floor(x), Math.floor(y), model.getSelectedShape());
+          } catch (e) {
+            // fallback: if selected shape not available, try to load provided shape into grid
+            try {
+              if (shape && typeof loadGridIntoGame === 'function') {
+                // place the shape by loading its live cells at the requested offset
+                loadGridIntoGame(gameRef, new Set((shape.liveCells || shape.cells || []).map(c => `${c[0]},${c[1]}`)));
+              }
+            } catch (err) {}
+          }
+        }
+      } catch (err) { /* swallow */ }
+    };
+
+    const onCapture = (ev) => {
+      try {
+        const detail = ev && ev.detail ? ev.detail : {};
+        const shape = detail.shape || detail;
+        if (shape) {
+          try { handleAddRecent(shape); } catch (e) {}
+        }
+      } catch (err) {}
+    };
+
+    const onSelectTool = (ev) => {
+      try {
+        const detail = ev && ev.detail ? ev.detail : {};
+        const tool = detail.tool || detail.toolName || detail;
+        if (tool) {
+          try { setSelectedTool(tool); } catch (e) {}
+          try { gameRef.current?.setSelectedTool?.(tool); } catch (e) {}
+        }
+      } catch (err) {}
+    };
+
+    window.addEventListener('gol:script:placeShape', onPlace);
+    window.addEventListener('gol:script:capture', onCapture);
+    window.addEventListener('gol:script:selectTool', onSelectTool);
+    // Run shapes through real engine until steady
+    const onRunUntilSteady = async (ev) => {
+      try {
+        const detail = ev && ev.detail ? ev.detail : {};
+        const type = detail.type || 'squareGrowth';
+        const maxSize = Number(detail.maxSize) || 8;
+        const centerX = Number(detail.centerX) || 0;
+        const centerY = Number(detail.centerY) || 0;
+        const controller = gameRef.current && gameRef.current.controller;
+        const model = gameRef.current && gameRef.current.model;
+        if (!controller || !model) {
+          window.dispatchEvent(new CustomEvent('gol:script:runResult', { detail: { error: 'engine not ready' } }));
+          return;
+        }
+
+        const results = [];
+        for (let s = 1; s <= maxSize; s++) {
+          // clear grid
+          try { model.clearModel && model.clearModel(); } catch (e) { model.liveCells = new Map(); }
+          // build square shape (cells as offsets)
+          const cells = [];
+          const ox = -Math.floor(s / 2);
+          const oy = -Math.floor(s / 2);
+          for (let x = 0; x < s; x++) for (let y = 0; y < s; y++) cells.push([ox + x, oy + y]);
+          // place shape centered at centerX, centerY
+          try { model.placeShape(centerX, centerY, { cells }); } catch (e) {}
+
+          // step until steady or until maxSteps
+          const seen = new Set();
+          let steady = false;
+          let steps = 0;
+          const maxSteps = Number(detail.maxSteps) || 200;
+          while (steps < maxSteps) {
+            const hash = model.getStateHash();
+            if (seen.has(hash)) { steady = true; break; }
+            seen.add(hash);
+            // advance one generation via controller
+            try { await controller.step(); } catch (e) { break; }
+            steps += 1;
+            const newHash = model.getStateHash();
+            if (newHash === hash) { steady = true; break; }
+          }
+          results.push({ size: s, steady, steps, finalCount: model.getCellCount() });
+        }
+
+        window.dispatchEvent(new CustomEvent('gol:script:runResult', { detail: { results } }));
+      } catch (err) {
+        try { window.dispatchEvent(new CustomEvent('gol:script:runResult', { detail: { error: String(err) } })); } catch (e) {}
+      }
+    };
+    window.addEventListener('gol:script:runUntilSteady', onRunUntilSteady);
+    // Live-step updates from ScriptPanel: apply current script cells to main grid
+    const onScriptStep = (ev) => {
+      const detail = ev && ev.detail ? ev.detail : {};
+      const cells = detail.cells || detail;
+      const controller = gameRef.current && gameRef.current.controller;
+      const model = gameRef.current && gameRef.current.model;
+      if (!model) return;
+      // Clear current grid then load the provided cells
+      try {
+        if (typeof model.clearModel === 'function') model.clearModel();
+        else if (controller && typeof controller.clear === 'function') controller.clear();
+      } catch (e) {
+        try { window.dispatchEvent(new CustomEvent('gol:script:error', { detail: { error: 'Failed to clear model: ' + String(e) } })); } catch (ee) {}
+        return;
+      }
+      try {
+        loadGridIntoGame(gameRef, cells);
+      } catch (e) {
+        try { window.dispatchEvent(new CustomEvent('gol:script:error', { detail: { error: 'Failed to load script cells into model: ' + String(e) } })); } catch (ee) {}
+      }
+    };
+    window.addEventListener('gol:script:step', onScriptStep);
+    return () => {
+      window.removeEventListener('gol:script:placeShape', onPlace);
+      window.removeEventListener('gol:script:capture', onCapture);
+      window.removeEventListener('gol:script:selectTool', onSelectTool);
+      window.removeEventListener('gol:script:runUntilSteady', onRunUntilSteady);
+      window.removeEventListener('gol:script:step', onScriptStep);
+    };
+  }, [shapeManager, handleAddRecent, setSelectedTool, gameRef]);
   // normalization of rotated shapes is handled by the shape manager
   // (useShapeManager.replaceRecentShapeAt) so it is not duplicated here.
 
