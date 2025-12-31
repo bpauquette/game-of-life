@@ -464,6 +464,8 @@ function ScriptPanel({ open, onClose }) {
   }, []);
 
   const handleRun = useCallback(() => {
+    // Debug: confirm Run button is firing
+    console.log('[ScriptPanel] Run button clicked');
     setRunMessage(null);
     setRunErrors([]);
     const lines = (text || '').split(/\r?\n/);
