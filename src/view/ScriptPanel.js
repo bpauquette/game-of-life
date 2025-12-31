@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuthStatus } from '../auth/useAuthStatus';
 import { getBackendApiBase } from '../utils/backendApi';
 import {
@@ -12,6 +12,7 @@ import {
 } from '../model/drawShapes';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
+import DebugPanel from './DebugPanel';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -347,23 +348,24 @@ function runScript(text, opts = {}) {
 }
 
 function ScriptPanel({ open, onClose }) {
-    // Debug panel UI (separate from output)
-    function DebugPanel() {
-      return (
-        <Box sx={{ mt: 2, p: 1, bgcolor: '#222', color: '#fff', fontSize: 12, maxHeight: 200, overflow: 'auto', borderRadius: 1 }}>
-          <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Script Debug Log</div>
-          {debugLog.length === 0 && <div style={{ color: '#aaa' }}>No debug output yet.</div>}
-          {debugLog.map((entry, i) => (
-            <div key={i} style={{ whiteSpace: 'pre-wrap' }}>
-              {entry.type ? `[${entry.type}] ` : ''}{entry.line ? entry.line : ''}{entry.msg ? ' ' + entry.msg : ''}
-              {entry.cells ? ` cells: ${JSON.stringify(entry.cells)}` : ''}
-              {entry.key ? ` cell: ${entry.key}` : ''}
-              {entry.idx !== undefined ? ` (line ${entry.idx+1})` : ''}
-            </div>
-          ))}
-        </Box>
-      );
-    }
+  // Debug log state
+  const [debugLog, setDebugLog] = useState([]);
+    // Listen for debug events and update debugLog
+    useEffect(() => {
+      function onDebug(ev) {
+        setDebugLog(log => [
+          ...log,
+          ev.detail || { type: 'unknown', msg: 'Malformed debug event' }
+        ].slice(-200)); // keep last 200 entries
+      }
+      window.addEventListener('gol:script:debug', onDebug);
+      return () => window.removeEventListener('gol:script:debug', onDebug);
+    }, []);
+
+    // Clear debug log when panel is closed
+    useEffect(() => {
+      if (!open) setDebugLog([]);
+    }, [open]);
   const { isAuthenticated, me } = useAuthStatus();
   // Script name and content autosave
   const [scriptName, setScriptName] = useState(() => {
@@ -635,8 +637,10 @@ function ScriptPanel({ open, onClose }) {
         {runMessage && <Alert severity="info" sx={{ mb: 1, whiteSpace: 'pre-wrap' }}>{runMessage}</Alert>}
         <Box sx={{ fontFamily: 'monospace', fontSize: 13 }}>
           <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-            <label style={{ color: '#fff', fontWeight: 500, fontSize: 14 }}>Script Name:</label>
+            <label htmlFor="scriptName" style={{ color: '#fff', fontWeight: 500, fontSize: 14 }}>Script Name:</label>
             <input
+              id="scriptName"
+              name="scriptName"
               type="text"
               value={scriptName}
               onChange={e => setScriptName(e.target.value)}
@@ -652,17 +656,28 @@ function ScriptPanel({ open, onClose }) {
               }}
               maxLength={64}
               placeholder="Untitled Script"
+              autoComplete="off"
             />
             {isAuthenticated && (
-              <label style={{ color: '#fff', fontWeight: 400, fontSize: 13, marginLeft: 12 }}>
-                <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} style={{ marginRight: 4 }} />
+              <label htmlFor="publicScriptCheckbox" style={{ color: '#fff', fontWeight: 400, fontSize: 13, marginLeft: 12 }}>
+                <input
+                  id="publicScriptCheckbox"
+                  name="publicScriptCheckbox"
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={e => setIsPublic(e.target.checked)}
+                  style={{ marginRight: 4 }}
+                />
                 Public
               </label>
             )}
           </Box>
           {/* Removed duplicate Script Name input */}
           <div style={{ position: 'relative' }}>
+            <label htmlFor="scriptTextArea" style={{ display: 'none' }}>Script Content</label>
             <textarea
+              id="scriptTextArea"
+              name="scriptTextArea"
               ref={textareaRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -675,6 +690,7 @@ function ScriptPanel({ open, onClose }) {
                 color: '#dfe',
                 border: runErrors.length > 0 ? '2px solid #e53935' : undefined
               }}
+              autoComplete="off"
             />
             {runErrors.map(err => err.line !== null && (
               <div key={err.line}
@@ -728,7 +744,7 @@ function ScriptPanel({ open, onClose }) {
         </Box>
         {/* Visually separated debug panel below output */}
         <div style={{ marginTop: 24 }} />
-        <DebugPanel />
+        <DebugPanel debugLog={debugLog} />
         <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginBottom: 8 }}>
           <b>Commands & Features:</b> <br/>
           <b>Variables:</b> <code>x = 5</code>, <code>name = "hello"</code> — assign numbers/strings<br/>
