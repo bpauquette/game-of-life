@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { eventToCellFromCanvas } from '../../controller/utils/canvasUtils';
 
 /**
  * Tracks mouse position in grid coordinates (cellX, cellY) based on canvas and cell size.

@@ -1,0 +1,25 @@
+
+> game-of-life@0.1.0 build
+> npm run build:version && craco build
+
+
+> game-of-life@0.1.0 build:version
+> node ./scripts/write-version.js
+
+Wrote version: 0.1.0, timestamp: 2025-12-31T02:03:47.396Z
+(node:26380) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Creating an optimized production build...
+Failed to compile.
+
+[eslint] 
+src\view\ScriptPanel.js
+  Line 394:9:   'setRunError' is not defined  no-undef
+  Line 396:9:   'setRunError' is not defined  no-undef
+  Line 513:13:  'setRunError' is not defined  no-undef
+  Line 536:10:  'runError' is not defined     no-undef
+  Line 536:62:  'runError' is not defined     no-undef
+
+Search for the keywords to learn more about each error.
+
+
