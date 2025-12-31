@@ -1,0 +1,12 @@
+# Square Growth Demo Script with New Features
+size = 2
+WHILE size <= 8
+  CLEAR
+  PENDOWN
+  RECT size size
+  UNTIL_STEADY steps 100
+  COUNT live
+  PRINT "size=" + size + ", steps=" + steps + ", live=" + live
+  PENUP
+  size = size + 1
+END
