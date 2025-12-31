@@ -38,10 +38,6 @@ const RecentShapesStrip = ({
   persistenceStatus = {}
 }) => {
   const {
-    lastSavedAt = null,
-    loadedFromStorage = false,
-    hasSavedState = false,
-    isDirty = false,
     error: persistenceError = null
   } = persistenceStatus || {};
   const [lastSavedAtLocal, setLastSavedAtLocal] = useState(() => {

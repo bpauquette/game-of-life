@@ -9,8 +9,9 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import logger from '../controller/utils/logger';
-import { fetchShapeById, createShape, deleteShapeById, checkBackendHealth } from '../utils/backendApi';
+import { createShape, deleteShapeById, checkBackendHealth } from '../utils/backendApi';
 import SearchBar from './components/SearchBar';
+import { fetchShapeById } from '../utils/backendApi';
 import PreviewPanel from './components/PreviewPanel';
 import { useShapePaletteSearch } from './hooks/useShapePaletteSearch';
 import {

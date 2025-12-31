@@ -1016,14 +1016,7 @@ function GameOfLifeApp(props) {
       const controller = gameRef.current && gameRef.current.controller;
       const model = gameRef.current && gameRef.current.model;
       if (!model) return;
-      // Clear current grid then load the provided cells
-      try {
-        if (typeof model.clearModel === 'function') model.clearModel();
-        else if (controller && typeof controller.clear === 'function') controller.clear();
-      } catch (e) {
-        try { window.dispatchEvent(new CustomEvent('gol:script:error', { detail: { error: 'Failed to clear model: ' + String(e) } })); } catch (ee) {}
-        return;
-      }
+      // Only load the provided cells; do not clear the grid automatically
       try {
         loadGridIntoGame(gameRef, cells);
       } catch (e) {

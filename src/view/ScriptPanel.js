@@ -125,6 +125,13 @@ function runScript(text, opts = {}) {
     let i = startIdx;
     while (i < endIdx) {
       let { line, indent } = blocks[i];
+      // Debug: log each command
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'command', line, idx: i } }));
+      }
+      // Also log to console
+      // eslint-disable-next-line no-console
+      console.debug('[Script Debug] Executing:', line);
       // PRINT command
       let printMatch = line.match(/^print\s+(.+)$/i);
       if (printMatch) {
@@ -140,6 +147,11 @@ function runScript(text, opts = {}) {
       // CLEAR command
       if (/^clear$/i.test(line)) {
         state.cells = new Set();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: 'Grid cleared', idx: i } }));
+        }
+        // eslint-disable-next-line no-console
+        console.debug('[Script Debug] Grid cleared');
         if (onStep) onStep(new Set(state.cells));
         emitStepEvent(state.cells);
         i++;
@@ -261,6 +273,11 @@ function runScript(text, opts = {}) {
 
   // Legacy command handler (for all non-block/assignment/label lines)
   async function legacyCommand(line) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'legacy', line } }));
+    }
+    // eslint-disable-next-line no-console
+    console.debug('[Script Debug] Legacy command:', line);
         // STEP n: animated visible stepping
         let stepMatch = line.match(/^STEP\s+(\d+)$/i);
         if (stepMatch) {
@@ -278,9 +295,19 @@ function runScript(text, opts = {}) {
               state.cells = new Set();
               for (const key of next.keys ? next.keys() : Object.keys(next)) {
                 state.cells.add(key);
+                // Debug: log cell addition
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'cell', key } }));
+                }
               }
               if (onStep) onStep(new Set(state.cells));
               emitStepEvent(state.cells);
+              // Debug: log state after step
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: `Step ${i+1}/${n}`, cells: Array.from(state.cells) } }));
+              }
+              // eslint-disable-next-line no-console
+              console.debug(`[Script Debug] Step ${i+1}/${n}, cells:`, Array.from(state.cells));
               // Creative: flash overlay, color, and emoji
               if (typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('gol:script:step-anim', {
@@ -303,8 +330,18 @@ function runScript(text, opts = {}) {
   }
 
   // Parse blocks and execute
-  const blocks = parseBlocks(rawLines);
-  execBlock(blocks);
+  const parsedBlocks = parseBlocks(rawLines);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'start', lines: rawLines } }));
+  }
+  // eslint-disable-next-line no-console
+  console.debug('[Script Debug] Script started:', rawLines);
+  execBlock(parsedBlocks);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'end', state } }));
+  }
+  // eslint-disable-next-line no-console
+  console.debug('[Script Debug] Script ended. State:', state);
   return state;
 }
 }
@@ -536,6 +573,23 @@ function ScriptPanel({ open, onClose }) {
     });
   }, []);
 
+
+  // Debug panel UI (separate from output)
+  const DebugPanel = () => (
+    <Box sx={{ mt: 2, p: 1, bgcolor: '#222', color: '#fff', fontSize: 12, maxHeight: 200, overflow: 'auto', borderRadius: 1 }}>
+      <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Script Debug Log</div>
+      {debugLog.length === 0 && <div style={{ color: '#aaa' }}>No debug output yet.</div>}
+      {debugLog.map((entry, i) => (
+        <div key={i} style={{ whiteSpace: 'pre-wrap' }}>
+          {entry.type ? `[${entry.type}] ` : ''}{entry.line ? entry.line : ''}{entry.msg ? ' ' + entry.msg : ''}
+          {entry.cells ? ` cells: ${JSON.stringify(entry.cells)}` : ''}
+          {entry.key ? ` cell: ${entry.key}` : ''}
+          {entry.idx !== undefined ? ` (line ${entry.idx+1})` : ''}
+        </div>
+      ))}
+    </Box>
+  );
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       {/* Animated overlay for STEP n */}
@@ -569,6 +623,7 @@ function ScriptPanel({ open, onClose }) {
       )}
       <DialogTitle>Script Playground</DialogTitle>
       <DialogContent>
+        {/* Output and input UI */}
         {runErrors.length > 0 && runErrors.some(e => e.line === null) && (
           <Alert severity="error" sx={{ mb: 1 }}>
             {runErrors.filter(e => e.line === null).map((e, i) => <div key={i}>{e.msg}</div>)}
@@ -668,6 +723,9 @@ function ScriptPanel({ open, onClose }) {
             </Box>
           )}
         </Box>
+        {/* Visually separated debug panel below output */}
+        <div style={{ marginTop: 24 }} />
+        <DebugPanel />
         <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginBottom: 8 }}>
           <b>Commands & Features:</b> <br/>
           <b>Variables:</b> <code>x = 5</code>, <code>name = "hello"</code> — assign numbers/strings<br/>
