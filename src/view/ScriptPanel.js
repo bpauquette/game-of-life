@@ -39,6 +39,7 @@ function parseNumber(tok) {
 
 function runScript(text, opts = {}) {
     // Import ticks for advancing simulation
+    console.log('[runScript] called with text:', text, 'opts:', opts);
     const { ticks, step } = require('../model/gameLogic');
   // opts.onStep: function(cellsSet) called after each command that modifies drawing
   const onStep = typeof opts.onStep === 'function' ? opts.onStep : null;
@@ -48,10 +49,17 @@ function runScript(text, opts = {}) {
         const [cx, cy] = String(s).split(',').map(Number);
         return { x: cx, y: cy };
       });
-      console.log('[emitStepEvent] Dispatching gol:script:step with', cells.length, 'cells');
+      console.log('[emitStepEvent] Dispatching gol:script:step with', cells.length, 'cells', cells);
       debugger; // Pauses here for browser debugging
-      try { window.dispatchEvent(new CustomEvent('gol:script:step', { detail: { cells } })); } catch (e) {}
-    } catch (e) {}
+      try {
+        window.dispatchEvent(new CustomEvent('gol:script:step', { detail: { cells } }));
+        console.log('[emitStepEvent] gol:script:step event dispatched');
+      } catch (e) {
+        console.error('[emitStepEvent] dispatch error', e);
+      }
+    } catch (e) {
+      console.error('[emitStepEvent] error', e);
+    }
   };
   // Preprocess: keep original lines for error reporting, but trim for parsing
   const rawLines = (text || '').split(/\r?\n/);
@@ -128,6 +136,7 @@ function runScript(text, opts = {}) {
     let i = startIdx;
     while (i < endIdx) {
       let { line, indent } = blocks[i];
+      console.log('[execBlock] Executing line', i, ':', line);
       // Debug: log each command
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'command', line, idx: i } }));
@@ -351,10 +360,12 @@ function runScript(text, opts = {}) {
 
 function ScriptPanel({ open, onClose }) {
   // Debug log state
+  console.log('[ScriptPanel] Render start');
   const [debugLog, setDebugLog] = useState([]);
     // Listen for debug events and update debugLog
     useEffect(() => {
       function onDebug(ev) {
+        console.log('[ScriptPanel] gol:script:debug event:', ev.detail);
         setDebugLog(log => [
           ...log,
           ev.detail || { type: 'unknown', msg: 'Malformed debug event' }
@@ -367,6 +378,7 @@ function ScriptPanel({ open, onClose }) {
     // Clear debug log when panel is closed
     useEffect(() => {
       if (!open) setDebugLog([]);
+      console.log('[ScriptPanel] useEffect [open] open:', open);
     }, [open]);
   const { isAuthenticated, me } = useAuthStatus();
   // Script name and content autosave
@@ -466,7 +478,6 @@ function ScriptPanel({ open, onClose }) {
   }, []);
 
   const handleRun = useCallback(() => {
-    // Debug: confirm Run button is firing
     console.log('[ScriptPanel] Run button clicked');
     setRunMessage(null);
     setRunErrors([]);
@@ -476,6 +487,7 @@ function ScriptPanel({ open, onClose }) {
       const line = lines[i].trim();
       if (!line) continue;
       try {
+        console.log('[ScriptPanel] handleRun running line', i, ':', line);
         runScript(line);
       } catch (err) {
         let help = '';
@@ -484,6 +496,7 @@ function ScriptPanel({ open, onClose }) {
         else if (/missing/i.test(err)) help = 'Check for missing arguments.';
         else help = 'See the command reference above.';
         errors.push({ line: i, msg: err.message || String(err), help });
+        console.error('[ScriptPanel] handleRun error on line', i, ':', err);
       }
     }
     if (errors.length > 0) {
@@ -497,11 +510,13 @@ function ScriptPanel({ open, onClose }) {
     }
     // No errors: run the full script and close
     try {
+      console.log('[ScriptPanel] handleRun running full script');
       runScript(text);
       setRunMessage('Script executed — shapes captured will appear in Recent Shapes (if supported).');
       setTimeout(() => { if (onClose) onClose(); }, 500);
     } catch (e) {
       setRunErrors([{ line: null, msg: e.message || String(e), help: '' }]);
+      console.error('[ScriptPanel] handleRun error running full script:', e);
     }
   }, [text, onClose]);
 
@@ -599,6 +614,7 @@ function ScriptPanel({ open, onClose }) {
 
 
 
+  console.log('[ScriptPanel] Render return');
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       {/* Animated overlay for STEP n */}
