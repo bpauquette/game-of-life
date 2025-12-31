@@ -15,6 +15,7 @@ import SaveLoadGroup from './components/SaveLoadGroup';
 import RunControlGroup from './components/RunControlGroup';
 import ToolGroup from './components/ToolGroup';
 import RecentShapesStrip from './RecentShapesStrip';
+import ScriptPanel from './ScriptPanel';
 import Chip from '@mui/material/Chip';
 import { FullscreenExit as FullscreenExitIcon } from '@mui/icons-material';
 import TOOL_DESCRIPTIONS from './components/toolDescriptions';

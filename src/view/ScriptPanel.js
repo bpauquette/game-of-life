@@ -7,6 +7,7 @@ import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
+import Alert from '@mui/material/Alert';
 import DialogActions from '@mui/material/DialogActions';
 import { Save as SaveIcon, FolderOpen as LoadIcon, PlayArrow as RunIcon } from '@mui/icons-material';
 
@@ -27,6 +28,17 @@ function parseNumber(tok) {
 }
 
 function runScript(text, opts = {}) {
+  // opts.onStep: function(cellsSet) called after each command that modifies drawing
+  const onStep = typeof opts.onStep === 'function' ? opts.onStep : null;
+  const emitStepEvent = (cellsSet) => {
+    try {
+      const cells = Array.from(cellsSet).map(s => {
+        const [cx, cy] = String(s).split(',').map(Number);
+        return { x: cx, y: cy };
+      });
+      try { window.dispatchEvent(new CustomEvent('gol:script:step', { detail: { cells } })); } catch (e) {}
+    } catch (e) {}
+  };
   const lines = (text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const state = {
     x: 0,
@@ -38,6 +50,8 @@ function runScript(text, opts = {}) {
 
   const addCell = (cx, cy) => {
     state.cells.add(`${Math.round(cx)},${Math.round(cy)}`);
+    if (onStep) onStep(new Set(state.cells));
+    emitStepEvent(state.cells);
   };
 
   const addRect = (w, h) => {
@@ -48,6 +62,8 @@ function runScript(text, opts = {}) {
         addCell(sx + rx, sy + ry);
       }
     }
+    if (onStep) onStep(new Set(state.cells));
+    emitStepEvent(state.cells);
   };
 
   const addSquare = (s) => addRect(s, s);
@@ -61,6 +77,8 @@ function runScript(text, opts = {}) {
         if (dx * dx + dy * dy <= rr * rr) addCell(cx + dx, cy + dy);
       }
     }
+        if (onStep) onStep(new Set(state.cells));
+        emitStepEvent(state.cells);
   };
 
   const addRandomRect = (minW, maxW, minH, maxH, count = 1) => {
@@ -78,6 +96,8 @@ function runScript(text, opts = {}) {
       state.x = saveX;
       state.y = saveY;
     }
+    if (onStep) onStep(new Set(state.cells));
+    emitStepEvent(state.cells);
   };
 
   for (const raw of lines) {
@@ -97,6 +117,8 @@ function runScript(text, opts = {}) {
         state.y += dy;
         if (state.penDown) addCell(state.x, state.y);
       }
+      if (onStep) onStep(new Set(state.cells));
+      emitStepEvent(state.cells);
     } else if (cmd === 'BACK' || cmd === 'BK') {
       const n = parseNumber(parts[1] || 0);
       const rad = (state.dir * Math.PI) / 180;
@@ -107,6 +129,8 @@ function runScript(text, opts = {}) {
         state.y -= dy;
         if (state.penDown) addCell(state.x, state.y);
       }
+      if (onStep) onStep(new Set(state.cells));
+      emitStepEvent(state.cells);
     } else if (cmd === 'LEFT' || cmd === 'LT') {
       const d = parseNumber(parts[1] || 0);
       state.dir = (state.dir - d) % 360;
@@ -117,6 +141,8 @@ function runScript(text, opts = {}) {
       state.x = parseNumber(parts[1] || 0);
       state.y = parseNumber(parts[2] || 0);
       if (state.penDown) addCell(state.x, state.y);
+      if (onStep) onStep(new Set(state.cells));
+      emitStepEvent(state.cells);
     } else if (cmd === 'RECT') {
       const w = Math.max(1, Math.round(parseNumber(parts[1] || 1)));
       const h = Math.max(1, Math.round(parseNumber(parts[2] || 1)));
@@ -139,6 +165,8 @@ function runScript(text, opts = {}) {
       try {
         window.dispatchEvent(new CustomEvent('gol:script:capture', { detail: { shape } }));
       } catch (e) {}
+      if (onStep) onStep(new Set(state.cells));
+      emitStepEvent(state.cells);
     } else if (cmd === 'SELECT_TOOL') {
       const tool = parts.slice(1).join(' ');
       try { window.dispatchEvent(new CustomEvent('gol:script:selectTool', { detail: { tool } })); } catch (e) {}
@@ -151,6 +179,8 @@ function runScript(text, opts = {}) {
     } else if (cmd === 'SQUARE') {
       const s = Math.max(1, Math.round(parseNumber(parts[1] || 1)));
       addSquare(s);
+      if (onStep) onStep(new Set(state.cells));
+      emitStepEvent(state.cells);
     } else if (cmd === 'CIRCLE') {
       const r = Math.max(0, Math.round(parseNumber(parts[1] || 1)));
       addCircle(r);
@@ -162,6 +192,8 @@ function runScript(text, opts = {}) {
       const maxH = Math.max(minH, Math.round(parseNumber(parts[4] || minH)));
       const count = Math.max(1, Math.round(parseNumber(parts[5] || 1)));
       addRandomRect(minW, maxW, minH, maxH, count);
+      if (onStep) onStep(new Set(state.cells));
+      emitStepEvent(state.cells);
     } else {
       // unknown command - ignore
     }
@@ -174,17 +206,44 @@ export default function ScriptPanel({ open, onClose }) {
   const [text, setText] = useState(() => {
     try { return localStorage.getItem('gol_script_last') || 'PENDOWN\nRECT 4 3\nCAPTURE demo\n'; } catch (e) { return '';} 
   });
+  const [runMessage, setRunMessage] = useState(null);
+  const [runError, setRunError] = useState(null);
+
+  // Clear messages when panel is closed
+  React.useEffect(() => {
+    if (!open) {
+      setRunMessage(null);
+      setRunError(null);
+    }
+  }, [open]);
+
+  // Listen for application-level script errors (e.g., model apply failures)
+  React.useEffect(() => {
+    const handler = (ev) => {
+      try {
+        const detail = ev && ev.detail ? ev.detail : {};
+        const err = detail.error || String(detail) || 'Unknown script error';
+        setRunError(String(err));
+      } catch (e) {
+        setRunError('Unknown script error');
+      }
+    };
+    window.addEventListener('gol:script:error', handler);
+    return () => window.removeEventListener('gol:script:error', handler);
+  }, []);
 
   const handleRun = useCallback(() => {
+    setRunError(null);
+    setRunMessage(null);
     try {
       const result = runScript(text);
       // Save last script
       localStorage.setItem('gol_script_last', text);
       // Optionally save drawn cells snapshot
-      // Notify user
-      alert('Script executed — shapes captured will appear in Recent Shapes (if supported).');
+      // Show success message in-panel
+      setRunMessage('Script executed — shapes captured will appear in Recent Shapes (if supported).');
     } catch (e) {
-      alert('Script error: ' + String(e));
+      setRunError(String(e));
     }
   }, [text]);
 
@@ -255,25 +314,36 @@ export default function ScriptPanel({ open, onClose }) {
   }, [stepGOL]);
 
   const runSquareGrowthDemo = useCallback(async (maxSize = 8) => {
-    const results = [];
-    for (let s = 1; s <= maxSize; s++) {
-      // build centered square at origin (top-left at -floor(s/2))
-      const cells = new Set();
-      const ox = -Math.floor(s / 2);
-      const oy = -Math.floor(s / 2);
-      for (let x = 0; x < s; x++) for (let y = 0; y < s; y++) cells.add(`${ox + x},${oy + y}`);
-      const res = runUntilSteady(cells, 200);
-      results.push({ size: s, steady: res.steady, steps: res.steps, finalCount: res.final.size });
-      // small delay so UI remains responsive
-      await new Promise(r => setTimeout(r, 50));
-    }
-    alert('Square growth demo results:\n' + results.map(r => `size=${r.size} -> steady=${r.steady}, steps=${r.steps}, finalCells=${r.finalCount}`).join('\n'));
-  }, [runUntilSteady]);
+    return new Promise((resolve) => {
+      const handler = (ev) => {
+        try {
+          const detail = ev && ev.detail ? ev.detail : {};
+          if (detail.error) {
+            setRunError('Square Growth demo failed: ' + detail.error);
+            resolve({ error: detail.error });
+          } else if (detail.results) {
+            const results = detail.results;
+            setRunMessage('Square growth demo results:\n' + results.map(r => `size=${r.size} -> steady=${r.steady}, steps=${r.steps}, finalCells=${r.finalCount}`).join('\n'));
+            resolve({ results });
+          } else {
+            resolve({});
+          }
+        } catch (e) { resolve({ error: String(e) }); }
+        try { window.removeEventListener('gol:script:runResult', handler); } catch (e) {}
+      };
+      window.addEventListener('gol:script:runResult', handler);
+      try {
+        window.dispatchEvent(new CustomEvent('gol:script:runUntilSteady', { detail: { type: 'squareGrowth', maxSize } }));
+      } catch (e) { window.removeEventListener('gol:script:runResult', handler); resolve({ error: String(e) }); }
+    });
+  }, []);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Script Playground</DialogTitle>
       <DialogContent>
+        {runError && <Alert severity="error" sx={{ mb: 1 }}>{runError}</Alert>}
+        {runMessage && <Alert severity="info" sx={{ mb: 1, whiteSpace: 'pre-wrap' }}>{runMessage}</Alert>}
         <Box sx={{ fontFamily: 'monospace', fontSize: 13 }}>
           <textarea value={text} onChange={(e) => setText(e.target.value)} style={{ width: '100%', height: 300, fontFamily: 'monospace', fontSize: 13, background: '#0b0b0d', color: '#dfe' }} />
           <Box sx={{ mt: 1 }}>
