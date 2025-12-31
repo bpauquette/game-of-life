@@ -48,6 +48,8 @@ function runScript(text, opts = {}) {
         const [cx, cy] = String(s).split(',').map(Number);
         return { x: cx, y: cy };
       });
+      console.log('[emitStepEvent] Dispatching gol:script:step with', cells.length, 'cells');
+      debugger; // Pauses here for browser debugging
       try { window.dispatchEvent(new CustomEvent('gol:script:step', { detail: { cells } })); } catch (e) {}
     } catch (e) {}
   };
