@@ -2,7 +2,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 // canvas manager removed in favor of single MVC renderer
 import { useShapeManager } from './hooks/useShapeManager';
 import useGridMousePosition from './hooks/useGridMousePosition';
-import { makeShapePreviewOverlay, makeShapePreviewWithCrosshairsOverlay } from '../overlays/overlayTypes';
+// Overlay generation now lives in controller/tool; no React-level overlays here.
 import useInitialShapeLoader from '../hooks/useInitialShapeLoader';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
@@ -304,14 +304,8 @@ function GameOfLifeApp(props) {
     }
   }, [generationBatchSize]);
 
-  // Always pull the authoritative colorScheme from the GameModel for overlays
-  const getAuthoritativeColorScheme = () => {
-    return gameRef.current?.model?.getColorScheme?.() || getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio');
-  };
+  // React-side reset when session is cleared
   useEffect(() => {
-    // Listen for a global "session cleared" signal (emitted by RunControlGroup
-    // when the user taps Clear grid) so we can reset React-side history and
-    // steady-state UI without tightly coupling those components.
     const handleSessionCleared = () => {
       setPopulationHistory([]);
       popHistoryRef.current = [];
@@ -344,6 +338,78 @@ function GameOfLifeApp(props) {
       console.error('Failed to sync stability settings with GameMVC:', err);
     }
   }, [popWindowSize, popTolerance]);
+
+  const setShowChart = useCallback((open) => {
+    setUIState(prev => ({ ...prev, showChart: open }));
+  }, []);
+
+  const setShowSpeedGauge = useCallback((value) => {
+    setUIState(prev => {
+      try { globalThis.localStorage?.setItem('showSpeedGauge', JSON.stringify(value)); } catch (e) {}
+      return { ...prev, showSpeedGauge: value };
+    });
+  }, []);
+
+  const setDetectStablePopulationPreference = useCallback((value) => {
+    setDetectStablePopulation(value);
+    try { globalThis.localStorage?.setItem('detectStablePopulation', JSON.stringify(value)); } catch (e) {}
+  }, []);
+
+  const setColorSchemeKey = useCallback((key) => {
+    const safeKey = key || 'bio';
+    setUIState((prev) => ({ ...prev, colorSchemeKey: safeKey }));
+    try { globalThis.localStorage?.setItem('colorSchemeKey', safeKey); } catch (e) {}
+    try {
+      const scheme = getColorSchemeFromKey(safeKey);
+      gameRef.current?.setColorScheme?.(scheme);
+    } catch (e) {
+      // ignore failures to push color scheme to renderer
+    }
+  }, []);
+
+  const setMaxFPS = useCallback((value) => {
+    setPerformanceCaps((prev) => {
+      const next = { ...prev, maxFPS: value };
+      try { globalThis.localStorage?.setItem('maxFPS', String(value)); } catch (e) {}
+      return next;
+    });
+  }, []);
+
+  const setMaxGPS = useCallback((value) => {
+    setPerformanceCaps((prev) => {
+      const next = { ...prev, maxGPS: value };
+      try { globalThis.localStorage?.setItem('maxGPS', String(value)); } catch (e) {}
+      return next;
+    });
+  }, []);
+
+  const setEnableFPSCap = useCallback((value) => {
+    setPerformanceCaps((prev) => {
+      const next = { ...prev, enableFPSCap: value };
+      try { globalThis.localStorage?.setItem('enableFPSCap', JSON.stringify(value)); } catch (e) {}
+      return next;
+    });
+  }, []);
+
+  const setEnableGPSCap = useCallback((value) => {
+    setPerformanceCaps((prev) => {
+      const next = { ...prev, enableGPSCap: value };
+      try { globalThis.localStorage?.setItem('enableGPSCap', JSON.stringify(value)); } catch (e) {}
+      return next;
+    });
+  }, []);
+
+  const setCaptureDialogOpen = useCallback((open) => {
+    setUIState((prev) => ({ ...prev, captureDialogOpen: open }));
+  }, []);
+
+  const setMyShapesDialogOpen = useCallback((open) => {
+    setUIState((prev) => ({ ...prev, myShapesDialogOpen: open }));
+  }, []);
+
+  const setImportDialogOpen = useCallback((open) => {
+    setUIState((prev) => ({ ...prev, importDialogOpen: open }));
+  }, []);
 
 
 
@@ -676,216 +742,49 @@ function GameOfLifeApp(props) {
 
   // track cursor using the canvas DOM element and push canonical cursor
   // updates into the model so the renderer can use a single source of truth
+  const cursorRecomputeRef = useRef(null);
   const cursorCell = useGridMousePosition({
     canvasRef,
     cellSize,
     offsetRef,
+    recomputeRef: cursorRecomputeRef,
     onCursor: (pt) => {
       try { gameRef.current?.model?.setCursorPositionModel?.(pt); } catch (e) {}
     }
   });
 
-  // --- Overlay tracking effect ---
-  useEffect(() => {
-    // Only show overlay if a shape is selected and there's a cursor position
-    // either from the grid mouse (`cursorCell`) or from an active drag
-    // operation stored in the controller tool state (`toolStateRef`). When
-    // dragging from the palette the pointer may not be over the canvas, so
-    // prefer the tool state's `last` position when `dragging` is true.
-    const dragging = toolStateRef.current && toolStateRef.current.dragging;
-    const toolLast = toolStateRef.current && toolStateRef.current.last;
-    const haveCursor = (cursorCell && typeof cursorCell.x === 'number' && typeof cursorCell.y === 'number') || (dragging && toolLast && typeof toolLast.x === 'number');
-    const hasSelectedShape = selectedShape && Array.isArray(selectedShape.cells) && selectedShape.cells.length > 0;
-    const shouldShowOverlay = hasSelectedShape && (haveCursor || dragging);
-
-    if (
-      gameRef.current &&
-      gameRef.current.model &&
-      typeof gameRef.current.model.setOverlay === 'function' &&
-      shouldShowOverlay
-    ) {
-      // Avoid setting the model overlay when the currently selected tool
-      // already provides its own overlay (to prevent duplicate drawing).
-      try {
-        const activeToolName = gameRef.current.model.getSelectedTool && gameRef.current.model.getSelectedTool();
-        const activeTool = activeToolName && gameRef.current.controller && gameRef.current.controller.toolMap
-          ? gameRef.current.controller.toolMap[activeToolName]
-          : null;
-        if (activeTool && typeof activeTool.getOverlay === 'function') {
-          // Let the tool manage its own overlay; do not overwrite model overlay.
-          return;
-        }
-      } catch (e) {
-        // If anything goes wrong, fall back to the legacy behavior.
-      }
-      // Compute shape bounds to center overlay on cursor
-      const xs = selectedShape.cells.map(c => c.x);
-      const ys = selectedShape.cells.map(c => c.y);
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-      const shapeWidth = maxX - minX + 1;
-      const shapeHeight = maxY - minY + 1;
-      const offsetX = Math.floor(shapeWidth / 2) + minX;
-      const offsetY = Math.floor(shapeHeight / 2) + minY;
-      // Prefer the tool state's `last` when dragging (it contains fx/fy),
-      // otherwise fall back to the model's canonical cursor (updated
-      // by the `onCursor` callback) or the grid `cursorCell` as a last resort.
-      const modelCursor = gameRef.current?.model?.getCursorPosition?.();
-      const sourceCursor = (dragging && toolLast) ? toolLast : (modelCursor || cursorCell);
-      const cursorForOverlay = sourceCursor
-        ? {
-            x: (typeof sourceCursor.fx === 'number' ? sourceCursor.fx : sourceCursor.x),
-            y: (typeof sourceCursor.fy === 'number' ? sourceCursor.fy : sourceCursor.y),
-            fx: typeof sourceCursor.fx === 'number' ? sourceCursor.fx : sourceCursor.x,
-            fy: typeof sourceCursor.fy === 'number' ? sourceCursor.fy : sourceCursor.y,
-            ix: sourceCursor.x,
-            iy: sourceCursor.y,
-          }
-        : null;
-      const origin = { x: (cursorForOverlay?.x ?? (cursorCell && cursorCell.x) ?? (toolLast && toolLast.x) ?? 0) - offsetX, y: (cursorForOverlay?.y ?? (cursorCell && cursorCell.y) ?? (toolLast && toolLast.y) ?? 0) - offsetY };
-      let overlay;
-      const authoritativeColorScheme = getAuthoritativeColorScheme();
-      if (dragging) {
-        overlay = makeShapePreviewWithCrosshairsOverlay(
-          selectedShape.cells,
-          origin,
-          // Pass a cursor descriptor that includes both integer and fractional
-          // coordinates so downstream rendering can prefer fractional values.
-          (cursorForOverlay || (cursorCell ? { x: cursorCell.x, y: cursorCell.y, fx: cursorCell.x, fy: cursorCell.y } : null)),
-          {
-            color: authoritativeColorScheme.cellColor || '#4CAF50',
-            alpha: 0.6,
-            getCellColor: authoritativeColorScheme.getCellColor,
-          }
-        );
-      } else {
-        overlay = makeShapePreviewOverlay(
-          selectedShape.cells,
-          origin,
-          {
-            color: authoritativeColorScheme.cellColor || '#4CAF50',
-            alpha: 0.6,
-            getCellColor: authoritativeColorScheme.getCellColor,
-          }
-        );
-      }
-      gameRef.current.model.setOverlay(overlay);
-      gameRef.current.controller?.requestRender?.();
-    } else if (
-      gameRef.current &&
-      gameRef.current.model &&
-      typeof gameRef.current.model.setOverlay === 'function'
-    ) {
-      // Only clear overlay when there is no selected shape and no active drag.
-      // This prevents pointer-idle from accidentally clearing the preview overlay.
-      if (!hasSelectedShape && !dragging) {
-        gameRef.current.model.setOverlay(null);
-        gameRef.current.controller?.requestRender?.();
-      }
-      // Otherwise leave the existing overlay in place (do not clear on idle).
-    }
-  }, [cursorCell, selectedShape, toolStateRef]);
-
-  // --- Model observer to keep overlays in sync with fractional tool state ---
+  // Overlay is driven exclusively by controller + tool getOverlay(). Ensure
+  // cursor is refreshed on shape change or viewport change even if the mouse
+  // does not move (e.g., zoom while stationary, shape selection from recents).
   useEffect(() => {
     const model = gameRef.current?.model;
     const controller = gameRef.current?.controller;
     if (!model || typeof model.addObserver !== 'function') return undefined;
 
-    const observer = (event, data) => {
-      // Only handle events that can affect overlay position/visibility
-      if (!['toolStateChanged', 'cursorPositionChanged', 'selectedToolChanged', 'selectedShapeChanged'].includes(event)) return;
+    const observer = (event) => {
+      if (!['selectedShapeChanged', 'viewportChanged'].includes(event)) return;
       try {
-        if (typeof model.getSelectedShape !== 'function' || typeof model.setOverlay !== 'function') return;
-
-        // If the active tool provides its own overlay, let the controller/tool handle it
-        const activeToolName = model.getSelectedTool && model.getSelectedTool();
-        const activeTool = activeToolName && controller && controller.toolMap ? controller.toolMap[activeToolName] : null;
-        if (activeTool && typeof activeTool.getOverlay === 'function') {
-          // Ask controller to update tool overlay (this will call tool.getOverlay)
-          if (controller && typeof controller.updateToolOverlay === 'function') controller.updateToolOverlay();
-          return;
+        const recompute = cursorRecomputeRef.current;
+        const recomputedPoint = typeof recompute === 'function' ? recompute() : null;
+        if (recomputedPoint && model?.setCursorPositionModel) {
+          model.setCursorPositionModel(recomputedPoint);
         }
-
-        // Otherwise recompute the shape-preview overlay using authoritative model state
-        const selectedShapeFromModel = model.getSelectedShape ? model.getSelectedShape() : null;
-        const toolStateSnapshot = (event === 'toolStateChanged' && data) ? data : null;
-        const dragging = !!(toolStateSnapshot && toolStateSnapshot.dragging);
-        const toolLast = toolStateSnapshot ? toolStateSnapshot.last : null;
-        const modelCursor = model.getCursorPosition ? model.getCursorPosition() : null;
-        const sourceCursor = (dragging && toolLast) ? toolLast : (modelCursor || null);
-        const cursorForOverlay = sourceCursor
-          ? {
-              x: (typeof sourceCursor.fx === 'number' ? sourceCursor.fx : sourceCursor.x),
-              y: (typeof sourceCursor.fy === 'number' ? sourceCursor.fy : sourceCursor.y),
-              fx: typeof sourceCursor.fx === 'number' ? sourceCursor.fx : sourceCursor.x,
-              fy: typeof sourceCursor.fy === 'number' ? sourceCursor.fy : sourceCursor.y,
-              ix: sourceCursor.x,
-              iy: sourceCursor.y,
-            }
-          : null;
-
-        const hasSelectedShape = selectedShapeFromModel && Array.isArray(selectedShapeFromModel.cells) && selectedShapeFromModel.cells.length > 0;
-        const shouldShowOverlay = hasSelectedShape && (cursorForOverlay || dragging);
-
-        if (!shouldShowOverlay) {
-          if (!hasSelectedShape && !dragging) {
-            model.setOverlay(null);
-            controller?.requestRender?.();
-          }
-          return;
-        }
-
-        // Compute centered origin for the preview
-        const xs = selectedShapeFromModel.cells.map(c => c.x);
-        const ys = selectedShapeFromModel.cells.map(c => c.y);
-        const minX = Math.min(...xs);
-        const maxX = Math.max(...xs);
-        const minY = Math.min(...ys);
-        const maxY = Math.max(...ys);
-        const shapeWidth = maxX - minX + 1;
-        const shapeHeight = maxY - minY + 1;
-        const offsetX = Math.floor(shapeWidth / 2) + minX;
-        const offsetY = Math.floor(shapeHeight / 2) + minY;
-        const origin = { x: (cursorForOverlay?.x ?? (modelCursor && modelCursor.x) ?? (toolLast && toolLast.x) ?? 0) - offsetX, y: (cursorForOverlay?.y ?? (modelCursor && modelCursor.y) ?? (toolLast && toolLast.y) ?? 0) - offsetY };
-
-        let overlay;
-        const authoritativeColorScheme = getAuthoritativeColorScheme();
-        if (dragging) {
-          overlay = makeShapePreviewWithCrosshairsOverlay(
-            selectedShapeFromModel.cells,
-            origin,
-            (cursorForOverlay || (modelCursor ? { x: modelCursor.x, y: modelCursor.y, fx: modelCursor.x, fy: modelCursor.y } : null)),
-            {
-              color: authoritativeColorScheme.cellColor || '#4CAF50',
-              alpha: 0.6,
-              getCellColor: authoritativeColorScheme.getCellColor,
-            }
-          );
-        } else {
-          overlay = makeShapePreviewOverlay(
-            selectedShapeFromModel.cells,
-            origin,
-            {
-              color: authoritativeColorScheme.cellColor || '#4CAF50',
-              alpha: 0.6,
-              getCellColor: authoritativeColorScheme.getCellColor,
-            }
-          );
-        }
-        model.setOverlay(overlay);
-        controller?.requestRender?.();
       } catch (e) {
-        // don't let observer failures crash the app
-        try { console.error('[GameOfLifeApp] overlay observer error:', e); } catch (err) {}
+        // ignore recompute errors
+      }
+
+      try {
+        if (controller && typeof controller.updateToolOverlay === 'function') {
+          controller.updateToolOverlay();
+        }
+      } catch (e) {
+        try { console.error('[GameOfLifeApp] overlay refresh error:', e); } catch (err) {}
       }
     };
 
     model.addObserver(observer);
     return () => model.removeObserver(observer);
-  }, []);
+  }, [cursorRecomputeRef]);
 
   // --- Handlers ---
   const handleSelectShape = useCallback(shape => {
@@ -962,7 +861,6 @@ function GameOfLifeApp(props) {
     const onRunUntilSteady = async (ev) => {
       try {
         const detail = ev && ev.detail ? ev.detail : {};
-        const type = detail.type || 'squareGrowth';
         const maxSize = Number(detail.maxSize) || 8;
         const centerX = Number(detail.centerX) || 0;
         const centerY = Number(detail.centerY) || 0;
@@ -1013,7 +911,6 @@ function GameOfLifeApp(props) {
     const onScriptStep = (ev) => {
       const detail = ev && ev.detail ? ev.detail : {};
       const cells = detail.cells || detail;
-      const controller = gameRef.current && gameRef.current.controller;
       const model = gameRef.current && gameRef.current.model;
       if (!model) return;
       // Only load the provided cells; do not clear the grid automatically
@@ -1055,103 +952,15 @@ function GameOfLifeApp(props) {
         // fall through to default behavior
       }
     }
-
-    // Default: rotateAndApply selects and applies the rotated shape
-    try {
-      rotateAndApply(gameRef, shapeManager, rotatedShape, index);
-    } catch (e) {
-      // If rotateAndApply itself fails, log for diagnostics and avoid throwing.
-      // eslint-disable-next-line no-console
-      console.error('rotateAndApply failed in handleRotateShape:', e);
-    }
-  }, [shapeManager, drawWithOverlay]);
-  const setShowChart = useCallback((show) => {
-    setUIState(prev => ({ ...prev, showChart: show }));
-  }, []);
-  // Derive the effective color scheme from the model (if available)
-  // or fall back to the selected UI key. This ensures `colorScheme` is
-  // defined for effects and render paths.
-  const colorScheme = gameRef.current?.model?.getColorScheme?.() || getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio');
-
-  useEffect(() => {
-        if (typeof drawWithOverlay === 'function') {
-          drawWithOverlay();
-        }
-      }, [drawWithOverlay, getLiveCells, cellSize, colorScheme, selectedTool, uiState]);
-  const setColorSchemeKey = useCallback((key) => {
-    setUIState(prev => ({ ...prev, colorSchemeKey: key }));
-    try {
-  const scheme = getColorSchemeFromKey(key || 'bio');
-      if (gameRef.current?.setColorScheme) {
-        gameRef.current.setColorScheme(scheme);
-      }
-      gameRef.current?.view?.renderer?.updateOptions?.({
-        backgroundColor: scheme.background || scheme.backgroundColor || '#000000',
-        gridColor: scheme.gridColor
-      });
-      gameRef.current?.controller?.requestRender?.();
-    } catch (err) {
-      console.error('Error setting color scheme:', err);
-    }
-  }, []);
-  const setShowSpeedGauge = useCallback((show) => {
-    setUIState(prev => {
-      if (prev.showSpeedGauge === show) return prev;
-      return { ...prev, showSpeedGauge: show };
-    });
-  }, []);
-  const setDetectStablePopulationPreference = useCallback((enabled) => {
-    const next = !!enabled;
-    setDetectStablePopulation(next);
-    try {
-      globalThis.localStorage?.setItem('detectStablePopulation', next ? 'true' : 'false');
-    } catch {
-      // ignore storage failures
-    }
-  }, []);
-  const setMaxFPS = useCallback((maxFPS) => {
-    let next = Number(maxFPS);
-    if (!Number.isFinite(next)) {
-      next = performanceCaps.maxFPS;
-    }
-    next = Math.max(1, Math.min(120, next));
-    if (next === performanceCaps.maxFPS) return;
-    setPerformanceCaps((prev) => ({ ...prev, maxFPS: next }));
-    gameRef.current?.setPerformanceSettings?.({ maxFPS: next });
-  }, [performanceCaps.maxFPS]);
-  const setMaxGPS = useCallback((maxGPS) => {
-    let next = Number(maxGPS);
-    if (!Number.isFinite(next)) {
-      next = performanceCaps.maxGPS;
-    }
-    next = Math.max(1, Math.min(60, next));
-    if (next === performanceCaps.maxGPS) return;
-    setPerformanceCaps((prev) => ({ ...prev, maxGPS: next }));
-    gameRef.current?.setPerformanceSettings?.({ maxGPS: next });
-  }, [performanceCaps.maxGPS]);
-  const setEnableFPSCap = useCallback((enabled) => {
-    const next = !!enabled;
-    if (next === performanceCaps.enableFPSCap) return;
-    setPerformanceCaps((prev) => ({ ...prev, enableFPSCap: next }));
-    gameRef.current?.setPerformanceSettings?.({ enableFPSCap: next });
-  }, [performanceCaps.enableFPSCap]);
-  const setEnableGPSCap = useCallback((enabled) => {
-    const next = !!enabled;
-    if (next === performanceCaps.enableGPSCap) return;
-    setPerformanceCaps((prev) => ({ ...prev, enableGPSCap: next }));
-    gameRef.current?.setPerformanceSettings?.({ enableGPSCap: next });
-  }, [performanceCaps.enableGPSCap]);
-  const setCaptureDialogOpen = useCallback((open) => {
-    setUIState(prev => ({ ...prev, captureDialogOpen: open }));
-  }, []);
-  const setMyShapesDialogOpen = useCallback((open) => {
-    setUIState(prev => ({ ...prev, myShapesDialogOpen: open }));
-  }, []);
-  const setImportDialogOpen = useCallback((open) => {
-    setUIState(prev => ({ ...prev, importDialogOpen: open }));
-  }, []);
+    rotateAndApply(gameRef, shapeManager, rotatedShape, index);
+    if (typeof drawWithOverlay === 'function') drawWithOverlay();
+  }, [drawWithOverlay, gameRef, shapeManager]);
   const toggleChrome = useCallback(() => {
-    setUIState(prev => ({ ...prev, showChrome: !(prev.showChrome ?? true) }));
+    setUIState((prev) => {
+      const nextShowChrome = !(prev?.showChrome ?? true);
+      try { globalThis.localStorage?.setItem('showChrome', JSON.stringify(nextShowChrome)); } catch (e) {}
+      return { ...prev, showChrome: nextShowChrome };
+    });
   }, []);
   const step = useCallback(async () => { 
     try {
@@ -1490,6 +1299,7 @@ function GameOfLifeApp(props) {
     }, [openPalette]);
 
   // --- Controls props ---
+  const colorScheme = getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio');
   const controlsProps = {
     selectedTool,
     setSelectedTool: setSelectedToolLocal,

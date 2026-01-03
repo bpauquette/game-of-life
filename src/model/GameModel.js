@@ -34,7 +34,10 @@ const clampNumber = (value, min, max) => {
 };
 
 export class GameModel {
-  // Overlay management
+  // Overlay management - persistent caching
+  // Overlay is cached and only cleared when tool/shape explicitly changes,
+  // NOT when the mouse stops moving. This allows overlays (previews, crosshairs)
+  // to persist and remain visible while the user positions/considers placement.
   setOverlay(overlay) {
     const changed = this.overlay !== overlay;
     this.overlay = overlay;
@@ -45,6 +48,11 @@ export class GameModel {
 
   getOverlay() {
     return this.overlay || null;
+  }
+  
+  // Clear overlay only when explicitly needed (e.g., tool/shape changes)
+  clearOverlay() {
+    this.setOverlay(null);
   }
   clear() {
     this.clearModel();
@@ -256,16 +264,17 @@ export class GameModel {
     const changed = (this.cursorPosition === null && position !== null) ||
       (this.cursorPosition !== null && position === null) ||
       (this.cursorPosition !== null && position !== null &&
-        (this.cursorPosition.x !== position.x || this.cursorPosition.y !== position.y));
+        (this.cursorPosition.x !== position.x ||
+         this.cursorPosition.y !== position.y ||
+         this.cursorPosition.fx !== position.fx ||
+         this.cursorPosition.fy !== position.fy));
     if (!changed) {
       return;
     }
-    const now = performance.now();
-    if (now - this.lastCursorUpdateTime < this.cursorThrottleDelay) {
-      return;
-    }
     this.cursorPosition = position ? { ...position } : null;
-    this.lastCursorUpdateTime = now;
+    // Do not throttle cursor updates; zoom and shape switches need fresh fx/fy
+    // even when the pointer is stationary (e.g., wheel zoom without movement).
+    this.lastCursorUpdateTime = performance.now();
     this.notifyObservers('cursorPositionChanged', this.cursorPosition);
   }
 
@@ -274,15 +283,20 @@ export class GameModel {
   }
 
   setViewportModel(offsetX, offsetY, cellSize, zoom) {
+    const cellSizeChanged = (typeof cellSize === 'number' && this.viewport.cellSize !== cellSize);
     if (
       this.viewport.offsetX !== offsetX ||
       this.viewport.offsetY !== offsetY ||
-      (zoom !== undefined && this.viewport.zoom !== zoom)
+      (zoom !== undefined && this.viewport.zoom !== zoom) ||
+      cellSizeChanged
     ) {
       this.viewport.offsetX = offsetX;
       this.viewport.offsetY = offsetY;
       if (zoom !== undefined) {
         this.viewport.zoom = zoom;
+      }
+      if (cellSizeChanged) {
+        this.viewport.cellSize = cellSize;
       }
       const payload = { offsetX: this.viewport.offsetX, offsetY: this.viewport.offsetY };
       if (typeof cellSize === 'number') {

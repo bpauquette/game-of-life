@@ -153,6 +153,9 @@ export class GameController {
           this.handleRunningStateChange(data.isRunning);
           break;
         case 'viewportChanged':
+          if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape()) {
+            this.updateToolOverlay();
+          }
           this.requestRender();
           break;
         case 'selectedToolChanged':
@@ -308,6 +311,8 @@ export class GameController {
       ? { x: cursor.x, y: cursor.y }
       : (this.toolState?.last || { x: 0, y: 0 });
     this._setToolState({ selectedShapeData: shape || null, last: lastPos }, { updateOverlay: true });
+    // Always update overlay when shape changes to show the new shape preview
+    this.updateToolOverlay();
   }
 
   getSelectedShape() {
@@ -547,10 +552,12 @@ export class GameController {
     const newCellSize = this.calculateNewCellSize(currentCellSize, deltaY);
 
     if (newCellSize !== currentCellSize) {
-      // Update renderer directly since model no longer manages cellSize
+      // Update renderer viewport with new cellSize
       this.view.renderer.setViewport(viewport.offsetX, viewport.offsetY, newCellSize);
-      // Update model offset if needed
-      this.model.setOffsetModel(viewport.offsetX, viewport.offsetY);
+      // Update model viewport with new cellSize so viewportChanged event fires
+      this.model.setViewportModel(viewport.offsetX, viewport.offsetY, newCellSize, viewport.zoom);
+      // Refresh overlay to use updated cellSize for cursor coordinate calculations
+      this.updateToolOverlay();
     }
 
     if (event.cancelable) {
@@ -895,8 +902,9 @@ export class GameController {
     const tool = this.toolMap[selectedTool];
     const viewport = this.view?.renderer?.viewport || {};
     const cellSize = viewport.cellSize || 8;
+    const cursor = this.model?.getCursorPosition?.();
     if (tool?.getOverlay) {
-      const overlay = tool.getOverlay(this.toolState, cellSize);
+      const overlay = tool.getOverlay(this.toolState, cellSize, cursor);
       this.model.setOverlay(overlay);
     } else {
       this.model.setOverlay(null);

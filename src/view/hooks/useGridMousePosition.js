@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from 'react';
  * @param {React.RefObject} offsetRef - Ref containing world offset and zoom info
  * @returns {{ x: number, y: number } | null} Grid coordinates
  */
-const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor }) => {
+const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomputeRef }) => {
   const [gridPosition, setGridPosition] = useState(null);
   const canvas = canvasRef?.current;
   const lastClientRef = useRef(null);
@@ -17,6 +17,17 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor }) => {
     if (!canvas) return undefined;
     const defaultOffsetRef = { current: { x: 0, y: 0, cellSize: cellSize } };
     const targetOffsetRef = offsetRef?.current ? offsetRef : defaultOffsetRef;
+    
+    // Initialize lastClientRef to canvas center on first mount so cursor can be
+    // recomputed even if no mouse movement has occurred yet (e.g., shape selection before mouse move)
+    if (!lastClientRef.current) {
+      const rect = canvas.getBoundingClientRect();
+      lastClientRef.current = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      };
+    }
+    
     const getEffectiveCellSize = () => {
       // Prefer the dynamic cellSize from offsetRef (reflects zoom changes).
       const dynamic = targetOffsetRef.current?.cellSize;
@@ -39,18 +50,26 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor }) => {
       setGridPosition((prev) => (prev && prev.x === point.x && prev.y === point.y && prev.fx === point.fx && prev.fy === point.fy ? prev : point));
       try { if (typeof onCursor === 'function') onCursor(point); } catch (e) {}
     };
-    const handleWheel = (ev) => {
-      // When zooming (wheel) the mouse may not move; recompute grid pos
-      const last = lastClientRef.current || { x: ev.clientX, y: ev.clientY };
+    const recomputeFromLastClient = () => {
+      if (!lastClientRef.current) return null;
       const rect = canvas.getBoundingClientRect() || { left: 0, top: 0, width: 0, height: 0 };
       const centerX = (rect.width || 0) / 2;
       const centerY = (rect.height || 0) / 2;
       const eff = getEffectiveCellSize();
-      const fx = targetOffsetRef.current.x + (last.x - rect.left - centerX) / eff;
-      const fy = targetOffsetRef.current.y + (last.y - rect.top - centerY) / eff;
+      const fx = targetOffsetRef.current.x + (lastClientRef.current.x - rect.left - centerX) / eff;
+      const fy = targetOffsetRef.current.y + (lastClientRef.current.y - rect.top - centerY) / eff;
       const point = { x: Math.floor(fx), y: Math.floor(fy), fx, fy };
       setGridPosition((prev) => (prev && prev.x === point.x && prev.y === point.y && prev.fx === point.fx && prev.fy === point.fy ? prev : point));
       try { if (typeof onCursor === 'function') onCursor(point); } catch (e) {}
+      return point;
+    };
+
+    const handleWheel = (ev) => {
+      // When zooming (wheel) the mouse may not move; recompute grid pos
+      if (!lastClientRef.current) {
+        try { lastClientRef.current = { x: ev.clientX, y: ev.clientY }; } catch (e) {}
+      }
+      recomputeFromLastClient();
     };
     const handleLeave = () => setGridPosition(null);
     // Listen to pointer events as well so dragging (pointermove) updates the
@@ -60,6 +79,11 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor }) => {
     globalThis.addEventListener('mousemove', handleMove);
     globalThis.addEventListener('wheel', handleWheel, { passive: true });
     canvas.addEventListener('mouseleave', handleLeave);
+
+    // Expose recompute so callers can refresh cursor on shape/zoom changes
+    if (recomputeRef && typeof recomputeRef === 'object') {
+      recomputeRef.current = recomputeFromLastClient;
+    }
 
     // If offset/zoom changes while the pointer is stationary, attempt a
     // recompute using the last known client coords so overlays stay in-sync.
@@ -82,8 +106,11 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor }) => {
       globalThis.removeEventListener('mousemove', handleMove);
       globalThis.removeEventListener('wheel', handleWheel);
       canvas.removeEventListener('mouseleave', handleLeave);
+      if (recomputeRef && typeof recomputeRef === 'object') {
+        recomputeRef.current = null;
+      }
     };
-  }, [canvas, offsetRef, cellSize]);
+  }, [canvas, offsetRef, cellSize, onCursor, recomputeRef]);
 
   return gridPosition;
 };
