@@ -3,22 +3,36 @@ import { getShapeCells, getCenteredOrigin } from '../../utils/shapeGeometry';
 import { makeShapePreviewWithCrosshairsOverlay } from '../../overlays/overlayTypes';
 
 export const shapesTool = {
-  getOverlay(toolState, colorScheme) {
+  getOverlay(toolState, colorSchemeOrCellSize, cursorFromModel) {
     const sel = toolState?.selectedShapeData;
-    const last = toolState?.last;
-    if (!sel || !last) return null;
-    
+    // ALWAYS use cursorFromModel (live mouse position) to ensure the shape
+    // tracks correctly after shape switches, zooms, or when stationary.
+    // toolState.last becomes stale and does not reflect viewport/shape changes.
+    const cursor = cursorFromModel;
+    // Only show overlay when mouse is down (dragging)
+    if (!toolState?.dragging) return null;
+    if (!sel || !cursor) return null;
+
     const cells = getShapeCells(sel);
     if (!cells?.length) return null;
-    
-    const origin = getCenteredOrigin(last, cells);
-    const cursor = last
-      ? { x: last.x, y: last.y, fx: (typeof last.fx === 'number' ? last.fx : last.x), fy: (typeof last.fy === 'number' ? last.fy : last.y) }
-      : { x: 0, y: 0, fx: 0, fy: 0 };
+
+    const anchorX = Number.isFinite(cursor.fx) ? cursor.fx : cursor.x;
+    const anchorY = Number.isFinite(cursor.fy) ? cursor.fy : cursor.y;
+    const origin = getCenteredOrigin({ x: anchorX, y: anchorY }, cells);
+    const overlayCursor = {
+      x: anchorX,
+      y: anchorY,
+      fx: Number.isFinite(cursor.fx) ? cursor.fx : anchorX,
+      fy: Number.isFinite(cursor.fy) ? cursor.fy : anchorY,
+    };
+    const colorScheme = (colorSchemeOrCellSize && typeof colorSchemeOrCellSize === 'object' && !Number.isFinite(colorSchemeOrCellSize))
+      ? colorSchemeOrCellSize
+      : null;
+
     return makeShapePreviewWithCrosshairsOverlay(
       cells,
       origin,
-      cursor,
+      overlayCursor,
       {
         color: typeof colorScheme?.getCellColor === 'function'
           ? colorScheme.getCellColor(0, 0)
@@ -51,6 +65,7 @@ export const shapesTool = {
       placeShape(last.x, last.y);
     }
     toolState.start = null;
+    // Clear last and dragging to hide overlay and crosshairs on mouse up
     toolState.last = null;
     toolState.dragging = false;
   },
