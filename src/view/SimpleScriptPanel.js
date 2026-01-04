@@ -29,7 +29,7 @@ const SCRIPT_TEMPLATES = {
   'Conway Glider': '# Conway\'s Glider Pattern\nCLEAR\nPENDOWN\nGOTO 1 0\nRECT 1 1\nGOTO 2 1\nRECT 1 1\nGOTO 0 2\nRECT 1 1\nGOTO 1 2\nRECT 1 1\nGOTO 2 2\nRECT 1 1\n# Watch it evolve!\nSTEP 10',
   'Geometric Shapes': '# Showcase drawing tools\nCLEAR\nPENDOWN\n# Draw squares\nGOTO 5 5\nRECT 3 3\nGOTO 15 5\nRECT 2 4\n# Create patterns\nGOTO 25 5\nRECT 1 8\n',
   'Random Garden': '# Create scattered patterns\nCLEAR\nPENDOWN\n# Base structure\nGOTO 5 5\nRECT 5 1\nGOTO 5 10\nRECT 5 1\n# Add details\nGOTO 8 7\nRECT 2 2\n',
-  'Steady Squares': '# Growing squares with UNTIL_STEADY\nCLEAR\nPENDOWN\nsize = 2\nWHILE size <= 100\n  CLEAR\n  GOTO 5 5\n  RECT size size\n  START\n  UNTIL_STEADY steps 100\n  STOP\n  size = size + 1\nEND\n',
+  'Steady Squares': '# Growing squares with UNTIL_STEADY\nCLEAR\nPENDOWN\nsize = 2\nWHILE size <= 100\n  CLEAR\n  # Center square at world origin (0,0)\n  offset = 0 - (size / 2)\n  GOTO offset offset\n  RECT size size\n  START\n  UNTIL_STEADY steps 100\n  STOP\n  size = size + 1\nEND\n',
   'Empty Script': '# Enter your commands here\nCLEAR\nPENDOWN\n'
 };
 
