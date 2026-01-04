@@ -518,6 +518,66 @@ describe('Scripting Interpreter - Edge Cases & Error Handling', () => {
   });
 });
 
+describe('Scripting Interpreter - String Functions', () => {
+  it('should support STRLEN function', () => {
+    const state = { vars: { msg: 'hello' } };
+    expect(evalExpr('STRLEN("hello")', state)).toBe(5);
+    expect(evalExpr('STRLEN(msg)', state)).toBe(5);
+    expect(evalExpr('STRLEN("")', state)).toBe(0);
+  });
+
+  it('should support TOUPPER function', () => {
+    const state = { vars: { text: 'Hello World' } };
+    expect(evalExpr('TOUPPER("hello")', state)).toBe('HELLO');
+    expect(evalExpr('TOUPPER(text)', state)).toBe('HELLO WORLD');
+  });
+
+  it('should support TOLOWER function', () => {
+    const state = { vars: { text: 'Hello World' } };
+    expect(evalExpr('TOLOWER("HELLO")', state)).toBe('hello');
+    expect(evalExpr('TOLOWER(text)', state)).toBe('hello world');
+  });
+
+  it('should support TRIM function', () => {
+    const state = { vars: {} };
+    expect(evalExpr('TRIM("  hello  ")', state)).toBe('hello');
+    expect(evalExpr('TRIM("  spaces  ")', state)).toBe('spaces');
+  });
+
+  it('should support SUBSTRING function', () => {
+    const state = { vars: { text: 'hello' } };
+    expect(evalExpr('SUBSTRING("hello", 0, 3)', state)).toBe('hel');
+    expect(evalExpr('SUBSTRING(text, 1, 4)', state)).toBe('ell');
+    expect(evalExpr('SUBSTRING("test", 0, 10)', state)).toBe('test');
+  });
+
+  it('should support INDEX function', () => {
+    const state = { vars: { text: 'hello world' } };
+    expect(evalExpr('INDEX("hello", "l")', state)).toBe(2);
+    expect(evalExpr('INDEX(text, "world")', state)).toBe(6);
+    expect(evalExpr('INDEX("hello", "x")', state)).toBe(-1); // Not found
+  });
+
+  it('should support REPLACE function', () => {
+    const state = { vars: { text: 'hello world' } };
+    expect(evalExpr('REPLACE("hello", "l", "L")', state)).toBe('heLLo');
+    expect(evalExpr('REPLACE(text, "world", "GOL")', state)).toBe('hello GOL');
+    expect(evalExpr('REPLACE("aaa", "a", "b")', state)).toBe('bbb');
+  });
+
+  it('should handle string functions with variables', () => {
+    const state = { vars: { 
+      original: 'Hello World',
+      find: 'World',
+      replace: 'GOL'
+    } };
+    expect(evalExpr('INDEX(original, find)', state)).toBe(6);
+    // REPLACE with all variables
+    const result = evalExpr('REPLACE(original, find, replace)', state);
+    expect(result).toBe('Hello GOL');
+  });
+});
+
 describe('Scripting Interpreter - Geometric Commands', () => {
   it('should handle LINE command', () => {
     // LINE x1 y1 x2 y2 should create a Bresenham line

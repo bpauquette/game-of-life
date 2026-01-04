@@ -10,9 +10,59 @@ function parseValue(tok, state) {
   return 0;
 }
 
-// Helper: evaluate simple expressions (only +, -, *, /, concat)
+// Helper: evaluate simple expressions (only +, -, *, /, concat, and string functions)
 function evalExpr(expr, state) {
   let m;
+  
+  // Check for string functions first (higher precedence than arithmetic)
+  // STRLEN(str) - returns length of string
+  if ((m = expr.match(/^STRLEN\s*\(\s*(.+?)\s*\)$/i))) {
+    const str = String(parseValue(m[1].trim(), state));
+    return str.length;
+  }
+  
+  // TOUPPER(str) - returns uppercase string
+  if ((m = expr.match(/^TOUPPER\s*\(\s*(.+?)\s*\)$/i))) {
+    const str = String(parseValue(m[1].trim(), state));
+    return str.toUpperCase();
+  }
+  
+  // TOLOWER(str) - returns lowercase string
+  if ((m = expr.match(/^TOLOWER\s*\(\s*(.+?)\s*\)$/i))) {
+    const str = String(parseValue(m[1].trim(), state));
+    return str.toLowerCase();
+  }
+  
+  // TRIM(str) - removes leading/trailing whitespace
+  if ((m = expr.match(/^TRIM\s*\(\s*(.+?)\s*\)$/i))) {
+    const str = String(parseValue(m[1].trim(), state));
+    return str.trim();
+  }
+  
+  // SUBSTRING(str, start, end) - returns substring
+  if ((m = expr.match(/^SUBSTRING\s*\(\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\s*\)$/i))) {
+    const str = String(parseValue(m[1].trim(), state));
+    const start = Math.floor(parseValue(m[2].trim(), state));
+    const end = Math.floor(parseValue(m[3].trim(), state));
+    return str.substring(start, end);
+  }
+  
+  // INDEX(str, pattern) - returns first index of pattern (-1 if not found)
+  if ((m = expr.match(/^INDEX\s*\(\s*(.+?)\s*,\s*(.+?)\s*\)$/i))) {
+    const str = String(parseValue(m[1].trim(), state));
+    const pattern = String(parseValue(m[2].trim(), state));
+    return str.indexOf(pattern);
+  }
+  
+  // REPLACE(str, old, new) - replaces all occurrences
+  if ((m = expr.match(/^REPLACE\s*\(\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\s*\)$/i))) {
+    const str = String(parseValue(m[1].trim(), state));
+    const oldStr = String(parseValue(m[2].trim(), state));
+    const newStr = String(parseValue(m[3].trim(), state));
+    return str.replaceAll(oldStr, newStr);
+  }
+  
+  // Arithmetic operations
   if ((m = expr.match(/^(.+)\s*([+\-*/])\s*(.+)$/))) {
     let a = parseValue(m[1].trim(), state);
     let b = parseValue(m[3].trim(), state);

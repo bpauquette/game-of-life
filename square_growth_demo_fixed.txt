@@ -1,0 +1,16 @@
+# Expanding Squares Demo (FIXED VERSION)
+# This version works with the current Phase 3 implementation
+# Note: UNTIL_STEADY is not yet implemented, so we use STEP for simulation
+
+size = 2
+FOR size FROM 2 TO 8
+  CLEAR
+  PENDOWN
+  RECT size size
+  STEP 50
+  COUNT live
+  PRINT "Square size " + size
+  PRINT "Cells: " + live
+  PENUP
+END
+PRINT "Demo complete!"
