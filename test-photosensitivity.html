@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game of Life - Photosensitivity Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #00ff00; border-bottom: 2px solid #00ff00; padding-bottom: 10px; }
+        .test-controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+        button:hover { background: #00cc00; }
+        button.danger { background: #ff3333; color: #fff; }
+        button.warning { background: #ffaa00; color: #000; }
+        #canvas {
+            border: 2px solid #00ff00;
+            display: block;
+            margin: 20px auto;
+            background: #000;
+        }
+        #results {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .pass { color: #00ff00; }
+        .fail { color: #ff3333; }
+        .warning { color: #ffaa00; }
+        .info { color: #00aaff; }
+        .test-status {
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #00ff00;
+            background: #2a2a2a;
+        }
+        .test-status.running { border-left-color: #ffaa00; }
+        .test-status.failed { border-left-color: #ff3333; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Game of Life - Photosensitivity Safety Test</h1>
+    
+    <div class="test-controls">
+        <h2>Quick Tests</h2>
+        <p>These tests run different animation scenarios to check WCAG 2.1 compliance:</p>
+        
+        <button onclick="runTest('slow')">
+            ✅ Test: Slow Evolution (2 fps) - Should PASS
+        </button>
+        
+        <button onclick="runTest('moderate')" class="warning">
+            ⚠️ Test: Moderate Speed (3 fps) - Edge Case
+        </button>
+        
+        <button onclick="runTest('rapid')" class="danger">
+            ❌ Test: Rapid Blink (10 fps) - Should FAIL
+        </button>
+        
+        <button onclick="runTest('current')">
+            🎯 Test: Your Current Animation
+        </button>
+        
+        <button onclick="runAllTests()">
+            🔬 Run Full Test Suite
+        </button>
+        
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+    
+    <div id="status" class="test-status">
+        Ready to test. Click a button above to begin.
+    </div>
+    
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
+    <div id="results">
+        <strong>Test Results:</strong>
+        Waiting for test to run...
+    </div>
+
+    <script type="module">
+        import { GameRenderer } from '../src/view/GameRenderer.js';
+        import { PhotosensitivityTestWrapper, PhotosensitivityTestScenarios, runAllPhotosensitivityTests } from '../src/accessibility/PhotosensitivityTester.js';
+        
+        // Setup canvas and renderer
+        const canvas = document.getElementById('canvas');
+        const renderer = new GameRenderer(canvas);
+        renderer.resize(800, 600);
+        
+        // Make available globally for button onclick
+        window.renderer = renderer;
+        window.PhotosensitivityTestWrapper = PhotosensitivityTestWrapper;
+        window.PhotosensitivityTestScenarios = PhotosensitivityTestScenarios;
+        window.runAllPhotosensitivityTests = runAllPhotosensitivityTests;
+        
+        console.log('✅ Test harness loaded. Ready to test!');
+    </script>
+    
+    <script>
+        function setStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'test-status';
+            if (type === 'running') status.classList.add('running');
+            if (type === 'failed') status.classList.add('failed');
+        }
+        
+        function appendResult(text, type = 'info') {
+            const results = document.getElementById('results');
+            const span = document.createElement('div');
+            span.className = type;
+            span.textContent = text;
+            results.appendChild(span);
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '<strong>Test Results:</strong><br/>Cleared. Ready for new test.';
+        }
+        
+        async function runTest(testType) {
+            clearResults();
+            setStatus('Running test...', 'running');
+            
+            appendResult('\n' + '='.repeat(60), 'info');
+            appendResult(`Starting ${testType} test...`, 'info');
+            appendResult('='.repeat(60), 'info');
+            
+            try {
+                let result;
+                
+                if (testType === 'slow') {
+                    result = await PhotosensitivityTestScenarios.slowEvolution(renderer);
+                } else if (testType === 'moderate') {
+                    result = await PhotosensitivityTestScenarios.moderateSpeed(renderer);
+                } else if (testType === 'rapid') {
+                    result = await PhotosensitivityTestScenarios.rapidFullScreenBlink(renderer);
+                } else if (testType === 'current') {
+                    appendResult('Testing your current animation...', 'info');
+                    appendResult('(Open browser console for detailed logs)', 'info');
+                    
+                    const wrapper = new PhotosensitivityTestWrapper(renderer);
+                    wrapper.install();
+                    
+                    // Let it run for 5 seconds
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    
+                    wrapper.uninstall();
+                    result = wrapper.generateReport();
+                    
+                    // Print to console
+                    wrapper.printReport();
+                }
+                
+                // Display results
+                appendResult('\n' + '='.repeat(60), 'info');
+                appendResult('TEST RESULTS:', result.wcagCompliant ? 'pass' : 'fail');
+                appendResult('='.repeat(60), 'info');
+                appendResult(`Result: ${result.testResult}`, result.wcagCompliant ? 'pass' : 'fail');
+                appendResult(`Compliance: ${result.complianceLevel}`, result.wcagCompliant ? 'pass' : 'fail');
+                appendResult(`Legal Risk: ${result.legalRisk}`, result.legalRisk === 'LOW' ? 'pass' : 'fail');
+                appendResult(`\nFrames Analyzed: ${result.framesAnalyzed}`, 'info');
+                appendResult(`Max Flash Rate: ${result.maxFlashRateDetected}/sec (limit: 3/sec)`, 
+                    result.maxFlashRateDetected <= 3 ? 'pass' : 'fail');
+                appendResult(`Violations: ${result.totalViolations}`, 
+                    result.totalViolations === 0 ? 'pass' : 'fail');
+                appendResult(`Warnings: ${result.totalWarnings}`, 
+                    result.totalWarnings === 0 ? 'pass' : 'warning');
+                
+                if (result.violations && result.violations.length > 0) {
+                    appendResult('\n❌ VIOLATIONS DETECTED:', 'fail');
+                    result.violations.forEach((v, idx) => {
+                        appendResult(`  ${idx + 1}. Frame ${v.frameNumber}`, 'fail');
+                        v.violations.forEach(violation => {
+                            appendResult(`     ${violation.type}: ${violation.message}`, 'fail');
+                        });
+                    });
+                }
+                
+                if (result.recommendations && result.recommendations.length > 0) {
+                    appendResult('\n💡 RECOMMENDATIONS:', 'warning');
+                    result.recommendations.forEach((r, idx) => {
+                        appendResult(`  ${idx + 1}. ${r}`, 'warning');
+                    });
+                }
+                
+                appendResult('='.repeat(60), 'info');
+                
+                if (result.wcagCompliant) {
+                    setStatus('✅ Test PASSED - Animation is safe!', 'info');
+                } else {
+                    setStatus('❌ Test FAILED - Violations detected!', 'failed');
+                }
+                
+            } catch (error) {
+                appendResult(`\n❌ ERROR: ${error.message}`, 'fail');
+                setStatus('Test failed with error', 'failed');
+                console.error(error);
+            }
+        }
+        
+        async function runAllTests() {
+            clearResults();
+            setStatus('Running full test suite...', 'running');
+            
+            appendResult('🧪 RUNNING COMPREHENSIVE TEST SUITE', 'info');
+            appendResult('This will test multiple scenarios...', 'info');
+            appendResult('(See browser console for detailed logs)\n', 'info');
+            
+            try {
+                const results = await runAllPhotosensitivityTests(renderer);
+                
+                appendResult('\n' + '='.repeat(60), 'info');
+                appendResult('TEST SUITE COMPLETE', 'info');
+                appendResult('='.repeat(60), 'info');
+                
+                let allPassed = true;
+                Object.entries(results).forEach(([name, result]) => {
+                    const passed = result.wcagCompliant;
+                    allPassed = allPassed && passed;
+                    
+                    appendResult(`\n${result.testResult} ${name}`, passed ? 'pass' : 'fail');
+                    appendResult(`  Compliance: ${result.complianceLevel}`, passed ? 'pass' : 'fail');
+                    appendResult(`  Violations: ${result.totalViolations}`, passed ? 'pass' : 'fail');
+                });
+                
+                appendResult('\n' + '='.repeat(60), 'info');
+                
+                if (allPassed) {
+                    setStatus('✅ ALL TESTS PASSED!', 'info');
+                } else {
+                    setStatus('❌ SOME TESTS FAILED', 'failed');
+                }
+                
+            } catch (error) {
+                appendResult(`\n❌ ERROR: ${error.message}`, 'fail');
+                setStatus('Test suite failed', 'failed');
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
