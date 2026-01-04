@@ -255,7 +255,25 @@ function SimpleScriptPanel({
       };
       
       // Execute script - animation will show on main grid
+      // Emit script start event for HUD
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('gol:script:start', { 
+          detail: { 
+            script: script.substring(0, 50) 
+          } 
+        }));
+      }
+      
       await execBlock(blocks, scriptState, onStepCallback, emitStepEvent, step, gameTicks, setIsRunning, onLoadGrid);
+      
+      // Emit script end event for HUD
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('gol:script:end', { 
+          detail: { 
+            status: 'success'
+          } 
+        }));
+      }
       
       // Update the final state to the main grid
       if (onLoadGrid) {
@@ -273,6 +291,16 @@ function SimpleScriptPanel({
     } catch (error) {
       // Syntax error or execution error - show error in panel (don't close)
       setMessage({ type: 'error', text: `Error: ${error.message}` });
+      
+      // Emit script error event for HUD
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('gol:script:end', { 
+          detail: { 
+            status: 'error',
+            error: error.message
+          } 
+        }));
+      }
     } finally {
       setRunning(false);
     }
