@@ -349,6 +349,14 @@ export default function PhotosensitivityTestDialog({ open, onClose }) {
           </>
         )}
       </DialogActions>
-    </Dialog>
+      </Dialog>
+
+      {/* Snackbar for test progress while dialog is closed */}
+      <Snackbar
+        open={snackbarOpen}
+        message={snackbarMessage}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      />
+    </>
   );
 }
