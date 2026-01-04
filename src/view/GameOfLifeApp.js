@@ -7,6 +7,7 @@ import useInitialShapeLoader from '../hooks/useInitialShapeLoader';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import LoadingShapesOverlay from './LoadingShapesOverlay';
+import ScriptExecutionHUD from './ScriptExecutionHUD';
 import { loadGridIntoGame, rotateAndApply } from './utils/gameUtils';
 import { colorSchemes } from '../model/colorSchemes';
 // tools are registered by GameMVC; no direct tool imports needed here
@@ -1546,6 +1547,9 @@ function GameOfLifeApp(props) {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {/* Script Execution HUD */}
+      <ScriptExecutionHUD />
     </>
   );
 }

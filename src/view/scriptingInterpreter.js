@@ -270,6 +270,17 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
       throw new Error('UNTIL_STEADY requires game simulation (ticks function not available)');
     }
     
+    // Emit start event
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gol:script:debug', { 
+        detail: { 
+          type: 'command', 
+          command: `UNTIL_STEADY ${varName} ${maxSteps}`,
+          msg: `Running UNTIL_STEADY: waiting for steady state (max ${maxSteps} steps)` 
+        } 
+      }));
+    }
+    
     const historySize = 10;
     const history = [];
     let stepCount = 0;
@@ -293,6 +304,19 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
       }
       
       stepCount++;
+      
+      // Emit progress event
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('gol:script:debug', { 
+          detail: { 
+            type: 'progress', 
+            command: `UNTIL_STEADY ${varName}`,
+            current: stepCount,
+            total: maxSteps,
+            msg: `UNTIL_STEADY progress: ${stepCount}/${maxSteps} steps` 
+          } 
+        }));
+      }
       
       const nextState = cellsToString(state.cells);
       if (currentState === nextState) {
@@ -320,6 +344,19 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
     state.vars[varName] = stable ? stepCount : -1;
     if (stable && oscillatorPeriod > 0) {
       state.vars[varName + '_period'] = oscillatorPeriod;
+    }
+    
+    // Emit completion event
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gol:script:debug', { 
+        detail: { 
+          type: 'complete', 
+          command: `UNTIL_STEADY ${varName}`,
+          variable: varName,
+          value: state.vars[varName],
+          msg: `UNTIL_STEADY complete: ${varName} = ${state.vars[varName]}` 
+        } 
+      }));
     }
     
     if (onStep) onStep(new Set(state.cells));
