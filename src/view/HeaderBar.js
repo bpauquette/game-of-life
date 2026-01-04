@@ -7,6 +7,7 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import { BarChart as BarChartIcon, Help as HelpIcon, Info as InfoIcon, Settings as SettingsIcon, CloudDownload as ImportIcon, Language as LanguageIcon, VolunteerActivism as DonateIcon } from '@mui/icons-material';
 import CodeIcon from '@mui/icons-material/Code';
+import BugReportIcon from '@mui/icons-material/BugReport';
 import { PsychologyAlt as UserIcon, LockPerson as UserLoggedInIcon } from '@mui/icons-material';
 import { useAuth } from '../auth/AuthProvider';
 import Login from '../auth/Login';
@@ -38,6 +39,9 @@ function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpe
     <Stack direction="row" spacing={1} alignItems="center">
       <Tooltip title="Script Playground">
         <IconButton size="small" onClick={() => window.dispatchEvent(new CustomEvent('openScriptPanel'))} aria-label="script-playground"><CodeIcon fontSize="small" /></IconButton>
+      </Tooltip>
+      <Tooltip title="Photosensitivity Test">
+        <IconButton size="small" onClick={() => window.open('/test-photosensitivity.html', '_blank')} aria-label="photosensitivity-test"><BugReportIcon fontSize="small" /></IconButton>
       </Tooltip>
       <IconButton size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
       <IconButton size="small" onClick={onOpenImport} aria-label="import"><Tooltip title="Import Shape"><ImportIcon fontSize="small" /></Tooltip></IconButton>
