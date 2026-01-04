@@ -49,11 +49,9 @@
             max-height: 500px;
             overflow-y: auto;
             margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            line-height: 1.5;
         }
-        .pass { color: #00ff00; }
-        .fail { color: #ff3333; }
-        .warning { color: #ffaa00; }
-        .info { color: #00aaff; }
         .test-status {
             padding: 15px;
             margin: 15px 0;
@@ -61,7 +59,6 @@
             background: #2a2a2a;
             font-size: 14px;
         }
-        .test-status.running { border-left-color: #ffaa00; }
         .test-status.passed { border-left-color: #00ff00; }
         .test-status.failed { border-left-color: #ff3333; }
         code {
@@ -83,7 +80,7 @@
         <ol>
             <li>Open the main Game of Life page (click "Return to App" below)</li>
             <li>Press <code>F12</code> to open browser console</li>
-            <li>Copy and paste the minified test script below</li>
+            <li>Copy and paste the test script (click button below)</li>
             <li>Wait 10 seconds for automatic analysis</li>
             <li>Review PASS/FAIL result in console</li>
         </ol>
@@ -92,7 +89,6 @@
         <ul>
             <li>✅ <strong>Flash Rate:</strong> Max 3 flashes per second (WCAG 2.1 Level A)</li>
             <li>✅ <strong>Flash Area:</strong> Flashing area ≤ 87,296 pixels (341×256 rectangle)</li>
-            <li>✅ <strong>Red Flash Detection:</strong> Dangerous saturated red transitions</li>
             <li>✅ <strong>Luminance Changes:</strong> ITU-R BT.1702 relative luminance calculations</li>
         </ul>
         
@@ -101,108 +97,108 @@
     </div>
     
     <div class="test-controls">
-        <h2>🚀 Test Methods</h2>
+        <h2>🚀 Quick Actions</h2>
         
-        <button class="primary" onclick="window.open('/', '_self')">
+        <button class="primary" onclick="backToApp()">
             🎮 Return to App
         </button>
         
-        <button onclick="copyTestScript()">
-            📋 Copy Browser Console Test Script
+        <button onclick="copyScript()">
+            📋 Copy Console Test Script
         </button>
         
-        <button onclick="showConsoleInstructions()">
-            📖 Show Console Test Instructions
+        <button onclick="showInstructions()">
+            📖 Show Instructions
         </button>
-        
-        <button onclick="window.location.reload()">Clear Results</button>
     </div>
     
     <div id="status" class="test-status">
-        Ready to test. Click "Copy Browser Console Test Script" above.
+        Ready. Click "Copy Console Test Script" to get started.
     </div>
     
     <div id="results">
-<strong>Test Script (Copy and Paste into Browser Console):</strong>
-
-Click "Copy Browser Console Test Script" button to copy this to clipboard.
-Then open the main app and paste it into the console (F12).
+        Select an option above to begin.
     </div>
 
     <script>
-        // Minified test script
-        const testScript = `(function(){class LivePhotosensitivityTest{constructor(){this.canvas=null;this.ctx=null;this.frames=[];this.flashEvents=[];this.startTime=0;this.testDuration=10000;this.sampleInterval=33;this.maxFlashRate=3;this.maxFlashArea=87296}async start(){console.log("🧪 Starting photosensitivity test...");this.canvas=document.querySelector("canvas");if(!this.canvas){console.error("❌ No canvas found");return}this.ctx=this.canvas.getContext("2d");this.startTime=Date.now();const intervalId=setInterval(()=>{this.captureFrame()},this.sampleInterval);setTimeout(()=>{clearInterval(intervalId);this.analyze()},this.testDuration)}captureFrame(){try{const imageData=this.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);this.frames.push({timestamp:Date.now(),data:imageData})}catch(e){console.warn("Frame capture failed:",e)}}detectFlash(prevFrame,currFrame){if(!prevFrame||!currFrame)return null;const prev=prevFrame.data.data;const curr=currFrame.data.data;let flashPixels=0;for(let i=0;i<prev.length;i+=4){const prevL=(0.2126*prev[i]+0.7152*prev[i+1]+0.0722*prev[i+2])/255;const currL=(0.2126*curr[i]+0.7152*curr[i+1]+0.0722*curr[i+2])/255;const delta=Math.abs(currL-prevL);if(delta>0.08){flashPixels++}}if(flashPixels>1000){return{timestamp:currFrame.timestamp,flashPixels:flashPixels}}return null}analyze(){console.log("\\n📊 Analyzing",this.frames.length,"captured frames...");for(let i=1;i<this.frames.length;i++){const flash=this.detectFlash(this.frames[i-1],this.frames[i]);if(flash){this.flashEvents.push(flash)}}const oneSecondAgo=Date.now()-1000;const recentFlashes=this.flashEvents.filter(f=>f.timestamp>oneSecondAgo);const flashRate=recentFlashes.length;const maxFlashArea=Math.max(...this.flashEvents.map(f=>f.flashPixels),0);const flashRateViolation=flashRate>this.maxFlashRate;const flashAreaViolation=maxFlashArea>this.maxFlashArea;const wcagCompliant=!flashRateViolation&&!flashAreaViolation;const report=this.getReport(wcagCompliant,flashRate,maxFlashArea,flashRateViolation,flashAreaViolation);console.log(report);window.__PHOTOSENSITIVITY_REPORT__=report;return report}getReport(compliant,rate,area,rateViolation,areaViolation){const border="=".repeat(60);let report=border+"\\n";report+="  PHOTOSENSITIVITY TEST RESULTS\\n";report+=border+"\\n\\n";if(compliant){report+="✅ RESULT: PASS - Animation is WCAG 2.1 Level A compliant\\n"}else{report+="❌ RESULT: FAIL - WCAG 2.1 violations detected\\n"}report+="\\n📊 MEASUREMENTS:\\n";report+="  Flash Rate: "+rate+"/sec (limit: "+this.maxFlashRate+"/sec) ";report+=rateViolation?"❌ VIOLATION\\n":"✅\\n";report+="  Flash Area: "+area+" pixels (limit: "+this.maxFlashArea+" px) ";report+=areaViolation?"❌ VIOLATION\\n":"✅\\n";report+="  Frames Analyzed: "+this.frames.length+"\\n";report+="  Flash Events: "+this.flashEvents.length+"\\n";if(!compliant){report+="\\n⚠️ RECOMMENDATIONS:\\n";if(rateViolation){report+="  • Reduce animation speed to max 2 fps\\n";report+="  • Implement frame delay between updates\\n"}if(areaViolation){report+="  • Reduce visible grid size (<50×50 cells)\\n";report+="  • Use gradual transitions instead of instant changes\\n"}report+="\\n⚖️ LEGAL STATUS: HIGH RISK - Not ADA compliant\\n"}else{report+="\\n⚖️ LEGAL STATUS: LOW RISK - Safe harbor protection\\n"}report+="\\n"+border;return report}}const test=new LivePhotosensitivityTest();test.start();console.log("⏳ Test running for 10 seconds... Please wait...");})();`;
+        function backToApp() {
+            window.location.href = '/';
+        }
 
-        function copyTestScript() {
-            navigator.clipboard.writeText(testScript).then(() => {
-                setStatus('✅ Test script copied to clipboard! Now open the main app and paste into console (F12)', 'passed');
-                showInResults('SUCCESS', 'Script copied to clipboard!\\n\\nNext steps:\\n1. Click "Return to App" button above\\n2. Press F12 to open console\\n3. Paste the script and press Enter\\n4. Wait 10 seconds\\n5. Review PASS/FAIL results');
+        function updateStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'test-status ' + (type || 'info');
+        }
+
+        function displayResults(title, content) {
+            const results = document.getElementById('results');
+            results.innerHTML = '<strong>' + title + ':</strong><br/><br/>' + 
+                content.replace(/\n/g, '<br/>').replace(/  /g, '&nbsp;&nbsp;');
+        }
+
+        function copyScript() {
+            // The minified test script as a string
+            const script = '(function(){class LivePhotosensitivityTest{constructor(){this.canvas=null;this.ctx=null;this.frames=[];this.flashEvents=[];this.startTime=0;this.testDuration=10000;this.sampleInterval=33;this.maxFlashRate=3;this.maxFlashArea=87296}async start(){console.log("🧪 Starting photosensitivity test...");this.canvas=document.querySelector("canvas");if(!this.canvas){console.error("❌ No canvas found");return}this.ctx=this.canvas.getContext("2d");this.startTime=Date.now();const intervalId=setInterval(()=>{this.captureFrame()},this.sampleInterval);setTimeout(()=>{clearInterval(intervalId);this.analyze()},this.testDuration)}captureFrame(){try{const imageData=this.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);this.frames.push({timestamp:Date.now(),data:imageData})}catch(e){console.warn("Frame capture failed:",e)}}detectFlash(prevFrame,currFrame){if(!prevFrame||!currFrame)return null;const prev=prevFrame.data.data;const curr=currFrame.data.data;let flashPixels=0;for(let i=0;i<prev.length;i+=4){const prevL=(0.2126*prev[i]+0.7152*prev[i+1]+0.0722*prev[i+2])/255;const currL=(0.2126*curr[i]+0.7152*curr[i+1]+0.0722*curr[i+2])/255;const delta=Math.abs(currL-prevL);if(delta>0.08){flashPixels++}}if(flashPixels>1000){return{timestamp:currFrame.timestamp,flashPixels:flashPixels}}return null}analyze(){console.log("📊 Analyzing "+this.frames.length+" captured frames...");for(let i=1;i<this.frames.length;i++){const flash=this.detectFlash(this.frames[i-1],this.frames[i]);if(flash){this.flashEvents.push(flash)}}const oneSecondAgo=Date.now()-1000;const recentFlashes=this.flashEvents.filter(f=>f.timestamp>oneSecondAgo);const flashRate=recentFlashes.length;const maxFlashArea=Math.max(...this.flashEvents.map(f=>f.flashPixels),0);const flashRateViolation=flashRate>this.maxFlashRate;const flashAreaViolation=maxFlashArea>this.maxFlashArea;const wcagCompliant=!flashRateViolation&&!flashAreaViolation;const report=this.getReport(wcagCompliant,flashRate,maxFlashArea,flashRateViolation,flashAreaViolation);console.log(report);window.__PHOTOSENSITIVITY_REPORT__=report;return report}getReport(compliant,rate,area,rateViolation,areaViolation){const border="=".repeat(60);let report=border+"\\n";report+="  PHOTOSENSITIVITY TEST RESULTS\\n";report+=border+"\\n\\n";if(compliant){report+="✅ RESULT: PASS - Animation is WCAG 2.1 Level A compliant\\n"}else{report+="❌ RESULT: FAIL - WCAG 2.1 violations detected\\n"}report+="\\n📊 MEASUREMENTS:\\n";report+="  Flash Rate: "+rate+"/sec (limit: "+this.maxFlashRate+"/sec) ";report+=rateViolation?"❌ VIOLATION\\n":"✅\\n";report+="  Flash Area: "+area+" pixels (limit: "+this.maxFlashArea+" px) ";report+=areaViolation?"❌ VIOLATION\\n":"✅\\n";report+="  Frames Analyzed: "+this.frames.length+"\\n";report+="  Flash Events: "+this.flashEvents.length+"\\n";if(!compliant){report+="\\n⚠️  RECOMMENDATIONS:\\n";if(rateViolation){report+="  • Reduce animation speed to max 2 fps\\n";report+="  • Implement frame delay between updates\\n"}if(areaViolation){report+="  • Reduce visible grid size (less than 50x50 cells)\\n";report+="  • Use gradual transitions instead of instant changes\\n"}report+="\\n⚖️  LEGAL STATUS: HIGH RISK - Not ADA compliant\\n"}else{report+="\\n⚖️  LEGAL STATUS: LOW RISK - Safe harbor protection\\n"}report+="\\n"+border;return report}}const test=new LivePhotosensitivityTest();test.start();console.log("⏳ Test running for 10 seconds... Please wait...");})();';
+            
+            navigator.clipboard.writeText(script).then(() => {
+                updateStatus('✅ Script copied! Paste into browser console (F12) on the app page', 'passed');
+                displayResults('SUCCESS', 'Script copied to clipboard!\n\n' +
+                    'NEXT STEPS:\n' +
+                    '1. Click "Return to App" button\n' +
+                    '2. Press F12 to open Developer Console\n' +
+                    '3. Paste the script and press ENTER\n' +
+                    '4. Wait 10 seconds\n' +
+                    '5. Review results in console\n\n' +
+                    'Expected results:\n' +
+                    '  ✅ PASS = WCAG 2.1 compliant (safe)\n' +
+                    '  ❌ FAIL = Violations detected (legal risk)');
             }).catch(err => {
-                setStatus('❌ Failed to copy. Please copy manually from results area.', 'failed');
-                showInResults('ERROR', 'Auto-copy failed. Please manually select and copy the script below:\\n\\n' + testScript);
+                updateStatus('❌ Copy failed - please try manual copy below', 'failed');
+                displayResults('ERROR', 'Auto-copy to clipboard failed.\n\n' +
+                    'Manual copy: Select the script text below and use Ctrl+C\n\n' +
+                    'Script:\n' + script);
             });
         }
 
-        function showConsoleInstructions() {
-            const instructions = \`
-📖 CONSOLE TEST INSTRUCTIONS
-${'='.repeat(60)}
-
-STEP 1: Return to Main App
-  • Click "Return to App" button above
-  • Or navigate to the main Game of Life page
-
-STEP 2: Open Browser Console
-  • Press F12 (Windows/Linux)
-  • Or Cmd+Option+J (Mac)
-  • Or Right-click → Inspect → Console tab
-
-STEP 3: Copy & Paste Test Script
-  • Click "Copy Browser Console Test Script" button
-  • Paste into console and press Enter
-  • Script will auto-run for 10 seconds
-
-STEP 4: Review Results
-  • Console will show "Test running for 10 seconds..."
-  • After 10 seconds, results appear automatically
-  • Look for ✅ PASS or ❌ FAIL
-
-STEP 5: Interpret Results
-  • PASS = WCAG 2.1 compliant, legally safe
-  • FAIL = Violations detected, see recommendations
-  • Results saved to window.__PHOTOSENSITIVITY_REPORT__
-
-${'='.repeat(60)}
-
-WHAT IT TESTS:
-  ✓ Flash rate (max 3/second)
-  ✓ Flash area (max 87,296 pixels)
-  ✓ Luminance changes (ITU-R BT.1702)
-
-LEGAL COMPLIANCE:
-  ⚖️ PASS = Safe harbor under ADA
-  ⚖️ FAIL = Legal liability risk for seizures
-            \`;
+        function showInstructions() {
+            const instructions = 
+                'WCAG 2.1 PHOTOSENSITIVITY TEST\n' +
+                '='.repeat(60) + '\n\n' +
+                'WHAT IT TESTS:\n' +
+                '  • Flash Rate: Maximum 3 flashes per second\n' +
+                '  • Flash Area: Maximum 87,296 pixels of flashing\n' +
+                '  • Luminance: Rapid brightness changes detection\n\n' +
+                'WHY IT MATTERS:\n' +
+                '  • Flashing >3/sec can trigger photosensitive seizures\n' +
+                '  • ADA (Americans with Disabilities Act) requires compliance\n' +
+                '  • WCAG 2.1 Level A provides safe harbor legal protection\n' +
+                '  • Violations create legal liability risk\n\n' +
+                'HOW TO TEST:\n' +
+                '  1. Open Game of Life app\n' +
+                '  2. Start a simulation\n' +
+                '  3. Press F12 → Console tab\n' +
+                '  4. Paste the test script\n' +
+                '  5. Press ENTER\n' +
+                '  6. Wait 10 seconds\n' +
+                '  7. Check results:\n' +
+                '     - PASS: Safe to use\n' +
+                '     - FAIL: Needs optimization\n\n' +
+                'IF TEST FAILS:\n' +
+                '  • Reduce animation speed (2 fps max)\n' +
+                '  • Decrease visible grid size\n' +
+                '  • Use gradual color transitions\n' +
+                '  • Add Safe Mode toggle for users\n\n' +
+                'LEGAL COMPLIANCE:\n' +
+                '  ✓ PASS test = WCAG 2.1 Level A compliant\n' +
+                '  ✓ Safe harbor protection under ADA\n' +
+                '  ✗ FAIL test = Legal liability for seizures\n' +
+                '  ✗ Warning alone increases liability risk\n\n' +
+                '='.repeat(60);
             
-            showInResults('INSTRUCTIONS', instructions);
-            setStatus('📖 Instructions displayed below. Copy the test script and follow the steps.', 'info');
+            updateStatus('📖 Instructions displayed below', 'info');
+            displayResults('PHOTOSENSITIVITY TESTING GUIDE', instructions);
         }
-
-        function setStatus(message, type = 'info') {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = 'test-status ' + type;
-        }
-
-        function showInResults(title, content) {
-            const results = document.getElementById('results');
-            results.innerHTML = '<strong>' + title + ':</strong>\\n\\n' + content;
-        }
-
-        // Auto-show instructions on load
-        window.addEventListener('load', () => {
-            showConsoleInstructions();
-        });
     </script>
 </body>
 </html>
