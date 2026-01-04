@@ -353,7 +353,7 @@ describe('Scripting Interpreter - Control Flow', () => {
     expect(state.iterations).toBe(5);
   });
 
-  it('should support ELSE clause with true condition', () => {
+  it('should support ELSE clause with true condition', async () => {
     const script = `IF x > 5
   y = 100
 ELSE
@@ -361,11 +361,11 @@ ELSE
 END`;
     const blocks = parseBlocks(script.split('\n'));
     const state = { vars: { x: 10, y: 0 }, cells: new Set() };
-    execBlock(blocks, state, null, () => {}, null, null);
+    await execBlock(blocks, state, null, () => {}, null, null);
     expect(state.vars.y).toBe(100); // IF condition true, so ELSE not executed
   });
 
-  it('should support ELSE clause with false condition', () => {
+  it('should support ELSE clause with false condition', async () => {
     const script = `IF x > 5
   y = 100
 ELSE
@@ -373,11 +373,11 @@ ELSE
 END`;
     const blocks = parseBlocks(script.split('\n'));
     const state = { vars: { x: 3, y: 0 }, cells: new Set() };
-    execBlock(blocks, state, null, () => {}, null, null);
+    await execBlock(blocks, state, null, () => {}, null, null);
     expect(state.vars.y).toBe(50); // IF condition false, so ELSE executed
   });
 
-  it('should support nested IF...ELSE structures', () => {
+  it('should support nested IF...ELSE structures', async () => {
     const script = `IF x > 5
   IF y > 3
     z = 1
@@ -389,11 +389,11 @@ ELSE
 END`;
     const blocks = parseBlocks(script.split('\n'));
     const state = { vars: { x: 10, y: 2, z: 0 }, cells: new Set() };
-    execBlock(blocks, state, null, () => {}, null, null);
+    await execBlock(blocks, state, null, () => {}, null, null);
     expect(state.vars.z).toBe(2); // Outer IF true, inner IF false → inner ELSE
   });
 
-  it('should handle ELSE with drawing commands', () => {
+  it('should handle ELSE with drawing commands', async () => {
     const script = `IF count > 5
   RECT 10 10
 ELSE
@@ -401,42 +401,42 @@ ELSE
 END`;
     const blocks = parseBlocks(script.split('\n'));
     const state = { vars: {}, cells: new Set(), x: 0, y: 0, penDown: true };
-    execBlock(blocks, state, null, () => {}, null, null);
+    await execBlock(blocks, state, null, () => {}, null, null);
     // When count <= 5 (undefined → 0), ELSE should execute with 5x5 rect = 25 cells
     expect(state.cells.size).toBe(25); // 5 * 5
   });
 
-  it('should support FOR loops with numeric ranges', () => {
+  it('should support FOR loops with numeric ranges', async () => {
     const script = `FOR i FROM 1 TO 5
   sum = sum + i
 END`;
     const blocks = parseBlocks(script.split('\n'));
     const state = { vars: { sum: 0 }, cells: new Set() };
-    execBlock(blocks, state, null, () => {}, null, null);
+    await execBlock(blocks, state, null, () => {}, null, null);
     expect(state.vars.sum).toBe(15); // 1+2+3+4+5 = 15
   });
 
-  it('should support FOR loops with STEP parameter', () => {
+  it('should support FOR loops with STEP parameter', async () => {
     const script = `FOR i FROM 0 TO 10 STEP 2
   count = count + 1
 END`;
     const blocks = parseBlocks(script.split('\n'));
     const state = { vars: { count: 0 }, cells: new Set() };
-    execBlock(blocks, state, null, () => {}, null, null);
+    await execBlock(blocks, state, null, () => {}, null, null);
     expect(state.vars.count).toBe(6); // 0,2,4,6,8,10 = 6 iterations
   });
 
-  it('should support FOR loops with negative STEP (counting down)', () => {
+  it('should support FOR loops with negative STEP (counting down)', async () => {
     const script = `FOR i FROM 10 TO 1 STEP -1
   sum = sum + i
 END`;
     const blocks = parseBlocks(script.split('\n'));
     const state = { vars: { sum: 0 }, cells: new Set() };
-    execBlock(blocks, state, null, () => {}, null, null);
+    await execBlock(blocks, state, null, () => {}, null, null);
     expect(state.vars.sum).toBe(55); // 10+9+8+...+1 = 55
   });
 
-  it('should support nested FOR loops', () => {
+  it('should support nested FOR loops', async () => {
     const script = `FOR x FROM 1 TO 3
   FOR y FROM 1 TO 3
     count = count + 1
@@ -444,39 +444,128 @@ END`;
 END`;
     const blocks = parseBlocks(script.split('\n'));
     const state = { vars: { count: 0 }, cells: new Set() };
-    execBlock(blocks, state, null, () => {}, null, null);
+    await execBlock(blocks, state, null, () => {}, null, null);
     expect(state.vars.count).toBe(9); // 3x3 nested = 9 iterations
   });
 
-  it('should support FOR loops with drawing commands', () => {
+  it('should support FOR loops with drawing commands', async () => {
     const script = `FOR i FROM 0 TO 4
   RECT 2 2
 END`;
     const blocks = parseBlocks(script.split('\n'));
     const state = { vars: {}, cells: new Set(), penDown: true, x: 0, y: 0 };
-    execBlock(blocks, state, null, () => {}, null, null);
+    await execBlock(blocks, state, null, () => {}, null, null);
     // 5 iterations of a 2x2 RECT at the same position (0,0) = 4 unique cells total
     expect(state.cells.size).toBe(4); // 2x2 = 4 cells
   });
 
-  it('should handle empty FOR loop range (no iterations)', () => {
+  it('should handle empty FOR loop range (no iterations)', async () => {
     const script = `FOR i FROM 5 TO 1
   count = count + 1
 END`;
     const blocks = parseBlocks(script.split('\n'));
     const state = { vars: { count: 0 }, cells: new Set() };
-    execBlock(blocks, state, null, () => {}, null, null);
+    await execBlock(blocks, state, null, () => {}, null, null);
     expect(state.vars.count).toBe(0); // No iterations (5 > 1 with step +1)
   });
 
-  it('should support FOR loop with variable expressions', () => {
+  it('should support FOR loop with variable expressions', async () => {
     const script = `FOR i FROM start TO end STEP increment
   total = total + i
 END`;
     const blocks = parseBlocks(script.split('\n'));
     const state = { vars: { start: 2, end: 8, increment: 2, total: 0 }, cells: new Set() };
-    execBlock(blocks, state, null, () => {}, null, null);
+    await execBlock(blocks, state, null, () => {}, null, null);
     expect(state.vars.total).toBe(20); // 2+4+6+8 = 20
+  });
+
+  it('should support UNTIL_STEADY for still life detection', async () => {
+    // Mock ticks function that returns a stable pattern (2x2 block)
+    const mockTicks = (cells) => {
+      const stable = new Set();
+      stable.add('0,0');
+      stable.add('0,1');
+      stable.add('1,0');
+      stable.add('1,1');
+      return stable;
+    };
+
+    const script = `RECT 2 2
+UNTIL_STEADY steps 100`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: {}, cells: new Set(), penDown: true, x: 0, y: 0 };
+    await execBlock(blocks, state, null, () => {}, null, mockTicks);
+    
+    expect(state.vars.steps).toBe(1); // Stable after 1 step
+  });
+
+  it('should support UNTIL_STEADY with variable max steps', async () => {
+    const mockTicks = (cells) => {
+      const stable = new Set();
+      stable.add('0,0');
+      stable.add('0,1');
+      stable.add('1,0');
+      stable.add('1,1');
+      return stable;
+    };
+
+    const script = `max = 50
+RECT 2 2
+UNTIL_STEADY steps max`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: {}, cells: new Set(), penDown: true, x: 0, y: 0 };
+    await execBlock(blocks, state, null, () => {}, null, mockTicks);
+    
+    expect(state.vars.steps).toBe(1);
+    expect(state.vars.max).toBe(50);
+  });
+
+  it('should handle UNTIL_STEADY timeout (pattern never stabilizes)', async () => {
+    let stepCounter = 0;
+    const mockTicks = () => {
+      // Return different pattern each time (never stabilizes)
+      const unstable = new Set();
+      unstable.add(`${stepCounter},0`);
+      stepCounter++;
+      return unstable;
+    };
+
+    const script = `RECT 2 2
+UNTIL_STEADY steps 10`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: {}, cells: new Set(), penDown: true, x: 0, y: 0 };
+    await execBlock(blocks, state, null, () => {}, null, mockTicks);
+    
+    expect(state.vars.steps).toBe(-1); // Timeout indicator
+  });
+
+  it('should detect simple oscillators with UNTIL_STEADY', async () => {
+    let toggle = false;
+    const mockTicks = () => {
+      // Blinker oscillator (period 2)
+      toggle = !toggle;
+      const pattern = new Set();
+      if (toggle) {
+        pattern.add('1,0');
+        pattern.add('1,1');
+        pattern.add('1,2');
+      } else {
+        pattern.add('0,1');
+        pattern.add('1,1');
+        pattern.add('2,1');
+      }
+      return pattern;
+    };
+
+    const script = `RECT 3 1
+UNTIL_STEADY steps 50`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: {}, cells: new Set(), penDown: true, x: 0, y: 0 };
+    await execBlock(blocks, state, null, () => {}, null, mockTicks);
+    
+    expect(state.vars.steps).toBeGreaterThan(0);
+    expect(state.vars.steps).toBeLessThan(50);
+    expect(state.vars.steps_period).toBe(2); // Period 2 oscillator detected
   });
 });
 

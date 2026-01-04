@@ -21,10 +21,10 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomp
     // Initialize lastClientRef to canvas center on first mount so cursor can be
     // recomputed even if no mouse movement has occurred yet (e.g., shape selection before mouse move)
     if (!lastClientRef.current) {
-      const rect = canvas.getBoundingClientRect();
+      const rect = canvas.getBoundingClientRect?.() || { left: 0, top: 0, width: 800, height: 600 };
       lastClientRef.current = {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2
+        x: (rect?.left || 0) + (rect?.width || 800) / 2,
+        y: (rect?.top || 0) + (rect?.height || 600) / 2
       };
     }
     

@@ -60,7 +60,7 @@ async function legacyCommand(line, state, onStep, emitStepEvent, step, ticks, se
           }
         }
         if (onStep) onStep(new Set(state.cells));
-        emitStepEvent(state.cells);
+        if (emitStepEvent) emitStepEvent(state.cells);
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: `Step ${i+1}/${n}`, cells: Array.from(state.cells) } }));
         }
@@ -170,7 +170,7 @@ async function legacyCommand(line, state, onStep, emitStepEvent, step, ticks, se
       onLoadGrid([]);
     }
     if (onStep) onStep(new Set(state.cells));
-    emitStepEvent(state.cells);
+    if (emitStepEvent) emitStepEvent(state.cells);
     return;
   }
   
@@ -204,7 +204,7 @@ async function legacyCommand(line, state, onStep, emitStepEvent, step, ticks, se
 }
 
 // Main interpreter loop (with block stack)
-function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
+async function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
   let i = 0;
   
   // Helper function to pause simulation for drawing commands
@@ -244,7 +244,7 @@ function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunni
         onLoadGrid([]);
       }
       if (onStep) onStep(new Set(state.cells));
-      emitStepEvent(state.cells);
+      if (emitStepEvent) emitStepEvent(state.cells);
       i++;
       continue;
     }
@@ -262,6 +262,88 @@ function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunni
       let vname = assignMatch[1];
       let expr = assignMatch[2];
       state.vars[vname] = evalExpr(expr, state);
+      i++;
+      continue;
+    }
+    // UNTIL_STEADY varName maxSteps - run simulation until pattern stabilizes
+    let untilSteadyMatch = line.match(/^UNTIL_STEADY\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(\S+)$/i);
+    if (untilSteadyMatch) {
+      const varName = untilSteadyMatch[1];
+      const maxSteps = Math.floor(parseValue(untilSteadyMatch[2], state));
+      
+      if (!ticks || typeof ticks !== 'function') {
+        throw new Error('UNTIL_STEADY requires game simulation (ticks function not available)');
+      }
+      
+      // History to detect oscillators (periods up to 10)
+      const historySize = 10;
+      const history = [];
+      
+      let stepCount = 0;
+      let stable = false;
+      let oscillatorPeriod = 0;
+      
+      // Helper to convert cells to comparable string
+      const cellsToString = (cells) => {
+        return Array.from(cells).sort().join('|');
+      };
+      
+      while (stepCount < maxSteps && !stable) {
+        // Store current state
+        const currentState = cellsToString(state.cells);
+        
+        // Run one generation
+        const cellsArr = Array.from(state.cells).map(s => {
+          const [x, y] = s.split(',').map(Number);
+          return { x, y };
+        });
+        const next = ticks(cellsArr, 1);
+        
+        // Update state
+        state.cells = new Set();
+        for (const key of next.keys ? next.keys() : Object.keys(next)) {
+          state.cells.add(key);
+        }
+        
+        stepCount++;
+        
+        // Check if pattern is stable (still life - no changes)
+        const nextState = cellsToString(state.cells);
+        if (currentState === nextState) {
+          stable = true;
+          oscillatorPeriod = 1;
+          break;
+        }
+        
+        // Check against history for oscillators
+        for (let h = 0; h < history.length; h++) {
+          if (history[h] === nextState) {
+            stable = true;
+            oscillatorPeriod = history.length - h + 1; // +1 because we haven't added currentState yet
+            break;
+          }
+        }
+        
+        if (stable) break;
+        
+        // Add to history
+        history.push(currentState);
+        if (history.length > historySize) {
+          history.shift(); // Keep only recent history
+        }
+        
+        // Small delay for visual feedback (16ms = 60 FPS)
+        await new Promise(res => setTimeout(res, 16));
+      }
+      
+      // Store results in variables
+      state.vars[varName] = stable ? stepCount : -1;
+      if (stable && oscillatorPeriod > 0) {
+        state.vars[varName + '_period'] = oscillatorPeriod;
+      }
+      
+      if (onStep) onStep(new Set(state.cells));
+      if (emitStepEvent) emitStepEvent(state.cells);
       i++;
       continue;
     }
@@ -297,7 +379,7 @@ function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunni
       if (step > 0) {
         for (let val = start; val <= end; val += step) {
           state.vars[varName] = val;
-          execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+          await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
           if (state.loopBreak) {
             state.loopBreak = false;
             break;
@@ -307,7 +389,7 @@ function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunni
       } else {
         for (let val = start; val >= end; val += step) {
           state.vars[varName] = val;
-          execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+          await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
           if (state.loopBreak) {
             state.loopBreak = false;
             break;
@@ -334,7 +416,7 @@ function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunni
       }
       blockEnd--;
       while (evalCondCompound(cond, state)) {
-        execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks);
+        await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks);
       }
       i = blockEnd + 1;
       continue;
@@ -371,10 +453,10 @@ function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunni
       if (evalCondCompound(cond, state)) {
         // Execute IF block (from blockStart to elseIdx if else exists, else to blockEnd)
         let ifBlockEnd = elseIdx >= 0 ? elseIdx : blockEnd;
-        execBlock(blocks.slice(blockStart, ifBlockEnd), state, onStep, emitStepEvent, step, ticks);
+        await execBlock(blocks.slice(blockStart, ifBlockEnd), state, onStep, emitStepEvent, step, ticks);
       } else if (elseIdx >= 0) {
         // Execute ELSE block (from elseIdx + 1 to blockEnd)
-        execBlock(blocks.slice(elseIdx + 1, blockEnd), state, onStep, emitStepEvent, step, ticks);
+        await execBlock(blocks.slice(elseIdx + 1, blockEnd), state, onStep, emitStepEvent, step, ticks);
       }
       
       i = blockEnd + 1;

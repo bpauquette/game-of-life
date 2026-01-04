@@ -4,6 +4,83 @@ import { render, fireEvent, act } from '@testing-library/react';
 import GameOfLifeApp from './GameOfLifeApp';
 import { AuthProvider } from '../auth/AuthProvider';
 
+// Mock canvas for all tests
+beforeAll(() => {
+  // Mock getBoundingClientRect on all elements first
+  Element.prototype.getBoundingClientRect = jest.fn(function() {
+    return {
+      width: this.tagName === 'CANVAS' ? 800 : 100,
+      height: this.tagName === 'CANVAS' ? 600 : 100,
+      top: 0,
+      left: 0,
+      bottom: this.tagName === 'CANVAS' ? 600 : 100,
+      right: this.tagName === 'CANVAS' ? 800 : 100,
+      x: 0,
+      y: 0
+    };
+  });
+
+  // Explicitly mock on HTMLCanvasElement.prototype
+  HTMLCanvasElement.prototype.getBoundingClientRect = jest.fn(function() {
+    return {
+      width: 800,
+      height: 600,
+      top: 0,
+      left: 0,
+      bottom: 600,
+      right: 800,
+      x: 0,
+      y: 0
+    };
+  });
+
+  if (!HTMLCanvasElement.prototype.getContext) {
+    HTMLCanvasElement.prototype.getContext = jest.fn(function() {
+      return {
+        fillRect: jest.fn(),
+        clearRect: jest.fn(),
+        getImageData: jest.fn(() => ({ data: new Uint8ClampedArray(4) })),
+        putImageData: jest.fn(),
+        createImageData: jest.fn(() => ({ data: new Uint8ClampedArray(4) })),
+        setTransform: jest.fn(),
+        drawImage: jest.fn(),
+        save: jest.fn(),
+        fillText: jest.fn(),
+        restore: jest.fn(),
+        beginPath: jest.fn(),
+        moveTo: jest.fn(),
+        lineTo: jest.fn(),
+        closePath: jest.fn(),
+        stroke: jest.fn(),
+        translate: jest.fn(),
+        scale: jest.fn(),
+        rotate: jest.fn(),
+        arc: jest.fn(),
+        fill: jest.fn(),
+        measureText: jest.fn(() => ({ width: 0 })),
+        transform: jest.fn(),
+        rect: jest.fn(),
+        clip: jest.fn(),
+        canvas: this
+      };
+    });
+  }
+
+  // Mock getBoundingClientRect on all elements
+  Element.prototype.getBoundingClientRect = jest.fn(function() {
+    return {
+      width: this.tagName === 'CANVAS' ? 800 : 100,
+      height: this.tagName === 'CANVAS' ? 600 : 100,
+      top: 0,
+      left: 0,
+      bottom: this.tagName === 'CANVAS' ? 600 : 100,
+      right: this.tagName === 'CANVAS' ? 800 : 100,
+      x: 0,
+      y: 0
+    };
+  });
+});
+
 describe('GameOfLifeApp', () => {
   function renderWithAuthProvider(ui) {
     return render(<AuthProvider>{ui}</AuthProvider>);
