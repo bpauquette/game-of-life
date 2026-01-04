@@ -169,12 +169,14 @@ function SimpleScriptPanel({
             const [x, y] = String(cellStr).split(',').map(Number);
             return { x, y };
           }).filter(cell => !isNaN(cell.x) && !isNaN(cell.y));
+          console.log('[Script Debug] Drawing', cellArray.length, 'cells to grid');
           onLoadGrid(cellArray);
         }
       };
       
       const emitStepEvent = (cells) => {
         // Update the main grid with new cell state
+        console.log('[Script Debug] emitStepEvent called with', cells.size, 'cells');
         onStepCallback(cells);
       };
       

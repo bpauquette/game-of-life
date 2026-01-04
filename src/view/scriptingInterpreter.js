@@ -268,6 +268,7 @@ async function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setI
     // UNTIL_STEADY varName maxSteps - run simulation until pattern stabilizes
     let untilSteadyMatch = line.match(/^UNTIL_STEADY\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(\S+)$/i);
     if (untilSteadyMatch) {
+      console.log('[Script Debug] UNTIL_STEADY command detected:', line);
       const varName = untilSteadyMatch[1];
       const maxSteps = Math.floor(parseValue(untilSteadyMatch[2], state));
       
