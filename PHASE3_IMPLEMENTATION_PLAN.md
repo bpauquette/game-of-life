@@ -1,9 +1,16 @@
 # Phase 3 - Implementation Plan & Progress
 
-**Status:** 🚀 **PHASE 3 STARTED**  
+**Status:** 🚀 **PHASE 3 IN PROGRESS** (3/7 tasks complete)  
 **Start Date:** January 4, 2026  
 **Target Completion:** 7-10 days  
-**Priority Order:** FOR → String Functions → BREAK/CONTINUE → HEADING → Error Messages
+**Priority Order:** FOR → String Functions → UNTIL_STEADY → BREAK/CONTINUE → HEADING → Error Messages
+
+**Completed:**
+- ✅ Phase 3.1: FOR Loops (7 tests passing)
+- ✅ Phase 3.2: String Functions (8 tests passing)
+- ✅ Phase 3.3: UNTIL_STEADY (4 tests passing)
+
+**Current Status:** 85/85 tests passing in comprehensive suite ✅
 
 ---
 
@@ -89,6 +96,57 @@ pos = INDEX "hello" "l"       # pos = 2
 - TOUPPER/TOLOWER with mixed case
 - Function composition
 - Error handling (invalid indices)
+
+---
+
+### Priority 2.5: UNTIL_STEADY (HIGH PRIORITY - BUG FIX)
+**Estimated Effort:** 4-5 hours  
+**Complexity:** High (pattern detection, oscillator detection)
+**Status:** ✅ **COMPLETED** (January 4, 2026)
+
+**Syntax:**
+```
+UNTIL_STEADY varName maxSteps
+```
+
+**Purpose:**
+Runs the simulation until the pattern stabilizes (still life or oscillator) or until maxSteps is reached.
+
+**Examples:**
+```
+RECT 4 4
+UNTIL_STEADY steps 100
+IF steps > 0
+  LABEL "Stable after " + steps + " steps"
+END
+
+# With oscillator detection
+RECT 3 1  # Blinker
+UNTIL_STEADY count 50
+IF count_period == 2
+  LABEL "Period-2 oscillator!"
+END
+```
+
+**Implementation Details:**
+- Still life detection (period 1): Pattern doesn't change
+- Oscillator detection (periods 2-10): Pattern repeats with known period
+- Timeout: Returns -1 if never stabilizes within maxSteps
+- Variables: Sets `varName` to step count and `varName_period` to period
+- Visual feedback: 16ms delay per generation (60 FPS)
+
+**Test Results:** ✅ 4/4 tests passing
+- Still life detection
+- Variable max steps
+- Timeout handling
+- Oscillator period detection
+
+**Files Modified:**
+- `src/view/scriptingInterpreter.js` - Added UNTIL_STEADY handler (lines 268-350)
+- `src/new-tests/scriptingLanguage.comprehensive.test.js` - Added 4 test cases
+- Made `execBlock` async to support delays
+
+**Documentation:** See `PHASE3_3_COMPLETION.md` for full details
 
 ---
 

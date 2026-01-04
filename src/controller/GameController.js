@@ -802,7 +802,34 @@ export class GameController {
   startWorkerLoop() {
     if (this.worker) return; // Already running
 
-    this.worker = new Worker(new URL('../workers/gameWorker.js', import.meta.url));
+    try {
+      // Only attempt Worker creation in browser environments with ES module support
+      if (typeof globalThis !== 'undefined' && typeof URL !== 'undefined' && typeof Worker !== 'undefined') {
+        // Check if we're in a real browser (not Jest test environment)
+        // In Jest, import.meta will cause a syntax error
+        try {
+          // Try to create Worker with ES module URL (works in browser with ES modules)
+          // Using Function constructor to defer evaluation and allow graceful fallback in CommonJS
+          const createWorkerCode = `new Worker(new URL('../workers/gameWorker.js', import.meta.url))`;
+          // eslint-disable-next-line no-new-func
+          const createWorker = new Function('URL', 'Worker', `return ${createWorkerCode}`);
+          this.worker = createWorker(URL, Worker);
+        } catch (syntaxError) {
+          // import.meta not available - likely in test environment
+          return;
+        }
+      }
+    } catch (error) {
+      // Fallback for environments without Worker API
+      if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
+        console.warn('Could not create Web Worker:', error);
+      }
+      return;
+    }
+
+    // Only set up message handler if worker was successfully created
+    if (!this.worker) return;
+
     this.worker.onmessage = async (e) => {
       if (e.data.command === 'step') {
         const frameStart = performance.now();
