@@ -19,9 +19,26 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
+import SaveIcon from '@mui/icons-material/Save';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import DeleteIcon from '@mui/icons-material/Delete';
+import PublicIcon from '@mui/icons-material/Public';
+import LockIcon from '@mui/icons-material/Lock';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction';
+import IconButton from '@mui/material/IconButton';
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
 import { parseBlocks, execBlock } from './scriptingInterpreter';
 import languageDefinition from './languageDefinition';
+import { useAuth } from '../auth/AuthProvider';
+import { getBackendApiBase } from '../utils/backendApi';
+
+const API_BASE = getBackendApiBase();
 
 // Script templates for quick start
 const SCRIPT_TEMPLATES = {
@@ -74,6 +91,41 @@ function SimpleScriptPanel({
   const [executionProgress, setExecutionProgress] = useState({ current: 0, total: 0 });
   const [selectedTemplate, setSelectedTemplate] = useState('');
   
+  // Script save/load state
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [scriptName, setScriptName] = useState('');
+  const [isPublic, setIsPublic] = useState(false);
+  const [cloudScripts, setCloudScripts] = useState([]);
+  const [loadingScripts, setLoadingScripts] = useState(false);
+  const { token } = useAuth();
+  const isAuthenticated = !!token;
+  
+  // Load cloud scripts when panel opens
+  const loadCloudScripts = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setLoadingScripts(true);
+    try {
+      const url = API_BASE.endsWith('/') ? API_BASE + 'v1/scripts/my' : API_BASE + '/v1/scripts/my';
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCloudScripts(data.items || []);
+      }
+    } catch (error) {
+      console.error('Failed to load scripts:', error);
+    } finally {
+      setLoadingScripts(false);
+    }
+  }, [isAuthenticated, token]);
+
+  useEffect(() => {
+    if (open && isAuthenticated) {
+      loadCloudScripts();
+    }
+  }, [open, isAuthenticated, loadCloudScripts]);
+
   // Listen for debug events
   useEffect(() => {
     function onDebug(ev) {
@@ -226,6 +278,70 @@ function SimpleScriptPanel({
     }
   }, [script, running, onClose, getLiveCells, onLoadGrid, step, isRunning, setIsRunning]);
 
+  const handleSaveScript = useCallback(async () => {
+    if (!isAuthenticated) {
+      setMessage({ type: 'error', text: 'Please log in to save scripts to the cloud' });
+      return;
+    }
+    if (!scriptName.trim()) {
+      setMessage({ type: 'error', text: 'Please enter a script name' });
+      return;
+    }
+    
+    try {
+      const url = API_BASE.endsWith('/') ? API_BASE + 'v1/scripts' : API_BASE + '/v1/scripts';
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: scriptName,
+          content: script,
+          public: isPublic,
+          meta: {}
+        })
+      });
+      
+      if (res.ok) {
+        setMessage({ type: 'success', text: `Script "${scriptName}" saved successfully!` });
+        setSaveDialogOpen(false);
+        setScriptName('');
+        loadCloudScripts();
+      } else {
+        const error = await res.json();
+        setMessage({ type: 'error', text: `Failed to save: ${error.error || 'Unknown error'}` });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: `Error saving script: ${error.message}` });
+    }
+  }, [isAuthenticated, token, scriptName, script, isPublic, loadCloudScripts]);
+
+  const handleLoadScript = useCallback((cloudScript) => {
+    setScript(cloudScript.content);
+    setMessage({ type: 'success', text: `Loaded "${cloudScript.name}"` });
+  }, []);
+
+  const handleDeleteScript = useCallback(async (scriptId) => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const url = API_BASE.endsWith('/') ? API_BASE + `v1/scripts/${scriptId}` : API_BASE + `/v1/scripts/${scriptId}`;
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Script deleted' });
+        loadCloudScripts();
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: `Error deleting script: ${error.message}` });
+    }
+  }, [isAuthenticated, token, loadCloudScripts]);
+
   const handleClose = useCallback(() => {
     if (!running && onClose) {
       // Ensure focus is properly managed when closing
@@ -313,6 +429,7 @@ function SimpleScriptPanel({
               aria-label="script panel tabs"
             >
               <Tab label="Script Editor" />
+              <Tab label="Saved Scripts" disabled={running} />
               <Tab label="Debug Log" disabled={running} />
               <Tab label="Language Docs" />
             </Tabs>
@@ -343,8 +460,52 @@ function SimpleScriptPanel({
               </Box>
             </TabPanel>
             
-            {/* Debug Log Tab */}
+            {/* Saved Scripts Tab */}
             <TabPanel value={activeTab} index={1}>
+              <Box sx={{ height: 300, overflow: 'auto' }}>
+                <Typography variant="h6" gutterBottom>
+                  My Saved Scripts {isAuthenticated && `(${cloudScripts.length})`}
+                </Typography>
+                {!isAuthenticated ? (
+                  <Alert severity="info">Please log in to save and load scripts from the cloud</Alert>
+                ) : loadingScripts ? (
+                  <Typography>Loading scripts...</Typography>
+                ) : cloudScripts.length === 0 ? (
+                  <Typography color="text.secondary">No saved scripts yet. Save your first script!</Typography>
+                ) : (
+                  <List>
+                    {cloudScripts.map((cloudScript) => (
+                      <ListItem key={cloudScript.id}>
+                        <ListItemText
+                          primary={cloudScript.name}
+                          secondary={
+                            <>
+                              {cloudScript.public ? (
+                                <Chip icon={<PublicIcon />} label="Public" size="small" sx={{ mr: 1 }} />
+                              ) : (
+                                <Chip icon={<LockIcon />} label="Private" size="small" sx={{ mr: 1 }} />
+                              )}
+                              {new Date(cloudScript.updatedAt).toLocaleDateString()}
+                            </>
+                          }
+                        />
+                        <ListItemSecondaryAction>
+                          <IconButton edge="end" onClick={() => handleLoadScript(cloudScript)} title="Load script">
+                            <FolderOpenIcon />
+                          </IconButton>
+                          <IconButton edge="end" onClick={() => handleDeleteScript(cloudScript.id)} title="Delete script">
+                            <DeleteIcon />
+                          </IconButton>
+                        </ListItemSecondaryAction>
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
+              </Box>
+            </TabPanel>
+            
+            {/* Debug Log Tab */}
+            <TabPanel value={activeTab} index={2}>
               <Box sx={{ height: 300, overflow: 'auto', border: 1, borderColor: 'grey.700', borderRadius: 1, p: 1, bgcolor: '#0b1224', color: '#e5e7eb' }}>
                 <Typography variant="h6" gutterBottom sx={{ color: '#e5e7eb' }}>Debug Log</Typography>
                 {debugLog.length === 0 ? (
@@ -362,7 +523,7 @@ function SimpleScriptPanel({
             </TabPanel>
 
             {/* Language Reference Tab */}
-            <TabPanel value={activeTab} index={2}>
+            <TabPanel value={activeTab} index={3}>
               <Box sx={{ height: 300, overflow: 'auto', border: 1, borderColor: 'grey.300', borderRadius: 1, p: 2, bgcolor: 'background.paper' }}>
                 <Typography variant="h6" gutterBottom>Language Reference</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -378,6 +539,15 @@ function SimpleScriptPanel({
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>Close</Button>
+        {isAuthenticated && (
+          <Button
+            startIcon={<SaveIcon />}
+            onClick={() => setSaveDialogOpen(true)}
+            disabled={running}
+          >
+            Save to Cloud
+          </Button>
+        )}
         <Button 
           variant="contained" 
           onClick={handleRun}
@@ -387,6 +557,49 @@ function SimpleScriptPanel({
           {running ? 'Running...' : 'Run Script'}
         </Button>
       </DialogActions>
+      
+      {/* Save Script Dialog */}
+      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Save Script to Cloud</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="Script Name"
+              value={scriptName}
+              onChange={(e) => setScriptName(e.target.value)}
+              fullWidth
+              autoFocus
+              placeholder="My Awesome Script"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                  icon={<LockIcon />}
+                  checkedIcon={<PublicIcon />}
+                />
+              }
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {isPublic ? <PublicIcon fontSize="small" /> : <LockIcon fontSize="small" />}
+                  <Typography>{isPublic ? 'Public (anyone can view)' : 'Private (only you can view)'}</Typography>
+                </Box>
+              }
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveScript}
+            startIcon={<CloudUploadIcon />}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 }
