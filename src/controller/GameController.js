@@ -1010,7 +1010,8 @@ export class GameController {
 
   // Cleanup
   destroy() {
-    this.stopGameLoop();
+    this.stopAnimationLoop();
+    this.stopWorkerLoop();
     this.view.destroy();
     this.model.observers.clear();
     this.performanceCallbacks = [];
