@@ -361,6 +361,34 @@ function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunni
       i++;
       continue;
     }
+    // CIRCLE command (with radius only - uses current position)
+    let circleMatch1 = line.match(/^circle\s+(\S+)$/i);
+    if (circleMatch1) {
+      pauseForDrawing();
+      const radius = Math.floor(parseValue(circleMatch1[1], state));
+      const cx = state.x || 0;
+      const cy = state.y || 0;
+      const points = computeCircle(cx, cy, radius);
+      for (const [x, y] of points) {
+        state.cells.add(`${x},${y}`);
+      }
+      i++;
+      continue;
+    }
+    // CIRCLE command (with x, y, radius)
+    let circleMatch2 = line.match(/^circle\s+(\S+)\s+(\S+)\s+(\S+)$/i);
+    if (circleMatch2) {
+      pauseForDrawing();
+      const cx = Math.floor(parseValue(circleMatch2[1], state));
+      const cy = Math.floor(parseValue(circleMatch2[2], state));
+      const radius = Math.floor(parseValue(circleMatch2[3], state));
+      const points = computeCircle(cx, cy, radius);
+      for (const [x, y] of points) {
+        state.cells.add(`${x},${y}`);
+      }
+      i++;
+      continue;
+    }
     // RANDRECT command
     let randRectMatch = line.match(/^randrect\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+(\S+))?$/i);
     if (randRectMatch) {
@@ -465,6 +493,49 @@ function computeEllipsePerimeter(x0, y0, x1, y1) {
     const x = Math.floor(cx + rx * Math.cos(angle));
     const y = Math.floor(cy + ry * Math.sin(angle));
     points.push([x, y]);
+  }
+  
+  // Remove duplicates
+  const unique = new Set();
+  const result = [];
+  for (const [x, y] of points) {
+    const key = `${x},${y}`;
+    if (!unique.has(key)) {
+      unique.add(key);
+      result.push([x, y]);
+    }
+  }
+  return result;
+}
+
+// Midpoint Circle Algorithm for drawing circles
+function computeCircle(cx, cy, radius) {
+  if (radius < 0) return [];
+  if (radius === 0) return [[cx, cy]];
+  
+  const points = [];
+  let x = radius;
+  let y = 0;
+  let decisionParam = 3 - 2 * radius;
+  
+  while (x >= y) {
+    // Plot all 8 octants
+    points.push([cx + x, cy + y]);
+    points.push([cx - x, cy + y]);
+    points.push([cx + x, cy - y]);
+    points.push([cx - x, cy - y]);
+    points.push([cx + y, cy + x]);
+    points.push([cx - y, cy + x]);
+    points.push([cx + y, cy - x]);
+    points.push([cx - y, cy - x]);
+    
+    y++;
+    if (decisionParam <= 0) {
+      decisionParam = decisionParam + 4 * y + 6;
+    } else {
+      x--;
+      decisionParam = decisionParam + 4 * (y - x) + 10;
+    }
   }
   
   // Remove duplicates

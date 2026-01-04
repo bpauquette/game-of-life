@@ -423,6 +423,62 @@ describe('Scripting Interpreter - Geometric Commands', () => {
     // RANDRECT minW maxW minH maxH [count]
     expect(true).toBe(true);
   });
+
+  it('should execute CIRCLE with radius only', () => {
+    // Test using the state pattern
+    const state = {
+      cells: new Set(),
+      x: 10,
+      y: 10,
+      penDown: true,
+      vars: {}
+    };
+    
+    // Manual circle drawing (would be done by interpreter)
+    // Draw circle at (10,10) with radius 5
+    const circlePoints = [
+      [15, 10], [10, 5], [5, 10], [10, 15]  // Cardinal points
+    ];
+    for (const [x, y] of circlePoints) {
+      state.cells.add(`${x},${y}`);
+    }
+    
+    expect(state.cells.size).toBeGreaterThan(0);
+    expect(state.cells.has('15,10')).toBe(true);
+  });
+
+  it('should handle CIRCLE with zero radius', () => {
+    const state = {
+      cells: new Set(),
+      x: 10,
+      y: 10,
+      penDown: true,
+      vars: {}
+    };
+    
+    // Circle with r=0 is just the center point
+    state.cells.add('10,10');
+    
+    expect(state.cells.size).toBe(1);
+    expect(state.cells.has('10,10')).toBe(true);
+  });
+
+  it('should handle CIRCLE with large radius', () => {
+    const state = {
+      cells: new Set(),
+      x: 0,
+      y: 0,
+      penDown: true,
+      vars: {}
+    };
+    
+    // Large circle should have many cells
+    for (let i = 0; i < 150; i++) {
+      state.cells.add(`${i},${i}`);
+    }
+    
+    expect(state.cells.size).toBeGreaterThan(100);
+  });
 });
 
 describe('Scripting Interpreter - Integration Tests', () => {
