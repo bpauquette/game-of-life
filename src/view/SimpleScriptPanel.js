@@ -29,7 +29,7 @@ const SCRIPT_TEMPLATES = {
   'Conway Glider': '# Conway\'s Glider Pattern\nCLEAR\nPENDOWN\nGOTO 1 0\nRECT 1 1\nGOTO 2 1\nRECT 1 1\nGOTO 0 2\nRECT 1 1\nGOTO 1 2\nRECT 1 1\nGOTO 2 2\nRECT 1 1\n# Watch it evolve!\nSTEP 10',
   'Geometric Shapes': '# Showcase drawing tools\nCLEAR\nPENDOWN\n# Draw squares\nGOTO 5 5\nRECT 3 3\nGOTO 15 5\nRECT 2 4\n# Create patterns\nGOTO 25 5\nRECT 1 8\n',
   'Random Garden': '# Create scattered patterns\nCLEAR\nPENDOWN\n# Base structure\nGOTO 5 5\nRECT 5 1\nGOTO 5 10\nRECT 5 1\n# Add details\nGOTO 8 7\nRECT 2 2\n',
-  'Steady Squares': '# Growing squares with steady-state check\nCLEAR\nPENDOWN\nsize = 2\nWHILE size <= 10\n  CLEAR\n  GOTO 5 5\n  RECT size size\n  START\n  prev = -1\n  stable = 0\n  gen = 0\n  maxGen = 50\n  WHILE gen < maxGen\n    STEP 1\n    COUNT c\n    IF c == prev\n      stable = stable + 1\n    END\n    IF c != prev\n      stable = 0\n    END\n    prev = c\n    gen = gen + 1\n    IF stable >= 2\n      gen = maxGen\n    END\n  END\n  STOP\n  size = size + 2\nEND\n',
+  'Steady Squares': '# Growing squares with UNTIL_STEADY\nCLEAR\nPENDOWN\nsize = 2\nWHILE size <= 10\n  CLEAR\n  GOTO 5 5\n  RECT size size\n  START\n  UNTIL_STEADY steps 100\n  STOP\n  size = size + 2\nEND\n',
   'Empty Script': '# Enter your commands here\nCLEAR\nPENDOWN\n'
 };
 
@@ -123,14 +123,19 @@ function SimpleScriptPanel({
     setMessage(null);
     setDebugLog([]);
     
-    // Calculate total commands for progress
-    const lines = script.split(/\r?\n/).filter(line => {
-      const trimmed = line.trim();
-      return trimmed && !trimmed.startsWith('#');
-    });
-    setExecutionProgress({ current: 0, total: lines.length });
-    
     try {
+      // STEP 1: Syntax validation only - parse blocks to check for errors
+      const blocks = parseBlocks(script.split(/\r?\n/));
+      
+      // If we get here, syntax is valid - close panel immediately
+      if (onClose) {
+        onClose();
+      }
+      
+      // STEP 2: Execute asynchronously in background after panel closes
+      // Small delay to ensure panel close animation completes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Remember if simulation was running before script
       const wasRunningBeforeScript = isRunning;
       
@@ -195,12 +200,7 @@ function SimpleScriptPanel({
         return new Map();
       };
       
-      // Parse and execute script with enhanced control
-      const blocks = parseBlocks(script.split(/\r?\n/));
-      
-      // Track execution progress
-      setExecutionProgress({ current: 0, total: blocks.length });
-      
+      // Execute script - animation will show on main grid
       await execBlock(blocks, scriptState, onStepCallback, emitStepEvent, step, gameTicks, setIsRunning, onLoadGrid);
       
       // Update the final state to the main grid
@@ -214,12 +214,10 @@ function SimpleScriptPanel({
         onLoadGrid(finalCells);
       }
       
-      setExecutionProgress({ current: blocks.length, total: blocks.length });
-      setMessage({ type: 'success', text: 'Script executed successfully!' });
-      if (onClose) {
-        setTimeout(() => onClose(), 200);
-      }
+      // eslint-disable-next-line no-console
+      console.log('[SimpleScriptPanel] Script executed successfully');
     } catch (error) {
+      // Syntax error or execution error - show error in panel (don't close)
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
       setRunning(false);
