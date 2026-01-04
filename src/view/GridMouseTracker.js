@@ -16,14 +16,6 @@ const badgeStyle = {
   gap: '8px'
 };
 
-const labelStyle = {
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  color: '#aaa',
-  fontSize: '0.85rem',
-  lineHeight: 1
-};
-
 const valueStyle = {
   color: '#fff',
   fontSize: '1.05rem',
@@ -46,7 +38,6 @@ const GridMouseTracker = ({ position }) => {
   return (
     <div style={containerStyle}>
       <div style={badgeStyle}>
-        <span style={labelStyle}>X,Y</span>
         <span style={valueStyle}>{`${x}, ${y}`}</span>
       </div>
     </div>

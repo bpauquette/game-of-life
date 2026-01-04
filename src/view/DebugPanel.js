@@ -1,22 +1,107 @@
 import React from 'react';
-import Box from '@mui/material/Box';
 import PropTypes from 'prop-types';
+import { 
+  Box, 
+  Typography, 
+  List, 
+  ListItem, 
+  ListItemText, 
+  Divider,
+  Chip 
+} from '@mui/material';
 
-function DebugPanel({ debugLog }) {
+const DebugPanel = ({ debugLog }) => {
+  if (!debugLog || debugLog.length === 0) {
+    return (
+      <Box sx={{ 
+        p: 2, 
+        bgcolor: '#0b0b0d', 
+        borderRadius: 1, 
+        border: '1px solid #444',
+        minHeight: '200px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <Typography variant="body2" color="rgba(255,255,255,0.5)">
+          No debug output. Run a script to see execution details.
+        </Typography>
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ mt: 2, p: 1, bgcolor: '#222', color: '#fff', fontSize: 12, maxHeight: 200, overflow: 'auto', borderRadius: 1 }}>
-      <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Script Debug Log</div>
-      {debugLog.length === 0 && <div style={{ color: '#aaa' }}>No debug output yet.</div>}
-      {debugLog.map((entry, i) => (
-        <div key={i} style={{ whiteSpace: 'pre-wrap' }}>
-          {entry.type ? `[${entry.type}] ` : ''}{entry.line ? entry.line : ''}{entry.msg ? ' ' + entry.msg : ''}
-          {entry.cells ? ` cells: ${JSON.stringify(entry.cells)}` : ''}
-          {entry.key ? ` cell: ${entry.key}` : ''}
-          {entry.idx !== undefined ? ` (line ${entry.idx+1})` : ''}
-        </div>
-      ))}
+    <Box sx={{ 
+      height: '400px', 
+      overflow: 'auto', 
+      bgcolor: '#0b0b0d', 
+      borderRadius: 1, 
+      border: '1px solid #444'
+    }}>
+      <List dense>
+        {debugLog.map((entry, idx) => (
+          <React.Fragment key={idx}>
+            <ListItem sx={{ py: 0.5 }}>
+              <ListItemText
+                primary={
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Chip 
+                      label={entry.type} 
+                      size="small" 
+                      color={getChipColor(entry.type)}
+                      sx={{ minWidth: 60, fontSize: '0.7rem' }}
+                    />
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontFamily: 'monospace',
+                        color: getTextColor(entry.type)
+                      }}
+                    >
+                      {entry.msg || 'No message'}
+                    </Typography>
+                  </Box>
+                }
+                secondary={entry.details && (
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      fontFamily: 'monospace', 
+                      color: 'rgba(255,255,255,0.5)',
+                      ml: 8 
+                    }}
+                  >
+                    {JSON.stringify(entry.details)}
+                  </Typography>
+                )}
+              />
+            </ListItem>
+            {idx < debugLog.length - 1 && <Divider />}
+          </React.Fragment>
+        ))}
+      </List>
     </Box>
   );
+};
+
+function getChipColor(type) {
+  switch (type) {
+    case 'error': return 'error';
+    case 'warning': return 'warning';
+    case 'command': return 'info';
+    case 'state': return 'success';
+    default: return 'default';
+  }
+}
+
+function getTextColor(type) {
+  switch (type) {
+    case 'error': return '#ff6b6b';
+    case 'warning': return '#ffd93d';
+    case 'command': return '#74c0fc';
+    case 'state': return '#69db7c';
+    default: return '#fff';
+  }
 }
 
 DebugPanel.propTypes = {

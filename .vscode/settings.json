@@ -4,5 +4,40 @@
         "projectKey": "game-of-life"
     },
     "chat.agent.maxRequests": 100,
-    "terminal.integrated.defaultProfile.windows": "Git Bash"
+    "terminal.integrated.defaultProfile.windows": "Git Bash",
+    "files.watcherExclude": {
+        "**/node_modules/**": true,
+        "**/build/**": true,
+        "**/dist/**": true,
+        "**/coverage/**": true,
+        "**/.git/**": true,
+        "**/logs/**": true,
+        "**/tmp/**": true,
+        "**/temp/**": true,
+        "**/*.log": true,
+        "**/.cache/**": true,
+        "**/target/**": true
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/build": true,
+        "**/dist": true,
+        "**/coverage": true,
+        "**/logs": true,
+        "**/tmp": true,
+        "**/temp": true,
+        "**/*.log": true,
+        "**/.cache": true,
+        "**/target": true
+    },
+    "files.exclude": {
+        "**/coverage": true,
+        "**/logs": true,
+        "**/*.log": true,
+        "**/tmp": true,
+        "**/temp": true
+    },
+    "typescript.preferences.includePackageJsonAutoImports": "off",
+    "typescript.suggest.autoImports": false,
+    "files.watcherUsePolling": false
 }

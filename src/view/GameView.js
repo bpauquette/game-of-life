@@ -122,7 +122,17 @@ export class GameView {
 
       const screenX = (e && typeof e.clientX === 'number') ? (e.clientX - rect.left) : 0;
       const screenY = (e && typeof e.clientY === 'number') ? (e.clientY - rect.top) : 0;
-      const cellCoords = this.screenToCell(screenX, screenY);
+      const exactCell = this.renderer?.screenToCellExact
+        ? this.renderer.screenToCellExact(screenX, screenY)
+        : this.screenToCell(screenX, screenY);
+      const cellCoords = exactCell
+        ? {
+            x: Math.floor(exactCell.x),
+            y: Math.floor(exactCell.y),
+            fx: exactCell.x,
+            fy: exactCell.y
+          }
+        : this.screenToCell(screenX, screenY);
       return { screenX, screenY, cellCoords };
     };
 
@@ -287,7 +297,17 @@ export class GameView {
           : touchEvent.changedTouches[0];
         const screenX = t.clientX - rect.left;
         const screenY = t.clientY - rect.top;
-        const cellCoords = this.screenToCell(screenX, screenY);
+        const exactCell = this.renderer?.screenToCellExact
+          ? this.renderer.screenToCellExact(screenX, screenY)
+          : this.screenToCell(screenX, screenY);
+        const cellCoords = exactCell
+          ? {
+              x: Math.floor(exactCell.x),
+              y: Math.floor(exactCell.y),
+              fx: exactCell.x,
+              fy: exactCell.y
+            }
+          : this.screenToCell(screenX, screenY);
         return { screenX, screenY, cellCoords };
       };
       const touchDistance = (touches) => {
@@ -402,6 +422,35 @@ export class GameView {
         const rect = container.getBoundingClientRect();
         this.resize(rect.width, rect.height);
         this.emit('resize', { width: rect.width, height: rect.height });
+      }
+    });
+
+    // Listen for script-driven grid updates and trigger re-render
+    window.addEventListener('gol:script:step', (ev) => {
+      // Update model liveCells with new cells from event, then re-render
+      try {
+        const detail = ev && ev.detail ? ev.detail : {};
+        const cells = detail.cells || detail;
+        if (this.model && typeof this.model.setCellsAliveBulk === 'function' && Array.isArray(cells)) {
+          // Accept [{x, y}, ...] or [[x, y], ...]
+          this.model.setCellsAliveBulk(cells);
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('GameView: failed to update model on gol:script:step', e);
+      }
+      // Now trigger a re-render
+      if (typeof this.renderer?.requestRender === 'function') {
+        this.renderer.requestRender();
+      } else if (typeof this.render === 'function') {
+        try {
+          const liveCells = this.model?.getLiveCells?.() ?? new Map();
+          const viewport = this.model?.getViewport?.() ?? { offsetX: 0, offsetY: 0, cellSize: 8 };
+          this.render(liveCells, viewport);
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error('GameView: failed to re-render on gol:script:step', e);
+        }
       }
     });
   }

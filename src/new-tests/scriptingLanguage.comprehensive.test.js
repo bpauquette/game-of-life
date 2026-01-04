@@ -2,7 +2,7 @@
 // Tests cover all major language features, edge cases, and error conditions
 
 import { parseBlocks, execBlock, splitCond } from '../view/scriptingInterpreter';
-import { parseValue, evalExpr, evalCond } from '../view/scriptingEngine';
+import { parseValue, evalExpr, evalCond, evalCondCompound } from '../view/scriptingEngine';
 
 describe('Scripting Engine - Core Functions', () => {
   describe('parseValue', () => {
@@ -147,6 +147,48 @@ describe('Scripting Engine - Core Functions', () => {
     it('should handle whitespace variations', () => {
       expect(splitCond('x==5')).toEqual(['x', '==', '5']);
       expect(splitCond('x  ==  5')).toEqual(['x', '==', '5']);
+    });
+  });
+
+  describe('evalCondCompound - Logical Operators', () => {
+    const state = { vars: { x: 10, y: 5, z: 0 } };
+
+    it('should support AND operator', () => {
+      expect(evalCondCompound('5 > 3 AND 2 < 4', state)).toBe(true);
+      expect(evalCondCompound('5 > 3 AND 2 > 4', state)).toBe(false);
+      expect(evalCondCompound('x > 5 AND y < 10', state)).toBe(true);
+    });
+
+    it('should support OR operator', () => {
+      expect(evalCondCompound('5 < 3 OR 2 < 4', state)).toBe(true);
+      expect(evalCondCompound('5 < 3 OR 2 > 4', state)).toBe(false);
+      expect(evalCondCompound('x < 5 OR y > 10', state)).toBe(false);
+      expect(evalCondCompound('x > 5 OR y < 10', state)).toBe(true);
+    });
+
+    it('should support NOT operator', () => {
+      expect(evalCondCompound('NOT 5 < 3', state)).toBe(true);
+      expect(evalCondCompound('NOT 5 > 10', state)).toBe(true);
+      expect(evalCondCompound('NOT x < 5', state)).toBe(true);
+    });
+
+    it('should handle AND/OR precedence (AND higher than OR)', () => {
+      // (5 < 3) OR (2 < 4 AND 6 > 5) = false OR true = true
+      expect(evalCondCompound('5 < 3 OR 2 < 4 AND 6 > 5', state)).toBe(true);
+      // (5 < 3 OR 2 < 4) AND 6 < 5 = true AND false = false
+      expect(evalCondCompound('5 < 3 OR 2 < 4 AND 6 < 5', state)).toBe(false);
+    });
+
+    it('should handle mixed operators', () => {
+      expect(evalCondCompound('NOT x < 5 AND y > 0', state)).toBe(true);
+      expect(evalCondCompound('NOT x < 5 AND y < 0', state)).toBe(false);
+      expect(evalCondCompound('NOT z == 0 OR x > 5', state)).toBe(true);
+    });
+
+    it('should fall back to simple comparisons', () => {
+      expect(evalCondCompound('x == 10', state)).toBe(true);
+      expect(evalCondCompound('y > 0', state)).toBe(true);
+      expect(evalCondCompound('z != 0', state)).toBe(false);
     });
   });
 });

@@ -119,6 +119,21 @@ function GameOfLifeApp(props) {
       return { maxFPS: 60, maxGPS: 30, enableFPSCap: false, enableGPSCap: false };
     }
   });
+
+  const [useWebWorker, setUseWebWorker] = useState(() => {
+    try {
+      const stored = globalThis.localStorage?.getItem('useWebWorker');
+      if (stored === 'true' || stored === 'false') return stored === 'true';
+      return false; // Disable by default
+    } catch {
+      return false;
+    }
+  });
+
+  const setUseWebWorkerPreference = useCallback((value) => {
+    setUseWebWorker(value);
+    try { globalThis.localStorage?.setItem('useWebWorker', JSON.stringify(value)); } catch (e) {}
+  }, []);
   const [detectStablePopulation, setDetectStablePopulation] = useState(() => {
     try {
       const stored = globalThis.localStorage?.getItem('detectStablePopulation');
@@ -338,6 +353,18 @@ function GameOfLifeApp(props) {
       console.error('Failed to sync stability settings with GameMVC:', err);
     }
   }, [popWindowSize, popTolerance]);
+
+  useEffect(() => {
+    if (!gameRef.current?.setPerformanceSettings) return;
+    try {
+      gameRef.current.setPerformanceSettings({
+        useWebWorker: useWebWorker,
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to sync useWebWorker settings with GameMVC:', err);
+    }
+  }, [useWebWorker]);
 
   const setShowChart = useCallback((open) => {
     setUIState(prev => ({ ...prev, showChart: open }));
@@ -1368,7 +1395,9 @@ function GameOfLifeApp(props) {
   backendBase: getBackendApiBase(),
     onAddRecent: handleAddRecent,
     liveCellsCount: getLiveCells().size,
-    generation
+    generation,
+    useWebWorker,
+    setUseWebWorker: setUseWebWorkerPreference
   };
 
   // --- Render ---

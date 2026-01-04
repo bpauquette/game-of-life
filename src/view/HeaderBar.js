@@ -36,6 +36,9 @@ function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpe
 
   return (
     <Stack direction="row" spacing={1} alignItems="center">
+      <Tooltip title="Script Playground">
+        <IconButton size="small" onClick={() => window.dispatchEvent(new CustomEvent('openScriptPanel'))} aria-label="script-playground"><CodeIcon fontSize="small" /></IconButton>
+      </Tooltip>
       <IconButton size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
       <IconButton size="small" onClick={onOpenImport} aria-label="import"><Tooltip title="Import Shape"><ImportIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={openLifeWiki} aria-label="lifewiki"><Tooltip title="LifeWiki"><LanguageIcon fontSize="small" /></Tooltip></IconButton>
@@ -156,6 +159,15 @@ export default function HeaderBar({
     window.addEventListener('auth:needLogin', handleNeedLogin);
     return () => window.removeEventListener('auth:needLogin', handleNeedLogin);
   }, []);
+
+  // Listen for script panel open event
+  useEffect(() => {
+    const handleOpenScriptPanel = () => {
+      setScriptOpen(true);
+    };
+    window.addEventListener('openScriptPanel', handleOpenScriptPanel);
+    return () => window.removeEventListener('openScriptPanel', handleOpenScriptPanel);
+  }, []);
   const [confirmOnClear, setConfirmOnClear] = useState(() => {
     try {
       const v = localStorage.getItem('confirmOnClear');
@@ -267,9 +279,6 @@ export default function HeaderBar({
               onOpenUser={handleUserIconClick}
               loggedIn={!!token}
             />
-            <Tooltip title="Script Playground">
-              <IconButton size="small" onClick={() => setScriptOpen(true)} aria-label="script-playground"><CodeIcon fontSize="small" /></IconButton>
-            </Tooltip>
             {/* Version info is now shown as a tooltip on the About icon */}
             {/* User authentication dialog/modal */}
             {userDialogOpen && (
@@ -346,9 +355,16 @@ export default function HeaderBar({
       </Box>
 
       {/* Script playground dialog */}
-      {scriptOpen && (
-        <ScriptPanel open={scriptOpen} onClose={() => setScriptOpen(false)} />
-      )}
+      <ScriptPanel 
+        open={scriptOpen} 
+        onClose={() => setScriptOpen(false)}
+        getLiveCells={getLiveCells}
+        onLoadGrid={onLoadGrid}
+        clear={clear}
+        step={step}
+        isRunning={isRunning}
+        setIsRunning={setIsRunning}
+      />
 
       {optionsOpen && (
         <OptionsPanel

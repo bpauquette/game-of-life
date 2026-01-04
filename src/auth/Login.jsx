@@ -108,7 +108,13 @@ export default function Login({ onSuccess, onError, showRegisterLink = true }) {
       </form>
       <div style={{ marginTop: 8 }}>{msg}</div>
       <div style={{ marginTop: 8 }}>
-        <a href="#" onClick={(e) => { e.preventDefault(); setShowResetRequest(true); }}>Forgot password?</a>
+        <button
+          type="button"
+          onClick={() => setShowResetRequest(true)}
+          style={{ background: 'none', border: 'none', color: '#1976d2', cursor: 'pointer', padding: 0 }}
+        >
+          Forgot password?
+        </button>
       </div>
     </div>
   );

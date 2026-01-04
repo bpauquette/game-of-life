@@ -102,7 +102,8 @@ export class GameModel {
       populationWindowSize: 50,
       populationTolerance: 3,
       enableFPSCap: false,
-      enableGPSCap: false
+      enableGPSCap: false,
+      useWebWorker: false
     };
   }
 
@@ -857,6 +858,14 @@ export class GameModel {
       const clamped = clampNumber(settings.populationTolerance, 0, 1000);
       if (clamped !== null && clamped !== next.populationTolerance) {
         next.populationTolerance = clamped;
+        changed = true;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'useWebWorker')) {
+      const nextUseWebWorker = !!settings.useWebWorker;
+      if (nextUseWebWorker !== next.useWebWorker) {
+        next.useWebWorker = nextUseWebWorker;
         changed = true;
       }
     }

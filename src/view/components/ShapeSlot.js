@@ -48,17 +48,28 @@ function ShapeSlot({
       e.dataTransfer.setDragImage(new Image(), 0, 0);
     }
 
-    // Create a minimal invisible ghost element (canvas overlay handles visual preview)
+    // Create a visible semi-transparent ghost showing what's being dragged
     const ghost = document.createElement('div');
     ghost.style.position = 'fixed';
     ghost.style.left = `${e.clientX}px`;
     ghost.style.top = `${e.clientY}px`;
     ghost.style.transform = 'translate(-50%, -50%)';
     ghost.style.pointerEvents = 'none';
-    ghost.style.opacity = '0';
-    ghost.style.zIndex = -1;
-    ghost.style.width = '1px';
-    ghost.style.height = '1px';
+    ghost.style.opacity = '0.75';
+    ghost.style.zIndex = '10000';
+    ghost.style.width = `${thumbnailSize}px`;
+    ghost.style.height = `${thumbnailSize}px`;
+    ghost.style.borderRadius = '6px';
+    ghost.style.border = '2px solid #00ff88';
+    ghost.style.background = '#1a1a1a';
+    ghost.style.boxShadow = '0 4px 12px rgba(0, 255, 136, 0.3)';
+    ghost.style.display = 'flex';
+    ghost.style.alignItems = 'center';
+    ghost.style.justifyContent = 'center';
+    ghost.style.fontSize = '11px';
+    ghost.style.color = '#00ff88';
+    ghost.style.fontWeight = 'bold';
+    ghost.textContent = title || 'Shape';
     document.body.appendChild(ghost);
 
     let cleanupControllerDrag = null;
@@ -71,7 +82,9 @@ function ShapeSlot({
     }
 
     const onMove = (ev) => {
-      // Ghost is invisible; canvas overlay handles visual preview
+      // Update ghost position to follow cursor
+      ghost.style.left = `${ev.clientX}px`;
+      ghost.style.top = `${ev.clientY}px`;
     };
 
     const onUp = (ev) => {

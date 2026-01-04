@@ -225,7 +225,7 @@ export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT
       logger.error('[useShapePaletteSearch] worker.postMessage failed', postErr);
       handleWorkerFailure(postErr?.message || 'Shapes catalog worker error');
     }
-  }, [limit, handleWorkerFailure, stopWorker]);
+  }, [limit, handleWorkerFailure, stopWorker, fetchShapes, hydrateShape]);
 
   const shouldStartWorker = open || prefetchOnMount;
 
