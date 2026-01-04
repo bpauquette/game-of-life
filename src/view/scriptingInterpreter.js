@@ -417,7 +417,7 @@ async function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setI
       }
       blockEnd--;
       while (evalCondCompound(cond, state)) {
-        await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks);
+        await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
       }
       i = blockEnd + 1;
       continue;
@@ -454,10 +454,10 @@ async function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setI
       if (evalCondCompound(cond, state)) {
         // Execute IF block (from blockStart to elseIdx if else exists, else to blockEnd)
         let ifBlockEnd = elseIdx >= 0 ? elseIdx : blockEnd;
-        await execBlock(blocks.slice(blockStart, ifBlockEnd), state, onStep, emitStepEvent, step, ticks);
+        await execBlock(blocks.slice(blockStart, ifBlockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
       } else if (elseIdx >= 0) {
         // Execute ELSE block (from elseIdx + 1 to blockEnd)
-        await execBlock(blocks.slice(elseIdx + 1, blockEnd), state, onStep, emitStepEvent, step, ticks);
+        await execBlock(blocks.slice(elseIdx + 1, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
       }
       
       i = blockEnd + 1;
