@@ -405,6 +405,79 @@ END`;
     // When count <= 5 (undefined → 0), ELSE should execute with 5x5 rect = 25 cells
     expect(state.cells.size).toBe(25); // 5 * 5
   });
+
+  it('should support FOR loops with numeric ranges', () => {
+    const script = `FOR i FROM 1 TO 5
+  sum = sum + i
+END`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: { sum: 0 }, cells: new Set() };
+    execBlock(blocks, state, null, () => {}, null, null);
+    expect(state.vars.sum).toBe(15); // 1+2+3+4+5 = 15
+  });
+
+  it('should support FOR loops with STEP parameter', () => {
+    const script = `FOR i FROM 0 TO 10 STEP 2
+  count = count + 1
+END`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: { count: 0 }, cells: new Set() };
+    execBlock(blocks, state, null, () => {}, null, null);
+    expect(state.vars.count).toBe(6); // 0,2,4,6,8,10 = 6 iterations
+  });
+
+  it('should support FOR loops with negative STEP (counting down)', () => {
+    const script = `FOR i FROM 10 TO 1 STEP -1
+  sum = sum + i
+END`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: { sum: 0 }, cells: new Set() };
+    execBlock(blocks, state, null, () => {}, null, null);
+    expect(state.vars.sum).toBe(55); // 10+9+8+...+1 = 55
+  });
+
+  it('should support nested FOR loops', () => {
+    const script = `FOR x FROM 1 TO 3
+  FOR y FROM 1 TO 3
+    count = count + 1
+  END
+END`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: { count: 0 }, cells: new Set() };
+    execBlock(blocks, state, null, () => {}, null, null);
+    expect(state.vars.count).toBe(9); // 3x3 nested = 9 iterations
+  });
+
+  it('should support FOR loops with drawing commands', () => {
+    const script = `FOR i FROM 0 TO 4
+  RECT 2 2
+END`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: {}, cells: new Set(), penDown: true, x: 0, y: 0 };
+    execBlock(blocks, state, null, () => {}, null, null);
+    // 5 iterations of a 2x2 RECT at the same position (0,0) = 4 unique cells total
+    expect(state.cells.size).toBe(4); // 2x2 = 4 cells
+  });
+
+  it('should handle empty FOR loop range (no iterations)', () => {
+    const script = `FOR i FROM 5 TO 1
+  count = count + 1
+END`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: { count: 0 }, cells: new Set() };
+    execBlock(blocks, state, null, () => {}, null, null);
+    expect(state.vars.count).toBe(0); // No iterations (5 > 1 with step +1)
+  });
+
+  it('should support FOR loop with variable expressions', () => {
+    const script = `FOR i FROM start TO end STEP increment
+  total = total + i
+END`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: { start: 2, end: 8, increment: 2, total: 0 }, cells: new Set() };
+    execBlock(blocks, state, null, () => {}, null, null);
+    expect(state.vars.total).toBe(20); // 2+4+6+8 = 20
+  });
 });
 
 describe('Scripting Interpreter - Edge Cases & Error Handling', () => {

@@ -265,6 +265,60 @@ function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunni
       i++;
       continue;
     }
+    // FOR loop: FOR var FROM start TO end [STEP step]
+    let forMatch = line.match(/^for\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+from\s+(.+?)\s+to\s+(.+?)(?:\s+step\s+(.+))?$/i);
+    if (forMatch) {
+      const varName = forMatch[1];
+      const startExpr = forMatch[2];
+      const endExpr = forMatch[3];
+      const stepExpr = forMatch[4] || '1';
+      
+      // Evaluate start, end, and step expressions
+      const start = Math.floor(evalExpr(startExpr, state));
+      const end = Math.floor(evalExpr(endExpr, state));
+      const step = Math.floor(evalExpr(stepExpr, state));
+      
+      if (step === 0) {
+        throw new Error('FOR loop STEP cannot be zero');
+      }
+      
+      let blockStart = i + 1;
+      let blockEnd = blockStart;
+      let nest = 1;
+      while (blockEnd < blocks.length && nest > 0) {
+        let l = blocks[blockEnd].line.toLowerCase();
+        if (l.startsWith('for ')) nest++;
+        if (l === 'end') nest--;
+        blockEnd++;
+      }
+      blockEnd--;
+      
+      // Execute loop based on step direction
+      if (step > 0) {
+        for (let val = start; val <= end; val += step) {
+          state.vars[varName] = val;
+          execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+          if (state.loopBreak) {
+            state.loopBreak = false;
+            break;
+          }
+          state.loopContinue = false;
+        }
+      } else {
+        for (let val = start; val >= end; val += step) {
+          state.vars[varName] = val;
+          execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+          if (state.loopBreak) {
+            state.loopBreak = false;
+            break;
+          }
+          state.loopContinue = false;
+        }
+      }
+      
+      i = blockEnd + 1;
+      continue;
+    }
     // while loop
     let whileMatch = line.match(/^while\s+(.+)$/i);
     if (whileMatch) {
