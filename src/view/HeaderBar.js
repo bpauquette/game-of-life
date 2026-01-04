@@ -27,10 +27,11 @@ import SaveGridDialog from './SaveGridDialog';
 import LoadGridDialog from './LoadGridDialog';
 import useGridFileManager from './hooks/useGridFileManager';
 import PaymentDialog from './PaymentDialog';
+import PhotosensitivityTestDialog from './PhotosensitivityTestDialog';
 
 // Tool toggles extracted into ToolGroup component
 
-function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, onOpenImport, onOpenDonate, loggedIn }) {
+function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, onOpenImport, onOpenDonate, onOpenPhotoTest, loggedIn }) {
   const openLifeWiki = () => {
     window.open('https://conwaylife.com/wiki/Main_Page', '_blank');
   };
@@ -41,7 +42,7 @@ function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpe
         <IconButton size="small" onClick={() => window.dispatchEvent(new CustomEvent('openScriptPanel'))} aria-label="script-playground"><CodeIcon fontSize="small" /></IconButton>
       </Tooltip>
       <Tooltip title="Photosensitivity Test">
-        <IconButton size="small" onClick={() => window.open('/test-photosensitivity.html', '_blank')} aria-label="photosensitivity-test"><BugReportIcon fontSize="small" /></IconButton>
+        <IconButton size="small" onClick={onOpenPhotoTest} aria-label="photosensitivity-test"><BugReportIcon fontSize="small" /></IconButton>
       </Tooltip>
       <IconButton size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
       <IconButton size="small" onClick={onOpenImport} aria-label="import"><Tooltip title="Import Shape"><ImportIcon fontSize="small" /></Tooltip></IconButton>
@@ -151,6 +152,7 @@ export default function HeaderBar({
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [donateOpen, setDonateOpen] = useState(false);
+  const [photoTestOpen, setPhotoTestOpen] = useState(false);
   const [wasRunningBeforeOptions, setWasRunningBeforeOptions] = useState(false);
   const [scriptOpen, setScriptOpen] = useState(false);
 
@@ -280,6 +282,7 @@ export default function HeaderBar({
               onOpenAbout={() => setAboutOpen(true)}
               onOpenOptions={openOptions}
               onOpenDonate={() => setDonateOpen(true)}
+              onOpenPhotoTest={() => setPhotoTestOpen(true)}
               onOpenUser={handleUserIconClick}
               loggedIn={!!token}
             />
@@ -402,6 +405,7 @@ export default function HeaderBar({
       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <PaymentDialog open={donateOpen} onClose={() => setDonateOpen(false)} />
+      <PhotosensitivityTestDialog open={photoTestOpen} onClose={() => setPhotoTestOpen(false)} />
 
       <SaveGridDialog
         open={saveDialogOpen}
