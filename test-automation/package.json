@@ -1,0 +1,18 @@
+{
+  "name": "gol-browser-tests",
+  "version": "1.0.0",
+  "description": "Browser automation tests for Game of Life",
+  "main": "browser-test.js",
+  "scripts": {
+    "test": "node browser-test.js",
+    "test:headless": "HEADLESS=true node browser-test.js",
+    "install": "npm install puppeteer"
+  },
+  "dependencies": {
+    "puppeteer": "^21.6.1"
+  },
+  "devDependencies": {},
+  "keywords": ["testing", "browser", "automation", "game-of-life"],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,28 +1,8 @@
 import React, { useEffect, useCallback, useRef, useState, useMemo, useLayoutEffect } from 'react';
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot';
-import useInputType from './hooks/useInputType';
 
 const thumbnailSize = 64;
-
-const formatSavedStatus = (timestamp) => {
-  if (!timestamp) return '';
-  try {
-    const ts = Number(timestamp);
-    if (!Number.isFinite(ts)) return '';
-    const diff = Date.now() - ts;
-    if (diff < 15000) return 'Saved just now';
-    if (diff < 60000) return 'Saved < 1m ago';
-    if (diff < 3600000) {
-      const mins = Math.round(diff / 60000);
-      return `Saved ${mins}m ago`;
-    }
-    const date = new Date(ts);
-    return `Saved at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-  } catch (e) {
-    return 'Saved';
-  }
-};
 
 const RecentShapesStrip = ({
   recentShapes = [],
@@ -34,21 +14,8 @@ const RecentShapesStrip = ({
   onSwitchToShapesTool,
   startPaletteDrag,
   onSaveRecentShapes,
-  onClearRecentShapes,
-  persistenceStatus = {}
+  onClearRecentShapes
 }) => {
-  const {
-    error: persistenceError = null
-  } = persistenceStatus || {};
-  const [lastSavedAtLocal, setLastSavedAtLocal] = useState(() => {
-    try {
-      const raw = localStorage.getItem('gol_recent_shapes_ts');
-      return raw ? Number(raw) : null;
-    } catch (e) {
-      return null;
-    }
-  });
-
   const getShapeTitle = (shape, index) => {
     return shape?.name || shape?.meta?.name || shape?.id || `shape ${index}`;
   };
@@ -101,19 +68,8 @@ const RecentShapesStrip = ({
     // If cleared, keep previous zoom
   }, [slots, colorScheme]);
 
-  // Detect current input device (mouse, touch, pen) so child components
-  // can adjust interactions for touch vs mouse if needed.
-  const inputType = useInputType();
-
   const bg = (colorScheme && (colorScheme.panelBackground || colorScheme.background)) || '#111217';
   const panelBorder = '1px solid rgba(255,255,255,0.04)';
-
-  const statusText = (() => {
-    if (persistenceError) return 'Save failed';
-    if (!slots.length) return 'No recent shapes yet';
-    if (lastSavedAtLocal) return formatSavedStatus(lastSavedAtLocal);
-    return 'Not saved yet';
-  })();
 
   // Autosave recent shapes to localStorage whenever `slots` changes.
   useEffect(() => {
@@ -121,7 +77,6 @@ const RecentShapesStrip = ({
       localStorage.setItem('gol_recent_shapes', JSON.stringify(slots || []));
       const ts = Date.now();
       localStorage.setItem('gol_recent_shapes_ts', String(ts));
-      setLastSavedAtLocal(ts);
     } catch (e) {
       // ignore
     }
@@ -547,14 +502,7 @@ RecentShapesStrip.propTypes = {
   onSwitchToShapesTool: PropTypes.func,
   startPaletteDrag: PropTypes.func,
   onSaveRecentShapes: PropTypes.func,
-  onClearRecentShapes: PropTypes.func,
-  persistenceStatus: PropTypes.shape({
-    lastSavedAt: PropTypes.oneOfType([PropTypes.number, PropTypes.string, PropTypes.instanceOf(Date)]),
-    loadedFromStorage: PropTypes.bool,
-    hasSavedState: PropTypes.bool,
-    isDirty: PropTypes.bool,
-    error: PropTypes.string
-  })
+  onClearRecentShapes: PropTypes.func
 };
 
 export default RecentShapesStrip;

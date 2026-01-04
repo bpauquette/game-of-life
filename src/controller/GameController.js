@@ -38,6 +38,8 @@ export class GameController {
 
     // Game loop state
     this.animationId = null;
+    this.worker = null;
+    this.useWebWorker = false;
     this.lastFrameTime = 0;
     this.performanceCaps = {
       maxFPS: Math.max(1, Number(this.options.maxFPS) || 60),
@@ -734,14 +736,22 @@ export class GameController {
 
   handleRunningStateChange(isRunning) {
     if (isRunning) {
-      this.startGameLoop();
+      if (this.useWebWorker) {
+        this.startWorkerLoop();
+      } else {
+        this.startAnimationLoop();
+      }
     } else {
-      this.stopGameLoop();
+      if (this.useWebWorker) {
+        this.stopWorkerLoop();
+      } else {
+        this.stopAnimationLoop();
+      }
     }
   }
 
-  // Game loop
-  startGameLoop() {
+  // Game loop (requestAnimationFrame)
+  startAnimationLoop() {
     if (this.animationId) return; // Already running
 
     const loop = async (timestamp) => {
@@ -781,10 +791,40 @@ export class GameController {
     this.animationId = requestAnimationFrame(loop);
   }
 
-  stopGameLoop() {
+  stopAnimationLoop() {
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
+    }
+  }
+
+  // Game loop (Web Worker)
+  startWorkerLoop() {
+    if (this.worker) return; // Already running
+
+    this.worker = new Worker(new URL('../workers/gameWorker.js', import.meta.url));
+    this.worker.onmessage = async (e) => {
+      if (e.data.command === 'step') {
+        const frameStart = performance.now();
+        try {
+          await this.model.step();
+        } catch (error) {
+          console.warn('Game step failed:', error);
+        }
+        this.requestRender();
+        const frameTime = performance.now() - frameStart;
+        this.notifyPerformance(frameTime);
+      }
+    };
+    this.worker.postMessage({ command: 'set-interval', payload: 1000 / this._getLoopRate() });
+    this.worker.postMessage({ command: 'start' });
+  }
+
+  stopWorkerLoop() {
+    if (this.worker) {
+      this.worker.postMessage({ command: 'stop' });
+      this.worker.terminate();
+      this.worker = null;
     }
   }
 

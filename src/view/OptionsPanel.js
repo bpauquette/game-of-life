@@ -36,6 +36,8 @@ const OptionsPanel = ({
   setEnableFPSCap,
   enableGPSCap = false,
   setEnableGPSCap,
+  useWebWorker = false,
+  setUseWebWorker,
   // UX settings
   confirmOnClear = true,
   maxChartGenerations = 5000,
@@ -59,6 +61,7 @@ const OptionsPanel = ({
   const [localMaxGPS, setLocalMaxGPS] = useState(maxGPS);
   const [localEnableFPSCap, setLocalEnableFPSCap] = useState(enableFPSCap);
   const [localEnableGPSCap, setLocalEnableGPSCap] = useState(enableGPSCap);
+  const [localUseWebWorker, setLocalUseWebWorker] = useState(useWebWorker);
   const [localConfirmOnClear, setLocalConfirmOnClear] = useState(confirmOnClear);
   const [localDrawToggleMode, setLocalDrawToggleMode] = useState(false); // default to off
   const [localDrawWhileRunning, setLocalDrawWhileRunning] = useState(() => {
@@ -111,6 +114,7 @@ const OptionsPanel = ({
     try { setMaxGPS?.(Math.max(1, Math.min(60, Number(localMaxGPS) || 30))); } catch (err) { logger.debug('setMaxGPS failed:', err); }
     try { setEnableFPSCap?.(!!localEnableFPSCap); } catch (err) { logger.debug('setEnableFPSCap failed:', err); }
     try { setEnableGPSCap?.(!!localEnableGPSCap); } catch (err) { logger.debug('setEnableGPSCap failed:', err); }
+    try { setUseWebWorker?.(!!localUseWebWorker); } catch (err) { logger.debug('setUseWebWorker failed:', err); }
     try { setConfirmOnClear?.(!!localConfirmOnClear); } catch (err) { logger.debug('setConfirmOnClear failed:', err); }
     try { setMaxChartGenerations?.(Number(localMaxChartGenerations) || 5000); } catch (err) { logger.debug('setMaxChartGenerations failed:', err); }
     try { setRandomRectPercent?.(Math.max(0, Math.min(100, Number(localRandomRectPercent)))); } catch (err) { logger.debug('setRandomRectPercent failed:', err); }
@@ -123,6 +127,7 @@ const OptionsPanel = ({
   try { globalThis.localStorage.setItem('maxGPS', String(localMaxGPS)); } catch {}
   try { globalThis.localStorage.setItem('enableFPSCap', JSON.stringify(!!localEnableFPSCap)); } catch {}
   try { globalThis.localStorage.setItem('enableGPSCap', JSON.stringify(!!localEnableGPSCap)); } catch {}
+  try { globalThis.localStorage.setItem('useWebWorker', JSON.stringify(!!localUseWebWorker)); } catch {}
   try { globalThis.localStorage.setItem('confirmOnClear', JSON.stringify(!!localConfirmOnClear)); } catch {}
   try { globalThis.localStorage.setItem('maxChartGenerations', String(localMaxChartGenerations)); } catch {}
   try { globalThis.localStorage.setItem('detectStablePopulation', JSON.stringify(!!localDetectStablePopulation)); } catch {}
@@ -274,6 +279,22 @@ const OptionsPanel = ({
                 <label htmlFor="enable-gps-cap-checkbox" style={{ margin: 0 }}>
                   Enable GPS cap
                 </label>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={!!localUseWebWorker}
+                  onChange={(e) => setLocalUseWebWorker(e.target.checked)}
+                  style={{ marginRight: 8 }}
+                  id="use-web-worker-checkbox"
+                />
+                <label htmlFor="use-web-worker-checkbox" style={{ margin: 0 }}>
+                  Use Web Worker
+                </label>
+                <Tooltip title="Run simulation in a background thread to keep it running when the tab is not active.">
+                  <InfoIcon fontSize="small" style={{ marginLeft: '4px', cursor: 'pointer' }} />
+                </Tooltip>
               </div>
 
               <Stack direction="row" spacing={2}>
@@ -474,6 +495,8 @@ OptionsPanel.propTypes = {
   setMaxFPS: PropTypes.func.isRequired,
   maxGPS: PropTypes.number.isRequired,
   setMaxGPS: PropTypes.func.isRequired,
+  useWebWorker: PropTypes.bool,
+  setUseWebWorker: PropTypes.func,
   confirmOnClear: PropTypes.bool,
   // setConfirmOnClear: PropTypes.func, // Removed duplicate
   detectStablePopulation: PropTypes.bool,

@@ -2,25 +2,9 @@ import React, { useState, useCallback, useDeferredValue, useMemo } from 'react';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import PropTypes from 'prop-types';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import CircularProgress from '@mui/material/CircularProgress';
 import logger from '../controller/utils/logger';
-import { createShape, deleteShapeById, checkBackendHealth } from '../utils/backendApi';
-import SearchBar from './components/SearchBar';
-import { fetchShapeById } from '../utils/backendApi';
-import PreviewPanel from './components/PreviewPanel';
+import { createShape, deleteShapeById, fetchShapeById } from '../utils/backendApi';
 import { useShapePaletteSearch } from './hooks/useShapePaletteSearch';
-import {
-  ShapesList,
-  FooterControls,
-  DeleteConfirmDialog,
-  SnackMessage,
-  BackendServerDialog,
-} from './components/shapePalette';
 import ShapePaletteView from './ShapePaletteView';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -171,7 +155,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       setSnackDetails(err?.message || String(err));
       setSnackOpen(true);
     }
-  }, [results, deleteShape]);
+  }, [results, deleteShape, backendBase]);
 
   const handleUndo = useCallback(async () => {
     const shape = snackUndoShape;
@@ -187,7 +171,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       logger.error('Restore error:', err);
       setSnackMsg('Restore error');
     }
-  }, [snackUndoShape, createShapeInBackend, setResults]);
+  }, [snackUndoShape, createShapeInBackend, setResults, backendBase]);
 
   const handleSnackClose = useCallback(() => {
     setSnackOpen(false);
