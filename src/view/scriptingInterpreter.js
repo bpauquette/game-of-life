@@ -22,13 +22,13 @@ function splitCond(cond) {
   return [cond, '==', true];
 }
 
-// Legacy command handler (for all non-block/assignment/label lines)
-async function legacyCommand(line, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
+// Execute script commands (drawing, simulation, etc.)
+async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'legacy', line } }));
+    window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'command', line } }));
   }
   // eslint-disable-next-line no-console
-  console.debug('[Script Debug] Legacy command:', line);
+  console.debug('[Script Debug] Executing command:', line);
   
   // Helper function to pause simulation for drawing commands
   const pauseForDrawing = () => {
@@ -200,392 +200,267 @@ async function legacyCommand(line, state, onStep, emitStepEvent, step, ticks, se
     return;
   }
   
-  // ...other legacy commands...
+  // ...other action commands...
 }
 
-// Main interpreter loop (with block stack)
-async function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
-  let i = 0;
-  
-  // Helper function to pause simulation for drawing commands
+// Handle state-modifying commands (PRINT, CLEAR, COUNT, assignments, LABEL, UNTIL_STEADY)
+async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
+  // Helper to pause simulation for drawing
   const pauseForDrawing = () => {
     if (typeof setIsRunning === 'function' && !state.simulationPausedForDrawing) {
       setIsRunning(false);
       state.simulationPausedForDrawing = true;
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: 'Paused simulation for drawing' } }));
-      }
     }
   };
+
+  // PRINT command
+  let printMatch = line.match(/^print\s+(.+)$/i);
+  if (printMatch) {
+    const val = evalExpr(printMatch[1], state);
+    if (!state.output) state.output = [];
+    state.output.push(String(val));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gol:script:print', { detail: { value: String(val) } }));
+    }
+    return i + 1;
+  }
+
+  // CLEAR command
+  if (/^clear$/i.test(line)) {
+    pauseForDrawing();
+    state.cells = new Set();
+    if (onLoadGrid) onLoadGrid([]);
+    if (onStep) onStep(new Set(state.cells));
+    if (emitStepEvent) emitStepEvent(state.cells);
+    return i + 1;
+  }
+
+  // COUNT varName
+  let countMatch = line.match(/^count\s+([a-zA-Z_][a-zA-Z0-9_]*)$/i);
+  if (countMatch) {
+    state.vars[countMatch[1]] = state.cells.size;
+    return i + 1;
+  }
+
+  // Assignment: x = expr
+  let assignMatch = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$/);
+  if (assignMatch) {
+    state.vars[assignMatch[1]] = evalExpr(assignMatch[2], state);
+    return i + 1;
+  }
+
+  // LABEL command
+  let labelMatch = line.match(/^label\s+(.+)$/i);
+  if (labelMatch) {
+    let labelVal = evalExpr(labelMatch[1], state);
+    state.outputLabels.push({ x: state.x, y: state.y, text: String(labelVal) });
+    return i + 1;
+  }
+
+  // UNTIL_STEADY varName maxSteps
+  console.log('[Script Debug] Checking line for UNTIL_STEADY:', line);
+  let untilSteadyMatch = line.match(/^UNTIL_STEADY\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(\S+)$/i);
+  console.log('[Script Debug] UNTIL_STEADY match result:', untilSteadyMatch);
+  if (untilSteadyMatch) {
+    console.log('[Script Debug] UNTIL_STEADY command detected:', line);
+    const varName = untilSteadyMatch[1];
+    const maxSteps = Math.floor(parseValue(untilSteadyMatch[2], state));
+    
+    if (!ticks || typeof ticks !== 'function') {
+      throw new Error('UNTIL_STEADY requires game simulation (ticks function not available)');
+    }
+    
+    const historySize = 10;
+    const history = [];
+    let stepCount = 0;
+    let stable = false;
+    let oscillatorPeriod = 0;
+    
+    const cellsToString = (cells) => Array.from(cells).sort().join('|');
+    
+    while (stepCount < maxSteps && !stable) {
+      const currentState = cellsToString(state.cells);
+      
+      const cellsArr = Array.from(state.cells).map(s => {
+        const [x, y] = s.split(',').map(Number);
+        return { x, y };
+      });
+      const next = ticks(cellsArr, 1);
+      
+      state.cells = new Set();
+      for (const key of next.keys ? next.keys() : Object.keys(next)) {
+        state.cells.add(key);
+      }
+      
+      stepCount++;
+      
+      const nextState = cellsToString(state.cells);
+      if (currentState === nextState) {
+        stable = true;
+        oscillatorPeriod = 1;
+        break;
+      }
+      
+      for (let h = 0; h < history.length; h++) {
+        if (history[h] === nextState) {
+          stable = true;
+          oscillatorPeriod = history.length - h + 1;
+          break;
+        }
+      }
+      
+      if (stable) break;
+      
+      history.push(currentState);
+      if (history.length > historySize) history.shift();
+      
+      await new Promise(res => setTimeout(res, 16));
+    }
+    
+    state.vars[varName] = stable ? stepCount : -1;
+    if (stable && oscillatorPeriod > 0) {
+      state.vars[varName + '_period'] = oscillatorPeriod;
+    }
+    
+    if (onStep) onStep(new Set(state.cells));
+    if (emitStepEvent) emitStepEvent(state.cells);
+    return i + 1;
+  }
+
+  return null; // Not a state command
+}
+
+// Handle control flow commands (WHILE, IF, FOR)
+async function executeControlFlow(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
+  // FOR loop
+  let forMatch = line.match(/^for\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+from\s+(.+?)\s+to\s+(.+?)(?:\s+step\s+(.+))?$/i);
+  if (forMatch) {
+    const varName = forMatch[1];
+    const start = Math.floor(evalExpr(forMatch[2], state));
+    const end = Math.floor(evalExpr(forMatch[3], state));
+    const stepVal = Math.floor(evalExpr(forMatch[4] || '1', state));
+    
+    if (stepVal === 0) throw new Error('FOR loop STEP cannot be zero');
+    
+    let blockStart = i + 1;
+    let blockEnd = blockStart;
+    let nest = 1;
+    while (blockEnd < blocks.length && nest > 0) {
+      let l = blocks[blockEnd].line.toLowerCase();
+      if (l.startsWith('for ')) nest++;
+      if (l === 'end') nest--;
+      blockEnd++;
+    }
+    blockEnd--;
+    
+    if (stepVal > 0) {
+      for (let val = start; val <= end; val += stepVal) {
+        state.vars[varName] = val;
+        await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+        if (state.loopBreak) {
+          state.loopBreak = false;
+          break;
+        }
+        state.loopContinue = false;
+      }
+    } else {
+      for (let val = start; val >= end; val += stepVal) {
+        state.vars[varName] = val;
+        await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+        if (state.loopBreak) {
+          state.loopBreak = false;
+          break;
+        }
+        state.loopContinue = false;
+      }
+    }
+    
+    return blockEnd + 1;
+  }
+
+  // WHILE loop
+  let whileMatch = line.match(/^while\s+(.+)$/i);
+  if (whileMatch) {
+    let cond = whileMatch[1];
+    let blockStart = i + 1;
+    let blockEnd = blockStart;
+    let nest = 1;
+    while (blockEnd < blocks.length && nest > 0) {
+      let l = blocks[blockEnd].line.toLowerCase();
+      if (l.startsWith('while ')) nest++;
+      if (l === 'end') nest--;
+      blockEnd++;
+    }
+    blockEnd--;
+    
+    while (evalCondCompound(cond, state)) {
+      await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+    }
+    
+    return blockEnd + 1;
+  }
+
+  // IF/ELSE block
+  let ifMatch = line.match(/^if\s+(.+)$/i);
+  if (ifMatch) {
+    let cond = ifMatch[1];
+    let blockStart = i + 1;
+    let blockEnd = blockStart;
+    let nest = 1;
+    
+    while (blockEnd < blocks.length && nest > 0) {
+      let l = blocks[blockEnd].line.toLowerCase();
+      if (l.startsWith('if ')) nest++;
+      if (l === 'end') nest--;
+      blockEnd++;
+    }
+    blockEnd--;
+    
+    let elseIdx = -1;
+    for (let searchIdx = blockEnd - 1; searchIdx > i; searchIdx--) {
+      let l = blocks[searchIdx].line.toLowerCase();
+      if (l === 'else' && blocks[searchIdx].indent === blocks[i].indent) {
+        elseIdx = searchIdx;
+        break;
+      }
+    }
+    
+    if (evalCondCompound(cond, state)) {
+      let ifBlockEnd = elseIdx >= 0 ? elseIdx : blockEnd;
+      await execBlock(blocks.slice(blockStart, ifBlockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+    } else if (elseIdx >= 0) {
+      await execBlock(blocks.slice(elseIdx + 1, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+    }
+    
+    return blockEnd + 1;
+  }
+
+  return null; // Not a control flow command
+}
+
+// Main interpreter loop
+async function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
+  let i = 0;
   
   while (i < blocks.length) {
     let { line } = blocks[i];
-    // PRINT command
-    let printMatch = line.match(/^print\s+(.+)$/i);
-    if (printMatch) {
-      const val = evalExpr(printMatch[1], state);
-      if (!state.output) state.output = [];
-      state.output.push(String(val));
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('gol:script:print', { detail: { value: String(val) } }));
-      }
-      i++;
+    
+    // Try state commands first
+    let nextI = await executeStateCommand(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+    if (nextI !== null) {
+      i = nextI;
       continue;
     }
-    // CLEAR command
-    if (/^clear$/i.test(line)) {
-      pauseForDrawing();
-      state.cells = new Set();
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: 'Grid cleared', idx: i } }));
-      }
-      // Update the grid immediately after clearing
-      if (onLoadGrid) {
-        onLoadGrid([]);
-      }
-      if (onStep) onStep(new Set(state.cells));
-      if (emitStepEvent) emitStepEvent(state.cells);
-      i++;
+    
+    // Try control flow
+    nextI = await executeControlFlow(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+    if (nextI !== null) {
+      i = nextI;
       continue;
     }
-    // COUNT varName
-    let countMatch = line.match(/^count\s+([a-zA-Z_][a-zA-Z0-9_]*)$/i);
-    if (countMatch) {
-      const vname = countMatch[1];
-      state.vars[vname] = state.cells.size;
-      i++;
-      continue;
-    }
-    // Assignment: x = expr or name = "str"
-    let assignMatch = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$/);
-    if (assignMatch) {
-      let vname = assignMatch[1];
-      let expr = assignMatch[2];
-      state.vars[vname] = evalExpr(expr, state);
-      i++;
-      continue;
-    }
-    // UNTIL_STEADY varName maxSteps - run simulation until pattern stabilizes
-    let untilSteadyMatch = line.match(/^UNTIL_STEADY\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(\S+)$/i);
-    if (untilSteadyMatch) {
-      console.log('[Script Debug] UNTIL_STEADY command detected:', line);
-      const varName = untilSteadyMatch[1];
-      const maxSteps = Math.floor(parseValue(untilSteadyMatch[2], state));
-      
-      if (!ticks || typeof ticks !== 'function') {
-        throw new Error('UNTIL_STEADY requires game simulation (ticks function not available)');
-      }
-      
-      // History to detect oscillators (periods up to 10)
-      const historySize = 10;
-      const history = [];
-      
-      let stepCount = 0;
-      let stable = false;
-      let oscillatorPeriod = 0;
-      
-      // Helper to convert cells to comparable string
-      const cellsToString = (cells) => {
-        return Array.from(cells).sort().join('|');
-      };
-      
-      while (stepCount < maxSteps && !stable) {
-        // Store current state
-        const currentState = cellsToString(state.cells);
-        
-        // Run one generation
-        const cellsArr = Array.from(state.cells).map(s => {
-          const [x, y] = s.split(',').map(Number);
-          return { x, y };
-        });
-        const next = ticks(cellsArr, 1);
-        
-        // Update state
-        state.cells = new Set();
-        for (const key of next.keys ? next.keys() : Object.keys(next)) {
-          state.cells.add(key);
-        }
-        
-        stepCount++;
-        
-        // Check if pattern is stable (still life - no changes)
-        const nextState = cellsToString(state.cells);
-        if (currentState === nextState) {
-          stable = true;
-          oscillatorPeriod = 1;
-          break;
-        }
-        
-        // Check against history for oscillators
-        for (let h = 0; h < history.length; h++) {
-          if (history[h] === nextState) {
-            stable = true;
-            oscillatorPeriod = history.length - h + 1; // +1 because we haven't added currentState yet
-            break;
-          }
-        }
-        
-        if (stable) break;
-        
-        // Add to history
-        history.push(currentState);
-        if (history.length > historySize) {
-          history.shift(); // Keep only recent history
-        }
-        
-        // Small delay for visual feedback (16ms = 60 FPS)
-        await new Promise(res => setTimeout(res, 16));
-      }
-      
-      // Store results in variables
-      state.vars[varName] = stable ? stepCount : -1;
-      if (stable && oscillatorPeriod > 0) {
-        state.vars[varName + '_period'] = oscillatorPeriod;
-      }
-      
-      if (onStep) onStep(new Set(state.cells));
-      if (emitStepEvent) emitStepEvent(state.cells);
-      i++;
-      continue;
-    }
-    // FOR loop: FOR var FROM start TO end [STEP step]
-    let forMatch = line.match(/^for\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+from\s+(.+?)\s+to\s+(.+?)(?:\s+step\s+(.+))?$/i);
-    if (forMatch) {
-      const varName = forMatch[1];
-      const startExpr = forMatch[2];
-      const endExpr = forMatch[3];
-      const stepExpr = forMatch[4] || '1';
-      
-      // Evaluate start, end, and step expressions
-      const start = Math.floor(evalExpr(startExpr, state));
-      const end = Math.floor(evalExpr(endExpr, state));
-      const step = Math.floor(evalExpr(stepExpr, state));
-      
-      if (step === 0) {
-        throw new Error('FOR loop STEP cannot be zero');
-      }
-      
-      let blockStart = i + 1;
-      let blockEnd = blockStart;
-      let nest = 1;
-      while (blockEnd < blocks.length && nest > 0) {
-        let l = blocks[blockEnd].line.toLowerCase();
-        if (l.startsWith('for ')) nest++;
-        if (l === 'end') nest--;
-        blockEnd++;
-      }
-      blockEnd--;
-      
-      // Execute loop based on step direction
-      if (step > 0) {
-        for (let val = start; val <= end; val += step) {
-          state.vars[varName] = val;
-          await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
-          if (state.loopBreak) {
-            state.loopBreak = false;
-            break;
-          }
-          state.loopContinue = false;
-        }
-      } else {
-        for (let val = start; val >= end; val += step) {
-          state.vars[varName] = val;
-          await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
-          if (state.loopBreak) {
-            state.loopBreak = false;
-            break;
-          }
-          state.loopContinue = false;
-        }
-      }
-      
-      i = blockEnd + 1;
-      continue;
-    }
-    // while loop
-    let whileMatch = line.match(/^while\s+(.+)$/i);
-    if (whileMatch) {
-      let cond = whileMatch[1];
-      let blockStart = i + 1;
-      let blockEnd = blockStart;
-      let nest = 1;
-      while (blockEnd < blocks.length && nest > 0) {
-        let l = blocks[blockEnd].line.toLowerCase();
-        if (l.startsWith('while ')) nest++;
-        if (l === 'end') nest--;
-        blockEnd++;
-      }
-      blockEnd--;
-      while (evalCondCompound(cond, state)) {
-        await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
-      }
-      i = blockEnd + 1;
-      continue;
-    }
-    // if block (with optional else)
-    let ifMatch = line.match(/^if\s+(.+)$/i);
-    if (ifMatch) {
-      let cond = ifMatch[1];
-      let blockStart = i + 1;
-      let blockEnd = blockStart;
-      let nest = 1;
-      
-      // Find the matching END for this IF
-      while (blockEnd < blocks.length && nest > 0) {
-        let l = blocks[blockEnd].line.toLowerCase();
-        if (l.startsWith('if ')) nest++;
-        if (l === 'end') nest--;
-        blockEnd++;
-      }
-      blockEnd--; // Now points to END token
-      
-      // Look for ELSE at the same nesting level as IF
-      // Search backwards from END to find ELSE at IF's indent level
-      let elseIdx = -1;
-      for (let searchIdx = blockEnd - 1; searchIdx > i; searchIdx--) {
-        let l = blocks[searchIdx].line.toLowerCase();
-        if (l === 'else' && blocks[searchIdx].indent === blocks[i].indent) {
-          elseIdx = searchIdx;
-          break;
-        }
-      }
-      
-      // Execute appropriate block
-      if (evalCondCompound(cond, state)) {
-        // Execute IF block (from blockStart to elseIdx if else exists, else to blockEnd)
-        let ifBlockEnd = elseIdx >= 0 ? elseIdx : blockEnd;
-        await execBlock(blocks.slice(blockStart, ifBlockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
-      } else if (elseIdx >= 0) {
-        // Execute ELSE block (from elseIdx + 1 to blockEnd)
-        await execBlock(blocks.slice(elseIdx + 1, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
-      }
-      
-      i = blockEnd + 1;
-      continue;
-    }
-    // LINE command
-    let lineMatch = line.match(/^line\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)$/i);
-    if (lineMatch) {
-      pauseForDrawing();
-      const x1 = Math.floor(parseValue(lineMatch[1], state));
-      const y1 = Math.floor(parseValue(lineMatch[2], state));
-      const x2 = Math.floor(parseValue(lineMatch[3], state));
-      const y2 = Math.floor(parseValue(lineMatch[4], state));
-      const points = computeLine(x1, y1, x2, y2);
-      for (const [x, y] of points) {
-        state.cells.add(`${x},${y}`);
-      }
-      i++;
-      continue;
-    }
-    // OVAL command
-    let ovalMatch = line.match(/^oval\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)$/i);
-    if (ovalMatch) {
-      pauseForDrawing();
-      const x1 = Math.floor(parseValue(ovalMatch[1], state));
-      const y1 = Math.floor(parseValue(ovalMatch[2], state));
-      const x2 = Math.floor(parseValue(ovalMatch[3], state));
-      const y2 = Math.floor(parseValue(ovalMatch[4], state));
-      const points = computeEllipsePerimeter(x1, y1, x2, y2);
-      for (const [x, y] of points) {
-        state.cells.add(`${x},${y}`);
-      }
-      i++;
-      continue;
-    }
-    // RECTPERIMETER command
-    let rectPerimMatch = line.match(/^rectperimeter\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)$/i);
-    if (rectPerimMatch) {
-      const x1 = Math.floor(parseValue(rectPerimMatch[1], state));
-      const y1 = Math.floor(parseValue(rectPerimMatch[2], state));
-      const x2 = Math.floor(parseValue(rectPerimMatch[3], state));
-      const y2 = Math.floor(parseValue(rectPerimMatch[4], state));
-      const points = computeRectPerimeter(x1, y1, x2, y2);
-      for (const [x, y] of points) {
-        state.cells.add(`${x},${y}`);
-      }
-      i++;
-      continue;
-    }
-    // SQUARE command (perimeter only)
-    let squareMatch = line.match(/^square\s+(\S+)$/i);
-    if (squareMatch) {
-      const size = Math.floor(parseValue(squareMatch[1], state));
-      const x1 = state.x || 0;
-      const y1 = state.y || 0;
-      const x2 = x1 + size;
-      const y2 = y1 + size;
-      const points = computeRectPerimeter(x1, y1, x2, y2);
-      for (const [x, y] of points) {
-        state.cells.add(`${x},${y}`);
-      }
-      i++;
-      continue;
-    }
-    // CIRCLE command (with radius only - uses current position)
-    let circleMatch1 = line.match(/^circle\s+(\S+)$/i);
-    if (circleMatch1) {
-      pauseForDrawing();
-      const radius = Math.floor(parseValue(circleMatch1[1], state));
-      const cx = state.x || 0;
-      const cy = state.y || 0;
-      const points = computeCircle(cx, cy, radius);
-      for (const [x, y] of points) {
-        state.cells.add(`${x},${y}`);
-      }
-      i++;
-      continue;
-    }
-    // CIRCLE command (with x, y, radius)
-    let circleMatch2 = line.match(/^circle\s+(\S+)\s+(\S+)\s+(\S+)$/i);
-    if (circleMatch2) {
-      pauseForDrawing();
-      const cx = Math.floor(parseValue(circleMatch2[1], state));
-      const cy = Math.floor(parseValue(circleMatch2[2], state));
-      const radius = Math.floor(parseValue(circleMatch2[3], state));
-      const points = computeCircle(cx, cy, radius);
-      for (const [x, y] of points) {
-        state.cells.add(`${x},${y}`);
-      }
-      i++;
-      continue;
-    }
-    // RANDRECT command
-    let randRectMatch = line.match(/^randrect\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+(\S+))?$/i);
-    if (randRectMatch) {
-      const minW = Math.floor(parseValue(randRectMatch[1], state));
-      const maxW = Math.floor(parseValue(randRectMatch[2], state));
-      const minH = Math.floor(parseValue(randRectMatch[3], state));
-      const maxH = Math.floor(parseValue(randRectMatch[4], state));
-      const count = randRectMatch[5] ? Math.floor(parseValue(randRectMatch[5], state)) : 1;
-      const baseX = state.x || 0;
-      const baseY = state.y || 0;
-      for (let i = 0; i < count; i++) {
-        const w = minW + Math.floor(Math.random() * (maxW - minW + 1));
-        const h = minH + Math.floor(Math.random() * (maxH - minH + 1));
-        const offsetX = Math.floor(Math.random() * 20) - 10;
-        const offsetY = Math.floor(Math.random() * 20) - 10;
-        for (let dx = 0; dx < w; dx++) {
-          for (let dy = 0; dy < h; dy++) {
-            if (Math.random() < 0.5) {
-              state.cells.add(`${baseX + offsetX + dx},${baseY + offsetY + dy}`);
-            }
-          }
-        }
-      }
-      i++;
-      continue;
-    }
-    // LABEL command
-    let labelMatch = line.match(/^label\s+(.+)$/i);
-    if (labelMatch) {
-      let labelVal = evalExpr(labelMatch[1], state);
-      state.outputLabels.push({ x: state.x, y: state.y, text: String(labelVal) });
-      i++;
-      continue;
-    }
-    // All other commands: fall through to legacy parser
-    legacyCommand(line, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+    
+    // Fall through to action commands
+    await executeCommand(line, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
     i++;
   }
 }
@@ -712,4 +587,4 @@ function computeCircle(cx, cy, radius) {
   return result;
 }
 
-export { parseBlocks, execBlock, splitCond, legacyCommand };
+export { parseBlocks, execBlock, splitCond, executeCommand };
