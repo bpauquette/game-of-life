@@ -848,6 +848,7 @@ export class GameController {
     if (!settings || typeof settings !== 'object') return;
 
     let capsChanged = false;
+    const wasUsingWorker = this.useWebWorker;
 
     if (Object.prototype.hasOwnProperty.call(settings, 'maxFPS')) {
       const nextFps = Math.max(1, Math.min(Number(settings.maxFPS) || this.performanceCaps.maxFPS, 120));
@@ -881,11 +882,32 @@ export class GameController {
       }
     }
 
+    if (Object.prototype.hasOwnProperty.call(settings, 'useWebWorker')) {
+      const next = !!settings.useWebWorker;
+      if (next !== this.useWebWorker) {
+        this.useWebWorker = next;
+        // If the loop mode changed while running, restart the loop
+        if (this.model.getIsRunning()) {
+          if (wasUsingWorker) {
+            this.stopWorkerLoop();
+            this.startAnimationLoop();
+          } else {
+            this.stopAnimationLoop();
+            this.startWorkerLoop();
+          }
+        }
+      }
+    }
+
     if (capsChanged) {
       if (!this.performanceCaps.enableFPSCap && !this.performanceCaps.enableGPSCap) {
         this.frameInterval = 0;
       } else {
         this.frameInterval = 1000 / this._getLoopRate();
+      }
+      // Also update worker interval if it's running
+      if (this.worker) {
+        this.worker.postMessage({ command: 'set-interval', payload: this.frameInterval > 0 ? this.frameInterval : 1000 / this._getLoopRate() });
       }
     }
   }
