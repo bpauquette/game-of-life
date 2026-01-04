@@ -282,23 +282,44 @@ function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunni
       i = blockEnd + 1;
       continue;
     }
-    // if block
+    // if block (with optional else)
     let ifMatch = line.match(/^if\s+(.+)$/i);
     if (ifMatch) {
       let cond = ifMatch[1];
       let blockStart = i + 1;
       let blockEnd = blockStart;
       let nest = 1;
+      
+      // Find the matching END for this IF
       while (blockEnd < blocks.length && nest > 0) {
         let l = blocks[blockEnd].line.toLowerCase();
         if (l.startsWith('if ')) nest++;
         if (l === 'end') nest--;
         blockEnd++;
       }
-      blockEnd--;
-      if (evalCondCompound(cond, state)) {
-        execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks);
+      blockEnd--; // Now points to END token
+      
+      // Look for ELSE at the same nesting level as IF
+      // Search backwards from END to find ELSE at IF's indent level
+      let elseIdx = -1;
+      for (let searchIdx = blockEnd - 1; searchIdx > i; searchIdx--) {
+        let l = blocks[searchIdx].line.toLowerCase();
+        if (l === 'else' && blocks[searchIdx].indent === blocks[i].indent) {
+          elseIdx = searchIdx;
+          break;
+        }
       }
+      
+      // Execute appropriate block
+      if (evalCondCompound(cond, state)) {
+        // Execute IF block (from blockStart to elseIdx if else exists, else to blockEnd)
+        let ifBlockEnd = elseIdx >= 0 ? elseIdx : blockEnd;
+        execBlock(blocks.slice(blockStart, ifBlockEnd), state, onStep, emitStepEvent, step, ticks);
+      } else if (elseIdx >= 0) {
+        // Execute ELSE block (from elseIdx + 1 to blockEnd)
+        execBlock(blocks.slice(elseIdx + 1, blockEnd), state, onStep, emitStepEvent, step, ticks);
+      }
+      
       i = blockEnd + 1;
       continue;
     }

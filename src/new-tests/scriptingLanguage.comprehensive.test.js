@@ -352,6 +352,59 @@ describe('Scripting Interpreter - Control Flow', () => {
     }
     expect(state.iterations).toBe(5);
   });
+
+  it('should support ELSE clause with true condition', () => {
+    const script = `IF x > 5
+  y = 100
+ELSE
+  y = 50
+END`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: { x: 10, y: 0 }, cells: new Set() };
+    execBlock(blocks, state, null, () => {}, null, null);
+    expect(state.vars.y).toBe(100); // IF condition true, so ELSE not executed
+  });
+
+  it('should support ELSE clause with false condition', () => {
+    const script = `IF x > 5
+  y = 100
+ELSE
+  y = 50
+END`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: { x: 3, y: 0 }, cells: new Set() };
+    execBlock(blocks, state, null, () => {}, null, null);
+    expect(state.vars.y).toBe(50); // IF condition false, so ELSE executed
+  });
+
+  it('should support nested IF...ELSE structures', () => {
+    const script = `IF x > 5
+  IF y > 3
+    z = 1
+  ELSE
+    z = 2
+  END
+ELSE
+  z = 3
+END`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: { x: 10, y: 2, z: 0 }, cells: new Set() };
+    execBlock(blocks, state, null, () => {}, null, null);
+    expect(state.vars.z).toBe(2); // Outer IF true, inner IF false → inner ELSE
+  });
+
+  it('should handle ELSE with drawing commands', () => {
+    const script = `IF count > 5
+  RECT 10 10
+ELSE
+  RECT 5 5
+END`;
+    const blocks = parseBlocks(script.split('\n'));
+    const state = { vars: {}, cells: new Set(), x: 0, y: 0, penDown: true };
+    execBlock(blocks, state, null, () => {}, null, null);
+    // When count <= 5 (undefined → 0), ELSE should execute with 5x5 rect = 25 cells
+    expect(state.cells.size).toBe(25); // 5 * 5
+  });
 });
 
 describe('Scripting Interpreter - Edge Cases & Error Handling', () => {

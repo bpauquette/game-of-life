@@ -833,9 +833,15 @@ export class GameController {
     const loopRate = Math.max(1, Math.min(requested, this.performanceCaps.maxFPS, this.performanceCaps.maxGPS));
     if (!this.performanceCaps.enableFPSCap && !this.performanceCaps.enableGPSCap) {
       this.frameInterval = 0;
+      if (this.worker) {
+        this.worker.postMessage({ command: 'set-interval', payload: 1000 / loopRate });
+      }
       return;
     }
     this.frameInterval = 1000 / loopRate;
+    if (this.worker) {
+      this.worker.postMessage({ command: 'set-interval', payload: this.frameInterval });
+    }
   }
 
   applyPerformanceSettings(settings = {}) {
