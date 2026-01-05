@@ -146,7 +146,7 @@ export default function PhotosensitivityTestDialog({ open, onClose }) {
         setTesting(false);
         setProgress(100);
         setSnackbarOpen(false);
-        
+
         // Reopen dialog with results
         setTimeout(() => {
           setDialogOpen(true);
@@ -198,13 +198,12 @@ export default function PhotosensitivityTestDialog({ open, onClose }) {
     return null;
   };
 
-  conssetDialogOpen(false);
-      t handleClose = () => {
+  const handleClose = () => {
     if (!testing) {
       setResult(null);
       setProgress(0);
       setTestDuration(0);
-      onClose();
+      setDialogOpen(false);
     }
   };
 
