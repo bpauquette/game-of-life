@@ -208,20 +208,19 @@ export default function PhotosensitivityTestDialog({ open, onClose }) {
     }
   };
 
-  // Reopen dialog when test completes
+  // Reopen dialog when test completes with results
   React.useEffect(() => {
     if (result && !testing) {
       // Small delay to ensure snackbar closes first
       setTimeout(() => {
-        // Trigger dialog to reopen by calling a custom event or prop
-        // For now, we'll handle this differently - keep dialog state in parent
-      }, 100);
+        setDialogOpen(true);
+      }, 200);
     }
   }, [result, testing]);
 
   return (
-    <>dialogO
-      <Dialog open={open && !testing} onClose={handleClose} maxWidth="sm" fullWidth>
+    <>
+      <Dialog open={dialogOpen && !testing} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>
           🧪 Photosensitivity Safety Test
         </DialogTitle>
