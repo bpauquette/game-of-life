@@ -23,14 +23,20 @@ export default function PhotosensitivityTestDialog({ open, onClose }) {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [testDuration, setTestDuration] = useState(0);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Sync with parent open prop
+  React.useEffect(() => {
+    setDialogOpen(open);
+  }, [open]);
 
   const runTest = async () => {
     // Close dialog and show snackbar
-    onClose();
+    setDialogOpen(false);
     setTesting(true);
     setProgress(0);
     setResult(null);
-    setSnackbarMessage('Starting photosensitivity test...');
+    setSnackbarMessage('⏳ Starting photosensitivity test...');
     setSnackbarOpen(true);
 
     try {
@@ -140,6 +146,11 @@ export default function PhotosensitivityTestDialog({ open, onClose }) {
         setTesting(false);
         setProgress(100);
         setSnackbarOpen(false);
+        
+        // Reopen dialog with results
+        setTimeout(() => {
+          setDialogOpen(true);
+        }, 200);
       };
 
       // Wait for max duration or early stop
@@ -187,7 +198,8 @@ export default function PhotosensitivityTestDialog({ open, onClose }) {
     return null;
   };
 
-  const handleClose = () => {
+  conssetDialogOpen(false);
+      t handleClose = () => {
     if (!testing) {
       setResult(null);
       setProgress(0);
@@ -208,7 +220,7 @@ export default function PhotosensitivityTestDialog({ open, onClose }) {
   }, [result, testing]);
 
   return (
-    <>
+    <>dialogO
       <Dialog open={open && !testing} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>
           🧪 Photosensitivity Safety Test
