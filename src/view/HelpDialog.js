@@ -31,15 +31,16 @@ export default function HelpDialog({ open, onClose }) {
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="help tabs">
             <Tab label="Game Rules" />
             <Tab label="Tools & Controls" />
+            <Tab label="Keyboard Shortcuts" />
             <Tab label="Tips & Strategies" />
             <Tab label="Resources" />
           </Tabs>
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Typography variant="h6" gutterBottom>What is Conway's Game of Life?</Typography>
+          <Typography variant="h5" component="h2" gutterBottom>What is Conway's Game of Life?</Typography>
           <Typography sx={{ mb: 2 }}>The Game of Life is a cellular automaton. You set the initial pattern and watch it evolve without additional input.</Typography>
-          <Typography variant="h6" gutterBottom>The Rules</Typography>
+          <Typography variant="h5" component="h2" gutterBottom>The Rules</Typography>
           <Card variant="outlined" sx={{ mb: 2 }}>
             <CardContent>
               <List dense>
@@ -53,7 +54,7 @@ export default function HelpDialog({ open, onClose }) {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          <Typography variant="h6" gutterBottom>Drawing Tools</Typography>
+          <Typography variant="h5" component="h2" gutterBottom>Drawing Tools</Typography>
           <List>
             <ListItem><BrushIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Freehand Draw" secondary="Click-drag to paint cells. Single-click toggles a cell with the current tool overlay." /></ListItem>
             <ListItem><BackspaceIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Erase" secondary="Scrub away cells with the same precision as drawing—great for trimming edges or carving tunnels." /></ListItem>
@@ -66,14 +67,14 @@ export default function HelpDialog({ open, onClose }) {
           </List>
 
           <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" gutterBottom>Shapes & Capture</Typography>
+          <Typography variant="h5" component="h2" gutterBottom>Shapes & Capture</Typography>
           <List>
             <ListItem><ListItemText primary="Recent Shapes Strip" secondary="Pinned thumbnails remember metadata, color previews, and clockwise rotations via the ⟳90 action." /></ListItem>
             <ListItem><ListItemText primary="Shape Palette Dialog" secondary="Loads asynchronously with a mobile-friendly loading overlay, supports search, sort, and tap-to-place previews." /></ListItem>
             <ListItem><ListItemText primary="Capture Tool" secondary="Drag a rectangle to capture cells. The capture dialog autofocuses inputs, shows a live preview, and keeps global shortcuts suspended while typing." /></ListItem>
           </List>
 
-          <Typography variant="h6" gutterBottom>Simulation Controls</Typography>
+          <Typography variant="h5" component="h2" gutterBottom>Simulation Controls</Typography>
           <List>
             <ListItem><PlayArrowIcon sx={{ mr: 2, color: 'success.main' }} /><ListItemText primary="Start/Stop" secondary="Toggle simulation (Spacebar)." /></ListItem>
             <ListItem><ListItemText primary="Step" secondary="Advance exactly one generation." sx={{ ml: 4 }} /></ListItem>
@@ -81,14 +82,14 @@ export default function HelpDialog({ open, onClose }) {
           </List>
 
           <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" gutterBottom>Visualization & Analysis</Typography>
+          <Typography variant="h5" component="h2" gutterBottom>Visualization & Analysis</Typography>
           <List>
             <ListItem><BarChartIcon sx={{ mr: 2, color: 'info.main' }} /><ListItemText primary="Population Chart" secondary="Live-updating graph that stays in sync with every generation, even while fast-forwarding." /></ListItem>
             <ListItem><SettingsIcon sx={{ mr: 2, color: 'action.active' }} /><ListItemText primary="Settings" secondary="Switch color schemes, tweak performance budgets, and enable diagnostics—changes redraw instantly." /></ListItem>
           </List>
 
           <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" gutterBottom>Options Panel (Gear Icon)</Typography>
+          <Typography variant="h5" component="h2" gutterBottom>Options Panel (Gear Icon)</Typography>
           <Typography sx={{ mb: 1 }}>Tap the gear to open the Options panel; every control in that dialog is wired to the code paths below:</Typography>
           <List dense>
             <ListItem>
@@ -134,7 +135,78 @@ export default function HelpDialog({ open, onClose }) {
           </List>
 
           <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" gutterBottom>Navigation</Typography>
+          <Typography variant="h5" component="h2" gutterBottom sx={{ color: 'warning.main' }}>⚠️ ADA Compliance Mode</Typography>
+          <Card variant="outlined" sx={{ mb: 2, borderColor: 'warning.main' }}>
+            <CardContent>
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>What is ADA Compliance?</Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                ADA (Americans with Disabilities Act) compliance ensures the application is safe for users with photosensitive epilepsy. 
+                This mode enforces strict limits on animation speed and visual effects to prevent seizures triggered by rapid flashing.
+              </Typography>
+
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>Why is it Necessary?</Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Under WCAG 2.1 (Web Content Accessibility Guidelines), web content must not flash more than 3 times per second 
+                or exceed specific flash area thresholds. Without these protections, animations could trigger photosensitive seizures 
+                in susceptible individuals. This is a legal requirement and a critical safety feature.
+              </Typography>
+
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>What Changes When Enabled?</Typography>
+              <List dense sx={{ mb: 2 }}>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemText 
+                    primary="• Frame rate capped at 2 FPS" 
+                    secondary="Both rendering and game stepping are throttled to prevent rapid flashing" 
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemText 
+                    primary="• Low-contrast color scheme (adaSafe)" 
+                    secondary="Reduces luminance differences to minimize flash intensity" 
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemText 
+                    primary="• Canvas limited to 160×160 pixels" 
+                    secondary="Restricts visible flash area below safety threshold (87,296 pixels)" 
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemText 
+                    primary="• Script execution HUD hidden" 
+                    secondary="Removes translucent overlays that could contribute to flash area" 
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemText 
+                    primary="• FPS/GPS controls locked" 
+                    secondary="Speed settings cannot be changed while ADA mode is active" 
+                  />
+                </ListItem>
+              </List>
+
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>How to Enable/Disable</Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>To Enable:</strong> Open Options (gear icon or press 'O') → Check "Enable ADA Compliance"
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>To Disable:</strong> Open Options → Uncheck "Enable ADA Compliance"
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic', color: 'text.secondary' }}>
+                Note: ADA compliance is enabled by default for safety. A legal warning is displayed when disabled.
+              </Typography>
+
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>Photosensitivity Testing</Typography>
+              <Typography variant="body2">
+                Advanced users can test photosensitivity compliance using the built-in tester. Enable it in Options → 
+                "Enable Photosensitivity Tester" → then access it via the bug icon in the header. The tester analyzes 
+                flash rate (must be ≤3/sec) and flash area (must be ≤87,296px) to verify WCAG compliance.
+              </Typography>
+            </CardContent>
+          </Card>
+
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="h5" component="h2" gutterBottom>Navigation</Typography>
           <List dense>
             <ListItem><ListItemText primary="Mouse Wheel / Trackpad" secondary="Zoom in or out around the pointer. Rendering keeps cell edges aligned with device pixels." /></ListItem>
             <ListItem><ListItemText primary="Pinch-to-Zoom (Touch)" secondary="Use two fingers to pinch or spread. The zoom focuses on the pinch center and includes a gentle pan when the centroid moves." /></ListItem>
@@ -146,7 +218,65 @@ export default function HelpDialog({ open, onClose }) {
         </TabPanel>
 
         <TabPanel value={tabValue} index={2}>
-          <Typography variant="h6" gutterBottom>Getting Started Tips</Typography>
+          <Typography variant="h5" component="h2" gutterBottom>Keyboard Shortcuts (ADA Compliant)</Typography>
+          <Typography sx={{ mb: 2 }}>All GUI actions are accessible via keyboard for full accessibility compliance.</Typography>
+          
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>Playback Controls</Typography>
+          <List dense>
+            <ListItem><ListItemText primary={<><strong>Space</strong> - Play/Pause</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>S</strong> - Step one generation</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>Ctrl+C</strong> - Clear grid</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>[</strong> - Decrease speed</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>]</strong> - Increase speed</>} /></ListItem>
+          </List>
+
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>View & Navigation</Typography>
+          <List dense>
+            <ListItem><ListItemText primary={<><strong>Arrow Keys</strong> - Pan view</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>+/=</strong> - Zoom in</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>-</strong> - Zoom out</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>F</strong> - Center on live cells</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>H</strong> - Hide/Show UI controls</>} /></ListItem>
+          </List>
+
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>Tool Selection</Typography>
+          <List dense>
+            <ListItem><ListItemText primary={<><strong>1</strong> - Draw tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>2</strong> - Eraser tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>3</strong> - Pan tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>4</strong> - Shapes tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>5</strong> - Rectangle tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>6</strong> - Line tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>7</strong> - Circle tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>8</strong> - Capture tool</>} /></ListItem>
+          </List>
+
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>Editing</Typography>
+          <List dense>
+            <ListItem><ListItemText primary={<><strong>Ctrl+Z</strong> - Undo</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>Ctrl+Shift+Z</strong> or <strong>Ctrl+Y</strong> - Redo</>} /></ListItem>
+          </List>
+
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>Dialogs & Windows</Typography>
+          <List dense>
+            <ListItem><ListItemText primary={<><strong>P</strong> - Open shape palette</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>O</strong> - Open options</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>?</strong> - Open help (this dialog)</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>G</strong> - Toggle population chart</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>Ctrl+S</strong> - Save grid</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>Ctrl+L</strong> - Load grid</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>Esc</strong> - Close dialog/cancel</>} /></ListItem>
+          </List>
+
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>Color Schemes</Typography>
+          <List dense>
+            <ListItem><ListItemText primary={<><strong>T</strong> - Next color scheme</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>Shift+T</strong> - Previous color scheme</>} /></ListItem>
+          </List>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <Typography variant="h5" component="h2" gutterBottom>Getting Started Tips</Typography>
           <List>
             <ListItem><ListItemText primary="Start Simple" secondary="Try a Blinker (3 in a row) to see oscillation." /></ListItem>
             <ListItem><ListItemText primary="Use the Library" secondary="Load gliders, oscillators, and spaceships quickly." /></ListItem>
@@ -154,8 +284,8 @@ export default function HelpDialog({ open, onClose }) {
           </List>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={3}>
-          <Typography variant="h6" gutterBottom>Resources</Typography>
+        <TabPanel value={tabValue} index={4}>
+          <Typography variant="h5" component="h2" gutterBottom>Resources</Typography>
           <Card variant="outlined" sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" color="primary" gutterBottom>LifeWiki</Typography>
@@ -188,7 +318,7 @@ export default function HelpDialog({ open, onClose }) {
             </CardContent>
           </Card>
           <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" gutterBottom>File Formats</Typography>
+          <Typography variant="h5" component="h2" gutterBottom>File Formats</Typography>
           <Typography sx={{ mb: 2 }}>Common: RLE, Plaintext (.life), Life 1.06</Typography>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
             <Chip label="RLE" variant="outlined" />

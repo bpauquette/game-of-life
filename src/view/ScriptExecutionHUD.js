@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
+// Removed unused alpha import
 
 /**
  * ScriptExecutionHUD - Semi-transparent overlay showing real-time script execution status
  * Displays: current command, variables, progress, loop context
  */
-function ScriptExecutionHUD() {
+function ScriptExecutionHUD({ enableAdaCompliance = false }) {
   const [hudData, setHudData] = useState({
     visible: false,
     currentLine: '',
     variables: {},
     context: '', // Loop/block context
     progress: null, // { current, total, label } for operations like UNTIL_STEADY
-    loopDepth: 0
+    loopDepth: 0,
+    log: [] // rolling command log
   });
 
   useEffect(() => {
@@ -26,14 +27,16 @@ function ScriptExecutionHUD() {
         setHudData(prev => ({
           ...prev,
           visible: true,
-          currentLine: detail.command || detail.msg
+          currentLine: detail.command || detail.msg || detail.line,
+          log: [...prev.log, detail.line || detail.command || detail.msg || ''].slice(-200)
         }));
       } else if (detail.type === 'state') {
         // State change (CLEAR, START, STOP)
         setHudData(prev => ({
           ...prev,
           context: detail.msg,
-          ...(detail.variables && { variables: detail.variables })
+          ...(detail.variables && { variables: detail.variables }),
+          log: [...prev.log, detail.msg || 'state change'].slice(-200)
         }));
       } else if (detail.type === 'progress') {
         // Progress update (UNTIL_STEADY steps)
@@ -44,14 +47,16 @@ function ScriptExecutionHUD() {
             current: detail.current,
             total: detail.total,
             label: detail.msg || `Progress: ${detail.current}/${detail.total}`
-          }
+          },
+          log: [...prev.log, detail.msg || `Progress ${detail.current}/${detail.total}`].slice(-200)
         }));
       } else if (detail.type === 'complete') {
         // Command completed
         setHudData(prev => ({
           ...prev,
           context: detail.msg,
-          progress: null
+          progress: null,
+          log: [...prev.log, detail.msg || 'Command complete'].slice(-200)
         }));
       }
     }
@@ -62,7 +67,8 @@ function ScriptExecutionHUD() {
         ...prev, 
         visible: true,
         context: 'Script started...',
-        currentLine: detail.script ? detail.script.substring(0, 40) + '...' : 'Running script'
+        currentLine: detail.script ? detail.script.substring(0, 40) + '...' : 'Running script',
+        log: detail.script ? [...prev.log, `Start: ${detail.script.substring(0, 120)}`].slice(-200) : prev.log
       }));
     }
 
@@ -72,7 +78,8 @@ function ScriptExecutionHUD() {
         setHudData(prev => ({ 
           ...prev, 
           visible: false,
-          context: detail.status === 'error' ? `Error: ${detail.error}` : 'Script completed'
+          context: detail.status === 'error' ? `Error: ${detail.error}` : 'Script completed',
+          log: [...prev.log, detail.status === 'error' ? `Error: ${detail.error}` : 'Script completed'].slice(-200)
         }));
       }, 500);
     }
@@ -90,7 +97,7 @@ function ScriptExecutionHUD() {
     }
   }, []);
 
-  if (!hudData.visible) return null;
+  if (!hudData.visible || enableAdaCompliance) return null;
 
   return (
     <Box
@@ -98,30 +105,31 @@ function ScriptExecutionHUD() {
         position: 'fixed',
         top: 16,
         left: 16,
-        backgroundColor: alpha('#000000', 0.75),
-        color: '#e5e7eb',
+        backgroundColor: 'var(--surface-2)',
+        color: 'var(--text-primary)',
         padding: '12px 16px',
-        borderRadius: '8px',
+        borderRadius: '10px',
         fontFamily: 'monospace',
         fontSize: '12px',
-        maxWidth: '400px',
-        border: '1px solid ' + alpha('#4f46e5', 0.5),
-        backdropFilter: 'blur(8px)',
+        width: '480px',
+        border: '1px solid var(--border-strong)',
+        backdropFilter: 'blur(10px)',
+        boxShadow: 'var(--shadow-elevated)',
         zIndex: 1000,
-        pointerEvents: 'none'
+        pointerEvents: 'auto'
       }}
     >
       {/* Current Command */}
       {hudData.currentLine && (
         <Box sx={{ mb: 1 }}>
-          <Typography variant="body2" sx={{ fontSize: '11px', color: '#a5f3fc', mb: 0.5 }}>
+          <Typography variant="body2" sx={{ fontSize: '11px', color: 'var(--accent-info)', mb: 0.5 }}>
             Executing:
           </Typography>
           <Typography
             variant="body2"
             sx={{
               fontSize: '12px',
-              color: '#86efac',
+              color: 'var(--accent-success)',
               fontWeight: 'bold',
               wordBreak: 'break-word'
             }}
@@ -134,7 +142,7 @@ function ScriptExecutionHUD() {
       {/* Context */}
       {hudData.context && (
         <Box sx={{ mb: 1 }}>
-          <Typography variant="body2" sx={{ fontSize: '11px', color: '#fbbf24' }}>
+          <Typography variant="body2" sx={{ fontSize: '11px', color: 'var(--accent-warning)' }}>
             {hudData.context}
           </Typography>
         </Box>
@@ -143,14 +151,14 @@ function ScriptExecutionHUD() {
       {/* Progress Bar */}
       {hudData.progress && (
         <Box sx={{ mb: 1 }}>
-          <Typography variant="body2" sx={{ fontSize: '11px', color: '#f472b6', mb: 0.5 }}>
+          <Typography variant="body2" sx={{ fontSize: '11px', color: 'var(--accent-secondary)', mb: 0.5 }}>
             {hudData.progress.label || 'Progress'}
           </Typography>
           <Box
             sx={{
               width: '100%',
               height: '4px',
-              backgroundColor: alpha('#4f46e5', 0.3),
+              backgroundColor: 'var(--progress-track)',
               borderRadius: '2px',
               overflow: 'hidden'
             }}
@@ -159,12 +167,12 @@ function ScriptExecutionHUD() {
               sx={{
                 height: '100%',
                 width: `${(hudData.progress.current / hudData.progress.total) * 100}%`,
-                backgroundColor: '#f472b6',
+                backgroundColor: 'var(--progress-fill)',
                 transition: 'width 0.1s ease-out'
               }}
             />
           </Box>
-          <Typography variant="body2" sx={{ fontSize: '10px', color: '#cbd5f5', mt: 0.5 }}>
+          <Typography variant="body2" sx={{ fontSize: '10px', color: 'var(--text-secondary)', mt: 0.5 }}>
             {hudData.progress.current} / {hudData.progress.total}
           </Typography>
         </Box>
@@ -172,19 +180,47 @@ function ScriptExecutionHUD() {
 
       {/* Variables */}
       {Object.keys(hudData.variables).length > 0 && (
-        <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid ' + alpha('#4f46e5', 0.5) }}>
-          <Typography variant="body2" sx={{ fontSize: '11px', color: '#a5f3fc', mb: 0.5 }}>
+        <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid var(--border-subtle)' }}>
+          <Typography variant="body2" sx={{ fontSize: '11px', color: 'var(--accent-info)', mb: 0.5 }}>
             Variables:
           </Typography>
           {Object.entries(hudData.variables).map(([key, value]) => (
             <Typography
               key={key}
               variant="body2"
-              sx={{ fontSize: '11px', color: '#d1d5db' }}
+              sx={{ fontSize: '11px', color: 'var(--text-secondary)' }}
             >
-              {key} = <span style={{ color: '#fbbf24' }}>{String(value)}</span>
+              {key} = <span style={{ color: 'var(--accent-warning)' }}>{String(value)}</span>
             </Typography>
           ))}
+        </Box>
+      )}
+
+      {/* Command Log */}
+      {hudData.log.length > 0 && (
+        <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid var(--border-subtle)' }}>
+          <Typography variant="body2" sx={{ fontSize: '11px', color: 'var(--accent-info)', mb: 0.5 }}>
+            Command Log:
+          </Typography>
+          <Box
+            component="pre"
+            sx={{
+              m: 0,
+              p: 1,
+              height: 260,
+              overflowY: 'auto',
+              backgroundColor: 'var(--surface-3)',
+              color: 'var(--text-primary)',
+              borderRadius: '6px',
+              border: '1px solid var(--border-subtle)',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+              lineHeight: 1.4,
+              whiteSpace: 'pre-wrap'
+            }}
+          >
+            {hudData.log.map((line, idx) => `${idx + 1}: ${line}`).join('\n')}
+          </Box>
         </Box>
       )}
     </Box>

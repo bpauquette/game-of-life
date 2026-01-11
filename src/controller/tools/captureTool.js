@@ -1,12 +1,22 @@
 import logger from '../utils/logger';
 import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
+const tokenOr = (name, fallback) => {
+  try {
+    const root = globalThis.document?.documentElement;
+    if (!root) return fallback;
+    const v = globalThis.getComputedStyle(root).getPropertyValue(name);
+    return (v && v.trim()) || fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
 // Rectangular area capture tool for shapes catalog
 // Uses eyedropper metaphor for sampling/capturing patterns from the grid
 
 // Visual constants for capture tool
-const SELECTION_STROKE_COLOR = 'rgba(0, 255, 136, 0.8)';
-const SELECTION_FILL_COLOR = 'rgba(0, 255, 136, 0.1)';
-const CAPTURED_CELL_COLOR = 'rgba(255, 255, 0, 0.6)';
+const SELECTION_STROKE_COLOR = tokenOr('--accent-success', 'rgba(0, 255, 136, 0.8)');
+const SELECTION_FILL_COLOR = tokenOr('--warning-surface', 'rgba(0, 255, 136, 0.1)');
+const CAPTURED_CELL_COLOR = tokenOr('--accent-warning', 'rgba(255, 255, 0, 0.6)');
 const SELECTION_LINE_WIDTH = 2;
 const DASH_PATTERN = [5, 5];
 

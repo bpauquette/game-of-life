@@ -38,6 +38,12 @@ const LoadGridDialog = ({
   const [searchFilter, setSearchFilter] = useState('');
   const [filteredGrids, setFilteredGrids] = useState(grids);
 
+  const handleClose = () => {
+    setSelectedGrid(null);
+    setSearchFilter('');
+    onClose();
+  };
+
   useEffect(() => {
     if (searchFilter.trim() === '') {
       setFilteredGrids(grids);
@@ -78,12 +84,6 @@ const LoadGridDialog = ({
     } catch (deleteError) {
       logger.warn('Delete failed:', deleteError.message);
     }
-  };
-
-  const handleClose = () => {
-    setSelectedGrid(null);
-    setSearchFilter('');
-    onClose();
   };
 
   const formatDate = (dateString) => {
@@ -163,7 +163,7 @@ const LoadGridDialog = ({
           {!loadingGrids && filteredGrids.length === 0 && (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <GridOnIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary">
+              <Typography variant="h5" component="h2" color="text.secondary">
                 {grids.length === 0 ? 'No saved grids' : 'No grids match your search'}
               </Typography>
               <Typography variant="body2" color="text.disabled">

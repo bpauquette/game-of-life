@@ -31,12 +31,30 @@ export function AuthProvider({ children }) {
     return stored;
   });
   const [email, setEmail] = useState(() => sessionStorage.getItem('authEmail'));
+  const [hasDonated, setHasDonated] = useState(false);
+
+  const refreshMe = async () => {
+    try {
+      const tokenNow = sessionStorage.getItem('authToken');
+      if (!tokenNow) return;
+      const base = require('../utils/backendApi').getBackendApiBase();
+      const resp = await fetch(`${base}/v1/me?_ts=${Date.now()}`, { headers: { Authorization: `Bearer ${tokenNow}`, 'Cache-Control': 'no-cache' }, cache: 'no-store' });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (data && typeof data.hasDonated !== 'undefined') setHasDonated(!!data.hasDonated);
+      if (data && typeof data.email === 'string') setEmail(data.email);
+    } catch (e) {
+      // ignore refresh errors
+    }
+  };
 
   const login = (email, token) => {
     setEmail(email);
     setToken(token);
     sessionStorage.setItem('authToken', token);
     sessionStorage.setItem('authEmail', email);
+    // Refresh current user info to populate hasDonated
+    refreshMe();
   };
 
   const logout = () => {
@@ -52,8 +70,10 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('auth:logout', handleLogout);
   }, []);
 
+  useEffect(() => { refreshMe(); }, []);
+
   return (
-    <AuthContext.Provider value={{ token, email, login, logout }}>
+    <AuthContext.Provider value={{ token, email, hasDonated, login, logout, refreshMe }}>
       {children}
     </AuthContext.Provider>
   );

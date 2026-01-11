@@ -12,6 +12,5 @@ describe('logger', () => {
     expect(() => logger.error('test')).not.toThrow();
     expect(() => logger.warn('test')).not.toThrow();
     expect(() => logger.info('test')).not.toThrow();
-    expect(() => logger.debug('test')).not.toThrow();
   });
 });

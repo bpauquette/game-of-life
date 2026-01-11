@@ -84,6 +84,7 @@ function SimpleScriptPanel({
   const [script, setScript] = useState('PENDOWN\nRECT 4 3\nGOTO 10 5\nRECT 2 2\n');
   const [message, setMessage] = useState(null); // Fix: don't show success message on init
   const [running, setRunning] = useState(false);
+  const cancelRequested = React.useRef(false);
   
   // Enhanced features state
   const [activeTab, setActiveTab] = useState(0);
@@ -132,7 +133,7 @@ function SimpleScriptPanel({
       setDebugLog(log => [
         ...log,
         { ...ev.detail, timestamp: Date.now() }
-      ].slice(-50)); // Keep last 50 entries
+      ].slice(-10000)); // Keep last 10000 entries to show long-running scripts
     }
     
     function onStepAnim(ev) {
@@ -171,6 +172,7 @@ function SimpleScriptPanel({
   const handleRun = useCallback(async () => {
     if (running) return;
     
+    cancelRequested.current = false;
     setRunning(true);
     setMessage(null);
     setDebugLog([]);
@@ -264,7 +266,17 @@ function SimpleScriptPanel({
         }));
       }
       
-      await execBlock(blocks, scriptState, onStepCallback, emitStepEvent, step, gameTicks, setIsRunning, onLoadGrid);
+      await execBlock(
+        blocks,
+        scriptState,
+        onStepCallback,
+        emitStepEvent,
+        step,
+        gameTicks,
+        setIsRunning,
+        onLoadGrid,
+        () => cancelRequested.current
+      );
       
       // Emit script end event for HUD
       if (typeof window !== 'undefined') {
@@ -303,8 +315,20 @@ function SimpleScriptPanel({
       }
     } finally {
       setRunning(false);
+      cancelRequested.current = false;
     }
   }, [script, running, onClose, getLiveCells, onLoadGrid, step, isRunning, setIsRunning]);
+
+  const handleCancel = useCallback(() => {
+    if (running) {
+      cancelRequested.current = true;
+      // Stop the animation immediately
+      if (typeof setIsRunning === 'function') {
+        setIsRunning(false);
+      }
+      setMessage({ type: 'info', text: 'Cancel requested. Script will stop after the current operation.' });
+    }
+  }, [running, setIsRunning]);
 
   const handleSaveScript = useCallback(async () => {
     if (!isAuthenticated) {
@@ -371,13 +395,13 @@ function SimpleScriptPanel({
   }, [isAuthenticated, token, loadCloudScripts]);
 
   const handleClose = useCallback(() => {
-    if (!running && onClose) {
-      // Ensure focus is properly managed when closing
+    if (onClose) {
+      // Allow closing even while a script is running; execution continues in background
       setTimeout(() => {
         onClose();
       }, 0);
     }
-  }, [onClose, running]);
+  }, [onClose]);
 
   return (
     <Dialog 
@@ -386,7 +410,7 @@ function SimpleScriptPanel({
       maxWidth="lg"
       fullWidth
       keepMounted={false}
-      disableEscapeKeyDown={running}
+      disableEscapeKeyDown={false}
       aria-labelledby="script-panel-title"
       aria-describedby="script-panel-description"
       disablePortal={false}
@@ -491,7 +515,7 @@ function SimpleScriptPanel({
             {/* Saved Scripts Tab */}
             <TabPanel value={activeTab} index={1}>
               <Box sx={{ height: 300, overflow: 'auto' }}>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h5" component="h2" gutterBottom>
                   My Saved Scripts {isAuthenticated && `(${cloudScripts.length})`}
                 </Typography>
                 {!isAuthenticated ? (
@@ -534,14 +558,14 @@ function SimpleScriptPanel({
             
             {/* Debug Log Tab */}
             <TabPanel value={activeTab} index={2}>
-              <Box sx={{ height: 300, overflow: 'auto', border: 1, borderColor: 'grey.700', borderRadius: 1, p: 1, bgcolor: '#0b1224', color: '#e5e7eb' }}>
-                <Typography variant="h6" gutterBottom sx={{ color: '#e5e7eb' }}>Debug Log</Typography>
+              <Box sx={{ height: 300, overflow: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 1, p: 1, bgcolor: 'var(--surface-2)', color: 'var(--text-primary)' }}>
+                <Typography variant="h5" component="h2" gutterBottom sx={{ color: 'var(--text-primary)' }}>Debug Log</Typography>
                 {debugLog.length === 0 ? (
-                  <Typography sx={{ color: '#cbd5f5' }}>No debug messages yet. Run a script to see execution details.</Typography>
+                  <Typography sx={{ color: 'var(--text-secondary)' }}>No debug messages yet. Run a script to see execution details.</Typography>
                 ) : (
                   debugLog.map((entry, index) => (
-                    <Box key={index} sx={{ mb: 1, p: 1, bgcolor: '#111827', color: '#e5e7eb', borderRadius: 1, border: '1px solid #1f2937' }}>
-                      <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#e5e7eb' }}>
+                    <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'var(--surface-3)', color: 'var(--text-primary)', borderRadius: 1, border: '1px solid var(--border-subtle)' }}>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>
                         <strong>{entry.type}:</strong> {entry.msg || entry.line || JSON.stringify(entry)}
                       </Typography>
                     </Box>
@@ -552,12 +576,12 @@ function SimpleScriptPanel({
 
             {/* Language Reference Tab */}
             <TabPanel value={activeTab} index={3}>
-              <Box sx={{ height: 300, overflow: 'auto', border: 1, borderColor: 'grey.300', borderRadius: 1, p: 2, bgcolor: 'background.paper' }}>
-                <Typography variant="h6" gutterBottom>Language Reference</Typography>
+              <Box sx={{ height: 300, overflow: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 1, p: 2, bgcolor: 'var(--surface-1)', color: 'var(--text-primary)' }}>
+                <Typography variant="h5" component="h2" gutterBottom>Language Reference</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                   Commands, syntax, and examples for the GOL scripting language.
                 </Typography>
-                <Box component="pre" sx={{ fontFamily: 'monospace', fontSize: 13, whiteSpace: 'pre-wrap', bgcolor: '#0f172a', color: '#e2e8f0', p: 2, borderRadius: 1, border: '1px solid #1f2937' }}>
+                <Box component="pre" sx={{ fontFamily: 'monospace', fontSize: 13, whiteSpace: 'pre-wrap', bgcolor: 'var(--surface-3)', color: 'var(--text-primary)', p: 2, borderRadius: 1, border: '1px solid var(--border-subtle)' }}>
                   {languageDefinition}
                 </Box>
               </Box>
@@ -567,6 +591,15 @@ function SimpleScriptPanel({
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>Close</Button>
+        <Button 
+          onClick={handleCancel}
+          color="error"
+          variant="outlined"
+          disabled={!running}
+          startIcon={<StopIcon />}
+        >
+          Cancel Script
+        </Button>
         {isAuthenticated && (
           <Button
             startIcon={<SaveIcon />}

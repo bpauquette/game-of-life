@@ -20,23 +20,16 @@ export async function updateShapePublic(id, isPublic) {
 }
 
 export function getBackendApiBase() {
-    // Log the computed API base for debugging
-    if (typeof window !== 'undefined' && window.location) {
-    } else if (typeof process !== 'undefined' && process.env) {
-    }
   // If REACT_APP_API_BASE is set, use it (for test or explicit override)
   if (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE) {
     return process.env.REACT_APP_API_BASE;
   }
-  // Always append /api to window.location.origin in the browser
-  if (typeof window !== 'undefined' && window.location) {
-    let base = window.location.origin;
-    // Avoid double /api if already present
-    if (!base.endsWith('/api')) base += '/api';
-    return base;
+  // Try window origin when available (non-proxy deployments)
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    return `${window.location.origin}/api`;
   }
-  // Fallback for non-browser/test
-  return 'http://localhost:55000/api';
+  // Default: use relative URL for proxy setups
+  return '/api';
 }
 
 function getAuthToken() {
@@ -45,12 +38,20 @@ function getAuthToken() {
 
 
 export async function saveCapturedShapeToBackend(shapeData, logout) {
+  // Only send OpenAPI-compliant fields
   const shapeForBackend = {
-    ...shapeData,
-    cells: shapeData.pattern,
-    meta: { capturedAt: new Date().toISOString(), source: 'capture-tool' }
+    name: shapeData.name,
+    cells: Array.isArray(shapeData.pattern) ? shapeData.pattern : [],
+    width: shapeData.width,
+    height: shapeData.height,
+    rule: shapeData.rule,
+    public: shapeData.public,
+    createdAt: shapeData.createdAt,
+    updatedAt: shapeData.updatedAt,
+    // Optionally include userId/userEmail if present
+    ...(shapeData.userId ? { userId: shapeData.userId } : {}),
+    ...(shapeData.userEmail ? { userEmail: shapeData.userEmail } : {})
   };
-  delete shapeForBackend.pattern;
   // Check for duplicate name first (prefer client-side validation to avoid confusion)
   try {
     const base = getBackendApiBase();
@@ -121,15 +122,14 @@ export async function fetchShapes(base, q, limit, offset) {
 
 // Fetch only shape names (id + name) in a single call when supported by the backend.
 // Falls back to fetching a large page of shapes and mapping to minimal metadata.
-export async function fetchShapeNames(base, q = '', limit = 50, offset = 0) {
+export async function fetchShapeNames(base, q = '', limit = 50, offset = 0, signal = null) {
     // eslint-disable-next-line no-console
   try {
-    const url = `${getBackendApiBase()}/v1/shapes/names?q=${encodeURIComponent(q || '')}&limit=${limit}&offset=${offset}`;
-    const res = await fetch(url);
+    const url = `${getBackendApiBase()}/v1/shapes/names?q=${encodeURIComponent(q || '')}`;
+    const res = await fetch(url, { signal });
     if (!res.ok) return { ok: false, items: [], total: 0 };
-    const data = await res.json().catch(() => ({}));
-    const items = Array.isArray(data.items) ? data.items : [];
-    return { ok: true, items, total: Number(data.total) || items.length };
+    const items = await res.json().catch(() => []);
+    return { ok: true, items, total: items.length };
   } catch (err) {
     logger.warn('fetchShapeNames failed:', err);
     return { ok: false, items: [], total: 0 };

@@ -36,15 +36,15 @@ function ShapeThumb({ shape, onClick, colorScheme }) {
   const cells = getCellsArray(shape);
   if (!cells.length) {
     return (
-      <Box onClick={onClick} sx={{ width: 64, height: 64, border: '1px dashed #555', borderRadius: 1 }} />
+      <Box onClick={onClick} sx={{ width: 64, height: 64, border: '1px dashed var(--border-subtle)', borderRadius: 1 }} />
     );
   }
   const { width, height, cells: normalized } = normalizeCellsForThumb(cells);
 
   return (
     <Box onClick={onClick} sx={{ cursor: 'pointer' }}>
-      <svg width={64} height={64} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet"
-           style={{ background: colorScheme?.background || '#111', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}>
+       <svg width={64} height={64} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet"
+         style={{ background: colorScheme?.background || 'var(--surface-1)', border: '1px solid var(--border-subtle)', borderRadius: 6 }}>
         {normalized.map((cell) => {
           const fill = colorScheme?.getCellColor?.(cell.x, cell.y) || '#ccc';
           const cellKey = `${cell.x}-${cell.y}`;
@@ -68,7 +68,7 @@ export default function RecentShapesDrawer({ open, onClose, recentShapes, onSele
       open={open}
       onClose={onClose}
     >
-      <Box sx={{ width: '100%', height: '45vh', bgcolor: 'rgba(0,0,0,0.9)', color: '#fff', p: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <Box sx={{ width: '100%', height: '45vh', bgcolor: 'var(--surface-modal)', color: 'var(--text-primary)', p: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Typography variant="subtitle2" sx={{ textTransform: 'uppercase', letterSpacing: 0.5, color: 'primary.light' }}>
           Recent Shapes
         </Typography>
@@ -81,7 +81,7 @@ export default function RecentShapesDrawer({ open, onClose, recentShapes, onSele
                   colorScheme={colorScheme}
                   onClick={() => onSelectShape?.(shape)}
                 />
-                <Typography variant="caption" sx={{ display: 'block', mt: 0.5, textAlign: 'center', opacity: 0.9 }} noWrap>
+                <Typography variant="caption" sx={{ display: 'block', mt: 0.5, textAlign: 'center', opacity: 0.9, color: 'var(--text-secondary)' }} noWrap>
                   {shape?.name || shape?.meta?.name || shape?.id || `shape ${idx+1}`}
                 </Typography>
               </Grid>

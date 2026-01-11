@@ -1,5 +1,6 @@
 import { eraserTool } from './tools/eraserTool';
 import logger from './utils/logger';
+import StepScheduler from './StepScheduler';
 const CONST_SHAPES = 'shapes';
 // GameController.js - Controller layer for Conway's Game of Life
 // Handles user interactions, game loop, and coordination between Model and View
@@ -37,17 +38,14 @@ export class GameController {
   this._lastPlacementAt = 0;
 
     // Game loop state
-    this.animationId = null;
-    this.worker = null;
-    this.useWebWorker = false;
-    this.lastFrameTime = 0;
+    this.scheduler = null; // Will be initialized on demand
     this.performanceCaps = {
       maxFPS: Math.max(1, Number(this.options.maxFPS) || 60),
       maxGPS: Math.max(1, Number(this.options.maxGPS || this.options.defaultSpeed) || 30),
       enableFPSCap: false,
       enableGPSCap: false
     };
-    this.frameInterval = 0; // 0 means "no cap"; run every RAF
+    this._lastRenderTime = 0;
 
     // Performance tracking
     this.performanceCallbacks = [];
@@ -60,7 +58,27 @@ export class GameController {
     this.registerTool('eraser', eraserTool);
   }
 
-  // Helper to record a diff for undo
+  // Lazy-initialize scheduler on first use
+  _getScheduler() {
+    if (!this.scheduler) {
+      this.scheduler = new StepScheduler(() => this.model.step(), {
+        maxFPS: this.performanceCaps.maxFPS,
+        maxGPS: this.performanceCaps.maxGPS,
+        useWorker: false,
+        onPerformance: (frameTime) => {
+          if (globalThis.speedGaugeTracker) {
+            globalThis.speedGaugeTracker(frameTime, frameTime);
+          }
+          for (const callback of this.performanceCallbacks) {
+            callback(frameTime);
+          }
+        }
+      });
+    }
+    return this.scheduler;
+  }
+
+  // Record diff: push cells to undo stack and clear redo
   recordDiff(cells) {
     // cells: Array of {x, y, prevAlive, newAlive}
     if (!Array.isArray(cells) || cells.length === 0) return;
@@ -639,27 +657,39 @@ export class GameController {
     let newOffsetX = viewport.offsetX;
     let newOffsetY = viewport.offsetY;
     let handled = false;
+    const keyLower = key.toLowerCase();
 
-    switch (key) {
-      case 'ArrowLeft':
+    switch (keyLower) {
+      case 'arrowleft':
         newOffsetX -= amount;
         handled = true;
         break;
-      case 'ArrowRight':
+      case 'arrowright':
         newOffsetX += amount;
         handled = true;
         break;
-      case 'ArrowUp':
+      case 'arrowup':
         newOffsetY -= amount;
         handled = true;
         break;
-      case 'ArrowDown':
+      case 'arrowdown':
         newOffsetY += amount;
         handled = true;
         break;
       case ' ': // Spacebar - toggle play/pause
         this.toggleRunning();
         handled = true;
+        break;
+      case 's': // Step or Save
+        if (event.ctrlKey) {
+          // Ctrl+S handled by global listener (save)
+        } else {
+          // Single step
+          if (!this.model.getIsRunning()) {
+            this.step();
+          }
+          handled = true;
+        }
         break;
       case 'c': // Clear
         if (event.ctrlKey) {
@@ -669,6 +699,56 @@ export class GameController {
         break;
       case 'f': // Focus viewport on live cells
         this.centerOnLiveCells();
+        handled = true;
+        break;
+      case '=':
+      case '+': // Zoom in
+        this.zoomIn();
+        handled = true;
+        break;
+      case '-':
+      case '_': // Zoom out
+        this.zoomOut();
+        handled = true;
+        break;
+      case '1': // Tool selection
+        this.model.setSelectedTool('draw');
+        handled = true;
+        break;
+      case '2':
+        this.model.setSelectedTool('eraser');
+        handled = true;
+        break;
+      case '3':
+        this.model.setSelectedTool('pan');
+        handled = true;
+        break;
+      case '4':
+        this.model.setSelectedTool('shapes');
+        handled = true;
+        break;
+      case '5':
+        this.model.setSelectedTool('rect');
+        handled = true;
+        break;
+      case '6':
+        this.model.setSelectedTool('line');
+        handled = true;
+        break;
+      case '7':
+        this.model.setSelectedTool('circle');
+        handled = true;
+        break;
+      case '8':
+        this.model.setSelectedTool('capture');
+        handled = true;
+        break;
+      case '[': // Slow down
+        this.decreaseSpeed();
+        handled = true;
+        break;
+      case ']': // Speed up
+        this.increaseSpeed();
         handled = true;
         break;
       default:
@@ -682,6 +762,40 @@ export class GameController {
       }
       event.preventDefault();
     }
+  }
+
+  // Zoom methods for keyboard shortcuts
+  zoomIn() {
+    const viewport = this.model.getViewport();
+    const currentSize = viewport.cellSize || 8;
+    const nextSize = Math.min(currentSize * 1.2, 64);
+    if (nextSize !== currentSize) {
+      this.view.renderer.setViewport(viewport.offsetX, viewport.offsetY, nextSize);
+      this.model.setViewportModel(viewport.offsetX, viewport.offsetY, nextSize, viewport.zoom);
+      this.requestRender();
+    }
+  }
+
+  zoomOut() {
+    const viewport = this.model.getViewport();
+    const currentSize = viewport.cellSize || 8;
+    const nextSize = Math.max(currentSize / 1.2, 1);
+    if (nextSize !== currentSize) {
+      this.view.renderer.setViewport(viewport.offsetX, viewport.offsetY, nextSize);
+      this.model.setViewportModel(viewport.offsetX, viewport.offsetY, nextSize, viewport.zoom);
+      this.requestRender();
+    }
+  }
+
+  // Speed control methods for keyboard shortcuts
+  increaseSpeed() {
+    const currentSpeed = this.model.getSpeed();
+    this.setSpeed(Math.min(currentSpeed + 1, 10));
+  }
+
+  decreaseSpeed() {
+    const currentSpeed = this.model.getSpeed();
+    this.setSpeed(Math.max(currentSpeed - 1, 1));
   }
 
   // Center viewport on current live cells
@@ -735,147 +849,60 @@ export class GameController {
   }
 
   handleRunningStateChange(isRunning) {
+    const scheduler = this._getScheduler();
     if (isRunning) {
-      if (this.useWebWorker) {
-        this.startWorkerLoop();
-      } else {
-        this.startAnimationLoop();
-      }
+      scheduler.start();
     } else {
-      if (this.useWebWorker) {
-        this.stopWorkerLoop();
-      } else {
-        this.stopAnimationLoop();
-      }
+      scheduler.stop();
     }
   }
 
   // Game loop (requestAnimationFrame)
   startAnimationLoop() {
-    if (this.animationId) return; // Already running
-
-    const loop = async (timestamp) => {
-      if (!this.model.getIsRunning()) {
-        this.animationId = null;
-        return;
-      }
-
-      // Initialize baseline on first frame so tests that supply
-      // explicit timestamps (e.g. 10, 40, 80) can control stepping.
-      if (!Number.isFinite(this.lastFrameTime)) {
-        this.lastFrameTime = 0;
-      }
-
-      const delta = timestamp - this.lastFrameTime;
-      const shouldStep = this.frameInterval <= 0 || delta >= this.frameInterval;
-
-      if (shouldStep) {
-        const frameStart = performance.now();
-
-        try {
-          await this.model.step();
-        } catch (error) {
-          // Log error but continue game loop
-          console.warn('Game step failed:', error);
-        }
-        this.requestRender();
-
-        const frameTime = performance.now() - frameStart;
-        this.notifyPerformance(frameTime);
-        this.lastFrameTime = timestamp;
-      }
-
-      this.animationId = requestAnimationFrame(loop);
-    };
-
-    this.animationId = requestAnimationFrame(loop);
+    // Deprecated: use scheduler instead
+    this._getScheduler().start();
   }
 
   stopAnimationLoop() {
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
-    }
+    // Deprecated: use scheduler instead
+    if (this.scheduler) this.scheduler.stop();
   }
 
   // Game loop (Web Worker)
   startWorkerLoop() {
-    if (this.worker) return; // Already running
-
-    try {
-      // Only attempt Worker creation in browser environments with ES module support
-      if (typeof globalThis !== 'undefined' && typeof URL !== 'undefined' && typeof Worker !== 'undefined') {
-        // Check if we're in a real browser (not Jest test environment)
-        // In Jest, import.meta will cause a syntax error
-        try {
-          // Try to create Worker with ES module URL (works in browser with ES modules)
-          // Using Function constructor to defer evaluation and allow graceful fallback in CommonJS
-          const createWorkerCode = `new Worker(new URL('../workers/gameWorker.js', import.meta.url))`;
-          // eslint-disable-next-line no-new-func
-          const createWorker = new Function('URL', 'Worker', `return ${createWorkerCode}`);
-          this.worker = createWorker(URL, Worker);
-        } catch (syntaxError) {
-          // import.meta not available - likely in test environment
-          return;
-        }
-      }
-    } catch (error) {
-      // Fallback for environments without Worker API
-      if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
-        console.warn('Could not create Web Worker:', error);
-      }
-      return;
-    }
-
-    // Only set up message handler if worker was successfully created
-    if (!this.worker) return;
-
-    this.worker.onmessage = async (e) => {
-      if (e.data.command === 'step') {
-        const frameStart = performance.now();
-        try {
-          await this.model.step();
-        } catch (error) {
-          console.warn('Game step failed:', error);
-        }
-        this.requestRender();
-        const frameTime = performance.now() - frameStart;
-        this.notifyPerformance(frameTime);
-      }
-    };
-    this.worker.postMessage({ command: 'set-interval', payload: 1000 / this._getLoopRate() });
-    this.worker.postMessage({ command: 'start' });
+    // Deprecated: use scheduler instead
+    const scheduler = this._getScheduler();
+    scheduler.setUseWorker(true);
+    scheduler.start();
   }
 
   stopWorkerLoop() {
-    if (this.worker) {
-      this.worker.postMessage({ command: 'stop' });
-      this.worker.terminate();
-      this.worker = null;
+    // Deprecated: use scheduler instead
+    if (this.scheduler) {
+      this.scheduler.setUseWorker(false);
+      this.scheduler.stop();
     }
   }
 
+  _calculateFrameInterval() {
+    // Deprecated: delegated to scheduler
+    if (!this.scheduler) return 0;
+    return this.scheduler.frameInterval;
+  }
+
   setSpeed(fps) {
-    const requested = Math.max(1, Number(fps) || 1);
-    const loopRate = Math.max(1, Math.min(requested, this.performanceCaps.maxFPS, this.performanceCaps.maxGPS));
-    if (!this.performanceCaps.enableFPSCap && !this.performanceCaps.enableGPSCap) {
-      this.frameInterval = 0;
-      if (this.worker) {
-        this.worker.postMessage({ command: 'set-interval', payload: 1000 / loopRate });
-      }
-      return;
-    }
-    this.frameInterval = 1000 / loopRate;
-    if (this.worker) {
-      this.worker.postMessage({ command: 'set-interval', payload: this.frameInterval });
-    }
+    // setSpeed is deprecated; prefer applyPerformanceSettings
+    // This is a compatibility wrapper for keyboard shortcuts (+ and - keys)
+    // Map fps (1-10 range) to FPS cap
+    const nextFps = Math.max(1, Math.min(Number(fps) || 60, 120));
+    this.applyPerformanceSettings({ maxFPS: nextFps, enableFPSCap: true });
   }
 
   applyPerformanceSettings(settings = {}) {
     if (!settings || typeof settings !== 'object') return;
+    try { console.debug(`[GameController.applyPerformanceSettings] Called with:`, settings); } catch (e) {}
 
     let capsChanged = false;
-    const wasUsingWorker = this.useWebWorker;
 
     if (Object.prototype.hasOwnProperty.call(settings, 'maxFPS')) {
       const nextFps = Math.max(1, Math.min(Number(settings.maxFPS) || this.performanceCaps.maxFPS, 120));
@@ -911,40 +938,26 @@ export class GameController {
 
     if (Object.prototype.hasOwnProperty.call(settings, 'useWebWorker')) {
       const next = !!settings.useWebWorker;
-      if (next !== this.useWebWorker) {
-        this.useWebWorker = next;
-        // If the loop mode changed while running, restart the loop
-        if (this.model.getIsRunning()) {
-          if (wasUsingWorker) {
-            this.stopWorkerLoop();
-            this.startAnimationLoop();
-          } else {
-            this.stopAnimationLoop();
-            this.startWorkerLoop();
-          }
-        }
+      if (next && this.scheduler) {
+        this.scheduler.setUseWorker(next);
       }
     }
 
-    if (capsChanged) {
-      if (!this.performanceCaps.enableFPSCap && !this.performanceCaps.enableGPSCap) {
-        this.frameInterval = 0;
-      } else {
-        this.frameInterval = 1000 / this._getLoopRate();
-      }
-      // Also update worker interval if it's running
-      if (this.worker) {
-        this.worker.postMessage({ command: 'set-interval', payload: this.frameInterval > 0 ? this.frameInterval : 1000 / this._getLoopRate() });
-      }
+    if (capsChanged && this.scheduler) {
+      this.scheduler.setMaxFPS(this.performanceCaps.maxFPS);
+      this.scheduler.setMaxGPS(this.performanceCaps.maxGPS);
+      try { console.debug(`[GameController] Caps updated via scheduler`); } catch (e) {}
     }
   }
 
   _getLoopRate() {
-    const fps = Math.max(1, this.performanceCaps.maxFPS || 60);
-    const gps = Math.max(1, this.performanceCaps.maxGPS || this.options.defaultSpeed || 30);
-    const useFps = this.performanceCaps.enableFPSCap ? fps : Infinity;
-    const useGps = this.performanceCaps.enableGPSCap ? gps : Infinity;
-    const rate = Math.min(useFps, useGps);
+    // Deprecated: delegated to scheduler
+    if (!this.performanceCaps.enableFPSCap && !this.performanceCaps.enableGPSCap) {
+      return 60;
+    }
+    const fps = this.performanceCaps.enableFPSCap ? Math.max(1, this.performanceCaps.maxFPS || 60) : Infinity;
+    const gps = this.performanceCaps.enableGPSCap ? Math.max(1, this.performanceCaps.maxGPS || 30) : Infinity;
+    const rate = Math.min(fps, gps);
     return Number.isFinite(rate) && rate > 0 ? rate : 60;
   }
 
@@ -955,6 +968,18 @@ export class GameController {
     // not on subsequent coalesced calls) so we can trace interactive tool
     // selections that should cause a render.
     if (this.renderScheduled) return;
+    
+    // Apply FPS throttling for ADA compliance
+    const now = Date.now();
+    const minRenderInterval = this.performanceCaps?.enableFPSCap && this.performanceCaps?.maxFPS > 0
+      ? 1000 / this.performanceCaps.maxFPS
+      : 0;
+    
+    if (minRenderInterval > 0 && this._lastRenderTime && (now - this._lastRenderTime) < minRenderInterval) {
+      // Too soon - skip this render request
+      return;
+    }
+    
     try {
       const info = { event: 'controller.requestRender.scheduled', ts: Date.now(), selectedTool: this.model?.getSelectedTool?.() };
       try { globalThis.__GOL_PUSH_CANVAS_LOG__ && globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info)); } catch (e) {}
@@ -970,6 +995,9 @@ export class GameController {
       const cellSize = this.view.renderer.viewport.cellSize || 8;
       const viewport = { ...modelViewport, cellSize };
       this.view.render(liveCells, viewport);
+
+      // Track last render time for FPS throttling
+      this._lastRenderTime = Date.now();
 
       const renderTime = performance.now() - renderStart;
 

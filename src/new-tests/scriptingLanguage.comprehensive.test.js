@@ -1,7 +1,7 @@
 // Comprehensive test suite for GOL Scripting Language
 // Tests cover all major language features, edge cases, and error conditions
 
-import { parseBlocks, execBlock, splitCond } from '../view/scriptingInterpreter';
+import { parseBlocks, execBlock, splitCond, executeCommand } from '../view/scriptingInterpreter';
 import { parseValue, evalExpr, evalCond, evalCondCompound } from '../view/scriptingEngine';
 
 describe('Scripting Engine - Core Functions', () => {
@@ -668,35 +668,39 @@ describe('Scripting Interpreter - String Functions', () => {
 });
 
 describe('Scripting Interpreter - Geometric Commands', () => {
-  it('should handle LINE command', () => {
-    // LINE x1 y1 x2 y2 should create a Bresenham line
-    const state = { cells: new Set() };
-    // Simplified: just check the command is recognized
-    expect(true).toBe(true);
+  const baseState = () => ({ cells: new Set(), x: 0, y: 0, penDown: true, vars: {} });
+
+  const runCommand = async (line) => {
+    const state = baseState();
+    await executeCommand(line, state, null, null, null, null, null, null);
+    return state;
+  };
+
+  it('gracefully ignores unsupported LINE command', async () => {
+    const state = await runCommand('LINE 0 0 3 3');
+    expect(state.cells.size).toBe(0);
+    expect(state.x).toBe(0);
+    expect(state.y).toBe(0);
   });
 
-  it('should handle OVAL command', () => {
-    const state = { cells: new Set() };
-    // OVAL x1 y1 x2 y2 should create ellipse
-    expect(true).toBe(true);
+  it('gracefully ignores unsupported OVAL command', async () => {
+    const state = await runCommand('OVAL 0 0 4 2');
+    expect(state.cells.size).toBe(0);
   });
 
-  it('should handle RECTPERIMETER command', () => {
-    const state = { cells: new Set() };
-    // RECTPERIMETER x1 y1 x2 y2 should create rectangle outline
-    expect(true).toBe(true);
+  it('gracefully ignores unsupported RECTPERIMETER command', async () => {
+    const state = await runCommand('RECTPERIMETER 0 0 2 2');
+    expect(state.cells.size).toBe(0);
   });
 
-  it('should handle SQUARE command', () => {
-    const state = { cells: new Set(), x: 0, y: 0 };
-    // SQUARE size should create square outline at current position
-    expect(true).toBe(true);
+  it('gracefully ignores unsupported SQUARE command', async () => {
+    const state = await runCommand('SQUARE 5');
+    expect(state.cells.size).toBe(0);
   });
 
-  it('should handle RANDRECT command', () => {
-    const state = { cells: new Set(), x: 0, y: 0 };
-    // RANDRECT minW maxW minH maxH [count]
-    expect(true).toBe(true);
+  it('gracefully ignores unsupported RANDRECT command', async () => {
+    const state = await runCommand('RANDRECT 1 3 1 3 5');
+    expect(state.cells.size).toBe(0);
   });
 
   it('should execute CIRCLE with radius only', () => {
@@ -809,50 +813,12 @@ describe('Scripting Interpreter - Integration Tests', () => {
 });
 
 describe('Scripting Language - Known Limitations (Future Improvements)', () => {
-  it.skip('should support AND/OR operators in conditions', () => {
-    const state = { vars: { x: 10, y: 5 } };
-    // Currently NOT supported: x > 5 AND y < 10
-    expect(true).toBe(true);
-  });
-
-  it.skip('should support ELSE clause in IF statements', () => {
-    const state = { vars: { x: 3 }, output: [] };
-    // Currently NOT supported
-    expect(true).toBe(true);
-  });
-
-  it.skip('should support FOR loops', () => {
-    const state = { vars: {}, output: [] };
-    // Currently NOT supported: FOR i = 1; i <= 5; i++
-    expect(true).toBe(true);
-  });
-
-  it.skip('should support BREAK and CONTINUE', () => {
-    const state = { vars: {}, output: [] };
-    // Currently NOT supported
-    expect(true).toBe(true);
-  });
-
-  it.skip('should support function definitions and calls', () => {
-    const state = { vars: {}, output: [] };
-    // Currently NOT supported: FUNCTION drawBox(size) ... END
-    expect(true).toBe(true);
-  });
-
-  it.skip('should support arrays and iteration', () => {
-    const state = { vars: {}, output: [] };
-    // Currently NOT supported: shapes = [shape1, shape2]
-    expect(true).toBe(true);
-  });
-
-  it.skip('should support HEADING query and set', () => {
-    const state = { vars: {}, heading: 0 };
-    // Currently NOT supported: h = HEADING; HEADING 45
-    expect(true).toBe(true);
-  });
-
-  it.skip('should provide detailed error messages with line numbers', () => {
-    // Currently: silent failures
-    expect(true).toBe(true);
-  });
+  it.skip('should support AND/OR operators in conditions', () => {});
+  it.skip('should support ELSE clause in IF statements', () => {});
+  it.skip('should support FOR loops', () => {});
+  it.skip('should support BREAK and CONTINUE', () => {});
+  it.skip('should support function definitions and calls', () => {});
+  it.skip('should support arrays and iteration', () => {});
+  it.skip('should support HEADING query and set', () => {});
+  it.skip('should provide detailed error messages with line numbers', () => {});
 });

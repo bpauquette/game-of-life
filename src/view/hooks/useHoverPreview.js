@@ -75,7 +75,7 @@ export function useHoverPreview() {
     worker.onerror = () => fetchDirect(id);
     worker.onmessageerror = () => fetchDirect(id);
       try {
-        worker.postMessage({ type: 'start', id, base: getBackendApiBase() });
+        worker.postMessage({ type: 'start', id, base: resolveBackendBase() });
     } catch (err) {
       logger.warn('[useHoverPreview] worker.postMessage failed', err);
       fetchDirect(id);

@@ -16,6 +16,13 @@ module.exports = {
           process: 'process/browser',
         })
       );
+      
+      // Disable minification if BUILD_WITHOUT_MINIFICATION is set
+      if (process.env.BUILD_WITHOUT_MINIFICATION === 'true') {
+        webpackConfig.optimization.minimize = false;
+        webpackConfig.optimization.minimizer = [];
+      }
+      
       return webpackConfig;
     },
   },

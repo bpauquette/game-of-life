@@ -10,6 +10,20 @@ import {
 } from '@mui/icons-material';
 import { transformShape } from '../../model/shapeTransforms';
 import { rotateShape } from '../../model/shapeTransforms';
+const tokenOr = (name, fallback) => {
+  try {
+    const root = globalThis.document?.documentElement;
+    if (!root) return fallback;
+    const v = globalThis.getComputedStyle(root).getPropertyValue(name);
+    return (v && v.trim()) || fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+const CTA_COLOR = tokenOr('--accent-cta', '#00e6ff');
+const CTA_COLOR_HOVER = tokenOr('--accent-cta-strong', '#00ffff');
+const CTA_SHADOW = tokenOr('--accent-cta', '#00e6ff');
+const PREVIEW_BORDER_COLOR = tokenOr('--border-faint', 'rgba(0,0,0,0.06)');
 
 // Function to parse text and convert URLs to clickable links
 function renderTextWithLinks(text, sx) {
@@ -27,10 +41,10 @@ function renderTextWithLinks(text, sx) {
           rel="noopener noreferrer"
           sx={{
             ...sx,
-            color: '#00e6ff', // Match the cyan color used elsewhere
+                color: CTA_COLOR,
             textDecoration: 'underline',
             '&:hover': {
-              color: '#00ffff',
+                  color: CTA_COLOR_HOVER,
             }
           }}
         >
@@ -129,7 +143,7 @@ function PreviewPanel(props) {
   const cellSize = typeof props.cellSize === 'number' ? props.cellSize : 1;
   const drawW = Math.min(maxSvgSize, width * cellSize + 8);
   const drawH = Math.min(maxSvgSize, height * cellSize + 8);
-  const PREVIEW_BORDER_STYLE = { border: '1px solid rgba(0,0,0,0.06)', borderRadius: 4 };
+  const PREVIEW_BORDER_STYLE = { border: `1px solid ${PREVIEW_BORDER_COLOR}`, borderRadius: 4 };
 
   // If too many cells, render into a canvas for speed and/or generate cached dataUrl
   useEffect(() => {
@@ -157,14 +171,14 @@ function PreviewPanel(props) {
     const ctx = canvasRef.current.getContext('2d');
     ctx.clearRect(0, 0, drawW, drawH);
     // Simple cell rendering
-    const cellColor = colorScheme?.cellColor || '#1976d2';
+    const cellColor = colorScheme?.cellColor || tokenOr('--accent-primary', '#1976d2');
     for (const cell of cells) {
       const x = (typeof cell.x !== 'undefined') ? cell.x : (Array.isArray(cell) ? cell[0] : 0);
       const y = (typeof cell.y !== 'undefined') ? cell.y : (Array.isArray(cell) ? cell[1] : 0);
       ctx.fillStyle = cellColor;
       ctx.fillRect((x - bounds.minX) * cellSize + 4, (y - bounds.minY) * cellSize + 4, cellSize, cellSize);
     }
-    ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+    ctx.strokeStyle = PREVIEW_BORDER_COLOR;
     ctx.lineWidth = 1;
     ctx.strokeRect(0, 0, drawW, drawH);
   }, [canvasRef, preview, cachedDataUrl, imgError, cells, bounds, drawW, drawH, cellSize, colorScheme]);
@@ -185,8 +199,8 @@ function PreviewPanel(props) {
           <Typography
             sx={{
               fontWeight: 700,
-              color: '#00e6ff', // Vibrant cyan
-              textShadow: '0 2px 8px rgba(0,0,0,0.25), 0 0 2px #00e6ff',
+              color: CTA_COLOR,
+              textShadow: `0 2px 8px rgba(0,0,0,0.25), 0 0 2px ${CTA_SHADOW}`,
               fontSize: 20,
               letterSpacing: 0.5,
               mb: 1

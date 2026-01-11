@@ -1,3 +1,10 @@
+  const [backendType, setBackendType] = React.useState(() => {
+    try {
+      const stored = globalThis.localStorage.getItem('backendType');
+      if (stored === 'java' || stored === 'node') return stored;
+    } catch {}
+    return 'node';
+  });
 import React, { useState, useCallback, useEffect } from 'react';
 import { FRONTEND_VERSION, FRONTEND_TIMESTAMP } from '../version';
 import PropTypes from 'prop-types';
@@ -18,11 +25,14 @@ import ToolGroup from './components/ToolGroup';
 import RecentShapesStrip from './RecentShapesStrip';
 import ScriptPanel from './ScriptPanel';
 import Chip from '@mui/material/Chip';
+import Typography from '@mui/material/Typography';
 import { FullscreenExit as FullscreenExitIcon } from '@mui/icons-material';
 import TOOL_DESCRIPTIONS from './components/toolDescriptions';
 import OptionsPanel from './OptionsPanel';
 import HelpDialog from './HelpDialog';
 import AboutDialog from './AboutDialog';
+import PrivacyPolicyDialog from './PrivacyPolicyDialog';
+import AccountManagementDialog from './AccountManagementDialog';
 import SaveGridDialog from './SaveGridDialog';
 import LoadGridDialog from './LoadGridDialog';
 import useGridFileManager from './hooks/useGridFileManager';
@@ -31,7 +41,7 @@ import PhotosensitivityTestDialog from './PhotosensitivityTestDialog';
 
 // Tool toggles extracted into ToolGroup component
 
-function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, onOpenImport, onOpenDonate, onOpenPhotoTest, loggedIn }) {
+function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, onOpenImport, onOpenDonate, onOpenPhotoTest, loggedIn, photosensitivityTesterEnabled, enableAdaCompliance }) {
   const openLifeWiki = () => {
     window.open('https://conwaylife.com/wiki/Main_Page', '_blank');
   };
@@ -39,39 +49,48 @@ function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpe
   return (
     <Stack direction="row" spacing={1} alignItems="center">
       <Tooltip title="Script Playground">
-        <IconButton size="small" onClick={() => window.dispatchEvent(new CustomEvent('openScriptPanel'))} aria-label="script-playground"><CodeIcon fontSize="small" /></IconButton>
+        <IconButton color="inherit" size="small" onClick={() => window.dispatchEvent(new CustomEvent('openScriptPanel'))} aria-label="script-playground"><CodeIcon fontSize="small" /></IconButton>
       </Tooltip>
-      <Tooltip title="Photosensitivity Test">
-        <IconButton size="small" onClick={onOpenPhotoTest} aria-label="photosensitivity-test"><BugReportIcon fontSize="small" /></IconButton>
-      </Tooltip>
-      <IconButton size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
-      <IconButton size="small" onClick={onOpenImport} aria-label="import"><Tooltip title="Import Shape"><ImportIcon fontSize="small" /></Tooltip></IconButton>
-      <IconButton size="small" onClick={openLifeWiki} aria-label="lifewiki"><Tooltip title="LifeWiki"><LanguageIcon fontSize="small" /></Tooltip></IconButton>
-      <IconButton size="small" onClick={onOpenDonate} aria-label="donate"><Tooltip title="Donate"><DonateIcon fontSize="small" /></Tooltip></IconButton>
-      <IconButton size="small" onClick={onOpenHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
+      {photosensitivityTesterEnabled && enableAdaCompliance && (
+        <Tooltip title="Photosensitivity Test">
+          <IconButton color="inherit" size="small" onClick={onOpenPhotoTest} aria-label="photosensitivity-test"><BugReportIcon fontSize="small" /></IconButton>
+        </Tooltip>
+      )}
+      <IconButton color="inherit" size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
+      <IconButton color="inherit" size="small" onClick={onOpenImport} aria-label="import"><Tooltip title="Import Shape"><ImportIcon fontSize="small" /></Tooltip></IconButton>
+      <IconButton color="inherit" size="small" onClick={openLifeWiki} aria-label="lifewiki"><Tooltip title="LifeWiki"><LanguageIcon fontSize="small" /></Tooltip></IconButton>
+      <IconButton color="inherit" size="small" onClick={onOpenDonate} aria-label="donate"><Tooltip title="Donate"><DonateIcon fontSize="small" /></Tooltip></IconButton>
+      <IconButton color="inherit" size="small" onClick={onOpenHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
       <Tooltip title={`Version: v${FRONTEND_VERSION}\nBuild: ${FRONTEND_TIMESTAMP}`.replace(/\n/g, '\u000A')} placement="bottom">
-        <span>
-          <IconButton size="small" onClick={onOpenAbout} aria-label="about"><InfoIcon fontSize="small" /></IconButton>
-        </span>
-      </Tooltip>
-      <IconButton size="small" onClick={onOpenOptions} aria-label="options" data-testid="options-icon-button"><SettingsIcon fontSize="small" /></IconButton>
-      {/* User profile icon to the right of settings */}
-      <IconButton size="small" onClick={onOpenUser} aria-label="user-profile" data-testid="user-profile-icon">
-        {loggedIn ? <UserLoggedInIcon fontSize="small" /> : <UserIcon fontSize="small" />}
-      </IconButton>
-    </Stack>
-  );
-}
-AuxActions.propTypes = {
-  onOpenChart: PropTypes.func.isRequired,
-  onOpenImport: PropTypes.func.isRequired,
-  onOpenHelp: PropTypes.func.isRequired,
-  onOpenAbout: PropTypes.func.isRequired,
-  onOpenOptions: PropTypes.func.isRequired,
-  onOpenDonate: PropTypes.func
-};
-
-export default function HeaderBar({
+        <OptionsPanel
+          colorSchemes={colorSchemes}
+          colorSchemeKey={colorSchemeKey}
+          setColorSchemeKey={setColorSchemeKey}
+          popWindowSize={popWindowSize}
+          setPopWindowSize={setPopWindowSize}
+          popTolerance={popTolerance}
+          setPopTolerance={setPopTolerance}
+          showSpeedGauge={showSpeedGauge}
+          setShowSpeedGauge={setShowSpeedGauge}
+          maxFPS={maxFPS}
+          setMaxFPS={setMaxFPS}
+          maxGPS={maxGPS}
+          setMaxGPS={setMaxGPS}
+          confirmOnClear={confirmOnClear}
+          setConfirmOnClear={setConfirmOnClear}
+          detectStablePopulation={detectStablePopulation}
+          setDetectStablePopulation={setDetectStablePopulation}
+          memoryTelemetryEnabled={memoryTelemetryEnabled}
+          setMemoryTelemetryEnabled={setMemoryTelemetryEnabled}
+          photosensitivityTesterEnabled={photosensitivityTesterEnabled}
+          setPhotosensitivityTesterEnabled={setPhotosensitivityTesterEnabled}
+          backendType={backendType}
+          setBackendType={setBackendType}
+          onOk={handleOk}
+          onCancel={handleCancel}
+          data-testid-ok="options-ok-button"
+          data-testid-cancel="options-cancel-button"
+        />
   recentShapes,
   recentShapesPersistence,
   selectShape,
@@ -103,6 +122,8 @@ export default function HeaderBar({
   setMaxFPS,
   maxGPS,
   setMaxGPS,
+  enableAdaCompliance,
+  setEnableAdaCompliance,
   // grid
   getLiveCells,
   onLoadGrid,
@@ -123,6 +144,9 @@ export default function HeaderBar({
   setDetectStablePopulation,
   memoryTelemetryEnabled = false,
   setMemoryTelemetryEnabled,
+  // accessibility
+  id,
+  tabIndex,
   // Hashlife controls
 
   // Engine mode props
@@ -141,8 +165,8 @@ export default function HeaderBar({
   onOpenMyShapes,
   onOpenImport,
 }) {
-   // Auth state and handlers
-  const { token, email, logout } = useAuth();
+  // Auth state and handlers
+  const { token, email, hasDonated, logout } = useAuth();
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const handleUserIconClick = () => setUserDialogOpen(true);
@@ -151,8 +175,17 @@ export default function HeaderBar({
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [accountManagementOpen, setAccountManagementOpen] = useState(false);
   const [donateOpen, setDonateOpen] = useState(false);
   const [photoTestOpen, setPhotoTestOpen] = useState(false);
+  const [photosensitivityTesterEnabled, setPhotosensitivityTesterEnabled] = useState(() => {
+    try {
+      const stored = localStorage.getItem('photosensitivityTesterEnabled');
+      if (stored === 'true' || stored === 'false') return stored === 'true';
+    } catch {}
+    return false; // default off per request
+  });
   const [wasRunningBeforeOptions, setWasRunningBeforeOptions] = useState(false);
   const [scriptOpen, setScriptOpen] = useState(false);
 
@@ -169,11 +202,20 @@ export default function HeaderBar({
   // Listen for script panel open event
   useEffect(() => {
     const handleOpenScriptPanel = () => {
+      // Gate script panel: require login and donation
+      if (!sessionStorage.getItem('authToken')) {
+        window.dispatchEvent(new CustomEvent('auth:needLogin', { detail: { message: 'Please login to use the script playground.' } }));
+        return;
+      }
+      if (!hasDonated) {
+        setDonateOpen(true);
+        return;
+      }
       setScriptOpen(true);
     };
     window.addEventListener('openScriptPanel', handleOpenScriptPanel);
     return () => window.removeEventListener('openScriptPanel', handleOpenScriptPanel);
-  }, []);
+  }, [hasDonated]);
   const [confirmOnClear, setConfirmOnClear] = useState(() => {
     try {
       const v = localStorage.getItem('confirmOnClear');
@@ -186,6 +228,13 @@ export default function HeaderBar({
   useEffect(() => {
     try { localStorage.setItem('confirmOnClear', String(confirmOnClear)); } catch {}
   }, [confirmOnClear]);
+
+  useEffect(() => {
+    try { localStorage.setItem('photosensitivityTesterEnabled', photosensitivityTesterEnabled ? 'true' : 'false'); } catch {}
+    if (!photosensitivityTesterEnabled) {
+      setPhotoTestOpen(false);
+    }
+  }, [photosensitivityTesterEnabled]);
 
   const {
     saveGrid,
@@ -205,13 +254,18 @@ export default function HeaderBar({
 
   // Stop simulation immediately when user initiates Save or Load
   const openSaveDialogAndPause = useCallback(() => {
+    // Gate save: require login and donation
     if (!sessionStorage.getItem('authToken')) {
       window.dispatchEvent(new CustomEvent('auth:needLogin', { detail: { message: 'Please login to save.' } }));
       return;
     }
+    if (!hasDonated) {
+      setDonateOpen(true);
+      return;
+    }
     if (isRunning) setIsRunning(false);
     openSaveDialog();
-  }, [isRunning, setIsRunning, openSaveDialog]);
+  }, [isRunning, setIsRunning, openSaveDialog, hasDonated]);
 
   const openLoadDialogAndPause = useCallback(() => {
     if (isRunning) setIsRunning(false);
@@ -247,13 +301,30 @@ export default function HeaderBar({
   return (
     <>
       {/* Three-row header: RunControlGroup, ToolGroup, RecentShapesStrip */}
-      <Box ref={headerRef} sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30, width: '100%', backgroundColor: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.2)', overflowX: 'hidden' }}>
+      <Box
+        ref={headerRef}
+        id={id}
+        tabIndex={tabIndex}
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 30,
+          width: '100%',
+          backgroundColor: 'var(--header-surface)',
+          color: 'var(--text-primary)',
+          borderBottom: '1px solid var(--border-strong)',
+          overflowX: 'hidden',
+          backdropFilter: 'blur(6px)'
+        }}
+      >
         {/* First row: Save/Load and Run controls */}
         <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, gap: 0.5 }}>
-          <Stack direction="row" spacing={0.5} alignItems="center">
+          <Stack direction="row" spacing={0.5} alignItems="center" sx={{ color: 'inherit' }}>
             <SaveLoadGroup compact={isSmall} openSaveGrid={openSaveDialogAndPause} openLoadGrid={openLoadDialogAndPause} />
           </Stack>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'inherit' }}>
             <RunControlGroup
               isRunning={isRunning}
               setIsRunning={setIsRunning}
@@ -274,7 +345,7 @@ export default function HeaderBar({
               onSetGenerationBatchSize={onSetGenerationBatchSize}
             />
           </Box>
-          <Stack direction="row" spacing={0.5} alignItems="center">
+          <Stack direction="row" spacing={0.5} alignItems="center" sx={{ color: 'inherit' }}>
             <AuxActions
               onOpenChart={() => setShowChart(true)}
               onOpenImport={onOpenImport}
@@ -282,23 +353,94 @@ export default function HeaderBar({
               onOpenAbout={() => setAboutOpen(true)}
               onOpenOptions={openOptions}
               onOpenDonate={() => setDonateOpen(true)}
-              onOpenPhotoTest={() => setPhotoTestOpen(true)}
+              onOpenPhotoTest={() => photosensitivityTesterEnabled && setPhotoTestOpen(true)}
               onOpenUser={handleUserIconClick}
               loggedIn={!!token}
+              photosensitivityTesterEnabled={photosensitivityTesterEnabled}
+              enableAdaCompliance={enableAdaCompliance}
             />
             {/* Version info is now shown as a tooltip on the About icon */}
             {/* User authentication dialog/modal */}
             {userDialogOpen && (
-              <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, background: 'rgba(0,0,0,0.5)' }}>
-                <Box sx={{ maxWidth: 340, margin: '80px auto', background: '#222', borderRadius: 2, p: 3, color: 'white', boxShadow: 6 }}>
+              <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, background: 'var(--overlay-backdrop)' }}>
+                <Box sx={{ maxWidth: 340, margin: '80px auto', background: 'var(--surface-1)', borderRadius: 2, p: 3, color: 'var(--text-primary)', boxShadow: 'var(--shadow-elevated)', border: '1px solid var(--border-strong)' }}>
                   {token ? (
                     <>
-                      <div style={{ marginBottom: 16 }}>
-                        <UserLoggedInIcon fontSize="large" style={{ verticalAlign: 'middle', marginRight: 8 }} />
-                        <span>Logged in as <b>{email}</b></span>
+                      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <UserLoggedInIcon fontSize="large" />
+                        <div>
+                          <Typography variant="body2" color="text.secondary">Logged in as</Typography>
+                          <Typography variant="body1" fontWeight="bold">{email}</Typography>
+                        </div>
                       </div>
-                      <button onClick={() => { setUserDialogOpen(false); onOpenMyShapes(); }} style={{ marginRight: 8 }}>My Shapes</button>
-                      <button onClick={handleLogout} style={{ marginRight: 8 }}>Logout</button>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Chip
+                          color={hasDonated ? 'success' : 'default'}
+                          label={hasDonated ? 'Donation: Verified' : 'Donation: Not donated'}
+                          sx={{ fontWeight: 600 }}
+                        />
+                        {!hasDonated && (
+                          <button
+                            onClick={() => { setUserDialogOpen(false); setDonateOpen(true); }}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              border: '1px solid var(--accent-primary)',
+                              background: 'var(--accent-primary)',
+                              color: '#fff',
+                              cursor: 'pointer',
+                              fontSize: '13px'
+                            }}
+                          >
+                            ❤️ Donate
+                          </button>
+                        )}
+                      </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <button
+                          onClick={() => { setUserDialogOpen(false); onOpenMyShapes(); }}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border-strong)',
+                            background: 'var(--surface-2)',
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                            fontSize: '14px'
+                          }}
+                        >
+                          📦 My Shapes
+                        </button>
+                        <button
+                          onClick={() => { setUserDialogOpen(false); setAccountManagementOpen(true); }}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border-strong)',
+                            background: 'var(--surface-2)',
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                            fontSize: '14px'
+                          }}
+                        >
+                          ⚙️ Account & Privacy
+                        </button>
+                        <button
+                          onClick={handleLogout}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--accent-error)',
+                            background: 'var(--accent-error)',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            marginTop: '8px'
+                          }}
+                        >
+                          🚪 Logout
+                        </button>
+                      </Box>
                     </>
                   ) : showRegister ? (
                     <>
@@ -311,7 +453,12 @@ export default function HeaderBar({
                       <button onClick={() => setShowRegister(true)} style={{ marginTop: 8 }}>Need an account? Register</button>
                     </>
                   )}
-                  <button onClick={() => setUserDialogOpen(false)} style={{ marginTop: 16 }}>Close</button>
+                  <button
+                    onClick={() => setUserDialogOpen(false)}
+                    style={{ marginTop: 16, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-strong)', background: 'var(--surface-2)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
                 </Box>
               </Box>
             )}
@@ -319,7 +466,7 @@ export default function HeaderBar({
         </Box>
         {/* Second row: ToolGroup */}
         {showToolsRow && (
-          <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(0,0,0,0.28)', borderBottom: '1px solid rgba(255,255,255,0.18)', zIndex: 40, pointerEvents: 'auto', overflowX: 'hidden' }}>
+          <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'var(--header-surface-muted)', borderBottom: '1px solid var(--border-subtle)', zIndex: 40, pointerEvents: 'auto', overflowX: 'hidden', backdropFilter: 'blur(4px)', color: 'inherit' }}>
             <ToolGroup selectedTool={selectedTool} setSelectedTool={setSelectedTool} isSmall={isSmall} shapesEnabled={shapesReady} />
             {/* Only show chip if enough space for both chip and tool icons */}
             {(!isSmall || (globalThis.window !== undefined && window.innerWidth > 520)) && (
@@ -336,7 +483,7 @@ export default function HeaderBar({
             {/* Hide controls button - appears in Row 2 of the header when chrome is visible */}
             <Box sx={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}>
               <Tooltip title="Hide controls">
-                <IconButton size={isSmall ? 'small' : 'medium'} aria-label="hide-controls" onClick={onToggleChrome} sx={{ backgroundColor: 'rgba(0,0,0,0.35)' }}>
+                <IconButton size={isSmall ? 'small' : 'medium'} aria-label="hide-controls" onClick={onToggleChrome} sx={{ backgroundColor: 'var(--chip-bg)', color: 'inherit' }}>
                   <FullscreenExitIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
@@ -344,7 +491,7 @@ export default function HeaderBar({
           </Box>
         )}
   {/* Third row: RecentShapesStrip (increased height to fit thumbnails + controls) */}
-  <Box sx={{ position: 'relative', left: 0, right: 0, py: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(30,30,40,0.85)', borderBottom: '1px solid rgba(255,255,255,0.12)', zIndex: 41, pointerEvents: 'auto', overflowX: 'hidden', overflowY: 'hidden', mt: 0 }}>
+  <Box sx={{ position: 'relative', left: 0, right: 0, py: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'var(--surface-2)', borderBottom: '1px solid var(--border-subtle)', zIndex: 41, pointerEvents: 'auto', overflowX: 'hidden', overflowY: 'hidden', mt: 0, color: 'inherit' }}>
           <RecentShapesStrip
             recentShapes={recentShapes}
             selectShape={selectShape}
@@ -354,7 +501,18 @@ export default function HeaderBar({
             onRotateShape={onRotateShape}
             onSwitchToShapesTool={onSwitchToShapesTool}
             startPaletteDrag={startPaletteDrag}
-            onSaveRecentShapes={onSaveRecentShapes}
+            onSaveRecentShapes={() => {
+              // Gate saving/capturing recent shapes: require login and donation
+              if (!sessionStorage.getItem('authToken')) {
+                window.dispatchEvent(new CustomEvent('auth:needLogin', { detail: { message: 'Please login to save shapes.' } }));
+                return;
+              }
+              if (!hasDonated) {
+                setDonateOpen(true);
+                return;
+              }
+              onSaveRecentShapes && onSaveRecentShapes();
+            }}
               onClearRecentShapes={onClearRecentShapes}
             persistenceStatus={recentShapesPersistence}
           />
@@ -394,6 +552,8 @@ export default function HeaderBar({
           setDetectStablePopulation={setDetectStablePopulation}
           memoryTelemetryEnabled={memoryTelemetryEnabled}
           setMemoryTelemetryEnabled={setMemoryTelemetryEnabled}
+          photosensitivityTesterEnabled={photosensitivityTesterEnabled}
+          setPhotosensitivityTesterEnabled={setPhotosensitivityTesterEnabled}
 
           onOk={handleOk}
           onCancel={handleCancel}
@@ -403,9 +563,14 @@ export default function HeaderBar({
       )}
 
       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} onOpenPrivacy={() => setPrivacyOpen(true)} />
+      <PrivacyPolicyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
+      <AccountManagementDialog 
+        open={accountManagementOpen} 
+        onClose={() => setAccountManagementOpen(false)}
+      />
       <PaymentDialog open={donateOpen} onClose={() => setDonateOpen(false)} />
-      <PhotosensitivityTestDialog open={photoTestOpen} onClose={() => setPhotoTestOpen(false)} />
+      <PhotosensitivityTestDialog open={photoTestOpen} onClose={() => setPhotoTestOpen(false)} enableAdaCompliance={enableAdaCompliance} />
 
       <SaveGridDialog
         open={saveDialogOpen}

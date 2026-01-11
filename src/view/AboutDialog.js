@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import { GitHub as GitHubIcon, Info as InfoIcon, Code as CodeIcon, BugReport as BugReportIcon } from '@mui/icons-material';
 
-export default function AboutDialog({ open, onClose }) {
+export default function AboutDialog({ open, onClose, onOpenPrivacy }) {
   // Get version from package.json - in a real app you might import this
   const version = "0.1.0";
   const buildDate = new Date().toLocaleDateString();
@@ -45,7 +45,7 @@ export default function AboutDialog({ open, onClose }) {
           <Typography variant="h4" component="h1" gutterBottom color="primary">
             Game of Life
           </Typography>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
+          <Typography variant="h5" component="h2" color="text.secondary" gutterBottom>
             Interactive Cellular Automaton Simulator
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 2 }}>
@@ -63,7 +63,7 @@ export default function AboutDialog({ open, onClose }) {
 
         <Divider sx={{ my: 2 }} />
 
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h5" component="h2" gutterBottom>
           About This Implementation
         </Typography>
         <Typography sx={{ mb: 2 }}>
@@ -94,7 +94,7 @@ export default function AboutDialog({ open, onClose }) {
           </CardContent>
         </Card>
 
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h5" component="h2" gutterBottom>
           Technology Stack
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
@@ -108,7 +108,7 @@ export default function AboutDialog({ open, onClose }) {
 
         <Divider sx={{ my: 2 }} />
 
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h5" component="h2" gutterBottom>
           Architecture Highlights
         </Typography>
         <Typography sx={{ mb: 2 }}>
@@ -124,7 +124,7 @@ export default function AboutDialog({ open, onClose }) {
 
         <Divider sx={{ my: 2 }} />
 
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h5" component="h2" gutterBottom>
           About Conway's Game of Life
         </Typography>
         <Typography sx={{ mb: 2 }}>
@@ -149,7 +149,7 @@ export default function AboutDialog({ open, onClose }) {
 
         <Divider sx={{ my: 2 }} />
 
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h5" component="h2" gutterBottom>
           Pattern Catalog Attribution
         </Typography>
         <Card variant="outlined" sx={{ mb: 2, bgcolor: 'action.hover' }}>
@@ -191,7 +191,7 @@ export default function AboutDialog({ open, onClose }) {
 
         <Divider sx={{ my: 2 }} />
 
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h5" component="h2" gutterBottom>
           Links & Resources
         </Typography>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -226,9 +226,20 @@ export default function AboutDialog({ open, onClose }) {
 
         <Divider sx={{ my: 2 }} />
 
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mb: 1 }}>
           Built with ❤️ for exploring the beauty of emergent complexity
         </Typography>
+
+        <Button 
+          size="small" 
+          onClick={() => {
+            onClose();
+            onOpenPrivacy?.();
+          }}
+          sx={{ display: 'block', margin: '8px auto 0' }}
+        >
+          Privacy Policy
+        </Button>
       </DialogContent>
 
       <DialogActions>
@@ -243,4 +254,5 @@ export default function AboutDialog({ open, onClose }) {
 AboutDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
+  onOpenPrivacy: PropTypes.func,
 };

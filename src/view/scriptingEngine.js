@@ -114,7 +114,7 @@ function parseOr(expr, state) {
         break;
       }
     }
-    if (substr.match(/^\sNOT\b/i) || i === 0 && expr.match(/^NOT\b/i)) {
+    if (substr.match(/^\sNOT\b/i) || (i === 0 && expr.match(/^NOT\b/i))) {
       notCount++;
     }
   }
@@ -142,7 +142,7 @@ function parseAnd(expr, state) {
         break;
       }
     }
-    if (substr.match(/^\sNOT\b/i) || i === 0 && expr.match(/^NOT\b/i)) {
+    if (substr.match(/^\sNOT\b/i) || (i === 0 && expr.match(/^NOT\b/i))) {
       notCount++;
     }
   }
@@ -180,6 +180,7 @@ function parseComparison(expr, state) {
 }
 
 // Split expression by operator, respecting nesting
+// eslint-disable-next-line no-unused-vars
 function splitByOperator(expr, operator, depth) {
   const result = [];
   let current = '';

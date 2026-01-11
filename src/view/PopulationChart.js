@@ -137,26 +137,26 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
 
   return (
     <div style={posStyle}>
-      <div style={{ background: '#111', color: '#fff', padding: MODAL_PADDING, borderRadius: MODAL_BORDER_RADIUS, boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
+      <div style={{ background: 'var(--surface-2)', color: 'var(--text-primary)', padding: MODAL_PADDING, borderRadius: MODAL_BORDER_RADIUS, boxShadow: 'var(--shadow-elevated)', border: '1px solid var(--border-subtle)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <strong>Population Over Time</strong>
           {typeof onClose === 'function' && (
             <button onClick={onClose} style={{ marginLeft: 12 }}>Close</button>
           )}
         </div>
-        <svg width={w} height={h} style={{ background: '#020202', display: 'block' }}>
-          <rect x={0} y={0} width={w} height={h} fill="#020202" />
+        <svg width={w} height={h} style={{ background: 'var(--surface-3)', display: 'block' }}>
+          <rect x={0} y={0} width={w} height={h} fill="var(--surface-3)" />
           {/* Y axis and ticks */}
-          <line x1={pad} x2={pad} y1={pad} y2={h - pad} stroke="rgba(255,255,255,0.2)" />
-          <line x1={pad} x2={w - pad} y1={h - pad} y2={h - pad} stroke="rgba(255,255,255,0.2)" />
+          <line x1={pad} x2={pad} y1={pad} y2={h - pad} stroke="var(--border-subtle)" strokeOpacity={0.25} />
+          <line x1={pad} x2={w - pad} y1={h - pad} y2={h - pad} stroke="var(--border-subtle)" strokeOpacity={0.25} />
           {Array.from({ length: yTicks + 1 }, (_, i) => {
             const t = i / yTicks;
             const y = pad + t * (h - pad * 2);
             const val = Math.round((1 - t) * maxPop);
             return (
               <g key={`ytick-${val}-${y.toFixed(1)}`}>
-                <line x1={pad - Y_AXIS_LABEL_OFFSET} x2={pad} y1={y} y2={y} stroke="rgba(255,255,255,0.2)" />
-                <text x={Y_AXIS_LABEL_OFFSET} y={y + Y_AXIS_TEXT_OFFSET_Y} fontSize={CHART_FONT_SIZE} fill="#bbb">{val}</text>
+                <line x1={pad - Y_AXIS_LABEL_OFFSET} x2={pad} y1={y} y2={y} stroke="var(--border-subtle)" strokeOpacity={0.25} />
+                <text x={Y_AXIS_LABEL_OFFSET} y={y + Y_AXIS_TEXT_OFFSET_Y} fontSize={CHART_FONT_SIZE} fill="var(--text-secondary)">{val}</text>
               </g>
             );
           })}
@@ -168,27 +168,27 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
             const gen = Math.round(minGen + t * genSpan);
             return (
               <g key={`xtick-${gen}-${x.toFixed(1)}`}>
-                <line x1={x} x2={x} y1={h - pad} y2={h - pad + TICK_LENGTH} stroke="rgba(255,255,255,0.2)" />
-                <text x={x - AXIS_LABEL_OFFSET_X} y={h - AXIS_LABEL_OFFSET_Y} fontSize={AXIS_LABEL_FONT_SIZE} fill="#bbb">{gen}</text>
+                <line x1={x} x2={x} y1={h - pad} y2={h - pad + TICK_LENGTH} stroke="var(--border-subtle)" strokeOpacity={0.25} />
+                <text x={x - AXIS_LABEL_OFFSET_X} y={h - AXIS_LABEL_OFFSET_Y} fontSize={AXIS_LABEL_FONT_SIZE} fill="var(--text-secondary)">{gen}</text>
               </g>
             );
           })}
 
-          <path d={path} fill="none" stroke="#7bd" strokeWidth={STROKE_WIDTH} />
+          <path d={path} fill="none" stroke="var(--accent-primary)" strokeWidth={STROKE_WIDTH} />
           {/* grid lines */}
           {[0, 0.25, 0.5, 0.75, 1].map((t) => (
-            <line key={t} x1={pad} x2={w - pad} y1={pad + t * (h - pad * 2)} y2={pad + t * (h - pad * 2)} stroke="rgba(255,255,255,0.04)" />
+            <line key={t} x1={pad} x2={w - pad} y1={pad + t * (h - pad * 2)} y2={pad + t * (h - pad * 2)} stroke="var(--border-subtle)" strokeOpacity={0.12} />
           ))}
           
           {/* Empty state overlay */}
           {isEmpty && (
             <g>
-              <rect x={0} y={0} width={w} height={h} fill="rgba(0,0,0,0.3)" />
+              <rect x={0} y={0} width={w} height={h} fill="var(--overlay-backdrop)" />
               <text 
                 x={w/2} 
                 y={h/2 - 10} 
                 fontSize={16} 
-                fill="#888" 
+                fill="var(--text-secondary)" 
                 textAnchor="middle"
                 fontStyle="italic"
               >
@@ -198,7 +198,7 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
                 x={w/2} 
                 y={h/2 + 15} 
                 fontSize={12} 
-                fill="#666" 
+                fill="var(--text-muted)" 
                 textAnchor="middle"
               >
                 Start the simulation to see population changes
@@ -209,11 +209,11 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
           {/* points & hover */}
           {!isEmpty && points.map((p, i) => (
             <g key={`point-${i}-${p[0]}-${p[1]}`} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
-              <circle cx={p[0]} cy={p[1]} r={hoverIdx === i ? POINT_RADIUS_HOVERED : POINT_RADIUS_NORMAL} fill={hoverIdx === i ? '#fff' : '#7bd'} />
+              <circle cx={p[0]} cy={p[1]} r={hoverIdx === i ? POINT_RADIUS_HOVERED : POINT_RADIUS_NORMAL} fill={hoverIdx === i ? 'var(--text-primary)' : 'var(--accent-primary)'} />
               {hoverIdx === i && (
                 <g>
-                  <rect x={p[0] + TOOLTIP_OFFSET_X} y={p[1] - TOOLTIP_OFFSET_Y} rx={TOOLTIP_BORDER_RADIUS} ry={TOOLTIP_BORDER_RADIUS} width={TOOLTIP_WIDTH} height={TOOLTIP_HEIGHT} fill="#000" opacity={0.8} />
-                  <text x={p[0] + TOOLTIP_TEXT_OFFSET_X} y={p[1] - TOOLTIP_TEXT_OFFSET_Y} fontSize={CHART_FONT_SIZE} fill="#fff">{`Gen ${generations[i]}: ${populations[i]}`}</text>
+                  <rect x={p[0] + TOOLTIP_OFFSET_X} y={p[1] - TOOLTIP_OFFSET_Y} rx={TOOLTIP_BORDER_RADIUS} ry={TOOLTIP_BORDER_RADIUS} width={TOOLTIP_WIDTH} height={TOOLTIP_HEIGHT} fill="var(--surface-2)" opacity={0.92} />
+                  <text x={p[0] + TOOLTIP_TEXT_OFFSET_X} y={p[1] - TOOLTIP_TEXT_OFFSET_Y} fontSize={CHART_FONT_SIZE} fill="var(--text-primary)">{`Gen ${generations[i]}: ${populations[i]}`}</text>
                 </g>
               )}
             </g>
@@ -231,7 +231,7 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
             <Tooltip title={isRunning ? 'Running' : 'Stopped'}>
               <LightbulbIcon 
                 style={{ 
-                  color: isRunning ? '#FFC107' : 'rgba(255,255,255,0.35)',
+                  color: isRunning ? 'var(--accent-warning)' : 'var(--text-muted)',
                   fontSize: 18
                 }} 
               />

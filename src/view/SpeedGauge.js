@@ -23,6 +23,9 @@ const SpeedGauge = ({
     peakCells: 0
   });
 
+  const [isExpanded, setIsExpanded] = useState(false);
+  const peakCellsRef = useRef(0);
+
   // Initialize metrics synchronously from gameRef if available so tests
   // that render the component and immediately read the DOM will see the
   // expected formatted values without waiting for the interval to tick.
@@ -53,9 +56,6 @@ const SpeedGauge = ({
     });
     // run when gameRef or the seed props change
   }, [gameRef, generation, liveCellsCount]);
-
-  const [isExpanded, setIsExpanded] = useState(false);
-  const peakCellsRef = useRef(0);
 
   // Reset cached metrics when a new session is cleared so the gauge
   // starts from a clean slate along with the model/UI history.
@@ -130,10 +130,10 @@ const SpeedGauge = ({
   }
 
   const getPerformanceColor = (fps) => {
-    if (fps >= 55) return '#4CAF50'; // Green - excellent
-    if (fps >= 30) return '#FFC107'; // Yellow - good
-    if (fps >= 15) return '#FF9800'; // Orange - poor
-    return '#F44336'; // Red - bad
+    if (fps >= 55) return 'var(--accent-success)'; // Green - excellent
+    if (fps >= 30) return 'var(--accent-warning)'; // Yellow - good
+    if (fps >= 15) return 'var(--accent-secondary)'; // Orange - poor
+    return 'var(--accent-error)'; // Red - bad
   };
 
   // Force expanded view for embedded mode and hide controls

@@ -2,6 +2,20 @@
 const CONST_FUNCTION = 'function';
 const CONST_FFFFFF = '#ffffff';
 const DEBUG_PUSH_LOG_FAILED = '[GameRenderer] Failed to push canvas log to __GOL_PUSH_CANVAS_LOG__';
+const safeToken = (name, fallback) => {
+  try {
+    const root = globalThis.document?.documentElement;
+    if (!root) return fallback;
+    const v = globalThis.getComputedStyle(root).getPropertyValue(name);
+    return (v && v.trim()) || fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+const DEFAULT_BG = safeToken('--surface-0', '#000000');
+const DEFAULT_GRID = safeToken('--border-subtle', '#ffffff');
+const OVERLAY_SHAPE_COLOR = safeToken('--accent-success', '#4CAF50');
+const OVERLAY_CROSSHAIR_COLOR = safeToken('--accent-info', '#00BFFF');
 // GameRenderer.js
 // Centralized rendering service for Conway's Game of Life
 // Handles all canvas operations, coordinate transformations, and drawing
@@ -22,8 +36,8 @@ export class GameRenderer {
       ctx = null;
     }
     this.ctx = ctx || {
-      fillStyle: '#000',
-      strokeStyle: '#000',
+      fillStyle: DEFAULT_BG,
+      strokeStyle: DEFAULT_GRID,
       globalAlpha: 1,
       lineWidth: 1,
       scale: () => {},
@@ -41,8 +55,8 @@ export class GameRenderer {
       clearRect: () => {}
     };
     this.options = {
-      backgroundColor: '#000000',
-  gridColor: '#ffffff',
+        backgroundColor: DEFAULT_BG,
+      gridColor: DEFAULT_GRID,
       // Align 1px grid lines crisply on device pixels by default
       gridLineOffset: 0.5,
       cellSaturation: 80,
@@ -165,7 +179,7 @@ export class GameRenderer {
         const origin = overlay.origin || { x: 0, y: 0 };
         const cells = Array.isArray(overlay.cells) ? overlay.cells : [];
         const getCellColor = overlay.style?.getCellColor;
-        const color = overlay.style?.color || '#4CAF50';
+        const color = overlay.style?.color || OVERLAY_SHAPE_COLOR;
         const alpha = (typeof overlay.style?.alpha === 'number') ? overlay.style.alpha : 0.6;
         // Translate to absolute cells once
         const shapeCells = cells.map(({ x, y }) => ({ x: x + origin.x, y: y + origin.y }));
@@ -181,7 +195,7 @@ export class GameRenderer {
         this.ctx.globalAlpha = prevAlpha;
       } else if (type === 'cellsHighlight') {
         const cells = Array.isArray(overlay.cells) ? overlay.cells : [];
-        const color = overlay.style?.color || '#ffffff';
+        const color = overlay.style?.color || DEFAULT_GRID;
         const prevAlpha = this.ctx.globalAlpha;
         if (typeof overlay.style?.alpha === 'number') {
           this.ctx.globalAlpha = overlay.style.alpha;
@@ -199,13 +213,13 @@ export class GameRenderer {
     const cursor = overlay.cursor || origin;
     const cells = Array.isArray(overlay.cells) ? overlay.cells : [];
     const getCellColor = overlay.style?.getCellColor;
-    const color = overlay.style?.color || '#4CAF50';
+    const color = overlay.style?.color || OVERLAY_SHAPE_COLOR;
     const alpha = (typeof overlay.style?.alpha === 'number') ? overlay.style.alpha : 0.6;
 
     this.ctx.save();
 
     // Draw crosshairs first (so they appear behind the shape)
-    this.ctx.strokeStyle = '#00BFFF'; // Bright blue
+    this.ctx.strokeStyle = OVERLAY_CROSSHAIR_COLOR; // Bright blue
     this.ctx.lineWidth = 2.5;
     this.ctx.globalAlpha = 0.95;
 
@@ -234,7 +248,7 @@ export class GameRenderer {
       // Center dot
       this.ctx.beginPath();
       this.ctx.arc(centerX, centerY, this.viewport.cellSize * 0.12, 0, 2 * Math.PI);
-      this.ctx.fillStyle = '#00BFFF';
+      this.ctx.fillStyle = OVERLAY_CROSSHAIR_COLOR;
       this.ctx.globalAlpha = 0.85;
       this.ctx.fill();
     }

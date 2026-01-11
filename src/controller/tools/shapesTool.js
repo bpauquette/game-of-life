@@ -1,6 +1,17 @@
 /* eslint-disable */
 import { getShapeCells, getCenteredOrigin } from '../../utils/shapeGeometry';
 import { makeShapePreviewWithCrosshairsOverlay } from '../../overlays/overlayTypes';
+const tokenOr = (name, fallback) => {
+  try {
+    const root = globalThis.document?.documentElement;
+    if (!root) return fallback;
+    const v = globalThis.getComputedStyle(root).getPropertyValue(name);
+    return (v && v.trim()) || fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+const SHAPE_OVERLAY_FALLBACK = tokenOr('--accent-success', '#4CAF50');
 
 export const shapesTool = {
   getOverlay(toolState, colorSchemeOrCellSize, cursorFromModel) {
@@ -36,7 +47,7 @@ export const shapesTool = {
       {
         color: typeof colorScheme?.getCellColor === 'function'
           ? colorScheme.getCellColor(0, 0)
-          : colorScheme?.cellColor || '#4CAF50',
+          : colorScheme?.cellColor || SHAPE_OVERLAY_FALLBACK,
         alpha: 0.6,
       }
     );

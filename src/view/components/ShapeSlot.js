@@ -7,11 +7,11 @@ import ShapePreview from './ShapePreview';
 const DEFAULT_THUMBNAIL_SIZE = 64;
 // Match palette preview styling: subtle dark border and modest radius
 const SHAPE_BORDER_RADIUS = 6; // match PREVIEW_BORDER_RADIUS in ShapePaletteDialog
-const SHAPE_BORDER_COLOR = 'rgba(0,0,0,0.06)'; // match PREVIEW_BORDER_OPACITY in ShapePaletteDialog
-const SHAPE_BORDER_HOVER_COLOR = 'rgba(255,255,255,0.3)';
-const DEFAULT_SHAPE_COLOR = '#222';
+const SHAPE_BORDER_COLOR = 'var(--border-faint)'; // match PREVIEW_BORDER_OPACITY in ShapePaletteDialog
+const SHAPE_BORDER_HOVER_COLOR = 'var(--border-subtle)';
+const DEFAULT_SHAPE_COLOR = 'var(--text-primary)';
 
-const SELECTED_BORDER_COLOR = '#00ff88';
+const SELECTED_BORDER_COLOR = 'var(--accent-success)';
 
 function getShapeCells(shape) {
   if (shape && Array.isArray(shape.cells)) return shape.cells;
@@ -60,14 +60,14 @@ function ShapeSlot({
     ghost.style.width = `${thumbnailSize}px`;
     ghost.style.height = `${thumbnailSize}px`;
     ghost.style.borderRadius = '6px';
-    ghost.style.border = '2px solid #00ff88';
-    ghost.style.background = '#1a1a1a';
-    ghost.style.boxShadow = '0 4px 12px rgba(0, 255, 136, 0.3)';
+    ghost.style.border = `2px solid ${SELECTED_BORDER_COLOR}`;
+    ghost.style.background = 'var(--surface-2)';
+    ghost.style.boxShadow = 'var(--success-glow)';
     ghost.style.display = 'flex';
     ghost.style.alignItems = 'center';
     ghost.style.justifyContent = 'center';
     ghost.style.fontSize = '11px';
-    ghost.style.color = '#00ff88';
+    ghost.style.color = 'var(--text-primary)';
     ghost.style.fontWeight = 'bold';
     ghost.textContent = title || 'Shape';
     document.body.appendChild(ghost);
@@ -106,7 +106,7 @@ function ShapeSlot({
   };
   return (
     <div style={{
-      border: `2px solid ${selected ? SELECTED_BORDER_COLOR : '#3ad6ff'}`,
+      border: `2px solid ${selected ? SELECTED_BORDER_COLOR : 'var(--accent-info)'}`,
       borderRadius: SHAPE_BORDER_RADIUS,
       boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
       width: 130,
@@ -115,7 +115,7 @@ function ShapeSlot({
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      background: selected ? '#222' : '#181818',
+      background: selected ? 'var(--surface-2)' : 'var(--surface-1)',
       boxSizing: 'border-box',
       transition: 'border-color 0.18s, transform 0.12s',
       margin: 0,
@@ -127,7 +127,7 @@ function ShapeSlot({
         style={{
           fontSize: 12,
           fontWeight: 700,
-          color: 'rgba(255,255,255,0.92)',
+          color: 'var(--text-primary)',
           textAlign: 'center',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
@@ -136,7 +136,7 @@ function ShapeSlot({
           margin: '0 0 6px 0',
           padding: '2px 6px',
           borderRadius: 4,
-          background: 'rgba(0,0,0,0.28)'
+          background: 'var(--surface-muted)'
         }}
         title={title}
       >
@@ -198,7 +198,7 @@ function ShapeSlot({
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '10px',
-                color: '#000',
+                color: 'var(--text-inverse)',
                 fontWeight: 'bold',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
                 zIndex: 10
@@ -225,9 +225,9 @@ function ShapeSlot({
               fontSize: 12,
               padding: '6px 8px',
               borderRadius: 6,
-              border: '1px solid rgba(255,255,255,0.06)',
-              background: '#111',
-              color: '#fff',
+              border: `1px solid ${SHAPE_BORDER_COLOR}`,
+              background: 'var(--surface-2)',
+              color: 'var(--text-primary)',
               cursor: 'pointer',
               opacity: 0.95,
               minWidth: 46,

@@ -71,9 +71,6 @@ describe('GameRenderer crosshair drawing uses fractional coords', () => {
     }
     expect(crosshairMove).toBeDefined();
 
-    // Compute expected centerY from fractional coordinate using renderer.cellToScreen
-    const screenInt = renderer.cellToScreen(cursor.x, cursor.y);
-
     // Allow small float tolerance
     expect(crosshairMove.y).toBeCloseTo(expectedCenterY, 6);
   });

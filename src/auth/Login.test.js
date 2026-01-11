@@ -72,9 +72,9 @@ describe('Login Component', () => {
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/login', { email: 'test@example.com', password: 'Password123!' });
-      // Check that no error message is shown
-      expect(screen.queryByText(/Login failed/)).not.toBeInTheDocument();
     });
+    // Check that no error message is shown
+    expect(screen.queryByText(/Login failed/)).not.toBeInTheDocument();
   });
 
   test('handles login error', async () => {

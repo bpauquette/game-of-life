@@ -79,25 +79,7 @@ describe('GameController animation loop', () => {
     uninstallRAFMock();
   });
 
-  // Mock Web Worker for Web Worker tests
-  const createMockWorker = () => {
-    const mockWorker = {
-      postMessage: jest.fn(),
-      terminate: jest.fn(),
-      onmessage: null
-    };
-    return mockWorker;
-  };
 
-  const installWorkerMock = () => {
-    const mockWorker = createMockWorker();
-    global.Worker = jest.fn(() => mockWorker);
-    return mockWorker;
-  };
-
-  const uninstallWorkerMock = () => {
-    delete global.Worker;
-  };
 
   test('startGameLoop is idempotent; stop cancels', () => {
     const model = new GameModel();

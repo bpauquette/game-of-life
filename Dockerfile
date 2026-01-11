@@ -16,6 +16,9 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 
+# Upgrade Alpine system packages and vulnerable libraries
+RUN apk update && apk upgrade && apk add --upgrade libpng libxml2
+
 COPY --from=build /app/build /usr/share/nginx/html
 
 EXPOSE 80

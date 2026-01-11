@@ -7,6 +7,54 @@ const ARRAY_FIRST_ELEMENT = 0;
 const ARRAY_SECOND_ELEMENT = 1;
 const PERIMETER_BORDER_OFFSET = 1;
 
+const computeRectPerimeter = (x0, y0, x1, y1) => {
+  const xMin = Math.min(x0, x1);
+  const xMax = Math.max(x0, x1);
+  const yMin = Math.min(y0, y1);
+  const yMax = Math.max(y0, y1);
+  const pts = [];
+  // Top and bottom edges
+  for (let x = xMin; x <= xMax; x++) {
+    pts.push([x, yMin]);
+    if (yMax !== yMin) pts.push([x, yMax]);
+  }
+  // Left and right edges (excluding corners already added)
+  for (let y = yMin + PERIMETER_BORDER_OFFSET; y <= yMax - PERIMETER_BORDER_OFFSET; y++) {
+    pts.push([xMin, y]);
+    if (xMax !== xMin) pts.push([xMax, y]);
+  }
+  return pts;
+};
+
+const computeSquarePerimeter = (x0, y0, x1, y1) => {
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const size = Math.max(dx, dy); // Use the larger dimension to determine square size
+
+  // Determine the direction of drag to position the square correctly
+  const xDir = x1 >= x0 ? 1 : -1;
+  const yDir = y1 >= y0 ? 1 : -1;
+
+  // Calculate square bounds
+  const xMin = x0;
+  const xMax = x0 + (size * xDir);
+  const yMin = y0;
+  const yMax = y0 + (size * yDir);
+
+  const pts = [];
+  // Top and bottom edges
+  for (let x = Math.min(xMin, xMax); x <= Math.max(xMin, xMax); x++) {
+    pts.push([x, yMin]);
+    if (yMax !== yMin) pts.push([x, yMax]);
+  }
+  // Left and right edges (excluding corners already added)
+  for (let y = Math.min(yMin, yMax) + PERIMETER_BORDER_OFFSET; y <= Math.max(yMin, yMax) - PERIMETER_BORDER_OFFSET; y++) {
+    pts.push([xMin, y]);
+    if (xMax !== xMin) pts.push([xMax, y]);
+  }
+  return pts;
+};
+
 export const rectTool = {
   getOverlay(state, cellSize) {
     if (!state.start || !state.last) return null;
@@ -64,25 +112,6 @@ export const rectTool = {
   }
 };
 
-const computeRectPerimeter = (x0, y0, x1, y1) => {
-  const xMin = Math.min(x0, x1);
-  const xMax = Math.max(x0, x1);
-  const yMin = Math.min(y0, y1);
-  const yMax = Math.max(y0, y1);
-  const pts = [];
-  // Top and bottom edges
-  for (let x = xMin; x <= xMax; x++) {
-    pts.push([x, yMin]);
-    if (yMax !== yMin) pts.push([x, yMax]);
-  }
-  // Left and right edges (excluding corners already added)
-  for (let y = yMin + PERIMETER_BORDER_OFFSET; y <= yMax - PERIMETER_BORDER_OFFSET; y++) {
-    pts.push([xMin, y]);
-    if (xMax !== xMin) pts.push([xMax, y]);
-  }
-  return pts;
-}
-
 // Square tool - always draws squares
 export const squareTool = {
   getOverlay(state, cellSize) {
@@ -139,32 +168,3 @@ export const squareTool = {
     }
   }
 };
-
-const computeSquarePerimeter = (x0, y0, x1, y1) => {
-  const dx = Math.abs(x1 - x0);
-  const dy = Math.abs(y1 - y0);
-  const size = Math.max(dx, dy); // Use the larger dimension to determine square size
-
-  // Determine the direction of drag to position the square correctly
-  const xDir = x1 >= x0 ? 1 : -1;
-  const yDir = y1 >= y0 ? 1 : -1;
-
-  // Calculate square bounds
-  const xMin = x0;
-  const xMax = x0 + (size * xDir);
-  const yMin = y0;
-  const yMax = y0 + (size * yDir);
-
-  const pts = [];
-  // Top and bottom edges
-  for (let x = Math.min(xMin, xMax); x <= Math.max(xMin, xMax); x++) {
-    pts.push([x, yMin]);
-    if (yMax !== yMin) pts.push([x, yMax]);
-  }
-  // Left and right edges (excluding corners already added)
-  for (let y = Math.min(yMin, yMax) + PERIMETER_BORDER_OFFSET; y <= Math.max(yMin, yMax) - PERIMETER_BORDER_OFFSET; y++) {
-    pts.push([xMin, y]);
-    if (xMax !== xMin) pts.push([xMax, y]);
-  }
-  return pts;
-}

@@ -17,7 +17,5 @@
  */
 
 describe.skip('SimpleScriptPanel Drawing Integration', () => {
-  test('placeholder', () => {
-    expect(true).toBe(true);
-  });
+  test.skip('placeholder - integration harness needs jest.mock rework before re-enabling', () => {});
 });

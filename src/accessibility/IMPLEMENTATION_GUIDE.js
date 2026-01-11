@@ -174,7 +174,6 @@ const AnimationSpeeds = {
  */
 function validateAnimationSpeed(fps) {
   if (fps > AnimationSpeeds.FAST.fps) {
-    const analyzer = new PhotosensitivityAnalyzer();
     console.warn(`
       WARNING: Animation speed (${fps} fps) exceeds safe threshold.
       This animation MUST be analyzed with PEAT before deployment.
@@ -339,18 +338,6 @@ function initializeGameWithAccessibility(canvasElement) {
   // Validate configuration
   validateAnimationSpeed(renderer.animationFps);
   validateColorPalette(renderer.colorPalette);
-  
-  // Game loop
-  function gameLoop(cells) {
-    renderer.renderFrame(cells);
-    
-    // Monitor accessibility every frame
-    const analysis = renderer.safeRenderer.analyzeCurrentFrame();
-    monitor.recordAnalysis(analysis);
-    
-    // Continue loop
-    requestAnimationFrame(() => gameLoop(nextCells));
-  }
   
   // Generate report on exit
   window.addEventListener('beforeunload', () => {

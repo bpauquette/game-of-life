@@ -1,4 +1,4 @@
-import { parseBlocks, execBlock, splitCond, legacyCommand } from '../scriptingInterpreter';
+import { parseBlocks, execBlock, splitCond, executeCommand } from '../scriptingInterpreter';
 import { parseValue, evalExpr, evalCond } from '../scriptingEngine';
 
 describe('ScriptingInterpreter', () => {
@@ -27,7 +27,7 @@ describe('ScriptingInterpreter', () => {
     expect(splitCond('simple')).toEqual(['simple', '==', true]);
   });
 
-  test('legacyCommand handles STEP commands', async () => {
+  test('executeCommand handles STEP commands', async () => {
     const mockState = {
       cells: new Set(['0,0', '1,0', '0,1']),
       vars: {},
@@ -38,7 +38,7 @@ describe('ScriptingInterpreter', () => {
     const mockStep = jest.fn();
     const mockTicks = jest.fn().mockReturnValue(new Map([['1,1', true]]));
     
-    await legacyCommand('STEP 1', mockState, null, mockEmitStepEvent, mockStep, mockTicks);
+    await executeCommand('STEP 1', mockState, null, mockEmitStepEvent, mockStep, mockTicks, null, null);
     
     expect(mockTicks).toHaveBeenCalled();
     expect(mockState.cells.has('1,1')).toBe(true);
@@ -59,22 +59,6 @@ describe('ScriptingInterpreter', () => {
       y: 0
     };
     
-    const mockLegacyCommand = jest.fn().mockImplementation(async (line, state) => {
-      if (line.startsWith('GOTO')) {
-        const parts = line.split(' ');
-        state.x = state.vars[parts[1]] || parseInt(parts[1]);
-        state.y = state.vars[parts[2]] || parseInt(parts[2]);
-      }
-    });
-    
-    // Mock the legacyCommand import
-    const originalModule = jest.requireActual('../scriptingInterpreter');
-    jest.doMock('../scriptingInterpreter', () => ({
-      ...originalModule,
-      legacyCommand: mockLegacyCommand
-    }));
-    
-    const { execBlock } = require('../scriptingInterpreter');
     await execBlock(blocks, state, null, null, null, null);
     
     expect(state.vars.x).toBe(5);
@@ -97,26 +81,6 @@ describe('ScriptingInterpreter', () => {
       outputLabels: []
     };
     
-    const mockLegacyCommand = jest.fn().mockImplementation(async (line, state) => {
-      if (line.startsWith('RECT')) {
-        const [, w, h] = line.split(' ');
-        // Add cells for rectangle
-        for (let x = 0; x < parseInt(w); x++) {
-          for (let y = 0; y < parseInt(h); y++) {
-            state.cells.add(`${x},${y}`);
-          }
-        }
-      }
-    });
-    
-    // Mock the module again
-    const originalModule = jest.requireActual('../scriptingInterpreter');
-    jest.doMock('../scriptingInterpreter', () => ({
-      ...originalModule,
-      legacyCommand: mockLegacyCommand
-    }));
-    
-    const { execBlock } = require('../scriptingInterpreter');
     await execBlock(blocks, state, null, null, null, null);
     
     expect(state.vars.x).toBe(10);
@@ -163,8 +127,8 @@ describe('ScriptingInterpreter', () => {
       outputLabels: [] 
     };
     
-    // Test evolution through legacyCommand
-    await legacyCommand('STEP 1', state, null, null, null, mockTicks);
+    // Test evolution through executeCommand
+    await executeCommand('STEP 1', state, null, null, null, mockTicks, null, null);
     
     expect(mockTicks).toHaveBeenCalled();
     // After one step, vertical blinker should become horizontal

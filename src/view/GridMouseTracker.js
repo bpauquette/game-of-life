@@ -17,7 +17,7 @@ const badgeStyle = {
 };
 
 const valueStyle = {
-  color: '#fff',
+  color: 'var(--text-primary)',
   fontSize: '1.05rem',
   fontFamily: 'monospace',
   fontWeight: 700,
