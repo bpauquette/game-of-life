@@ -89,7 +89,6 @@ class PhotosensitivityAnalyzer {
   detectFlashes(prev, curr) {
     const data1 = prev.data;
     const data2 = curr.data;
-    let totalLuminanceChange = 0;
     let flashPixelCount = 0;
     let isRedFlash = false;
     let maxLuminanceChange = 0;
@@ -112,7 +111,6 @@ class PhotosensitivityAnalyzer {
       
       if (lumChange > this.GENERAL_LUMINANCE_THRESHOLD / 255) {
         flashPixelCount += 4; // Account for sampling
-        totalLuminanceChange += lumChange;
         maxLuminanceChange = Math.max(maxLuminanceChange, lumChange);
 
         // Check if this is a red flash

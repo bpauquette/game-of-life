@@ -71,6 +71,8 @@ function ControlsDialogs({
   setMaxGPS,
   randomRectPercent,
   setRandomRectPercent,
+  enableAdaCompliance,
+  setEnableAdaCompliance,
   helpOpen,
   closeHelp,
   aboutOpen,
@@ -116,6 +118,8 @@ function ControlsDialogs({
           clearHashlifeCache={clearHashlifeCache}
           randomRectPercent={randomRectPercent}
           setRandomRectPercent={setRandomRectPercent}
+          enableAdaCompliance={enableAdaCompliance}
+          setEnableAdaCompliance={setEnableAdaCompliance}
           onOk={handleOk}
           onCancel={handleCancel}
           data-testid-ok="options-ok-button"
@@ -166,6 +170,10 @@ ControlsDialogs.propTypes = {
   setMaxFPS: PropTypes.func,
   maxGPS: PropTypes.number,
   setMaxGPS: PropTypes.func,
+  randomRectPercent: PropTypes.number,
+  setRandomRectPercent: PropTypes.func,
+  enableAdaCompliance: PropTypes.bool,
+  setEnableAdaCompliance: PropTypes.func,
   helpOpen: PropTypes.bool.isRequired,
   closeHelp: PropTypes.func.isRequired,
   aboutOpen: PropTypes.bool.isRequired,
@@ -228,7 +236,9 @@ const ControlsBar = ({
   setMaxFPS,
   maxGPS,
   setMaxGPS,
-
+  // ADA compliance props
+  enableAdaCompliance,
+  setEnableAdaCompliance,
 
   // Optional model to drive ToolStatus observer
   model
@@ -373,6 +383,10 @@ const ControlsBar = ({
         setMaxFPS={setMaxFPS}
         maxGPS={maxGPS}
         setMaxGPS={setMaxGPS}
+        randomRectPercent={randomRectPercent}
+        setRandomRectPercent={setRandomRectPercent}
+        enableAdaCompliance={enableAdaCompliance}
+        setEnableAdaCompliance={setEnableAdaCompliance}
         helpOpen={helpOpen}
         closeHelp={closeHelp}
         aboutOpen={aboutOpen}
@@ -431,12 +445,13 @@ ControlsBar.propTypes = {
   setMaxFPS: PropTypes.func,
   maxGPS: PropTypes.number,
   setMaxGPS: PropTypes.func,
+  // ADA compliance props
+  enableAdaCompliance: PropTypes.bool,
+  setEnableAdaCompliance: PropTypes.func,
   popWindowSize: PropTypes.number.isRequired,
   setPopWindowSize: PropTypes.func.isRequired,
   popTolerance: PropTypes.number.isRequired,
-  setPopTolerance: PropTypes.func.isRequired
-  ,
-
+  setPopTolerance: PropTypes.func.isRequired,
 
   // Optional model for tool state observation
   model: PropTypes.object

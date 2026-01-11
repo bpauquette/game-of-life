@@ -307,6 +307,7 @@ const RecentShapesStrip = ({
 
   return (
     <div
+      role="region"
       aria-label="Recent shapes"
       style={{
         position: 'relative',

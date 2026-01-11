@@ -14,6 +14,20 @@ if (globalThis.window !== undefined && globalThis.Worker !== undefined) {
 }
 export { flushRandomRectBuffer };
 
+const computeRect = (x0, y0, x1, y1) => {
+  const xMin = Math.min(x0, x1);
+  const xMax = Math.max(x0, x1);
+  const yMin = Math.min(y0, y1);
+  const yMax = Math.max(y0, y1);
+  const pts = [];
+  for (let x = xMin; x <= xMax; x++) {
+    for (let y = yMin; y <= yMax; y++) {
+      pts.push([x, y]);
+    }
+  }
+  return pts;
+};
+
 // Randomize cells within a dragged rectangle. Commits on mouseup.
 export const randomRectTool = {
   getOverlay(state, cellSize) {
@@ -78,20 +92,6 @@ export const randomRectTool = {
       if (typeof console !== 'undefined') console.warn('RandomRect overlay error:', e);
     }
   }
-};
-
-const computeRect = (x0, y0, x1, y1) => {
-  const xMin = Math.min(x0, x1);
-  const xMax = Math.max(x0, x1);
-  const yMin = Math.min(y0, y1);
-  const yMax = Math.max(y0, y1);
-  const pts = [];
-  for (let x = xMin; x <= xMax; x++) {
-    for (let y = yMin; y <= yMax; y++) {
-      pts.push([x, y]);
-    }
-  }
-  return pts;
 };
 
 function drawSynchronous(pts, p, setCellAlive, state, setCellsAliveBulk) {

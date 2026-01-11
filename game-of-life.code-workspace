@@ -20,6 +20,9 @@
 		},
 		{
 			"path": "../../OneDrive/Documents/WindowsPowerShell/Scripts"
+		},
+		{
+			"path": "../recruiters"
 		}
 	],
 	"settings": {
@@ -70,6 +73,7 @@
 		"typescript.preferences.includePackageJsonAutoImports": "off",
 		"typescript.suggest.autoImports": false,
 		"files.watcherUsePolling": false,
-		"files.hotExit": "onExitAndWindowClose"
+		"files.hotExit": "onExitAndWindowClose",
+		"java.configuration.updateBuildConfiguration": "interactive"
 	}
 }

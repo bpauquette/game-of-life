@@ -1,5 +1,78 @@
 import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
 
+// Helper function: compute circle perimeter using Bresenham/midpoint algorithm
+const computeCirclePerimeter = (cx, cy, r) => {
+  const pts = [];
+  if (r <= 0) return pts;
+  // Midpoint / Bresenham circle algorithm (integer points on circumference)
+  let x = r;
+  let y = 0;
+  let dx = 1 - (r << 1);
+  let dy = 1;
+  let err = 0;
+
+  const addOctants = (px, py) => {
+    pts.push(
+      [cx + px, cy + py],
+      [cx + py, cy + px],
+      [cx - py, cy + px],
+      [cx - px, cy + py],
+      [cx - px, cy - py],
+      [cx - py, cy - px],
+      [cx + py, cy - px],
+      [cx + px, cy - py]
+    );
+  };
+
+  while (x >= y) {
+    addOctants(x, y);
+    y++;
+    err += dy;
+    dy += 2;
+    if ((err << 1) + dx > 0) {
+      x--;
+      err += dx;
+      dx += 2;
+    }
+  }
+
+  // Deduplicate points
+  const seen = new Set();
+  const unique = [];
+  for (const p of pts) {
+    const px = p[0];
+    const py = p[1];
+    const key = `${px},${py}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push([px, py]);
+    }
+  }
+  return unique;
+};
+
+// New function: compute circle that fits within bounding box defined by two points
+const computeCirclePerimeterFromBounds = (x0, y0, x1, y1) => {
+  const xMin = Math.min(x0, x1);
+  const xMax = Math.max(x0, x1);
+  const yMin = Math.min(y0, y1);
+  const yMax = Math.max(y0, y1);
+  
+  // Calculate bounding box dimensions
+  const width = xMax - xMin;
+  const height = yMax - yMin;
+  
+  // For a circle, use the smaller dimension to ensure it fits in the box
+  const diameter = Math.min(width, height);
+  const r = Math.max(1, Math.floor(diameter / 2));
+  
+  // Center the circle in the bounding box
+  const cx = Math.floor(xMin + width / 2);
+  const cy = Math.floor(yMin + height / 2);
+  
+  return computeCirclePerimeter(cx, cy, r);
+};
+
 // Circle (perimeter-only) tool - commits on mouseup
 export const circleTool = {
   getOverlay(state, cellSize) {
@@ -57,75 +130,3 @@ export const circleTool = {
     }
   }
 };
-
-// New function: compute circle that fits within bounding box defined by two points
-const computeCirclePerimeterFromBounds = (x0, y0, x1, y1) => {
-  const xMin = Math.min(x0, x1);
-  const xMax = Math.max(x0, x1);
-  const yMin = Math.min(y0, y1);
-  const yMax = Math.max(y0, y1);
-  
-  // Calculate bounding box dimensions
-  const width = xMax - xMin;
-  const height = yMax - yMin;
-  
-  // For a circle, use the smaller dimension to ensure it fits in the box
-  const diameter = Math.min(width, height);
-  const r = Math.max(1, Math.floor(diameter / 2));
-  
-  // Center the circle in the bounding box
-  const cx = Math.floor(xMin + width / 2);
-  const cy = Math.floor(yMin + height / 2);
-  
-  return computeCirclePerimeter(cx, cy, r);
-};
-
-const computeCirclePerimeter = (cx, cy, r) => {
-  const pts = [];
-  if (r <= 0) return pts;
-  // Midpoint / Bresenham circle algorithm (integer points on circumference)
-  let x = r;
-  let y = 0;
-  let dx = 1 - (r << 1);
-  let dy = 1;
-  let err = 0;
-
-  const addOctants = (px, py) => {
-    pts.push(
-      [cx + px, cy + py],
-      [cx + py, cy + px],
-      [cx - py, cy + px],
-      [cx - px, cy + py],
-      [cx - px, cy - py],
-      [cx - py, cy - px],
-      [cx + py, cy - px],
-      [cx + px, cy - py]
-    );
-  };
-
-  while (x >= y) {
-    addOctants(x, y);
-    y++;
-    err += dy;
-    dy += 2;
-    if ((err << 1) + dx > 0) {
-      x--;
-      err += dx;
-      dx += 2;
-    }
-  }
-
-  // Deduplicate points
-  const seen = new Set();
-  const unique = [];
-  for (const p of pts) {
-    const px = p[0];
-    const py = p[1];
-    const key = `${px},${py}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      unique.push([px, py]);
-    }
-  }
-  return unique;
-}

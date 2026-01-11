@@ -33,7 +33,7 @@ export default function StatisticsPanel({
         <Typography variant="subtitle2" sx={{ letterSpacing: 0.5, textTransform: 'uppercase', color: 'primary.light' }}>
           Statistics
         </Typography>
-        <IconButton size="small" onClick={onClose} aria-label="close-statistics" sx={{ color: '#fff' }}>
+        <IconButton size="small" onClick={onClose} aria-label="close-statistics" sx={{ color: 'var(--text-primary)' }}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </Stack>
@@ -59,8 +59,8 @@ export default function StatisticsPanel({
           paper: {
             sx: {
               height: '65vh',
-              bgcolor: 'rgba(0,0,0,0.9)',
-              color: '#fff',
+              bgcolor: 'var(--surface-modal)',
+              color: 'var(--text-primary)',
               borderTopLeftRadius: 1,
               borderTopRightRadius: 1,
               p: 1.5
@@ -71,7 +71,7 @@ export default function StatisticsPanel({
         <Box sx={{ width: '100%' }}>
           {/* Handle bar */}
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
-            <Box sx={{ width: 36, height: 4, bgcolor: 'rgba(255,255,255,0.35)', borderRadius: 2 }} />
+            <Box sx={{ width: 36, height: 4, bgcolor: 'var(--border-subtle)', borderRadius: 2 }} />
           </Box>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: 'calc(65vh - 20px)', overflow: 'auto' }}>
             {Content}
@@ -89,9 +89,9 @@ export default function StatisticsPanel({
         right: 12,
         bottom: 12,
         zIndex: 1200,
-        bgcolor: 'rgba(0,0,0,0.85)',
-        color: '#fff',
-        border: '1px solid rgba(255,255,255,0.15)',
+        bgcolor: 'var(--surface-modal)',
+        color: 'var(--text-primary)',
+        border: '1px solid var(--border-subtle)',
         borderRadius: 1,
         p: 1.5,
         minWidth: 720,

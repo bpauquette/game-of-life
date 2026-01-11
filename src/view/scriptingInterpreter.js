@@ -1,6 +1,6 @@
 // src/view/scriptingInterpreter.js
 // Interpreter and block execution logic for GOL ScriptPanel scripting
-import { parseValue, evalExpr, evalCond, evalCondCompound } from './scriptingEngine';
+import { parseValue, evalExpr, evalCondCompound } from './scriptingEngine';
 
 // Block parser: returns array of {type, line, indent, raw}
 function parseBlocks(rawLines) {
@@ -204,7 +204,7 @@ async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, s
 }
 
 // Handle state-modifying commands (PRINT, CLEAR, COUNT, assignments, LABEL, UNTIL_STEADY)
-async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
+async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid, shouldAbort = () => false) {
   // Helper to pause simulation for drawing
   const pauseForDrawing = () => {
     if (typeof setIsRunning === 'function' && !state.simulationPausedForDrawing) {
@@ -289,7 +289,7 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
     
     const cellsToString = (cells) => Array.from(cells).sort().join('|');
     
-    while (stepCount < maxSteps && !stable) {
+    while (stepCount < maxSteps && !stable && !shouldAbort()) {
       const currentState = cellsToString(state.cells);
       
       const cellsArr = Array.from(state.cells).map(s => {
@@ -368,7 +368,7 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
 }
 
 // Handle control flow commands (WHILE, IF, FOR)
-async function executeControlFlow(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
+async function executeControlFlow(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid, shouldAbort) {
   // FOR loop
   let forMatch = line.match(/^for\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+from\s+(.+?)\s+to\s+(.+?)(?:\s+step\s+(.+))?$/i);
   if (forMatch) {
@@ -393,7 +393,7 @@ async function executeControlFlow(line, blocks, i, state, onStep, emitStepEvent,
     if (stepVal > 0) {
       for (let val = start; val <= end; val += stepVal) {
         state.vars[varName] = val;
-        await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+        await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid, shouldAbort);
         if (state.loopBreak) {
           state.loopBreak = false;
           break;
@@ -403,7 +403,7 @@ async function executeControlFlow(line, blocks, i, state, onStep, emitStepEvent,
     } else {
       for (let val = start; val >= end; val += stepVal) {
         state.vars[varName] = val;
-        await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+        await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid, shouldAbort);
         if (state.loopBreak) {
           state.loopBreak = false;
           break;
@@ -430,8 +430,8 @@ async function executeControlFlow(line, blocks, i, state, onStep, emitStepEvent,
     }
     blockEnd--;
     
-    while (evalCondCompound(cond, state)) {
-      await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+    while (!shouldAbort() && evalCondCompound(cond, state)) {
+      await execBlock(blocks.slice(blockStart, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid, shouldAbort);
     }
     
     return blockEnd + 1;
@@ -464,9 +464,9 @@ async function executeControlFlow(line, blocks, i, state, onStep, emitStepEvent,
     
     if (evalCondCompound(cond, state)) {
       let ifBlockEnd = elseIdx >= 0 ? elseIdx : blockEnd;
-      await execBlock(blocks.slice(blockStart, ifBlockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+      await execBlock(blocks.slice(blockStart, ifBlockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid, shouldAbort);
     } else if (elseIdx >= 0) {
-      await execBlock(blocks.slice(elseIdx + 1, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+      await execBlock(blocks.slice(elseIdx + 1, blockEnd), state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid, shouldAbort);
     }
     
     return blockEnd + 1;
@@ -476,21 +476,22 @@ async function executeControlFlow(line, blocks, i, state, onStep, emitStepEvent,
 }
 
 // Main interpreter loop
-async function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
+async function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid, shouldAbort = () => false) {
   let i = 0;
   
   while (i < blocks.length) {
+    if (shouldAbort()) break;
     let { line } = blocks[i];
     
     // Try state commands first
-    let nextI = await executeStateCommand(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+    let nextI = await executeStateCommand(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid, shouldAbort);
     if (nextI !== null) {
       i = nextI;
       continue;
     }
     
     // Try control flow
-    nextI = await executeControlFlow(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid);
+    nextI = await executeControlFlow(line, blocks, i, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid, shouldAbort);
     if (nextI !== null) {
       i = nextI;
       continue;
@@ -505,6 +506,7 @@ async function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setI
 // Geometric computation functions matching the tools
 
 // Bresenham line algorithm
+// eslint-disable-next-line no-unused-vars
 function computeLine(x0, y0, x1, y1) {
   const points = [];
   const dx = Math.abs(x1 - x0);
@@ -532,6 +534,7 @@ function computeLine(x0, y0, x1, y1) {
 }
 
 // Rectangle perimeter computation
+// eslint-disable-next-line no-unused-vars
 function computeRectPerimeter(x0, y0, x1, y1) {
   const xMin = Math.min(x0, x1);
   const xMax = Math.max(x0, x1);
@@ -552,6 +555,7 @@ function computeRectPerimeter(x0, y0, x1, y1) {
 }
 
 // Ellipse perimeter computation
+// eslint-disable-next-line no-unused-vars
 function computeEllipsePerimeter(x0, y0, x1, y1) {
   const cx = Math.floor((x0 + x1) / 2);
   const cy = Math.floor((y0 + y1) / 2);
@@ -582,6 +586,7 @@ function computeEllipsePerimeter(x0, y0, x1, y1) {
 }
 
 // Midpoint Circle Algorithm for drawing circles
+// eslint-disable-next-line no-unused-vars
 function computeCircle(cx, cy, radius) {
   if (radius < 0) return [];
   if (radius === 0) return [[cx, cy]];

@@ -79,8 +79,8 @@ function ToolStatus({ selectedTool, toolStateRef, cursorCell, selectedShape, log
         fontFamily: 'monospace',
         fontSize: 12,
         padding: '4px 8px',
-        backgroundColor: highlight ? '#fff3cd' : 'transparent',
-        border: highlight ? '1px solid #ffeaa7' : 'none',
+        backgroundColor: highlight ? 'var(--warning-surface)' : 'transparent',
+        border: highlight ? '1px solid var(--warning-border)' : 'none',
         borderRadius: '4px',
       }}
     >

@@ -13,7 +13,9 @@ import InputAdornment from '@mui/material/InputAdornment';
 import Tooltip from '@mui/material/Tooltip';
 import Slider from '@mui/material/Slider';
 import Typography from '@mui/material/Typography';
+import Alert from '@mui/material/Alert';
 import { Info as InfoIcon } from '@mui/icons-material';
+import { useTheme } from './context/ThemeContext';
 
 const OptionsPanel = ({
   // ...existing props...
@@ -46,14 +48,28 @@ const OptionsPanel = ({
   setDetectStablePopulation,
   memoryTelemetryEnabled = false,
   setMemoryTelemetryEnabled,
+  photosensitivityTesterEnabled = false,
+  setPhotosensitivityTesterEnabled,
   // Random rectangle fill percent (0-100)
   randomRectPercent = 50,
   setRandomRectPercent,
+  // ADA compliance settings
+  enableAdaCompliance = true,
+  setEnableAdaCompliance,
 
+  backendType = 'node',
+  setBackendType,
   onOk,
   onCancel
 }) => {
   const [localScheme, setLocalScheme] = useState(colorSchemeKey || 'bio');
+  const [localBackendType, setLocalBackendType] = useState(() => {
+    try {
+      const stored = globalThis.localStorage.getItem('backendType');
+      if (stored === 'node' || stored === 'java') return stored;
+    } catch {}
+    return backendType || 'node';
+  });
   const [localWindow, setLocalWindow] = useState(popWindowSize);
   const [localTolerance, setLocalTolerance] = useState(popTolerance);
   const [localShowSpeedGauge, setLocalShowSpeedGauge] = useState(showSpeedGauge);
@@ -83,6 +99,13 @@ const OptionsPanel = ({
     } catch {}
     return memoryTelemetryEnabled;
   });
+  const [localPhotosensitivityTesterEnabled, setLocalPhotosensitivityTesterEnabled] = useState(() => {
+    try {
+      const stored = globalThis.localStorage.getItem('photosensitivityTesterEnabled');
+      if (stored === 'true' || stored === 'false') return stored === 'true';
+    } catch {}
+    return photosensitivityTesterEnabled;
+  });
   const [localRandomRectPercent, setLocalRandomRectPercent] = useState(() => {
     try {
       const stored = globalThis.localStorage.getItem('randomRectPercent');
@@ -97,10 +120,27 @@ const OptionsPanel = ({
     if (!Number.isFinite(n)) return 50;
     return Math.max(0, Math.min(100, Math.round(n)));
   });
+  const [localEnableAdaCompliance, setLocalEnableAdaCompliance] = useState(() => {
+    try {
+      const stored = globalThis.localStorage.getItem('enableAdaCompliance');
+      if (stored === 'true' || stored === 'false') return stored === 'true';
+      if (stored != null) return Boolean(JSON.parse(stored));
+      return enableAdaCompliance;
+    } catch (e) {
+      return enableAdaCompliance;
+    }
+  });
 
+  // Theme selection
+  const { themeMode, setThemeMode, availableThemes } = useTheme();
+  const [localThemeMode, setLocalThemeMode] = useState(themeMode);
 
   const handleOk = () => {
   try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
+  try { setBackendType?.(localBackendType); } catch (err) { logger.debug('setBackendType failed:', err); }
+  try { globalThis.localStorage.setItem('backendType', localBackendType); } catch {}
+  // Apply theme change
+  try { setThemeMode(localThemeMode); } catch (err) { logger.debug('setThemeMode failed:', err); }
   // Clamp and default window size
   let win = Number.parseInt(localWindow, 10);
   if (Number.isNaN(win) || win < 1) win = 1;
@@ -110,29 +150,39 @@ const OptionsPanel = ({
   if (Number.isNaN(tol) || tol < 0) tol = 0;
   try { setPopTolerance(tol); } catch (err) { logger.debug('setPopTolerance failed:', err); }
   try { setShowSpeedGauge?.(localShowSpeedGauge); } catch (err) { logger.debug('setShowSpeedGauge failed:', err); }
-    try { setMaxFPS?.(Math.max(1, Math.min(120, Number(localMaxFPS) || 60))); } catch (err) { logger.debug('setMaxFPS failed:', err); }
-    try { setMaxGPS?.(Math.max(1, Math.min(60, Number(localMaxGPS) || 30))); } catch (err) { logger.debug('setMaxGPS failed:', err); }
-    try { setEnableFPSCap?.(!!localEnableFPSCap); } catch (err) { logger.debug('setEnableFPSCap failed:', err); }
-    try { setEnableGPSCap?.(!!localEnableGPSCap); } catch (err) { logger.debug('setEnableGPSCap failed:', err); }
+    // If ADA compliance is on, force maxFPS to 2 and enable FPS cap
+    const finalMaxFPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(120, Number(localMaxFPS) || 60));
+    const finalMaxGPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(60, Number(localMaxGPS) || 30));
+    try { setMaxFPS?.(finalMaxFPS); } catch (err) { logger.debug('setMaxFPS failed:', err); }
+    try { setMaxGPS?.(finalMaxGPS); } catch (err) { logger.debug('setMaxGPS failed:', err); }
+    // When ADA compliance is on, always enable FPS/GPS caps
+    const finalEnableFPSCap = localEnableAdaCompliance ? true : !!localEnableFPSCap;
+    const finalEnableGPSCap = localEnableAdaCompliance ? true : !!localEnableGPSCap;
+    try { setEnableFPSCap?.(finalEnableFPSCap); } catch (err) { logger.debug('setEnableFPSCap failed:', err); }
+    try { setEnableGPSCap?.(finalEnableGPSCap); } catch (err) { logger.debug('setEnableGPSCap failed:', err); }
     try { setUseWebWorker?.(!!localUseWebWorker); } catch (err) { logger.debug('setUseWebWorker failed:', err); }
     try { setConfirmOnClear?.(!!localConfirmOnClear); } catch (err) { logger.debug('setConfirmOnClear failed:', err); }
     try { setMaxChartGenerations?.(Number(localMaxChartGenerations) || 5000); } catch (err) { logger.debug('setMaxChartGenerations failed:', err); }
     try { setRandomRectPercent?.(Math.max(0, Math.min(100, Number(localRandomRectPercent)))); } catch (err) { logger.debug('setRandomRectPercent failed:', err); }
+    try { setEnableAdaCompliance?.(!!localEnableAdaCompliance); } catch (err) { logger.debug('setEnableAdaCompliance failed:', err); }
+    try { setPhotosensitivityTesterEnabled?.(!!localPhotosensitivityTesterEnabled); } catch (err) { logger.debug('setPhotosensitivityTesterEnabled failed:', err); }
   // Persist all options so they are remembered across sessions
   try { globalThis.localStorage.setItem('colorSchemeKey', String(localScheme)); } catch {}
   try { globalThis.localStorage.setItem('popWindowSize', String(win)); } catch {}
   try { globalThis.localStorage.setItem('popTolerance', String(tol)); } catch {}
   try { globalThis.localStorage.setItem('showSpeedGauge', JSON.stringify(!!localShowSpeedGauge)); } catch {}
-  try { globalThis.localStorage.setItem('maxFPS', String(localMaxFPS)); } catch {}
-  try { globalThis.localStorage.setItem('maxGPS', String(localMaxGPS)); } catch {}
-  try { globalThis.localStorage.setItem('enableFPSCap', JSON.stringify(!!localEnableFPSCap)); } catch {}
-  try { globalThis.localStorage.setItem('enableGPSCap', JSON.stringify(!!localEnableGPSCap)); } catch {}
+  try { globalThis.localStorage.setItem('maxFPS', String(finalMaxFPS)); } catch {}
+  try { globalThis.localStorage.setItem('maxGPS', String(finalMaxGPS)); } catch {}
+  try { globalThis.localStorage.setItem('enableFPSCap', JSON.stringify(finalEnableFPSCap)); } catch {}
+  try { globalThis.localStorage.setItem('enableGPSCap', JSON.stringify(finalEnableGPSCap)); } catch {}
   try { globalThis.localStorage.setItem('useWebWorker', JSON.stringify(!!localUseWebWorker)); } catch {}
   try { globalThis.localStorage.setItem('confirmOnClear', JSON.stringify(!!localConfirmOnClear)); } catch {}
   try { globalThis.localStorage.setItem('maxChartGenerations', String(localMaxChartGenerations)); } catch {}
   try { globalThis.localStorage.setItem('detectStablePopulation', JSON.stringify(!!localDetectStablePopulation)); } catch {}
   try { globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode)); } catch {}
   try { globalThis.localStorage.setItem('randomRectPercent', String(Math.max(0, Math.min(100, Number(localRandomRectPercent))))); } catch {}
+  try { globalThis.localStorage.setItem('enableAdaCompliance', JSON.stringify(!!localEnableAdaCompliance)); } catch {}
+  try { globalThis.localStorage.setItem('photosensitivityTesterEnabled', JSON.stringify(!!localPhotosensitivityTesterEnabled)); } catch {}
 
   try { globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning)); } catch {}
   try { setDetectStablePopulation?.(!!localDetectStablePopulation); } catch {}
@@ -151,7 +201,44 @@ const OptionsPanel = ({
     <Dialog open onClose={handleCancel} maxWidth="sm" fullWidth>
       <DialogTitle>Options</DialogTitle>
       <DialogContent>
+                <TextField
+                  select
+                  label="Backend"
+                  value={localBackendType}
+                  onChange={e => setLocalBackendType(e.target.value)}
+                  helperText="Switch between Node (port 55000) and Java (port 55001) backends"
+                  size="small"
+                  sx={{ mb: 2 }}
+                >
+                  <MenuItem value="node">Node (port 55000)</MenuItem>
+                  <MenuItem value="java">Java (port 55001)</MenuItem>
+                </TextField>
         <Stack spacing={2} sx={{ mt: 1 }}>
+          {/* App Theme Selector */}
+          <TextField
+            select
+            label="App theme"
+            value={localThemeMode}
+            onChange={(e) => setLocalThemeMode(e.target.value)}
+            helperText="Choose the overall app appearance"
+            size="small"
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Tooltip title="Switch between light, dark, high contrast, and OLED themes.">
+                      <InfoIcon fontSize="small" />
+                    </Tooltip>
+                  </InputAdornment>
+                )
+              }
+            }}
+          >
+            {availableThemes.map((theme) => (
+              <MenuItem key={theme.id} value={theme.id}>{theme.label}</MenuItem>
+            ))}
+          </TextField>
+
           <TextField
             select
             label="Color scheme"
@@ -238,11 +325,63 @@ const OptionsPanel = ({
             />
           </Stack>
 
-          <div style={{ borderTop: '1px solid #ddd', paddingTop: 16, marginTop: 16 }}>
-            <h4 style={{ margin: '0 0 16px 0' }}>Performance Settings</h4>
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, marginTop: 16 }}>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', color: 'var(--text-primary)' }}>Accessibility & Compliance</h2>
+            
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                <strong>ADA Compliance Mode</strong> (default: ON) restricts animation and simulation speed to 2 FPS/GPS maximum to comply with WCAG 2.1 photosensitivity guidelines and reduce seizure risk for users with photosensitive epilepsy.
+              </Typography>
+            </Alert>
+
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, color: 'var(--text-primary)' }}>
+              <input
+                type="checkbox"
+                checked={!!localEnableAdaCompliance}
+                onChange={(e) => setLocalEnableAdaCompliance(e.target.checked)}
+                style={{ marginRight: 8 }}
+                id="enable-ada-compliance-checkbox"
+              />
+              <label htmlFor="enable-ada-compliance-checkbox" style={{ margin: 0, fontWeight: 'bold' }}>
+                Enable ADA Compliance Mode
+              </label>
+              <Tooltip title="When enabled, animation and simulation are capped at 2 FPS/GPS for photosensitivity safety. When disabled, you assume legal liability.">
+                <InfoIcon fontSize="small" style={{ marginLeft: '8px', cursor: 'pointer', color: 'var(--text-secondary)' }} />
+              </Tooltip>
+            </div>
+
+            {!localEnableAdaCompliance && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  <strong>⚠️ WARNING: LEGAL LIABILITY NOTICE</strong><br />
+                  You have disabled ADA compliance mode. By continuing, you acknowledge and accept full legal responsibility for any harm caused by photosensitive seizures or other adverse health effects resulting from the animation speed. This software is provided as-is, and the copyright holders, developers, and distributors disclaim all liability for injuries, damages, or claims arising from your choice to operate outside compliance standards. Photosensitive individuals, particularly those with epilepsy, may experience seizures triggered by visual stimuli at frequencies above 2 Hz. You are legally liable if your use of this non-compliant setting causes injury.
+                </Typography>
+              </Alert>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, color: 'var(--text-primary)' }}>
+              <input
+                type="checkbox"
+                checked={localEnableAdaCompliance && !!localPhotosensitivityTesterEnabled}
+                onChange={(e) => localEnableAdaCompliance && setLocalPhotosensitivityTesterEnabled(e.target.checked)}
+                disabled={!localEnableAdaCompliance}
+                style={{ marginRight: 8 }}
+                id="enable-photosensitivity-tester-checkbox"
+              />
+              <label htmlFor="enable-photosensitivity-tester-checkbox" style={{ margin: 0, opacity: localEnableAdaCompliance ? 1 : 0.5 }}>
+                Enable photosensitivity tester (manual)
+              </label>
+              <Tooltip title={localEnableAdaCompliance ? "Expose the manual photosensitivity tester dialog. Available only in ADA Compliance Mode." : "Only available when ADA Compliance Mode is enabled"}>
+                <InfoIcon fontSize="small" style={{ marginLeft: '8px', cursor: 'pointer', color: 'var(--text-secondary)' }} />
+              </Tooltip>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, marginTop: 16 }}>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', color: 'var(--text-primary)' }}>Performance Settings</h2>
             
             <Stack spacing={2}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)' }}>
                 <input
                   type="checkbox"
                   checked={localShowSpeedGauge}
@@ -255,33 +394,35 @@ const OptionsPanel = ({
                 </label>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)' }}>
                 <input
                   type="checkbox"
-                  checked={!!localEnableFPSCap}
-                  onChange={(e) => setLocalEnableFPSCap(e.target.checked)}
+                  checked={localEnableAdaCompliance ? true : !!localEnableFPSCap}
+                  onChange={(e) => !localEnableAdaCompliance && setLocalEnableFPSCap(e.target.checked)}
                   style={{ marginRight: 8 }}
                   id="enable-fps-cap-checkbox"
+                  disabled={localEnableAdaCompliance}
                 />
                 <label htmlFor="enable-fps-cap-checkbox" style={{ margin: 0 }}>
                   Enable FPS cap
                 </label>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)' }}>
                 <input
                   type="checkbox"
-                  checked={!!localEnableGPSCap}
-                  onChange={(e) => setLocalEnableGPSCap(e.target.checked)}
+                  checked={localEnableAdaCompliance ? true : !!localEnableGPSCap}
+                  onChange={(e) => !localEnableAdaCompliance && setLocalEnableGPSCap(e.target.checked)}
                   style={{ marginRight: 8 }}
                   id="enable-gps-cap-checkbox"
+                  disabled={localEnableAdaCompliance}
                 />
                 <label htmlFor="enable-gps-cap-checkbox" style={{ margin: 0 }}>
                   Enable GPS cap
                 </label>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)' }}>
                 <input
                   type="checkbox"
                   checked={!!localUseWebWorker}
@@ -297,60 +438,75 @@ const OptionsPanel = ({
                 </Tooltip>
               </div>
 
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  label="Max FPS"
-                  type="number"
-                  size="small"
-                  value={localMaxFPS}
-                  onChange={e => setLocalMaxFPS(e.target.value)}
-                  helperText="1-120"
-                  slotProps={{
-                    input: {
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <Tooltip title="Maximum frames per second for rendering">
-                            <InfoIcon fontSize="small" />
-                          </Tooltip>
-                        </InputAdornment>
-                      )
-                    },
-                    htmlInput: {
-                      min: 1,
-                      max: 120
-                    }
-                  }}
-                />
-                <TextField
-                  label="Max GPS"
-                  type="number"
-                  size="small"
-                  value={localMaxGPS}
-                  onChange={e => setLocalMaxGPS(e.target.value)}
-                  helperText="1-60"
-                  slotProps={{
-                    input: {
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <Tooltip title="Maximum generations per second for game logic">
-                            <InfoIcon fontSize="small" />
-                          </Tooltip>
-                        </InputAdornment>
-                      )
-                    },
-                    htmlInput: {
-                      min: 1,
-                      max: 60
-                    }
-                  }}
-                />
+              <Stack spacing={2}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <label style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
+                      Max FPS: {localEnableAdaCompliance ? 2 : localMaxFPS}
+                    </label>
+                    <Tooltip title={localEnableAdaCompliance ? "Locked: ADA Compliance Mode restricts to 2 FPS" : "Maximum frames per second for rendering"}>
+                      <InfoIcon fontSize="small" sx={{ color: 'var(--text-secondary)' }} />
+                    </Tooltip>
+                  </div>
+                  <Slider
+                    value={localEnableAdaCompliance ? 2 : Number(localMaxFPS) || 120}
+                    onChange={(e, val) => !localEnableAdaCompliance && setLocalMaxFPS(val)}
+                    disabled={localEnableAdaCompliance}
+                    min={1}
+                    max={120}
+                    step={1}
+                    valueLabelDisplay="auto"
+                    marks={[
+                      { value: 1, label: '1' },
+                      { value: 60, label: '60' },
+                      { value: 120, label: '120' }
+                    ]}
+                    sx={{ color: localEnableAdaCompliance ? 'var(--text-tertiary)' : 'var(--accent-primary)' }}
+                  />
+                  {localEnableAdaCompliance && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', marginTop: 1 }}>
+                      Fixed at 2 FPS for ADA compliance
+                    </Typography>
+                  )}
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <label style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
+                      Max GPS: {localEnableAdaCompliance ? 2 : localMaxGPS}
+                    </label>
+                    <Tooltip title={localEnableAdaCompliance ? "Locked: ADA Compliance Mode restricts to 2 GPS" : "Maximum generations per second for simulation"}>
+                      <InfoIcon fontSize="small" sx={{ color: 'var(--text-secondary)' }} />
+                    </Tooltip>
+                  </div>
+                  <Slider
+                    value={localEnableAdaCompliance ? 2 : Number(localMaxGPS) || 60}
+                    onChange={(e, val) => !localEnableAdaCompliance && setLocalMaxGPS(val)}
+                    disabled={localEnableAdaCompliance}
+                    min={1}
+                    max={60}
+                    step={1}
+                    valueLabelDisplay="auto"
+                    marks={[
+                      { value: 1, label: '1' },
+                      { value: 30, label: '30' },
+                      { value: 60, label: '60' }
+                    ]}
+                    sx={{ color: localEnableAdaCompliance ? 'var(--text-tertiary)' : 'var(--accent-primary)' }}
+                  />
+                  {localEnableAdaCompliance && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', marginTop: 1 }}>
+                      Fixed at 2 GPS for ADA compliance
+                    </Typography>
+                  )}
+                </div>
               </Stack>
             </Stack>
           </div>
 
-          <div style={{ borderTop: '1px solid #ddd', paddingTop: 16, marginTop: 16 }}>
-            <h4 style={{ margin: '0 0 16px 0' }}>Interaction</h4>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, marginTop: 16 }}>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', color: 'var(--text-primary)' }}>Interaction</h2>
+            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)' }}>
               <input
                 type="checkbox"
                 checked={!!localConfirmOnClear}
@@ -362,7 +518,7 @@ const OptionsPanel = ({
                 Confirm before clearing grid
               </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, color: 'var(--text-primary)' }}>
               <input
                 type="checkbox"
                 checked={!!localDrawWhileRunning}
@@ -374,7 +530,7 @@ const OptionsPanel = ({
                 Draw while running
               </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)' }}>
               <input
                 type="checkbox"
                 checked={!localDrawToggleMode}
@@ -386,7 +542,7 @@ const OptionsPanel = ({
                 Toggle Draw Mode
               </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, color: 'var(--text-primary)' }}>
               <input
                 type="checkbox"
                 checked={!!localDetectStablePopulation}
@@ -482,6 +638,8 @@ const OptionsPanel = ({
 };
 
 OptionsPanel.propTypes = {
+    backendType: PropTypes.string,
+    setBackendType: PropTypes.func,
   colorSchemes: PropTypes.object.isRequired,
   colorSchemeKey: PropTypes.string.isRequired,
   setColorSchemeKey: PropTypes.func.isRequired,
@@ -503,8 +661,12 @@ OptionsPanel.propTypes = {
   setDetectStablePopulation: PropTypes.func,
   memoryTelemetryEnabled: PropTypes.bool,
   setMemoryTelemetryEnabled: PropTypes.func,
+  photosensitivityTesterEnabled: PropTypes.bool,
+  setPhotosensitivityTesterEnabled: PropTypes.func,
   randomRectPercent: PropTypes.number,
   setRandomRectPercent: PropTypes.func,
+  enableAdaCompliance: PropTypes.bool,
+  setEnableAdaCompliance: PropTypes.func,
 
   onOk: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired

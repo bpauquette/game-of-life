@@ -39,5 +39,12 @@ export const colorSchemes = {
     gridColor: "#12345a",
     cellColor: "#39ff14",
     getCellColor: () => "#39ff14"
+  },
+  adaSafe: {
+    name: "ADA Safe (Low Contrast)",
+    background: "#1a1a1a",
+    gridColor: "#2a2a2a",
+    cellColor: "#4a4a4a",
+    getCellColor: () => "#4a4a4a"
   }
 };

@@ -15,15 +15,15 @@ const DebugPanel = ({ debugLog }) => {
     return (
       <Box sx={{ 
         p: 2, 
-        bgcolor: '#0b0b0d', 
+        bgcolor: 'var(--surface-inverse)', 
         borderRadius: 1, 
-        border: '1px solid #444',
+        border: '1px solid var(--border-subtle)',
         minHeight: '200px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center'
       }}>
-        <Typography variant="body2" color="rgba(255,255,255,0.5)">
+        <Typography variant="body2" sx={{ color: 'var(--text-muted)' }}>
           No debug output. Run a script to see execution details.
         </Typography>
       </Box>
@@ -34,9 +34,9 @@ const DebugPanel = ({ debugLog }) => {
     <Box sx={{ 
       height: '400px', 
       overflow: 'auto', 
-      bgcolor: '#0b0b0d', 
+      bgcolor: 'var(--surface-inverse)', 
       borderRadius: 1, 
-      border: '1px solid #444'
+      border: '1px solid var(--border-subtle)'
     }}>
       <List dense>
         {debugLog.map((entry, idx) => (
@@ -67,7 +67,7 @@ const DebugPanel = ({ debugLog }) => {
                     variant="caption" 
                     sx={{ 
                       fontFamily: 'monospace', 
-                      color: 'rgba(255,255,255,0.5)',
+                      color: 'var(--text-muted)',
                       ml: 8 
                     }}
                   >
@@ -96,11 +96,11 @@ function getChipColor(type) {
 
 function getTextColor(type) {
   switch (type) {
-    case 'error': return '#ff6b6b';
-    case 'warning': return '#ffd93d';
-    case 'command': return '#74c0fc';
-    case 'state': return '#69db7c';
-    default: return '#fff';
+    case 'error': return 'var(--accent-error)';
+    case 'warning': return 'var(--accent-warning)';
+    case 'command': return 'var(--accent-info)';
+    case 'state': return 'var(--accent-success)';
+    default: return 'var(--text-primary)';
   }
 }
 

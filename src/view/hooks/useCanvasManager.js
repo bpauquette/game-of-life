@@ -5,6 +5,17 @@ const CONST_CAPTURE = 'capture';
 
 const DEFAULT_WINDOW_WIDTH = 800;
 const DEFAULT_WINDOW_HEIGHT = 600;
+const tokenOr = (name, fallback) => {
+  try {
+    const root = globalThis.document?.documentElement;
+    if (!root) return fallback;
+    const v = globalThis.getComputedStyle(root).getPropertyValue(name);
+    return (v && v.trim()) || fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+const FALLBACK_CANVAS_BG = tokenOr('--surface-0', '#000000');
 
 /**
  * Custom hook for managing canvas operations, drawing, and mouse interactions.
@@ -80,7 +91,7 @@ export const useCanvasManager = ({
     const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
 
     // Use the current color scheme
-    ctx.fillStyle = colorScheme?.background || '#000000';
+    ctx.fillStyle = colorScheme?.background || FALLBACK_CANVAS_BG;
     ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
     // Draw live cells
@@ -110,7 +121,7 @@ export const useCanvasManager = ({
       // overlay drawing should never break main render
       logger.warn('Overlay rendering failed:', err);
     }
-  }, [draw, selectedTool, cellSize, offsetRef, drawToolOverlay, toolStateRef, logger]);
+  }, [draw, selectedTool, cellSize, offsetRef, drawToolOverlay, logger]);
 
   // Resize canvas to fill window and account for devicePixelRatio
   const resizeCanvas = useCallback(() => {

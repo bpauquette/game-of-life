@@ -14,8 +14,9 @@ import { colorSchemes } from '../model/colorSchemes';
 import { saveCapturedShapeToBackend, getBackendApiBase } from '../utils/backendApi';
 import { useProtectedAction } from '../auth/useProtectedAction';
 import GameUILayout from './GameUILayout';
+import FirstLoadWarningDialog from './FirstLoadWarningDialog';
 import './GameOfLife.css';
-import React, { useRef, useEffect, useCallback, useState, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useCallback, useState, useLayoutEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { GameMVC } from '../controller/GameMVC';
 import { startMemoryLogger } from '../utils/memoryLogger';
@@ -44,22 +45,231 @@ const INITIAL_STEADY_INFO = Object.freeze({ steady: false, period: 0, popChangin
 // Use the core 'complexity' rule name so ESLint doesn't require sonarjs plugin
 // eslint-disable-next-line complexity
 function GameOfLifeApp(props) {
+  // Helper to create default UI state
+  const createDefaultUIState = () => {
+    // Check if ADA compliance is enabled
+    let adaEnabled = true;
+    try {
+      const stored = globalThis.localStorage?.getItem('enableAdaCompliance');
+      adaEnabled = stored === 'false' ? false : true;
+    } catch {}
+    
+    return {
+      showChart: false,
+      showSpeedGauge: (() => { try { const v = globalThis.localStorage.getItem('showSpeedGauge'); return v == null ? true : JSON.parse(v); } catch { return true; } })(),
+      colorSchemeKey: (() => { 
+        try { 
+          const v = globalThis.localStorage.getItem('colorSchemeKey'); 
+          // Force ADA-safe scheme when ADA mode is on
+          if (adaEnabled) return 'adaSafe';
+          return v || 'bio'; 
+        } catch { 
+          return adaEnabled ? 'adaSafe' : 'bio'; 
+        } 
+      })(),
+      captureDialogOpen: false,
+      paletteOpen: false,
+      myShapesDialogOpen: false,
+      importDialogOpen: false,
+      captureData: null,
+      showChrome: true
+    };
+  };
 
-  const defaultUIState = React.useMemo(() => ({
-    showChart: false,
-    showSpeedGauge: (() => { try { const v = globalThis.localStorage.getItem('showSpeedGauge'); return v == null ? true : JSON.parse(v); } catch { return true; } })(),
-    colorSchemeKey: (() => { try { const v = globalThis.localStorage.getItem('colorSchemeKey'); return v || 'bio'; } catch { return 'bio'; } })(),
-    captureDialogOpen: false,
-    paletteOpen: false,
-    myShapesDialogOpen: false,
-    importDialogOpen: false,
-    captureData: null,
-    showChrome: true
-  }), []);
-  const [uiState, setUIState] = useState(props.initialUIState || defaultUIState);
-  // Track the current generation from the model
+  // ============================================================================
+  // SECTION 1: ALL useState() CALLS
+  // ============================================================================
+  const [uiState, setUIState] = useState(props.initialUIState || createDefaultUIState());
   const [generation, setGeneration] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [selectedTool, setSelectedTool] = useState(null);
+  const [selectedShape, setSelectedShape] = useState(null);
+  const [popWindowSize, setPopWindowSize] = useState(() => {
+    try { 
+      const v = globalThis.localStorage.getItem('popWindowSize'); 
+      if (v != null) { 
+        const n = Number.parseInt(v, 10); 
+        if (!Number.isNaN(n) && n > 0 && n !== 50 && n !== 10) return n; 
+      } 
+    } catch {};
+    return 30;
+  });
+  const [popTolerance, setPopTolerance] = useState(() => {
+    try { const v = globalThis.localStorage.getItem('popTolerance'); if (v != null) { const n = Number.parseInt(v, 10); if (!Number.isNaN(n) && n >= 0) return n; } } catch {};
+    return 3;
+  });
+  const [enableAdaCompliance, setEnableAdaCompliance] = useState(() => {
+    try {
+      const stored = globalThis.localStorage?.getItem('enableAdaCompliance');
+      if (stored === 'true' || stored === 'false') return stored === 'true';
+      if (stored != null) return Boolean(JSON.parse(stored));
+      return true;
+    } catch {
+      return true;
+    }
+  });
+  const [maxChartGenerations, setMaxChartGenerations] = useState(5000);
+  
+  // Store user's preferred FPS/GPS (independent of ADA caps)
+  // Defaults to maximum speed if not set
+  // Removed unused preferredPerformance and setPreferredPerformance
+  
+  // Compute effective performance caps (apply ADA limits if enabled)
+  const [performanceCaps, setPerformanceCaps] = useState(() => {
+    try {
+      const enableAdaComplianceStored = globalThis.localStorage.getItem('enableAdaCompliance');
+      const adaEnabled = enableAdaComplianceStored === 'false' ? false : true;
+      
+      // If ADA is enabled, apply strict caps; otherwise use preferred values
+      if (adaEnabled) {
+        return { maxFPS: 2, maxGPS: 2, enableFPSCap: true, enableGPSCap: true };
+      }
+      // Use preferred values (defaults to max speed: 120/60)
+      const maxFPS = Number.parseInt(globalThis.localStorage.getItem('maxFPS'), 10);
+      const maxGPS = Number.parseInt(globalThis.localStorage.getItem('maxGPS'), 10);
+      const enableFPSCap = globalThis.localStorage.getItem('enableFPSCap');
+      const enableGPSCap = globalThis.localStorage.getItem('enableGPSCap');
+      const resolvedMaxGPS = Number.isFinite(maxGPS) && maxGPS > 0 ? Math.max(1, Math.min(60, maxGPS)) : 60;
+      return {
+        maxFPS: Number.isFinite(maxFPS) && maxFPS > 0 ? Math.max(1, Math.min(120, maxFPS)) : 120,
+        maxGPS: resolvedMaxGPS,
+        enableFPSCap: enableFPSCap != null ? JSON.parse(enableFPSCap) : false,
+        enableGPSCap: enableGPSCap != null ? JSON.parse(enableGPSCap) : false
+      };
+    } catch (e) {
+      return { maxFPS: 120, maxGPS: 60, enableFPSCap: false, enableGPSCap: false };
+    }
+  });
+  const [detectStablePopulation, setDetectStablePopulation] = useState(() => {
+    try {
+      const stored = globalThis.localStorage?.getItem('detectStablePopulation');
+      if (stored === 'true' || stored === 'false') return stored === 'true';
+      if (stored != null) return Boolean(JSON.parse(stored));
+      return true;
+    } catch {
+      return true;
+    }
+  });
+  const [useWebWorker, setUseWebWorker] = useState(() => {
+    try {
+      const stored = globalThis.localStorage?.getItem('useWebWorker');
+      if (stored === 'true' || stored === 'false') return stored === 'true';
+      return false;
+    } catch {
+      return false;
+    }
+  });
+  const [steadyInfo, setSteadyInfo] = useState(INITIAL_STEADY_INFO);
+  const [populationHistory, setPopulationHistory] = useState([]);
+  const [memoryTelemetryEnabled, setMemoryTelemetryEnabled] = useState(() => {
+    try {
+      const stored = globalThis.localStorage?.getItem('memoryTelemetryEnabled');
+      if (stored === 'true' || stored === 'false') {
+        return stored === 'true';
+      }
+    } catch {}
+    return false;
+  });
+  
+  // Track whether to show first-load warning dialog
+  const [showFirstLoadWarning, setShowFirstLoadWarning] = useState(() => {
+    try {
+      const hasSeenWarning = globalThis.localStorage?.getItem('gol-first-load-warning-seen');
+      return !hasSeenWarning; // Show if they haven't seen it before
+    } catch {
+      return true; // Show on error (safer default)
+    }
+  });
+  const [duplicateShape, setDuplicateShape] = useState(null);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [stableDetectionInfo, setStableDetectionInfo] = useState(null);
+  const [showStableDialog, setShowStableDialog] = useState(false);
+  const [randomRectPercent, setRandomRectPercent] = useState(() => {
+    try {
+      const v = globalThis.localStorage.getItem('randomRectPercent');
+      if (v != null) {
+        const n = Number.parseInt(v, 10);
+        if (!Number.isNaN(n)) return Math.max(0, Math.min(100, n));
+      }
+    } catch {}
+    return 50;
+  });
+  const [useHashlife] = useState(() => {
+    try { const v = globalThis.localStorage.getItem('useHashlife'); return v == null ? true : v === 'true'; } catch { return true; }
+  });
+  const [hashlifeMaxRun] = useState(() => {
+    try { 
+      const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeMaxRun'), 10); 
+      const MAX_SAFE_GENERATIONS = 1000000;
+      if (Number.isFinite(v) && v > 0 && v <= MAX_SAFE_GENERATIONS) {
+        return v;
+      }
+      return 1024;
+    } catch { return 1024; }
+  });
+  const [hashlifeCacheSize] = useState(() => {
+    try { const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeCacheSize'), 10); return Number.isFinite(v) && v >= 0 ? v : 0; } catch { return 0; }
+  });
+  const [engineMode, setEngineMode] = useState('normal');
+  const [generationBatchSize, setGenerationBatchSize] = useState(() => {
+    try {
+      const v = Number.parseInt(globalThis.localStorage.getItem('generationBatchSize'), 10);
+      if (Number.isFinite(v) && v >= 1 && v <= 10000) {
+        return v;
+      }
+      return 50;
+    } catch { return 50; }
+  });
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Will be set by mediaQuery useEffect
+  const [viewportSnapshot, setViewportSnapshot] = useState({ offsetX: 0, offsetY: 0, cellSize: 8, zoom: 1 });
+  const [shapesNotifOpen, setShapesNotifOpen] = useState(false);
+  const [loginNotifOpen, setLoginNotifOpen] = useState(false);
+  const [loginNotifMessage, setLoginNotifMessage] = useState('');
 
+  // Refs and constants (must come after useState, before effects/callbacks)
+  const isHashlifeMode = false;
+  const userNotifiedRef = useRef(false);
+  const isRunningRef = useRef(false);
+  const snapshotsRef = useRef([]);
+  const gameRef = useRef(null);
+  const pendingLoadRef = useRef(null);
+  const toolStateRef = useRef({});
+  const popHistoryRef = useRef([]);
+  const canvasRef = useRef(null);
+
+  // Callbacks (after refs, before effects)
+  const setUseWebWorkerPreference = useCallback((value) => {
+    setUseWebWorker(value);
+    try { globalThis.localStorage?.setItem('useWebWorker', JSON.stringify(value)); } catch (e) {}
+  }, []);
+
+  const clearHashlifeCache = useCallback(() => {
+    try {
+      hashlifeAdapter.clearCache();
+      try { globalThis.console && console.debug('Hashlife cache cleared'); } catch (e) {}
+    } catch (e) {
+      try { console.error('Failed to clear hashlife cache', e); } catch (e2) {}
+    }
+  }, []);
+
+  const setRunningState = useCallback((running) => {
+    const modelIsRunning = !!running;
+    setIsRunning(modelIsRunning);
+    isRunningRef.current = modelIsRunning;
+    
+    if (gameRef.current?.model?.setRunningModel) {
+      gameRef.current.model.setRunningModel(modelIsRunning);
+    }
+  }, []);
+
+  const setIsRunningCombined = useCallback((running, mode = engineMode) => {
+    if (running && mode !== engineMode) {
+      setEngineMode(mode);
+    }
+    setRunningState(running);
+  }, [setRunningState, engineMode]);
+
+  // Effects (after all refs and callbacks)
   // Keep generation in sync with the model
   useEffect(() => {
     const updateGeneration = () => {
@@ -80,137 +290,6 @@ function GameOfLifeApp(props) {
     const interval = setInterval(updateGeneration, 500);
     return () => clearInterval(interval);
   }, []);
-  const [isRunning, setIsRunning] = useState(false);
-  const isRunningRef = useRef(false);
-  
-  // Keep ref in sync with state (will be enhanced with observer after gameRef is available)
-  useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
-  const [selectedTool, setSelectedTool] = useState(null);
-  const [selectedShape, setSelectedShape] = useState(null);
-  const [popWindowSize, setPopWindowSize] = useState(() => {
-    // Clear old cached value to ensure new default takes effect
-    try { 
-      const v = globalThis.localStorage.getItem('popWindowSize'); 
-      if (v != null) { 
-        const n = Number.parseInt(v, 10); 
-        // If cached value is the old default (50 or 10), use new default instead
-        if (!Number.isNaN(n) && n > 0 && n !== 50 && n !== 10) return n; 
-      } 
-    } catch {};
-    return 30;  // Balanced: not too slow, not too sensitive to false positives
-  });
-  const [popTolerance, setPopTolerance] = useState(() => {
-    try { const v = globalThis.localStorage.getItem('popTolerance'); if (v != null) { const n = Number.parseInt(v, 10); if (!Number.isNaN(n) && n >= 0) return n; } } catch {};
-    return 3;
-  });
-  const [maxChartGenerations, setMaxChartGenerations] = useState(5000);
-  const [performanceCaps, setPerformanceCaps] = useState(() => {
-    try {
-      const maxFPS = Number.parseInt(globalThis.localStorage.getItem('maxFPS'), 10);
-      const maxGPS = Number.parseInt(globalThis.localStorage.getItem('maxGPS'), 10);
-      const enableFPSCap = globalThis.localStorage.getItem('enableFPSCap');
-      const enableGPSCap = globalThis.localStorage.getItem('enableGPSCap');
-      return {
-        maxFPS: Number.isFinite(maxFPS) && maxFPS > 0 ? Math.max(1, Math.min(120, maxFPS)) : 60,
-        maxGPS: Number.isFinite(maxGPS) && maxGPS > 0 ? Math.max(1, Math.min(60, maxGPS)) : 30,
-        enableFPSCap: enableFPSCap != null ? JSON.parse(enableFPSCap) : false,
-        enableGPSCap: enableGPSCap != null ? JSON.parse(enableGPSCap) : false
-      };
-    } catch (e) {
-      return { maxFPS: 60, maxGPS: 30, enableFPSCap: false, enableGPSCap: false };
-    }
-  });
-
-  const [useWebWorker, setUseWebWorker] = useState(() => {
-    try {
-      const stored = globalThis.localStorage?.getItem('useWebWorker');
-      if (stored === 'true' || stored === 'false') return stored === 'true';
-      return false; // Disable by default
-    } catch {
-      return false;
-    }
-  });
-
-  const setUseWebWorkerPreference = useCallback((value) => {
-    setUseWebWorker(value);
-    try { globalThis.localStorage?.setItem('useWebWorker', JSON.stringify(value)); } catch (e) {}
-  }, []);
-  const [detectStablePopulation, setDetectStablePopulation] = useState(() => {
-    try {
-      const stored = globalThis.localStorage?.getItem('detectStablePopulation');
-      if (stored === 'true' || stored === 'false') return stored === 'true';
-      if (stored != null) return Boolean(JSON.parse(stored));
-      return true; // Enable by default for better user experience
-    } catch {
-      return true; // Enable by default for better user experience
-    }
-  });
-  const [steadyInfo, setSteadyInfo] = useState(INITIAL_STEADY_INFO);
-  const [populationHistory, setPopulationHistory] = useState([]);
-  const [memoryTelemetryEnabled, setMemoryTelemetryEnabled] = useState(() => {
-    try {
-      const stored = globalThis.localStorage?.getItem('memoryTelemetryEnabled');
-      if (stored === 'true' || stored === 'false') {
-        return stored === 'true';
-      }
-    } catch {}
-    return false;
-  });
-  const [duplicateShape, setDuplicateShape] = useState(null);
-  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
-  const [stableDetectionInfo, setStableDetectionInfo] = useState(null);
-  const [showStableDialog, setShowStableDialog] = useState(false);
-  const [userNotifiedOfStability, setUserNotifiedOfStability] = useState(false);
-  const userNotifiedRef = useRef(false);
-  
-  // Keep ref in sync with state
-  useEffect(() => { 
-    userNotifiedRef.current = userNotifiedOfStability; 
-  }, [userNotifiedOfStability]);
-  const [randomRectPercent, setRandomRectPercent] = useState(() => {
-    try {
-      const v = globalThis.localStorage.getItem('randomRectPercent');
-      if (v != null) {
-        const n = Number.parseInt(v, 10);
-        if (!Number.isNaN(n)) return Math.max(0, Math.min(100, n));
-      }
-    } catch {}
-    return 50;
-  });
-  // Hashlife integration settings
-  const [useHashlife] = useState(() => {
-    try { const v = globalThis.localStorage.getItem('useHashlife'); return v == null ? true : v === 'true'; } catch { return true; }
-  });
-  const [hashlifeMaxRun] = useState(() => {
-    try { 
-      const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeMaxRun'), 10); 
-      // Limit to reasonable maximum (1 million generations)
-      const MAX_SAFE_GENERATIONS = 1000000;
-      if (Number.isFinite(v) && v > 0 && v <= MAX_SAFE_GENERATIONS) {
-        return v;
-      }
-      return 1024;
-    } catch { return 1024; }
-  });
-  const [hashlifeCacheSize] = useState(() => {
-    try { const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeCacheSize'), 10); return Number.isFinite(v) && v >= 0 ? v : 0; } catch { return 0; }
-  });
-  
-  // Engine mode is currently fixed to 'normal' in the UI; Hashlife
-  // remains experimental and is not user-selectable.
-  const [engineMode, setEngineMode] = useState('normal');
-  const isHashlifeMode = false;
-  
-  // Generation batch size for hashlife (generations per frame)
-  const [generationBatchSize, setGenerationBatchSize] = useState(() => {
-    try {
-      const v = Number.parseInt(globalThis.localStorage.getItem('generationBatchSize'), 10);
-      if (Number.isFinite(v) && v >= 1 && v <= 10000) {
-        return v;
-      }
-      return 50; // Default: good balance of speed and smoothness
-    } catch { return 50; }
-  });
   
   // Save generation batch size to localStorage
   useEffect(() => {
@@ -218,55 +297,13 @@ function GameOfLifeApp(props) {
       globalThis.localStorage.setItem('generationBatchSize', generationBatchSize.toString());
     } catch {}
   }, [generationBatchSize]);
-
-  const clearHashlifeCache = useCallback(() => {
-    try {
-      hashlifeAdapter.clearCache();
-      try { globalThis.console && console.debug('Hashlife cache cleared'); } catch (e) {}
-    } catch (e) {
-      try { console.error('Failed to clear hashlife cache', e); } catch (e2) {}
-    }
-  }, []);
-
-
-  // persistent refs
-  const snapshotsRef = useRef([]);
-  const gameRef = useRef(null);
-
-  // Running state management functions (defined early for dependency arrays)
-  const setRunningState = useCallback((running) => {
-    const modelIsRunning = !!running;
-    setIsRunning(modelIsRunning);
-    isRunningRef.current = modelIsRunning;
-    
-    // Update GameModel as single source of truth
-    if (gameRef.current?.model?.setRunningModel) {
-      gameRef.current.model.setRunningModel(modelIsRunning);
-    }
-    
-
-  }, []);
-
-  const setIsRunningCombined = useCallback((running, mode = engineMode) => {
-    // Update engine mode when starting
-    if (running && mode !== engineMode) {
-      setEngineMode(mode);
-    }
-    setRunningState(running);
-  }, [setRunningState, engineMode]);
-
-  const pendingLoadRef = useRef(null);
-  const toolStateRef = useRef({});
-  const popHistoryRef = useRef([]);
   useEffect(() => { popHistoryRef.current = populationHistory; }, [populationHistory]);
   const isSmall = useMediaQuery('(max-width:900px)');
-  const [sidebarOpen, setSidebarOpen] = useState(!isSmall);
   useEffect(() => { setSidebarOpen(!isSmall); }, [isSmall]);
   const getViewport = useCallback(() => (
     gameRef.current?.getViewport?.() ?? { offsetX: 0, offsetY: 0 }
   ), [gameRef]);
   const initialViewport = React.useMemo(() => getViewport(), [getViewport]);
-  const [viewportSnapshot, setViewportSnapshot] = useState(initialViewport);
   // Use previous cellSize or fallback to 8 if undefined
   const cellSize = viewportSnapshot.cellSize || 8;
   const getLiveCells = useCallback(() => (
@@ -367,9 +404,93 @@ function GameOfLifeApp(props) {
     }
   }, [useWebWorker]);
 
+  // Sync FPS/GPS performance caps to the controller
+  useEffect(() => {
+    if (!gameRef.current?.setPerformanceSettings) return;
+    try {
+      gameRef.current.setPerformanceSettings({
+        maxFPS: performanceCaps.maxFPS,
+        maxGPS: performanceCaps.maxGPS,
+        enableFPSCap: performanceCaps.enableFPSCap,
+        enableGPSCap: performanceCaps.enableGPSCap
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to sync performance caps with GameMVC:', err);
+    }
+  }, [performanceCaps.maxFPS, performanceCaps.maxGPS, performanceCaps.enableFPSCap, performanceCaps.enableGPSCap]);
+
   const setShowChart = useCallback((open) => {
     setUIState(prev => ({ ...prev, showChart: open }));
   }, []);
+
+  // Global keyboard shortcuts for UI actions (ADA compliance)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      // Don't handle shortcuts when typing in input fields
+      const target = e.target;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      const ctrl = e.ctrlKey || e.metaKey;
+
+      // Prevent default for handled shortcuts
+      let handled = false;
+
+      // Dialog shortcuts
+      if (key === 'p' && !ctrl) {
+        setUIState(prev => ({ ...prev, paletteOpen: true }));
+        handled = true;
+      } else if (key === 'o' && !ctrl) {
+        setUIState(prev => ({ ...prev, optionsOpen: true }));
+        handled = true;
+      } else if (key === '?' || (e.shiftKey && key === '/')) {
+        setUIState(prev => ({ ...prev, helpOpen: true }));
+        handled = true;
+      } else if (key === 'g' && !ctrl) {
+        setUIState(prev => ({ ...prev, showChart: !prev.showChart }));
+        handled = true;
+      } else if (key === 'h' && !ctrl) {
+        setUIState(prev => ({ ...prev, showChrome: !(prev?.showChrome ?? true) }));
+        handled = true;
+      } else if (key === 't' && !ctrl) {
+        // Cycle color schemes
+        const schemes = Object.keys(colorSchemes);
+        const currentIndex = schemes.indexOf(uiState.colorSchemeKey || 'bio');
+        const nextIndex = e.shiftKey 
+          ? (currentIndex - 1 + schemes.length) % schemes.length 
+          : (currentIndex + 1) % schemes.length;
+        const safeKey = schemes[nextIndex] || 'bio';
+        setUIState(prev => ({ ...prev, colorSchemeKey: safeKey }));
+        // Also update color scheme in renderer
+        try {
+          const scheme = getColorSchemeFromKey(safeKey);
+          gameRef.current?.setColorScheme?.(scheme);
+        } catch (e) {
+          // ignore failures to push color scheme to renderer
+        }
+        handled = true;
+      } else if (key === 's' && ctrl) {
+        // Ctrl+S - Save grid
+        e.preventDefault();
+        setUIState(prev => ({ ...prev, saveDialogOpen: true }));
+        handled = true;
+      } else if (key === 'l' && ctrl) {
+        // Ctrl+L - Load grid
+        setUIState(prev => ({ ...prev, loadDialogOpen: true }));
+        handled = true;
+      }
+
+      if (handled) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [uiState]);
 
   const setShowSpeedGauge = useCallback((value) => {
     setUIState(prev => {
@@ -396,18 +517,34 @@ function GameOfLifeApp(props) {
   }, []);
 
   const setMaxFPS = useCallback((value) => {
+    const clamped = Math.max(1, Math.min(120, Number(value) || 60));
+    // Update preferred value (unaffected by ADA)
+    // Removed unused preferredPerformance update
+    // Recalculate effective caps (apply ADA limits if enabled)
     setPerformanceCaps((prev) => {
-      const next = { ...prev, maxFPS: value };
-      try { globalThis.localStorage?.setItem('maxFPS', String(value)); } catch (e) {}
-      return next;
+      let adaEnabled = true;
+      try {
+        const stored = globalThis.localStorage?.getItem('enableAdaCompliance');
+        adaEnabled = stored === 'false' ? false : true;
+      } catch {}
+      const finalValue = adaEnabled ? 2 : clamped;
+      return { ...prev, maxFPS: finalValue };
     });
   }, []);
 
   const setMaxGPS = useCallback((value) => {
+    const clamped = Math.max(1, Math.min(60, Number(value) || 30));
+    // Update preferred value (unaffected by ADA)
+    // Removed unused preferredPerformance update
+    // Recalculate effective caps (apply ADA limits if enabled)
     setPerformanceCaps((prev) => {
-      const next = { ...prev, maxGPS: value };
-      try { globalThis.localStorage?.setItem('maxGPS', String(value)); } catch (e) {}
-      return next;
+      let adaEnabled = true;
+      try {
+        const stored = globalThis.localStorage?.getItem('enableAdaCompliance');
+        adaEnabled = stored === 'false' ? false : true;
+      } catch {}
+      const finalValue = adaEnabled ? 2 : clamped;
+      return { ...prev, maxGPS: finalValue };
     });
   }, []);
 
@@ -426,6 +563,105 @@ function GameOfLifeApp(props) {
       return next;
     });
   }, []);
+
+  const setEnableAdaComplianceWithUpdate = useCallback((value) => {
+    const newValue = Boolean(value);
+    setEnableAdaCompliance(newValue);
+    
+    // Update colorSchemeKey based on ADA mode
+    const newColorScheme = newValue ? 'adaSafe' : 'bio';
+    setColorSchemeKey(newColorScheme);
+    try {
+      globalThis.localStorage?.setItem('colorSchemeKey', newColorScheme);
+    } catch (e) {}
+    
+    // Update performance caps based on ADA mode: use preferred values, apply ADA caps if enabled
+    setPerformanceCaps((prev) => {
+      // Read preferred values from storage (they were saved independently)
+      let prefMaxFPS = 60, prefMaxGPS = 30, prefEnableFPSCap = false, prefEnableGPSCap = false;
+      try {
+        const storedFPS = Number.parseInt(globalThis.localStorage?.getItem('maxFPS'), 10);
+        const storedGPS = Number.parseInt(globalThis.localStorage?.getItem('maxGPS'), 10);
+        const storedEnableFPS = globalThis.localStorage?.getItem('enableFPSCap');
+        const storedEnableGPS = globalThis.localStorage?.getItem('enableGPSCap');
+        if (Number.isFinite(storedFPS) && storedFPS > 0) prefMaxFPS = Math.max(1, Math.min(120, storedFPS));
+        if (Number.isFinite(storedGPS) && storedGPS > 0) prefMaxGPS = Math.max(1, Math.min(60, storedGPS));
+        if (storedEnableFPS) prefEnableFPSCap = JSON.parse(storedEnableFPS);
+        if (storedEnableGPS) prefEnableGPSCap = JSON.parse(storedEnableGPS);
+      } catch (e) {}
+      
+      // Apply ADA caps if enabled, otherwise use preferred
+      const newCaps = {
+        maxFPS: newValue ? 2 : prefMaxFPS,
+        maxGPS: newValue ? 2 : prefMaxGPS,
+        enableFPSCap: newValue ? true : prefEnableFPSCap,
+        enableGPSCap: newValue ? true : prefEnableGPSCap,
+      };
+      return newCaps;
+    });
+    
+    // Save to localStorage
+    try {
+      globalThis.localStorage?.setItem('enableAdaCompliance', JSON.stringify(newValue));
+    } catch (e) {}
+
+    // Broadcast a global event so non-React listeners can react immediately
+    try {
+      // Read current preferred caps to report
+      let prefMaxFPS = 60, prefMaxGPS = 30, prefEnableFPSCap = false, prefEnableGPSCap = false;
+      try {
+        const storedFPS = Number.parseInt(globalThis.localStorage?.getItem('maxFPS'), 10);
+        const storedGPS = Number.parseInt(globalThis.localStorage?.getItem('maxGPS'), 10);
+        const storedEnableFPS = globalThis.localStorage?.getItem('enableFPSCap');
+        const storedEnableGPS = globalThis.localStorage?.getItem('enableGPSCap');
+        if (Number.isFinite(storedFPS) && storedFPS > 0) prefMaxFPS = Math.max(1, Math.min(120, storedFPS));
+        if (Number.isFinite(storedGPS) && storedGPS > 0) prefMaxGPS = Math.max(1, Math.min(60, storedGPS));
+        if (storedEnableFPS) prefEnableFPSCap = JSON.parse(storedEnableFPS);
+        if (storedEnableGPS) prefEnableGPSCap = JSON.parse(storedEnableGPS);
+      } catch (e) {}
+      
+      const computedCaps = {
+        maxFPS: newValue ? 2 : prefMaxFPS,
+        maxGPS: newValue ? 2 : prefMaxGPS,
+        enableFPSCap: newValue ? true : prefEnableFPSCap,
+        enableGPSCap: newValue ? true : prefEnableGPSCap,
+      };
+      globalThis.window?.dispatchEvent(
+        new CustomEvent('gol:adaChanged', {
+          detail: { enabled: newValue, colorScheme: newColorScheme, performanceCaps: computedCaps }
+        })
+      );
+    } catch (e) {}
+    
+    // Trigger canvas resize to apply viewport changes (160px for ADA, full screen otherwise)
+    // The canvas CSS style changes in GameUILayout, so we need to notify the renderer
+    try {
+      const canvas = canvasRef?.current;
+      if (canvas) {
+        // Force a layout recalculation by triggering a resize event
+        // The ResizeObserver in useCanvasManager will detect this and recalculate viewport
+        const resizeEvent = new Event('resize', { bubbles: true });
+        globalThis.window?.dispatchEvent(resizeEvent);
+        
+        // Also trigger a direct canvas rect update after a frame to ensure layout is complete
+        requestAnimationFrame(() => {
+          if (gameRef?.current?.renderer?.resize) {
+            try {
+              const rect = canvas.getBoundingClientRect();
+              if (rect && rect.width > 0 && rect.height > 0) {
+                gameRef.current.renderer.resize(Math.floor(rect.width), Math.floor(rect.height));
+              }
+            } catch (e) {
+              // ignore resize errors
+            }
+          }
+        });
+      }
+    } catch (e) {
+      // ignore viewport update errors
+    }
+  }, [setColorSchemeKey]);
+
 
   const setCaptureDialogOpen = useCallback((open) => {
     setUIState((prev) => ({ ...prev, captureDialogOpen: open }));
@@ -461,7 +697,6 @@ function GameOfLifeApp(props) {
       // Clear any existing dialog state when detection is disabled
       setShowStableDialog(false);
       setStableDetectionInfo(null);
-      setUserNotifiedOfStability(false);
       userNotifiedRef.current = false;
       return;
     }
@@ -519,13 +754,11 @@ function GameOfLifeApp(props) {
           period
         });
         setShowStableDialog(true);
-        setUserNotifiedOfStability(true);
         userNotifiedRef.current = true;
       }
       
       // Reset notification flag if pattern becomes unstable
       if (!nowStable && wasStable) {
-        setUserNotifiedOfStability(false);
         userNotifiedRef.current = false;
       }
       
@@ -663,9 +896,6 @@ function GameOfLifeApp(props) {
   // doesn't need to capture uiState in its dependency array.
   const colorSchemeKeyRef = useRef(uiState?.colorSchemeKey || 'bio');
   useEffect(() => { colorSchemeKeyRef.current = uiState?.colorSchemeKey || 'bio'; }, [uiState?.colorSchemeKey]);
-  // Canvas DOM ref (used by GameUILayout). The single renderer (GameMVC)
-  // will be instantiated when this ref's element is available.
-  const canvasRef = useRef(null);
 
   // Start a controlled drag from the palette into the canvas. This sets the
   // selected shape/tool on the controller and updates controller toolState
@@ -696,13 +926,18 @@ function GameOfLifeApp(props) {
       updateLastFromEvent(startEvent);
 
       const onMove = (ev) => updateLastFromEvent(ev);
+      
+      // Define handlers together in a way that avoids forward references
+      const handlers = {};
+      
       const cleanup = () => {
         try { document.removeEventListener('pointermove', onMove); } catch (e) {}
-        try { document.removeEventListener('pointerup', onUp); } catch (e) {}
-        try { document.removeEventListener('pointercancel', onCancel); } catch (e) {}
+        try { document.removeEventListener('pointerup', handlers.onUp); } catch (e) {}
+        try { document.removeEventListener('pointercancel', handlers.onCancel); } catch (e) {}
         try { controller._setToolState({ start: null, last: null, dragging: false }, { updateOverlay: true }); } catch (e) {}
       };
-      const onUp = (ev) => {
+      
+      handlers.onUp = (ev) => {
         try {
           updateLastFromEvent(ev);
           const finalPt = eventToCellFromCanvas(ev, canvas, offsetRef, getEffectiveCellSize());
@@ -721,13 +956,14 @@ function GameOfLifeApp(props) {
           cleanup();
         }
       };
-      const onCancel = (ev) => {
+      
+      handlers.onCancel = (ev) => {
         cleanup();
       };
 
       document.addEventListener('pointermove', onMove);
-      document.addEventListener('pointerup', onUp);
-      document.addEventListener('pointercancel', onCancel);
+      document.addEventListener('pointerup', handlers.onUp);
+      document.addEventListener('pointercancel', handlers.onCancel);
 
       // return cleanup
       return cleanup;
@@ -749,7 +985,6 @@ function GameOfLifeApp(props) {
   const { loading: shapesLoading, progress: shapesProgress, error: shapesError, ready: shapesReady, start: shapesStart } = useInitialShapeLoader({ strategy: preloadStrategy, autoStart: false });
 
   // Notification snackbar when shapes catalog becomes ready
-  const [shapesNotifOpen, setShapesNotifOpen] = useState(false);
   useEffect(() => {
     if (shapesReady) {
       setShapesNotifOpen(true);
@@ -757,8 +992,6 @@ function GameOfLifeApp(props) {
   }, [shapesReady]);
 
   // Login required snackbar
-  const [loginNotifOpen, setLoginNotifOpen] = useState(false);
-  const [loginNotifMessage, setLoginNotifMessage] = useState('');
   useEffect(() => {
     const handleNeedLogin = (event) => {
       setLoginNotifMessage(event.detail?.message || 'Please login.');
@@ -911,22 +1144,29 @@ function GameOfLifeApp(props) {
           // place shape centered at centerX, centerY
           try { model.placeShape(centerX, centerY, { cells }); } catch (e) {}
 
-          // step until steady or until maxSteps
-          const seen = new Set();
-          let steady = false;
-          let steps = 0;
-          const maxSteps = Number(detail.maxSteps) || 200;
-          while (steps < maxSteps) {
-            const hash = model.getStateHash();
-            if (seen.has(hash)) { steady = true; break; }
-            seen.add(hash);
-            // advance one generation via controller
-            try { await controller.step(); } catch (e) { break; }
-            steps += 1;
-            const newHash = model.getStateHash();
-            if (newHash === hash) { steady = true; break; }
+          // step until steady or until maxSteps using unified helper
+          let runUntil;
+          try { ({ runUntilSteadyModel: runUntil } = require('../model/stepping/runUntil')); } catch (_) {}
+          if (typeof runUntil === 'function') {
+            const { steady, steps } = await runUntil(model, controller, { maxSteps: Number(detail.maxSteps) || 200 });
+            results.push({ size: s, steady, steps, finalCount: model.getCellCount() });
+          } else {
+            // Fallback: simple loop if helper not available
+            const seen = new Set();
+            let steady = false;
+            let steps = 0;
+            const maxSteps = Number(detail.maxSteps) || 200;
+            while (steps < maxSteps) {
+              const hash = model.getStateHash();
+              if (seen.has(hash)) { steady = true; break; }
+              seen.add(hash);
+              try { await controller.step(); } catch (e) { break; }
+              steps += 1;
+              const newHash = model.getStateHash();
+              if (newHash === hash) { steady = true; break; }
+            }
+            results.push({ size: s, steady, steps, finalCount: model.getCellCount() });
           }
-          results.push({ size: s, steady, steps, finalCount: model.getCellCount() });
         }
 
         window.dispatchEvent(new CustomEvent('gol:script:runResult', { detail: { results } }));
@@ -1328,7 +1568,7 @@ function GameOfLifeApp(props) {
 
   // --- Controls props ---
   const colorScheme = getColorSchemeFromKey(uiState?.colorSchemeKey || 'bio');
-  const controlsProps = {
+  const controlsProps = useMemo(() => ({
     selectedTool,
     setSelectedTool: setSelectedToolLocal,
     onCenterViewport: () => gameRef.current?.centerOnLiveCells?.(),
@@ -1393,13 +1633,26 @@ function GameOfLifeApp(props) {
     setMaxGPS,
     setEnableFPSCap,
     setEnableGPSCap,
+    enableAdaCompliance,
+    setEnableAdaCompliance: setEnableAdaComplianceWithUpdate,
   backendBase: getBackendApiBase(),
     onAddRecent: handleAddRecent,
     liveCellsCount: getLiveCells().size,
     generation,
     useWebWorker,
     setUseWebWorker: setUseWebWorkerPreference
-  };
+  }), [
+    selectedTool, setSelectedToolLocal, uiState, setColorSchemeKey, isRunning, setIsRunningCombined,
+    step, drawWithOverlay, clear, viewportSnapshot, setCellAlive, setShowChart, getLiveCells, popWindowSize,
+    setPopWindowSize, popTolerance, setPopTolerance, handleSelectShape, openPalette, steadyInfo, handleLoadGrid,
+    setShowSpeedGauge, detectStablePopulation, setDetectStablePopulationPreference, maxChartGenerations,
+    setMaxChartGenerations, memoryTelemetryEnabled, setMemoryTelemetryEnabled, randomRectPercent,
+    setRandomRectPercent, useHashlife, hashlifeMaxRun, hashlifeCacheSize, clearHashlifeCache, engineMode,
+    startNormalMode, startHashlifeMode, stopAllEngines, setEngineModeDirect, generationBatchSize,
+    setGenerationBatchSize, performanceCaps, setMaxFPS, setMaxGPS, setEnableFPSCap, setEnableGPSCap,
+    enableAdaCompliance, setEnableAdaComplianceWithUpdate,
+    handleAddRecent, generation, useWebWorker, setUseWebWorkerPreference, cursorCell, isHashlifeMode
+  ]);
 
   // --- Render ---
   return (
@@ -1452,6 +1705,7 @@ function GameOfLifeApp(props) {
       onToggleSidebar={() => setSidebarOpen((v) => !v)}
       isSmall={isSmall}
       onToggleChrome={toggleChrome}
+      enableAdaCompliance={enableAdaCompliance}
     />
       <Snackbar open={shapesNotifOpen} autoHideDuration={4000} onClose={() => setShapesNotifOpen(false)}>
         <Alert severity="success" onClose={() => setShapesNotifOpen(false)} sx={{ width: '100%' }}>
@@ -1527,7 +1781,6 @@ function GameOfLifeApp(props) {
               setShowStableDialog(false);
               setStableDetectionInfo(null);
               // Reset notification flag so dialog can appear again if stability is re-detected
-              setUserNotifiedOfStability(false);
               userNotifiedRef.current = false;
               // Use single source of truth for running state
               setIsRunningCombined(true);
@@ -1549,7 +1802,13 @@ function GameOfLifeApp(props) {
       </Dialog>
       
       {/* Script Execution HUD */}
-      <ScriptExecutionHUD />
+      <ScriptExecutionHUD enableAdaCompliance={enableAdaCompliance} />
+      
+      {/* First Load Warning Dialog - Shows only once per browser */}
+      <FirstLoadWarningDialog 
+        open={showFirstLoadWarning} 
+        onClose={() => setShowFirstLoadWarning(false)}
+      />
     </>
   );
 }

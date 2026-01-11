@@ -1,62 +1,6 @@
 import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
 
-// Oval (ellipse) perimeter-only tool - axis-aligned, commits on mouseup
-export const ovalTool = {
-  getOverlay(state, cellSize) {
-    if (!state.start || !state.last) return null;
-    // Descriptor-based overlay: highlight absolute preview cells
-    const cells = Array.isArray(state.preview) ? state.preview : [];
-    return makeCellsHighlightOverlay(cells, { color: 'rgba(255,0,0,0.4)', alpha: 0.6 });
-  },
-  onMouseDown(state, x, y) {
-    state.start = { x, y };
-    state.last = { x, y };
-    state.preview = [];
-  },
-
-  onMouseMove(state, x, y) {
-    if (!state.start) return;
-    state.last = { x, y };
-    state.preview = computeEllipsePerimeter(state.start.x, state.start.y, x, y);
-  },
-
-  onMouseUp(state, x, y, setCellAlive, setCellsAliveBulk) {
-    if (!state.start) return;
-    const pts = computeEllipsePerimeter(state.start.x, state.start.y, x, y);
-    if (typeof setCellsAliveBulk === 'function') {
-      const updates = pts.map(p => [p[0], p[1], true]);
-      setCellsAliveBulk(updates);
-    } else {
-      for (const p of pts) {
-        const px = p[0];
-        const py = p[1];
-        setCellAlive(px, py, true);
-      }
-    }
-    state.start = null;
-    state.last = null;
-    state.preview = [];
-  },
-
-  drawOverlay(ctx, state, cellSize, offset) {
-    try {
-      if (!state.start || !state.last) return;
-      if (state.preview && state.preview.length > 0) {
-        ctx.save();
-        ctx.fillStyle = 'rgba(255,0,0,0.4)';
-        for (const p of state.preview) {
-          const x = p[0];
-          const y = p[1];
-          ctx.fillRect(x * cellSize - offset.x, y * cellSize - offset.y, cellSize, cellSize);
-        }
-        ctx.restore();
-      }
-    } catch (e) {
-      if (typeof console !== 'undefined') console.warn('Oval overlay error:', e);
-    }
-  }
-};
-
+// Midpoint ellipse algorithm for computing ellipse perimeter
 const computeEllipsePerimeter = (x0, y0, x1, y1) => {
   const xMin = Math.min(x0, x1);
   const xMax = Math.max(x0, x1);
@@ -128,4 +72,61 @@ const computeEllipsePerimeter = (x0, y0, x1, y1) => {
     }
   }
   return unique;
-}
+};
+
+// Oval (ellipse) perimeter-only tool - axis-aligned, commits on mouseup
+export const ovalTool = {
+  getOverlay(state, cellSize) {
+    if (!state.start || !state.last) return null;
+    // Descriptor-based overlay: highlight absolute preview cells
+    const cells = Array.isArray(state.preview) ? state.preview : [];
+    return makeCellsHighlightOverlay(cells, { color: 'rgba(255,0,0,0.4)', alpha: 0.6 });
+  },
+  onMouseDown(state, x, y) {
+    state.start = { x, y };
+    state.last = { x, y };
+    state.preview = [];
+  },
+
+  onMouseMove(state, x, y) {
+    if (!state.start) return;
+    state.last = { x, y };
+    state.preview = computeEllipsePerimeter(state.start.x, state.start.y, x, y);
+  },
+
+  onMouseUp(state, x, y, setCellAlive, setCellsAliveBulk) {
+    if (!state.start) return;
+    const pts = computeEllipsePerimeter(state.start.x, state.start.y, x, y);
+    if (typeof setCellsAliveBulk === 'function') {
+      const updates = pts.map(p => [p[0], p[1], true]);
+      setCellsAliveBulk(updates);
+    } else {
+      for (const p of pts) {
+        const px = p[0];
+        const py = p[1];
+        setCellAlive(px, py, true);
+      }
+    }
+    state.start = null;
+    state.last = null;
+    state.preview = [];
+  },
+
+  drawOverlay(ctx, state, cellSize, offset) {
+    try {
+      if (!state.start || !state.last) return;
+      if (state.preview && state.preview.length > 0) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,0,0,0.4)';
+        for (const p of state.preview) {
+          const x = p[0];
+          const y = p[1];
+          ctx.fillRect(x * cellSize - offset.x, y * cellSize - offset.y, cellSize, cellSize);
+        }
+        ctx.restore();
+      }
+    } catch (e) {
+      if (typeof console !== 'undefined') console.warn('Oval overlay error:', e);
+    }
+  }
+};

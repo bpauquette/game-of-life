@@ -49,12 +49,12 @@ function ShapePreviewComponent({
   svgSize = 64,
   borderRadius = 6,
   borderOpacity = 0.06,
-  defaultCellColor = '#222',
+  defaultCellColor = 'var(--text-primary)',
   t,
   selected = false,
   selectedBorderWidth = '3px',
-  selectedBorderColor = '#00ff88',
-  selectedBoxShadow = '0 0 10px rgba(0, 255, 136, 0.6), inset 0 0 5px rgba(0, 255, 136, 0.2)',
+  selectedBorderColor = 'var(--accent-success)',
+  selectedBoxShadow = 'var(--success-glow)',
   selectedBackgroundOverlay = 'rgba(0, 255, 136, 0.1)'
   , source = 'unknown'
 }) {
@@ -150,8 +150,8 @@ function ShapePreviewComponent({
       data-preview-source={source}
       style={{
         background: selected
-          ? `linear-gradient(${selectedBackgroundOverlay}, ${selectedBackgroundOverlay}), ${colorScheme.background || '#1a1a1a'}`
-          : colorScheme.background || '#1a1a1a',
+          ? `linear-gradient(${selectedBackgroundOverlay}, ${selectedBackgroundOverlay}), ${colorScheme.background || 'var(--surface-1)'}`
+          : colorScheme.background || 'var(--surface-1)',
         border: 'none',
         borderRadius,
         boxShadow: selected ? selectedBoxShadow : 'none',

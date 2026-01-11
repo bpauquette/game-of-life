@@ -22,7 +22,8 @@ import StopIcon from '@mui/icons-material/Stop';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
 import languageDefinition from './languageDefinition';
-import { parseBlocks, execBlock, splitCond, legacyCommand } from './scriptingInterpreter';
+import { parseBlocks, execBlock, legacyCommand } from './scriptingInterpreter';
+import { step as golStep } from '../model/gameLogic';
 import { useAuthStatus } from '../auth/useAuthStatus';
 import { getBackendApiBase } from '../utils/backendApi';
 import DebugPanel from './DebugPanel';
@@ -122,7 +123,7 @@ function ScriptPanel({ open, onClose }) {
         setDebugLog(log => [
           ...log,
           ev.detail || { type: 'unknown', msg: 'Malformed debug event' }
-        ].slice(-200)); // keep last 200 entries
+        ].slice(-10000)); // keep last 10000 entries for longer HUD history
       }
       window.addEventListener('gol:script:debug', onDebug);
       return () => window.removeEventListener('gol:script:debug', onDebug);
@@ -133,7 +134,7 @@ function ScriptPanel({ open, onClose }) {
       if (!open) setDebugLog([]);
       console.log('[ScriptPanel] useEffect [open] open:', open);
     }, [open]);
-  const { isAuthenticated, me } = useAuthStatus();
+  const { isAuthenticated } = useAuthStatus();
   // Script name and content autosave
   const [scriptName, setScriptName] = useState(() => {
     try { return localStorage.getItem('gol_script_name') || `Untitled Script`; } catch (e) { return 'Untitled Script'; }
@@ -142,20 +143,20 @@ function ScriptPanel({ open, onClose }) {
     try { return localStorage.getItem('gol_script_last') || 'PENDOWN\nRECT 4 3\nCAPTURE demo\n'; } catch (e) { return '';} 
   });
   const [runMessage, setRunMessage] = useState(null);
-  const [cloudMessage, setCloudMessage] = useState(null);
+  // Removed unused cloudMessage
   const [runErrors, setRunErrors] = useState([]); // [{line, msg, help}]
   const textareaRef = useRef();
   const [isPublic, setIsPublic] = useState(false);
   const [cloudScripts, setCloudScripts] = useState([]);
   // Animation overlay state
-  const [stepAnim, setStepAnim] = useState(null);
+  // Removed unused stepAnim
   // Enhanced features state
   const [activeTab, setActiveTab] = useState(0);
-  const [previewMode, setPreviewMode] = useState(false);
+  // Removed unused previewMode
   const [scriptState, setScriptState] = useState({ cells: new Set(), vars: {}, outputLabels: [] });
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionProgress, setExecutionProgress] = useState({ current: 0, total: 0 });
-  const [breakpoints, setBreakpoints] = useState(new Set());
+  // Removed unused breakpoints
   const [currentLine, setCurrentLine] = useState(null);
   const [executionPaused, setExecutionPaused] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('');
@@ -388,66 +389,17 @@ function ScriptPanel({ open, onClose }) {
     }
   }, []);
 
-  // Simple in-memory Game of Life stepper to allow demo runs inside ScriptPanel
+  // Simple in-memory Game of Life stepper using shared core logic
   const stepGOL = useCallback((cellsSet) => {
-    const neighbors = new Map();
-    const addNeighbor = (k) => neighbors.set(k, (neighbors.get(k) || 0) + 1);
-    for (const s of cellsSet) {
-      const [x, y] = s.split(',').map(Number);
-      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-        if (dx === 0 && dy === 0) continue;
-        addNeighbor(`${x + dx},${y + dy}`);
-      }
-    }
-    const next = new Set();
-    for (const [k, count] of neighbors.entries()) {
-      const alive = cellsSet.has(k);
-      if (alive && (count === 2 || count === 3)) next.add(k);
-      if (!alive && count === 3) next.add(k);
-    }
-    return next;
+    const current = new Map();
+    for (const key of cellsSet) current.set(key, true);
+    const nextMap = golStep(current);
+    return new Set(nextMap.keys());
   }, []);
 
-  const runUntilSteady = useCallback((startSet, maxSteps = 1000) => {
-    let seen = new Map();
-    let current = new Set(startSet);
-    for (let step = 0; step < maxSteps; step++) {
-      const key = Array.from(current).sort().join('|');
-      if (seen.has(key)) return { steady: true, steps: step, final: current };
-      seen.set(key, step);
-      const next = stepGOL(current);
-      // detect identical
-      const nxtKey = Array.from(next).sort().join('|');
-      if (nxtKey === key) return { steady: true, steps: step + 1, final: next };
-      current = next;
-    }
-    return { steady: false, steps: maxSteps, final: current };
-  }, [stepGOL]);
+  // Removed unused runUntilSteady
 
-  const runSquareGrowthDemo = useCallback(async (maxSize = 8) => {
-    return new Promise((resolve) => {
-      const handler = (ev) => {
-        try {
-          const detail = ev && ev.detail ? ev.detail : {};
-          if (detail.error) {
-            setRunErrors([{ line: null, msg: 'Square Growth demo failed: ' + detail.error, help: '' }]);
-            resolve({ error: detail.error });
-          } else if (detail.results) {
-            const results = detail.results;
-            setRunMessage('Square growth demo results:\n' + results.map(r => `size=${r.size} -> steady=${r.steady}, steps=${r.steps}, finalCells=${r.finalCount}`).join('\n'));
-            resolve({ results });
-          } else {
-            resolve({});
-          }
-        } catch (e) { resolve({ error: String(e) }); }
-        try { window.removeEventListener('gol:script:runResult', handler); } catch (e) {}
-      };
-      window.addEventListener('gol:script:runResult', handler);
-      try {
-        window.dispatchEvent(new CustomEvent('gol:script:runUntilSteady', { detail: { type: 'squareGrowth', maxSize } }));
-      } catch (e) { window.removeEventListener('gol:script:runResult', handler); resolve({ error: String(e) }); }
-    });
-  }, []);
+  // Removed unused runSquareGrowthDemo
 
   // Popout for language definition
   const [showLangDef, setShowLangDef] = useState(false);
@@ -530,7 +482,7 @@ function ScriptPanel({ open, onClose }) {
             fontSize: 48, fontWeight: 'bold', color: stepAnim.color,
             textShadow: `0 0 18px ${stepAnim.color}`,
             animation: 'pop 0.2s',
-            background: '#222b',
+            background: 'var(--surface-2)',
             borderRadius: 16,
             padding: '32px 48px',
             border: `3px solid ${stepAnim.color}`
@@ -542,7 +494,7 @@ function ScriptPanel({ open, onClose }) {
       
       <DialogTitle>
         <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="h6">Advanced Script Playground</Typography>
+          <Typography variant="h5" component="h2">Advanced Script Playground</Typography>
           <Box display="flex" gap={1}>
             <FormControlLabel
               control={<Switch checked={useMonacoEditor} onChange={(e) => setUseMonacoEditor(e.target.checked)} size="small" />}
@@ -590,7 +542,7 @@ function ScriptPanel({ open, onClose }) {
                 {/* Script metadata */}
                 <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Box sx={{ flex: 1 }}>
-                    <label htmlFor="scriptName" style={{ color: '#fff', fontWeight: 500, fontSize: 14 }}>Script Name:</label>
+                    <label htmlFor="scriptName" style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 14 }}>Script Name:</label>
                     <input
                       id="scriptName"
                       type="text"
@@ -599,9 +551,9 @@ function ScriptPanel({ open, onClose }) {
                       style={{
                         fontSize: 14,
                         fontFamily: 'monospace',
-                        background: '#18181b',
-                        color: '#fff',
-                        border: '1.5px solid #444',
+                        background: 'var(--surface-2)',
+                        color: 'var(--text-primary)',
+                        border: '1.5px solid var(--border-subtle)',
                         borderRadius: 4,
                         padding: '2px 8px',
                         width: '100%',
@@ -619,7 +571,7 @@ function ScriptPanel({ open, onClose }) {
                 </Box>
                 
                 {/* Code Editor */}
-                <Box sx={{ flex: 1, border: runErrors.length > 0 ? '2px solid #e53935' : '1px solid #444', borderRadius: 1 }}>
+                <Box sx={{ flex: 1, border: runErrors.length > 0 ? '2px solid var(--accent-error)' : '1px solid var(--border-subtle)', borderRadius: 1 }}>
                   {useMonacoEditor ? (
                     <Suspense fallback={
                       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -654,8 +606,8 @@ function ScriptPanel({ open, onClose }) {
                         height: '100%',
                         fontFamily: 'monospace',
                         fontSize: 13,
-                        background: '#0b0b0d',
-                        color: '#dfe',
+                        background: 'var(--surface-2)',
+                        color: 'var(--text-primary)',
                         border: 'none',
                         outline: 'none',
                         padding: 8,
@@ -693,7 +645,7 @@ function ScriptPanel({ open, onClose }) {
             <TabPanel value={activeTab} index={1}>
               <Box sx={{ height: '100%', display: 'flex', p: 2, gap: 2 }}>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="h6" gutterBottom>Script State Preview</Typography>
+                  <Typography variant="h5" component="h2" gutterBottom>Script State Preview</Typography>
                   <Box sx={{ mb: 2 }}>
                     <Button 
                       variant="contained" 
@@ -705,7 +657,7 @@ function ScriptPanel({ open, onClose }) {
                     </Button>
                   </Box>
                   
-                  <Box sx={{ p: 2, bgcolor: '#1a1a1a', borderRadius: 1, mb: 2 }}>
+                  <Box sx={{ p: 2, bgcolor: 'var(--surface-2)', borderRadius: 1, mb: 2, border: '1px solid var(--border-subtle)' }}>
                     <Typography variant="subtitle2" gutterBottom>Current State:</Typography>
                     <Typography variant="body2">Live Cells: {scriptState.cells.size}</Typography>
                     <Typography variant="body2">Variables: {Object.keys(scriptState.vars).length}</Typography>
@@ -714,7 +666,7 @@ function ScriptPanel({ open, onClose }) {
                   </Box>
                   
                   {Object.keys(scriptState.vars).length > 0 && (
-                    <Box sx={{ p: 2, bgcolor: '#1a1a1a', borderRadius: 1, mb: 2 }}>
+                    <Box sx={{ p: 2, bgcolor: 'var(--surface-2)', borderRadius: 1, mb: 2, border: '1px solid var(--border-subtle)' }}>
                       <Typography variant="subtitle2" gutterBottom>Variables:</Typography>
                       {Object.entries(scriptState.vars).map(([key, value]) => (
                         <Typography key={key} variant="body2" sx={{ fontFamily: 'monospace' }}>
@@ -726,7 +678,7 @@ function ScriptPanel({ open, onClose }) {
                 </Box>
                 
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="h6" gutterBottom>Debug Panel</Typography>
+                  <Typography variant="h5" component="h2" gutterBottom>Debug Panel</Typography>
                   <DebugPanel debugLog={debugLog} />
                 </Box>
               </Box>
@@ -735,8 +687,8 @@ function ScriptPanel({ open, onClose }) {
             {/* Templates Tab */}
             <TabPanel value={activeTab} index={2}>
               <Box sx={{ height: '100%', p: 2 }}>
-                <Typography variant="h6" gutterBottom>Script Templates</Typography>
-                <Typography variant="body2" sx={{ mb: 3, color: 'rgba(255,255,255,0.7)' }}>
+                <Typography variant="h5" component="h2" gutterBottom>Script Templates</Typography>
+                <Typography variant="body2" sx={{ mb: 3, color: 'var(--text-secondary)' }}>
                   Choose a template to get started quickly:
                 </Typography>
                 
@@ -744,16 +696,16 @@ function ScriptPanel({ open, onClose }) {
                   {Object.entries(SCRIPT_TEMPLATES).map(([name, code]) => (
                     <Box key={name} sx={{ 
                       p: 2, 
-                      border: selectedTemplate === name ? '2px solid #1976d2' : '1px solid #444',
+                      border: selectedTemplate === name ? '2px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
                       borderRadius: 1,
                       cursor: 'pointer',
-                      bgcolor: selectedTemplate === name ? 'rgba(25, 118, 210, 0.1)' : 'transparent'
+                      bgcolor: selectedTemplate === name ? 'var(--chip-bg)' : 'transparent'
                     }} onClick={() => handleTemplateSelect(name)}>
                       <Typography variant="subtitle1" gutterBottom>{name}</Typography>
-                      <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', mb: 1 }}>
+                      <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 1 }}>
                         {code.split('\n')[0].replace('#', '').trim()}
                       </Typography>
-                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.4)' }}>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>
                         {code.split('\n').filter(line => line.trim()).length} lines
                       </Typography>
                     </Box>
@@ -768,7 +720,7 @@ function ScriptPanel({ open, onClose }) {
         <Dialog open={showLangDef} onClose={() => setShowLangDef(false)} maxWidth="sm" fullWidth>
           <DialogTitle>GOL Script Language Reference</DialogTitle>
           <DialogContent>
-            <pre style={{ fontFamily: 'monospace', fontSize: 14, background: '#18181b', color: '#dfe', padding: 16, borderRadius: 8, whiteSpace: 'pre-wrap' }}>
+            <pre style={{ fontFamily: 'monospace', fontSize: 14, background: 'var(--surface-2)', color: 'var(--text-primary)', padding: 16, borderRadius: 8, whiteSpace: 'pre-wrap', border: '1px solid var(--border-subtle)' }}>
               {languageDefinition}
             </pre>
           </DialogContent>

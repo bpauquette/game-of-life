@@ -6,14 +6,21 @@ services:
       context: ../game-of-life-backend
     container_name: gol-backend
     environment:
-      # align this with backend/src/index.js expectations
       PORT: 55000
-      # add your DB env vars here if needed
     ports:
       - "55000:55000"
     volumes:
-      # if backend uses a SQLite file, keep it persisted
       - backend-data:/app/data
+    restart: unless-stopped
+
+  java-backend:
+    build:
+      context: ../gol-backend
+    container_name: gol-java-backend
+    environment:
+      PORT: 55001
+    ports:
+      - "55001:55001"
     restart: unless-stopped
 
   frontend:

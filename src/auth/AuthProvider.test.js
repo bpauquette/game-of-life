@@ -1,4 +1,4 @@
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { AuthProvider, useAuth } from './AuthProvider';
 
 import jwt from 'jsonwebtoken';

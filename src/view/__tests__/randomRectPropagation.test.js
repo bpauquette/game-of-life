@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, waitFor, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import GameOfLifeApp from '../GameOfLifeApp';
 
 // Mock canvas BEFORE importing GameOfLifeApp
 if (!HTMLCanvasElement.prototype.getContext) {
@@ -62,9 +63,6 @@ HTMLCanvasElement.prototype.getBoundingClientRect = jest.fn(function() {
     y: 0
   };
 });
-
-// Import the component under test after mocking
-import GameOfLifeApp from '../GameOfLifeApp';
 
 // Spy for controller._setToolState
 const mockSetToolState = jest.fn();

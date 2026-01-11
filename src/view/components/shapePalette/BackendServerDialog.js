@@ -17,7 +17,7 @@ function BackendServerDialog({ open, onClose, backendError, backendStarting, onR
     <Dialog open={open} onClose={onClose} maxWidth="sm">
       <DialogTitle>
         <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="h6">Backend Server Not Found</Typography>
+          <Typography variant="h5" component="h2">Backend Server Not Found</Typography>
           <IconButton onClick={onClose} size="small">
             <CloseIcon />
           </IconButton>

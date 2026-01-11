@@ -4,7 +4,19 @@
         "projectKey": "game-of-life"
     },
     "chat.agent.maxRequests": 100,
+    // Default to Git Bash but expose both Git Bash and WSL (Ubuntu) profiles
     "terminal.integrated.defaultProfile.windows": "Git Bash",
+    "terminal.integrated.profiles.windows": {
+        "Git Bash": {
+            "path": "C:/Program Files/Git/bin/bash.exe",
+            "icon": "terminal-bash"
+        },
+        "WSL": {
+            "path": "C:/Windows/system32/wsl.exe",
+            "args": ["-e", "/bin/bash", "-l"],
+            "icon": "terminal-ubuntu"
+        }
+    },
     "files.watcherExclude": {
         "**/node_modules/**": true,
         "**/build/**": true,
@@ -39,5 +51,6 @@
     },
     "typescript.preferences.includePackageJsonAutoImports": "off",
     "typescript.suggest.autoImports": false,
-    "files.watcherUsePolling": false
+    "files.watcherUsePolling": false,
+    "github.copilot.chat.enabled": false
 }

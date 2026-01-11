@@ -17,14 +17,14 @@ import {
   Alert,
   CircularProgress
 } from '@mui/material';
-import { Delete as DeleteIcon, Public as PublicIcon, Lock as LockIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Public as PublicIcon, Lock as LockIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import { useAuth } from '../auth/AuthProvider';
 import { getBackendApiBase } from '../utils/backendApi';
 
 const baseUrl = getBackendApiBase();
 
 const MyShapesDialog = ({ open, onClose }) => {
-  const { token } = useAuth();
+  const { token, hasDonated } = useAuth();
   const [shapes, setShapes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -103,6 +103,26 @@ const MyShapesDialog = ({ open, onClose }) => {
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>My Shapes</DialogTitle>
+      <Box sx={{ px: 3, pt: 2, pb: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Chip
+            color={hasDonated ? 'success' : 'default'}
+            label={hasDonated ? 'Donation: Verified' : 'Donation: Not donated'}
+            icon={<CheckCircleIcon />}
+            sx={{ fontWeight: 600 }}
+          />
+        </Box>
+        {!hasDonated && (
+          <Alert severity="info" sx={{ mb: 1 }}>
+            Your saved shapes are available here. To save new shapes, please donate to support the project.
+          </Alert>
+        )}
+        {hasDonated && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Thank you for donating! You can save and manage shapes here.
+          </Typography>
+        )}
+      </Box>
       <DialogContent>
         {loading && <CircularProgress size={24} />}
         {/* Only show error if not a 404/empty response */}

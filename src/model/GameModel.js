@@ -344,21 +344,36 @@ export class GameModel {
   }
 
   // Game evolution  
-  async step() {
+  async step(n = 1) {
+    const generations = Math.max(1, Number(n) || 1);
     if (this.engineMode === 'hashlife') {
-      await this._stepHashlife();
+      await this._stepHashlife(generations);
     } else {
-      const nextLiveCells = this.liveCells.size > 0
-        ? gameStep(this.liveCells)
-        : new Map();
-      this._applyStepResult(nextLiveCells, 1);
+      // Normal engine: iterate locally and apply once to preserve
+      // the single-step notification semantics.
+      let next = this.liveCells;
+      if (next.size > 0) {
+        for (let i = 0; i < generations; i++) {
+          next = gameStep(next);
+          if (next.size === 0) {
+            // Early exit if empty
+            if (i < generations - 1) {
+              // consume remaining generations without work
+            }
+            break;
+          }
+        }
+      } else {
+        next = new Map();
+      }
+      this._applyStepResult(next, generations);
     }
   }
 
-  async _stepHashlife() {
+  async _stepHashlife(generations = 1) {
     if (this.liveCells.size === 0) {
       // No cells to step - advance generations but keep empty state
-      this._applyStepResult(new Map(), this.generationBatchSize);
+      this._applyStepResult(new Map(), Math.max(1, Number(generations) || 1));
       return;
     }
 
@@ -371,22 +386,34 @@ export class GameModel {
 
       // Use hashlife adapter to step multiple generations based on batch size
       const hashlifeAdapter = require('./hashlife/adapter');
-      const result = await hashlifeAdapter.run(cellsArray, this.generationBatchSize);
+      const gens = Math.max(1, Number(generations) || Number(this.generationBatchSize) || 1);
+      const result = await hashlifeAdapter.run(cellsArray, gens);
       
       if (result && result.cells) {
-        this.applyExternalStepResult(result, this.generationBatchSize);
+        this.applyExternalStepResult({ ...result, generations: gens }, gens);
       } else {
         // Fallback to normal step if hashlife fails
-        const nextLiveCells = gameStep(this.liveCells);
-        this._applyStepResult(nextLiveCells, 1);
+        let next = this.liveCells;
+        for (let i = 0; i < gens; i++) {
+          next = gameStep(next);
+          if (next.size === 0) break;
+        }
+        this._applyStepResult(next, gens);
       }
     } catch (error) {
       logger.warn('[GameModel] Hashlife step failed, falling back to normal step:', error);
       // Fallback to normal step
-      const nextLiveCells = this.liveCells.size > 0
-        ? gameStep(this.liveCells)
-        : new Map();
-      this._applyStepResult(nextLiveCells, 1);
+      let next = this.liveCells;
+      const gens = Math.max(1, Number(generations) || 1);
+      if (next.size > 0) {
+        for (let i = 0; i < gens; i++) {
+          next = gameStep(next);
+          if (next.size === 0) break;
+        }
+      } else {
+        next = new Map();
+      }
+      this._applyStepResult(next, gens);
     }
   }
 
@@ -866,6 +893,22 @@ export class GameModel {
       const nextUseWebWorker = !!settings.useWebWorker;
       if (nextUseWebWorker !== next.useWebWorker) {
         next.useWebWorker = nextUseWebWorker;
+        changed = true;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'enableFPSCap')) {
+      const nextEnableFPSCap = !!settings.enableFPSCap;
+      if (nextEnableFPSCap !== next.enableFPSCap) {
+        next.enableFPSCap = nextEnableFPSCap;
+        changed = true;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'enableGPSCap')) {
+      const nextEnableGPSCap = !!settings.enableGPSCap;
+      if (nextEnableGPSCap !== next.enableGPSCap) {
+        next.enableGPSCap = nextEnableGPSCap;
         changed = true;
       }
     }

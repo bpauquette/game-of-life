@@ -12,6 +12,7 @@ import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import { FullscreenExit as FullscreenExitIcon } from '@mui/icons-material';
+import SkipLink from './SkipLink';
 function GameUILayout({
   recentShapes,
   recentShapesPersistence,
@@ -56,7 +57,8 @@ function GameUILayout({
   onToggleChrome,
   shapesReady
   ,
-  startPaletteDrag
+  startPaletteDrag,
+  enableAdaCompliance
 }) {
   // measure header height so content is positioned correctly under it
   const headerRef = useRef(null);
@@ -143,9 +145,18 @@ function GameUILayout({
     return () => window.removeEventListener('resize', measure);
   }, [uiState?.showChrome, isSmall]);
   return (
-    <div className="canvas-container" style={{ height: '100vh', backgroundColor: '#000' }}>
+    <div className="canvas-container" style={{ height: '100vh', backgroundColor: 'var(--surface-0)' }}>
+      {/* Skip Links for Keyboard Navigation (ADA Compliance) */}
+      <SkipLink href="#main-game-content">Skip to main content</SkipLink>
+      <SkipLink href="#header-controls">Skip to controls</SkipLink>
+      
+      <h1 style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}>
+        Conway's Game of Life - Interactive Cellular Automaton Simulator
+      </h1>
       {(uiState?.showChrome ?? true) && (
           <HeaderBar
+          id="header-controls"
+          tabIndex="-1"
           headerRef={headerRef}
           recentShapes={recentShapes}
             recentShapesPersistence={recentShapesPersistence}
@@ -180,6 +191,8 @@ function GameUILayout({
           setMaxFPS={controlsProps?.setMaxFPS}
           maxGPS={controlsProps?.maxGPS}
           setMaxGPS={controlsProps?.setMaxGPS}
+          enableAdaCompliance={controlsProps?.enableAdaCompliance}
+          setEnableAdaCompliance={controlsProps?.setEnableAdaCompliance}
 
           // Engine mode props
           engineMode={controlsProps?.engineMode}
@@ -209,7 +222,10 @@ function GameUILayout({
         />
       )}
   {/* main content: absolutely positioned below header and sized to fill remaining viewport */}
-  <div style={{ position: 'absolute', top: (uiState?.showChrome ?? true) ? (headerTop || 0) : 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+  <div 
+    id="main-game-content"
+    tabIndex="-1"
+    style={{ position: 'absolute', top: (uiState?.showChrome ?? true) ? (headerTop || 0) : 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
         <PalettePortal
           open={uiState?.paletteOpen ?? false}
           onClose={onClosePalette}
@@ -244,8 +260,8 @@ function GameUILayout({
           }}
           style={
             !(uiState?.showChrome ?? true)
-              ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, cursor: cursorStyle, display: 'block', width: '100vw', height: '100vh', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', boxSizing: 'border-box', zIndex: 9999 }
-              : { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: cursorStyle, display: 'block', width: '100%', height: '100%', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', boxSizing: 'border-box' }
+              ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, cursor: cursorStyle, display: 'block', width: enableAdaCompliance ? '160px' : '100vw', height: enableAdaCompliance ? '160px' : '100vh', maxWidth: enableAdaCompliance ? '160px' : 'none', maxHeight: enableAdaCompliance ? '160px' : 'none', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', boxSizing: 'border-box', zIndex: 9999 }
+              : { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: cursorStyle, display: 'block', width: enableAdaCompliance ? '160px' : '100%', height: enableAdaCompliance ? '160px' : '100%', maxWidth: enableAdaCompliance ? '160px' : 'none', maxHeight: enableAdaCompliance ? '160px' : 'none', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', boxSizing: 'border-box' }
           }
         />
         {(uiState?.showChrome ?? true) && isSmall && (

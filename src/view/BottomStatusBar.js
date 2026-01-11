@@ -8,13 +8,14 @@ function BottomStatusBar({ cursorCell }) {
       style={{
         width: '100%',
         padding: '10px 24px',
-        background: 'rgba(10, 10, 14, 0.95)',
-        color: '#eee',
+        background: 'var(--surface-2)',
+        color: 'var(--text-primary)',
         position: 'fixed',
         bottom: 0,
         left: 0,
         zIndex: 120,
-        boxShadow: '0 -6px 18px rgba(0,0,0,0.35)'
+        boxShadow: '0 -6px 18px rgba(0,0,0,0.35)',
+        borderTop: '1px solid var(--border-subtle)'
       }}
     >
       <GridMouseTracker position={cursorCell} />
