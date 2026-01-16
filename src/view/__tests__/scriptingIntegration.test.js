@@ -1,5 +1,4 @@
-import { parseBlocks, execBlock, legacyCommand } from '../scriptingInterpreter';
-import { parseValue, evalExpr, evalCond } from '../scriptingEngine';
+import { parseBlocks, execBlock } from '../scriptingInterpreter';
 
 describe('ScriptPanelIntegration', () => {
   test.skip('full script execution creates expected grid state', async () => {
@@ -119,6 +118,8 @@ describe('ScriptPanelIntegration', () => {
             }
           }
           break;
+          default:
+            break;
       }
     });
 
