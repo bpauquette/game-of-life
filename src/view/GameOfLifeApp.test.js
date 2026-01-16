@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import GameOfLifeApp from './GameOfLifeApp';
 import { AuthProvider } from '../auth/AuthProvider';
 
