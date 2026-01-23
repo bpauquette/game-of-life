@@ -2,6 +2,7 @@
 // Creates and coordinates Model, View, and Controller
 
 import { GameModel } from '../model/GameModel';
+import { colorSchemes } from '../model/colorSchemes';
 import { GameView } from '../view/GameView';
 import { GameController } from './GameController';
 import { drawTool } from './tools/drawTool';
@@ -199,7 +200,24 @@ export class GameMVC {
   // Color scheme operations
   setColorScheme(colorScheme) {
     logger.debug('[GameMVC] setColorScheme called:', colorScheme);
-    this.model.setColorSchemeModel(colorScheme);
+    try {
+      // Accept either a key (string) or a full color scheme object.
+      let schemeObj = null;
+      if (typeof colorScheme === 'string') {
+        schemeObj = colorSchemes?.[colorScheme] || null;
+      } else if (colorScheme && typeof colorScheme === 'object') {
+        schemeObj = colorScheme;
+      }
+
+      if (!schemeObj) {
+        logger.warn && logger.warn('[GameMVC] setColorScheme: invalid scheme provided', colorScheme);
+        return;
+      }
+
+      this.model.setColorSchemeModel(schemeObj);
+    } catch (err) {
+      logger.error && logger.error('[GameMVC] setColorScheme failed:', err);
+    }
   }
 
   getColorScheme() {
