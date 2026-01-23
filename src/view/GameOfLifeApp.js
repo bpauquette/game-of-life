@@ -238,6 +238,7 @@ function GameOfLifeApp(props) {
   const canvasRef = useRef(null);
 
   // Callbacks (after refs, before effects)
+  
   const setUseWebWorkerPreference = useCallback((value) => {
     setUseWebWorker(value);
     try { globalThis.localStorage?.setItem('useWebWorker', JSON.stringify(value)); } catch (e) {}
@@ -272,24 +273,41 @@ function GameOfLifeApp(props) {
   // Effects (after all refs and callbacks)
   // Keep generation in sync with the model
   useEffect(() => {
+    console.log('[GameOfLifeApp] useEffect (model observer) running. gameRef.current:', gameRef.current);
+    if (!window.__gol_observer_attach_count) window.__gol_observer_attach_count = 0;
+    window.__gol_observer_attach_count++;
+    console.log(`[GameOfLifeApp] model observer ATTACH count: ${window.__gol_observer_attach_count}`);
+    const mvc = gameRef.current;
+    if (!mvc || typeof mvc.onModelChange !== 'function') return;
+
     const updateGeneration = () => {
-      const gen = gameRef.current?.model?.getGeneration?.() ?? 0;
-      setGeneration(gen);
+      const gen = mvc.model?.getGeneration?.() ?? 0;
+      setGeneration((prevGen) => {
+        if (prevGen !== gen) {
+          console.log('[GameOfLifeApp] updateGeneration called. New gen:', gen);
+          return gen;
+        }
+        // No update needed
+        return prevGen;
+      });
     };
     updateGeneration();
-    // Listen for model changes
-    const mvc = gameRef.current;
-    if (mvc && typeof mvc.onModelChange === 'function') {
-      const handler = (event) => {
-        if (event === 'gameStep' || event === 'reset' || event === 'loadGrid') updateGeneration();
-      };
-      mvc.onModelChange(handler);
-      return () => mvc.offModelChange(handler);
-    }
-    // Fallback: poll every 500ms if observer not available
-    const interval = setInterval(updateGeneration, 500);
-    return () => clearInterval(interval);
-  }, []);
+
+    const handler = (event) => {
+      console.log('[GameOfLifeApp] model observer handler called. Event:', event);
+      if (event === 'gameStep' || event === 'reset' || event === 'loadGrid') updateGeneration();
+    };
+    mvc.onModelChange(handler);
+    console.log('[GameOfLifeApp] model observer attached.');
+
+    return () => {
+      console.log('[GameOfLifeApp] model observer cleanup.');
+      if (!window.__gol_observer_cleanup_count) window.__gol_observer_cleanup_count = 0;
+      window.__gol_observer_cleanup_count++;
+      console.log(`[GameOfLifeApp] model observer CLEANUP count: ${window.__gol_observer_cleanup_count}`);
+      mvc.offModelChange(handler);
+    };
+  }, []); // Only run once on mount
   
   // Save generation batch size to localStorage
   useEffect(() => {
