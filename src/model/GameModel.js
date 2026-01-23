@@ -262,20 +262,39 @@ export class GameModel {
   }
 
   setCursorPositionModel(position) {
-    const changed = (this.cursorPosition === null && position !== null) ||
-      (this.cursorPosition !== null && position === null) ||
-      (this.cursorPosition !== null && position !== null &&
-        (this.cursorPosition.x !== position.x ||
-         this.cursorPosition.y !== position.y ||
-         this.cursorPosition.fx !== position.fx ||
-         this.cursorPosition.fy !== position.fy));
-    if (!changed) {
+    // Normalize incoming cursor positions to avoid tiny float diffs
+    const now = performance.now();
+    const normalize = (p) => {
+      if (!p) return null;
+      return {
+        x: Number.isFinite(p.x) ? Math.round(p.x) : p.x,
+        y: Number.isFinite(p.y) ? Math.round(p.y) : p.y,
+        fx: Number.isFinite(p.fx) ? Number(p.fx.toFixed(2)) : p.fx,
+        fy: Number.isFinite(p.fy) ? Number(p.fy.toFixed(2)) : p.fy
+      };
+    };
+
+    const nextPos = normalize(position);
+    const prev = this.cursorPosition;
+
+    const changed = (prev === null && nextPos !== null) ||
+      (prev !== null && nextPos === null) ||
+      (prev !== null && nextPos !== null && (
+        prev.x !== nextPos.x || prev.y !== nextPos.y || prev.fx !== nextPos.fx || prev.fy !== nextPos.fy
+      ));
+
+    if (!changed) return;
+
+    // Minimal throttle to avoid high-frequency noise causing rapid observer churn.
+    if (now - (this.lastCursorUpdateTime || 0) < this.cursorThrottleDelay) {
+      // Still update the stored value so subsequent comparisons reflect latest coords,
+      // but avoid notifying observers too frequently.
+      this.cursorPosition = nextPos;
       return;
     }
-    this.cursorPosition = position ? { ...position } : null;
-    // Do not throttle cursor updates; zoom and shape switches need fresh fx/fy
-    // even when the pointer is stationary (e.g., wheel zoom without movement).
-    this.lastCursorUpdateTime = performance.now();
+
+    this.cursorPosition = nextPos;
+    this.lastCursorUpdateTime = now;
     this.notifyObservers('cursorPositionChanged', this.cursorPosition);
   }
 
