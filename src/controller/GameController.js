@@ -64,10 +64,11 @@ export class GameController {
   // Lazy-initialize scheduler on first use
   _getScheduler() {
     if (!this.scheduler) {
+      const preferWorker = !!this.performanceCaps.useWebWorker || (typeof Worker !== 'undefined' && !(typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test'));
       this.scheduler = new StepScheduler(() => this.model.step(), {
         maxFPS: this.performanceCaps.maxFPS,
         maxGPS: this.performanceCaps.maxGPS,
-        useWorker: false,
+        useWorker: preferWorker,
         onPerformance: (frameTime) => {
           if (globalThis.speedGaugeTracker) {
             globalThis.speedGaugeTracker(frameTime, frameTime);
