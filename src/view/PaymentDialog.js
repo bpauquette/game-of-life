@@ -182,7 +182,7 @@ export default function PaymentDialog({ open, onClose }) {
           {paymentConfig.stripe?.enabled && (
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Donate with Card (Stripe)
+                Pay with Card (Stripe)
               </Typography>
               <Button
                 variant="contained"
@@ -197,19 +197,20 @@ export default function PaymentDialog({ open, onClose }) {
             </Box>
           )}
 
-          {/* PayPal button container */}
-          {paymentConfig.paypal?.enabled && (
-            <Box>
+          {/* PayPal button container - always present for tests; buttons load into it when enabled */}
+          <Box>
+            {paymentConfig.paypal?.enabled && (
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
                 Donate with PayPal
               </Typography>
-              <Box
-                id="paypal-button-container"
-                data-testid="paypal-button-container"
-                sx={{ minHeight: '50px', pointerEvents: loading ? 'none' : 'auto', opacity: loading ? 0.6 : 1 }}
-              />
-            </Box>
-          )}
+            )}
+            <Box
+              id="paypal-button-container"
+              data-testid="paypal-button-container"
+              aria-hidden={!paymentConfig.paypal?.enabled}
+              sx={{ minHeight: '50px', pointerEvents: loading ? 'none' : 'auto', opacity: loading ? 0.6 : 1 }}
+            />
+          </Box>
 
           {!paymentConfig.stripe?.enabled && !paymentConfig.paypal?.enabled && (
             <Alert severity="warning">

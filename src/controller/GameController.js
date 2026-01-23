@@ -25,6 +25,9 @@ export class GameController {
     this.toolMap = {};
     this.toolState = {};
     this.mouseState = { isDown: false };
+    // Expose scheduler indicators for tests and external tooling
+    this.animationId = null;
+    this.worker = null;
 
     // Undo/redo stacks
     this.undoStack = [];
@@ -74,6 +77,10 @@ export class GameController {
           }
         }
       });
+      // Keep controller-level references in sync with scheduler
+      // so tests and consumers can inspect the active loop mechanism.
+      // Note: StepScheduler manages its own `animationId` and `worker`.
+      // We will mirror those after start/stop calls.
     }
     return this.scheduler;
   }
@@ -852,20 +859,32 @@ export class GameController {
     const scheduler = this._getScheduler();
     if (isRunning) {
       scheduler.start();
+      // Mirror scheduler state
+      this.animationId = scheduler.animationId;
+      this.worker = scheduler.worker;
     } else {
       scheduler.stop();
+      this.animationId = scheduler.animationId;
+      this.worker = scheduler.worker;
     }
   }
 
   // Game loop (requestAnimationFrame)
   startAnimationLoop() {
     // Deprecated: use scheduler instead
-    this._getScheduler().start();
+    const sched = this._getScheduler();
+    sched.start();
+    this.animationId = sched.animationId;
+    this.worker = sched.worker;
   }
 
   stopAnimationLoop() {
     // Deprecated: use scheduler instead
-    if (this.scheduler) this.scheduler.stop();
+    if (this.scheduler) {
+      this.scheduler.stop();
+      this.animationId = this.scheduler.animationId;
+      this.worker = this.scheduler.worker;
+    }
   }
 
   // Game loop (Web Worker)
@@ -874,6 +893,8 @@ export class GameController {
     const scheduler = this._getScheduler();
     scheduler.setUseWorker(true);
     scheduler.start();
+    this.animationId = scheduler.animationId;
+    this.worker = scheduler.worker;
   }
 
   stopWorkerLoop() {
@@ -881,6 +902,8 @@ export class GameController {
     if (this.scheduler) {
       this.scheduler.setUseWorker(false);
       this.scheduler.stop();
+      this.animationId = this.scheduler.animationId;
+      this.worker = this.scheduler.worker;
     }
   }
 
