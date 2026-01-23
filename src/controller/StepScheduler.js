@@ -61,9 +61,12 @@ export class StepScheduler {
   }
 
   start() {
-    if (this.isRunning) return;
+    if (this.isRunning) {
+      console.log('[StepScheduler] start() called but already running');
+      return;
+    }
     this.isRunning = true;
-    
+    console.log('[StepScheduler] start() - scheduler started');
     if (this.useWorker) {
       this._startWorkerLoop();
     } else {
@@ -72,9 +75,12 @@ export class StepScheduler {
   }
 
   stop() {
-    if (!this.isRunning) return;
+    if (!this.isRunning) {
+      console.log('[StepScheduler] stop() called but already stopped');
+      return;
+    }
     this.isRunning = false;
-    
+    console.log('[StepScheduler] stop() - scheduler stopped');
     if (this.useWorker) {
       this._stopWorkerLoop();
     } else {
