@@ -273,40 +273,25 @@ function GameOfLifeApp(props) {
   // Effects (after all refs and callbacks)
   // Keep generation in sync with the model
   useEffect(() => {
-    console.log('[GameOfLifeApp] useEffect (model observer) running. gameRef.current:', gameRef.current);
-    if (!window.__gol_observer_attach_count) window.__gol_observer_attach_count = 0;
-    window.__gol_observer_attach_count++;
-    console.log(`[GameOfLifeApp] model observer ATTACH count: ${window.__gol_observer_attach_count}`);
     const mvc = gameRef.current;
     if (!mvc || typeof mvc.onModelChange !== 'function') return;
 
+    // Lightweight guard to avoid redundant updates
     const updateGeneration = () => {
       const gen = mvc.model?.getGeneration?.() ?? 0;
-      setGeneration((prevGen) => {
-        if (prevGen !== gen) {
-          console.log('[GameOfLifeApp] updateGeneration called. New gen:', gen);
-          return gen;
-        }
-        // No update needed
-        return prevGen;
-      });
+      setGeneration((prevGen) => (prevGen !== gen ? gen : prevGen));
     };
+
+    // Run once to initialize
     updateGeneration();
 
+    // Only respond to events that actually advance generation or reset/load
     const handler = (event) => {
-      console.log('[GameOfLifeApp] model observer handler called. Event:', event);
       if (event === 'gameStep' || event === 'reset' || event === 'loadGrid') updateGeneration();
     };
     mvc.onModelChange(handler);
-    console.log('[GameOfLifeApp] model observer attached.');
 
-    return () => {
-      console.log('[GameOfLifeApp] model observer cleanup.');
-      if (!window.__gol_observer_cleanup_count) window.__gol_observer_cleanup_count = 0;
-      window.__gol_observer_cleanup_count++;
-      console.log(`[GameOfLifeApp] model observer CLEANUP count: ${window.__gol_observer_cleanup_count}`);
-      mvc.offModelChange(handler);
-    };
+    return () => mvc.offModelChange(handler);
   }, []); // Only run once on mount
   
   // Save generation batch size to localStorage
@@ -1022,14 +1007,16 @@ function GameOfLifeApp(props) {
   // track cursor using the canvas DOM element and push canonical cursor
   // updates into the model so the renderer can use a single source of truth
   const cursorRecomputeRef = useRef(null);
+  const handleCursor = useCallback((pt) => {
+    try { gameRef.current?.model?.setCursorPositionModel?.(pt); } catch (e) {}
+  }, []);
+
   const cursorCell = useGridMousePosition({
     canvasRef,
     cellSize,
     offsetRef,
     recomputeRef: cursorRecomputeRef,
-    onCursor: (pt) => {
-      try { gameRef.current?.model?.setCursorPositionModel?.(pt); } catch (e) {}
-    }
+    onCursor: handleCursor
   });
 
   // Overlay is driven exclusively by controller + tool getOverlay(). Ensure
