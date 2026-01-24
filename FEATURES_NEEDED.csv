@@ -1,0 +1,2 @@
+id,priority,status,feature,requested_by,created_at,notes
+1,medium,requested,"Script Runner Dialog: add Cancel/Stop button","bryan",2026-01-24,"Allow users to interrupt or cancel long-running script runs from the dialog"
