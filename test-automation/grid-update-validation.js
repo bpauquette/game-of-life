@@ -1,8 +1,6 @@
 // Comprehensive validation test for the drawing grid update flow
 // This test validates that cells are properly updated through the entire chain
 
-const fs = require('fs');
-const path = require('path');
 
 console.log('🧪 Grid Update Flow Validation');
 console.log('==============================\n');
@@ -21,8 +19,8 @@ function simulateDrawing(line) {
   // RECT command
   let rectMatch = line.match(/^RECT\s+(\S+)\s+(\S+)$/i);
   if (rectMatch) {
-    const width = parseInt(rectMatch[1]);
-    const height = parseInt(rectMatch[2]);
+    const width = Number.parseInt(rectMatch[1]);
+    const height = Number.parseInt(rectMatch[2]);
     if (state.penDown !== false) {
       for (let dx = 0; dx < width; dx++) {
         for (let dy = 0; dy < height; dy++) {
@@ -48,7 +46,7 @@ console.log('✓ Test 2: Cell format validation');
 const testCells = Array.from(state.cells).map(cellStr => {
   const [x, y] = String(cellStr).split(',').map(Number);
   return { x, y };
-}).filter(cell => !isNaN(cell.x) && !isNaN(cell.y));
+}).filter(cell => !Number.isNaN(cell.x) && !Number.isNaN(cell.y));
 
 console.log(`  ✓ Converted ${testCells.length} cells to {x,y} format`);
 console.log('  Sample cells:', testCells.slice(0, 3));

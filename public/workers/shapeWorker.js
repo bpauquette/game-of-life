@@ -1,14 +1,14 @@
 // shapeWorker.js
 // Offloads shape normalization and key generation for recent shapes
 
-self.onmessage = function(e) {
+globalThis.onmessage = function(e) {
   const { type, shape } = e.data;
   if (type === 'normalize') {
     const result = normalizeRecentShape(shape);
-    self.postMessage({ type: 'normalized', shapeId: shape.id, result });
+    globalThis.postMessage({ type: 'normalized', shapeId: shape.id, result });
   } else if (type === 'key') {
     const key = generateShapeKey(shape);
-    self.postMessage({ type: 'key', shapeId: shape.id, key });
+    globalThis.postMessage({ type: 'key', shapeId: shape.id, key });
   }
 };
 
