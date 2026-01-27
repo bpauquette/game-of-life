@@ -14,7 +14,7 @@ function startLoop() {
   }, stepInterval);
 }
 
-self.onmessage = function(e) {
+globalThis.onmessage = function(e) {
   const { command, payload } = e.data || {};
   try { console.debug('[GameWorker] onmessage', command, payload); } catch (e) {}
 

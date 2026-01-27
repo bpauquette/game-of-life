@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import logger from '../../controller/utils/logger';
+import GridsDao from '../../model/dao/GridsDao';
 
 /**
  * Hook for managing grid file operations (save/load)
@@ -14,7 +15,7 @@ const useGridFileManager = (config = {}) => {
   const [error, setError] = useState(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
-  const abortControllerRef = useRef(null);
+  // Removed unused abortControllerRef
   const inFlightSaveRef = useRef(null);
 
   // Always use the correct base URL, never allow override
@@ -23,11 +24,7 @@ const useGridFileManager = (config = {}) => {
   if (!getBackendApiBaseRef.current) {
     getBackendApiBaseRef.current = require('../../utils/backendApi').getBackendApiBase;
   }
-  const getBaseUrl = useCallback(() => {
-    const base = getBackendApiBaseRef.current();
-    logger.info('[useGridFileManager] getBaseUrl:', base);
-    return base;
-  }, []);
+  // Removed unused getBaseUrl
 
   // Convert live cells to serializable format
   const serializeLiveCells = useCallback((liveCells) => {
@@ -69,120 +66,24 @@ const useGridFileManager = (config = {}) => {
   const loadGridsList = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
     try {
-      // Cancel previous request if any
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      
-      abortControllerRef.current = new AbortController();
-      const base = getBaseUrl();
-      const url = `${base}/v1/grids?_ts=${Date.now()}`;
-      logger.info('[useGridFileManager] Fetching grids list:', url);
-      const response = await fetch(url, {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      logger.info('[useGridFileManager] Response status:', response.status, response.statusText);
-      if (response.ok === false) {
-        let errorText = '';
-        try { errorText = await response.text(); } catch {}
-        logger.error('[useGridFileManager] Failed to load grids, status:', response.status, 'body:', errorText);
-        throw new Error(`Failed to load grids: ${response.status}`);
-      }
-      const grids = await response.json();
-      logger.info('[useGridFileManager] Loaded grids from backend:', grids.length, 'grids');
+      const grids = await GridsDao.listGrids();
+      logger.info('[useGridFileManager] Loaded grids from GridsDao:', grids.length, 'grids');
       setSavedGrids(grids);
     } catch (error_) {
-      if (error_.name !== 'AbortError') {
-        logger.error('Failed to load grids:', error_.message);
-        setError('Failed to load saved grids');
-      }
+      logger.error('Failed to load grids:', error_.message);
+      setError('Failed to load saved grids');
     } finally {
       setLoading(false);
     }
-  }, [getBaseUrl]);
-
-  // Helper for error extraction from response
-  const extractErrorText = useCallback(async (response) => {
-    let errorText = `Failed to save grid: ${response.status}`;
-    try {
-      const data = await response.json();
-      if (data?.error) errorText = data.error;
-      if (response.status === 413) {
-        errorText = data?.error || 'Grid is too large to upload (413)';
-      }
-    } catch (err) {
-      logger.error('Error extracting error text from response:', err);
-    }
-    return errorText;
   }, []);
 
+
+
   // Helper for performing a single POST request
-  const doPostGrid = useCallback(async (url, gridData, ac) => {
-    const token = sessionStorage.getItem('authToken');
-    const headers = {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    };
-    logger.info('[useGridFileManager] Posting grid to:', url.toString(), 'data:', gridData);
-    const response = await fetch(url.toString(), {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(gridData),
-      signal: ac.signal,
-      cache: 'no-store',
-    });
-    logger.info('[useGridFileManager] POST response status:', response.status, response.statusText);
-    if (!response.ok) {
-      const errorText = await extractErrorText(response);
-      logger.error('[useGridFileManager] Failed to save grid, status:', response.status, 'error:', errorText);
-      if (errorText === 'Invalid or expired token') {
-        try {
-          const { logout } = require('../../auth/AuthProvider');
-          if (typeof logout === 'function') logout();
-        } catch {}
-      }
-      throw new Error(errorText);
-    }
-    return response;
-  }, [extractErrorText]);
+  // Removed unused doPostGrid
 
-  // Helper for retry logic
-  const postGridWithRetry = useCallback(
-    async (url, gridData, attempts = 3, perAttemptTimeoutMs = 30000) => {
-      let lastError;
-      for (let i = 1; i <= attempts; i++) {
-        if (inFlightSaveRef.current) {
-          try { inFlightSaveRef.current.abort(); } catch (err) { logger.error('AbortController abort failed1:', err); }
-        }
-        const ac = new AbortController();
-        inFlightSaveRef.current = ac;
-        const timeoutId = setTimeout(() => {
-          try { ac.abort(); } catch (err) { logger.error('AbortController abort failed:', err); }
-        }, perAttemptTimeoutMs);
 
-        try {
-          const response = await doPostGrid(url, gridData, ac);
-          clearTimeout(timeoutId);
-          return response;
-        } catch (e) {
-          clearTimeout(timeoutId);
-          lastError = e;
-          const isAbort = e?.name === 'AbortError';
-          const isNetwork = e && /Failed to fetch|NetworkError|TypeError/.test(String(e));
-          if (i === attempts || (!isAbort && !isNetwork)) {
-            throw e;
-          }
-          await new Promise(r => setTimeout(r, i * 500));
-        }
-      }
-      throw lastError || new Error('Unknown error saving grid');
-    },
-    [inFlightSaveRef, doPostGrid]
-  );
 
   // Helper to abort and clear inFlightSaveRef
   const clearInFlightSave = useCallback(() => {
@@ -197,14 +98,11 @@ const useGridFileManager = (config = {}) => {
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
         throw new Error('Grid name is required');
       }
-
       setLoading(true);
       setError(null);
-
       try {
         const liveCells = getLiveCells();
         const cells = serializeLiveCells(liveCells);
-
         const gridData = {
           name: name.trim(),
           description: description.trim(),
@@ -212,17 +110,9 @@ const useGridFileManager = (config = {}) => {
           generation: generation || 0,
           public: !!publicFlag,
         };
-
-        const base = getBaseUrl();
-        const url = `${base}/v1/grids?_ts=${Date.now()}`;
-
-        const response = await postGridWithRetry(url, gridData, 3, 30000);
-
-        const savedGrid = await response.json();
+        const savedGrid = await GridsDao.saveGrid(gridData);
         logger.info('Grid saved successfully:', savedGrid.id);
-
         await loadGridsList();
-
         return savedGrid;
       } catch (error_) {
         logger.error('Failed to save grid:', error_.message);
@@ -233,15 +123,7 @@ const useGridFileManager = (config = {}) => {
         clearInFlightSave();
       }
     },
-    [
-      getLiveCells,
-      serializeLiveCells,
-      generation,
-      getBaseUrl,
-      loadGridsList,
-      postGridWithRetry,
-      clearInFlightSave,
-    ]
+    [getLiveCells, serializeLiveCells, generation, loadGridsList, clearInFlightSave]
   );
 
   // Load a grid by ID
@@ -249,32 +131,14 @@ const useGridFileManager = (config = {}) => {
     if (!gridId) {
       throw new Error('Grid ID is required');
     }
-
     setLoading(true);
     setError(null);
-
     try {
-    const base = getBaseUrl();
-    const url = `${base}/v1/grids/${encodeURIComponent(gridId)}?_ts=${Date.now()}`;
-    logger.info('[useGridFileManager] Loading grid:', url);
-    const response = await fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
-    logger.info('[useGridFileManager] Load grid response status:', response.status, response.statusText);
-    if (response.ok === false) {
-      let errorText = '';
-      try { errorText = await response.text(); } catch {}
-      logger.error('[useGridFileManager] Failed to load grid, status:', response.status, 'body:', errorText);
-      const errorData = (() => { try { return JSON.parse(errorText); } catch { return {}; } })();
-      throw new Error(errorData.error || `Failed to load grid: ${response.status}`);
-    }
-    const gridData = await response.json();
-    const liveCells = deserializeLiveCells(gridData.liveCells);
-    // Return grid data with deserialized live cells
-    const result = {
-      ...gridData,
-      liveCells
-    };
-    logger.info('[useGridFileManager] Grid loaded successfully:', gridData.name);
-    return result;
+      const gridData = await GridsDao.getGrid(gridId);
+      const liveCells = deserializeLiveCells(gridData.liveCells);
+      const result = { ...gridData, liveCells };
+      logger.info('[useGridFileManager] Grid loaded successfully:', gridData.name);
+      return result;
     } catch (error_) {
       logger.error('Failed to load grid:', error_.message);
       setError('Failed to load grid: ' + error_.message);
@@ -282,38 +146,19 @@ const useGridFileManager = (config = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [getBaseUrl, deserializeLiveCells]);
+  }, [deserializeLiveCells]);
 
   // Delete a grid by ID
   const deleteGrid = useCallback(async (gridId) => {
     if (!gridId) {
       throw new Error('Grid ID is required');
     }
-
     setLoading(true);
     setError(null);
-
     try {
-      const base = getBaseUrl();
-      const url = `${base}/v1/grids/${encodeURIComponent(gridId)}?_ts=${Date.now()}`;
-      logger.info('[useGridFileManager] Deleting grid:', url);
-      const response = await fetch(url, {
-        method: 'DELETE',
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      logger.info('[useGridFileManager] Delete grid response status:', response.status, response.statusText);
-      if (response.ok === false) {
-        let errorText = '';
-        try { errorText = await response.text(); } catch {}
-        logger.error('[useGridFileManager] Failed to delete grid, status:', response.status, 'body:', errorText);
-        const errorData = (() => { try { return JSON.parse(errorText); } catch { return {}; } })();
-        throw new Error(errorData.error || `Failed to delete grid: ${response.status}`);
-      }
+      await GridsDao.deleteGrid(gridId);
       logger.info('[useGridFileManager] Grid deleted successfully:', gridId);
-      // Refresh the grids list
       await loadGridsList();
-      
     } catch (error_) {
       logger.error('Failed to delete grid:', error_.message);
       setError('Failed to delete grid: ' + error_.message);
@@ -321,7 +166,7 @@ const useGridFileManager = (config = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [getBaseUrl, loadGridsList]);
+  }, [loadGridsList]);
 
   // Open save dialog
   const openSaveDialog = useCallback(() => {
