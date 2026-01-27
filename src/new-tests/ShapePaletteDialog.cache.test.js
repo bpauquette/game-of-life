@@ -28,9 +28,13 @@ jest.mock('../auth/AuthProvider', () => ({
 
 describe('ShapePaletteDialog caching behavior', () => {
   beforeEach(() => {
-  fetchShapeNames.mockReset();
+    fetchShapeNames.mockReset();
     // ensure no stale global cache is present
-    try { delete globalThis.__GOL_SHAPES_CACHE__; } catch (e) {}
+    try {
+      if (Object.hasOwn(globalThis, '__GOL_SHAPES_CACHE__')) {
+        delete globalThis.__GOL_SHAPES_CACHE__;
+      }
+    } catch (e) {}
   });
 
   it('downloads and stores the full catalog in localStorage when Cache Catalog is clicked', async () => {
@@ -56,8 +60,9 @@ describe('ShapePaletteDialog caching behavior', () => {
   fetchShapeNames.mockClear();
 
     // Type a search string into the search input
+
     const input = await screen.findByLabelText(/search shapes/i);
-    await userEvent.type(input, 'Alpha');
+    userEvent.type(input, 'Alpha'); // userEvent.type returns a Promise in modern @testing-library/user-event, but not always required to await in all setups
 
   // Wait for the debounced filter to run and the result to appear
   expect(await screen.findByText(/Alpha/)).toBeInTheDocument();

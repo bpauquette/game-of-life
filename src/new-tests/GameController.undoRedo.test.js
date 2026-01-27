@@ -1,5 +1,21 @@
+// Mock StepScheduler to bypass ESM/worker errors in Jest
 import { GameController } from '../controller/GameController';
 import { GameModel } from '../model/GameModel';
+jest.mock('../controller/StepScheduler', () => ({
+  __esModule: true,
+  default: function StepScheduler() {
+    return {
+      start: jest.fn(),
+      stop: jest.fn(),
+      setSpeed: jest.fn(),
+      setUseWorker: jest.fn(),
+      isUsingWorker: () => false,
+      on: jest.fn(),
+      off: jest.fn(),
+      destroy: jest.fn(),
+    };
+  }
+}));
 
 describe('GameController undo/redo', () => {
   let model, controller;
