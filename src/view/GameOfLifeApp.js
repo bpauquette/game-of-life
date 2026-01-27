@@ -255,15 +255,20 @@ function GameOfLifeApp(props) {
 
   const setRunningState = useCallback((running) => {
     const modelIsRunning = !!running;
+    try { console.debug('[GameOfLifeApp] setRunningState called:', modelIsRunning); } catch (e) {}
     setIsRunning(modelIsRunning);
     isRunningRef.current = modelIsRunning;
-    
+    // Always stop the controller loop if stopping
+    if (!modelIsRunning && gameRef.current?.controller?.stopGame) {
+      try { gameRef.current.controller.stopGame(); } catch (e) { console.warn('Failed to stop controller', e); }
+    }
     if (gameRef.current?.model?.setRunningModel) {
       gameRef.current.model.setRunningModel(modelIsRunning);
     }
   }, []);
 
   const setIsRunningCombined = useCallback((running, mode = engineMode) => {
+    try { console.debug('[GameOfLifeApp] setIsRunningCombined called:', { running, mode, engineMode }); } catch (e) {}
     if (running && mode !== engineMode) {
       setEngineMode(mode);
     }
@@ -724,8 +729,15 @@ function GameOfLifeApp(props) {
         if (firstDetection) {
           // Stability detected log removed
           
-          // Always pause immediately when stability is detected
-          setIsRunningCombined(false);
+            // Only pause automatically for non-empty or progressed simulations.
+            // Avoid auto-pausing an empty world right after the user starts it.
+            // Only auto-pause if the simulation has advanced at least one generation.
+            // This prevents pausing immediately when the user starts a pre-existing still life.
+            if (generation > 0) {
+              setIsRunningCombined(false);
+            } else {
+              try { console.debug('[GameOfLifeApp] stability detected before any generations advanced; skipping auto-pause'); } catch (e) {}
+            }
         } else if (!steady && modelPopHistory.length % 100 === 0) {
           // Still evolving log removed
         }
@@ -748,16 +760,21 @@ function GameOfLifeApp(props) {
       // Handle dialog display outside of setSteadyInfo to avoid state update complications
       if (nowStable && detectStablePopulation && !userNotifiedRef.current) {
         const populationCount = modelPopHistory[modelPopHistory.length - 1] || 0;
+        // Only show stable dialog for patterns after at least one generation and non-empty
+        if (populationCount === 0 || generation === 0) {
+          try { console.debug('[GameOfLifeApp] stable detected but either empty or no generations yet; skipping dialog'); } catch (e) {}
+        } else {
         const patternType = period === 0 ? 'Still Life' : period === 1 ? 'Still Life' : `Period ${period} Oscillator`;
         
-        setStableDetectionInfo({
-          generation,
-          populationCount,
-          patternType,
-          period
-        });
-        setShowStableDialog(true);
-        userNotifiedRef.current = true;
+          setStableDetectionInfo({
+            generation,
+            populationCount,
+            patternType,
+            period
+          });
+          setShowStableDialog(true);
+          userNotifiedRef.current = true;
+        }
       }
       
       // Reset notification flag if pattern becomes unstable

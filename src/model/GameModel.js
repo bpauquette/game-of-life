@@ -199,7 +199,13 @@ export class GameModel {
   }
 
   setRunningModel(isRunning) {
+  try { console.debug('[GameModel] setRunningModel called:', isRunning); } catch (e) {}
   logger.debug('[GameModel] setRunningModel called:', isRunning);
+  try {
+    // include short stack to help identify caller
+    const stack = new Error().stack;
+    if (stack) console.debug('[GameModel] setRunningModel stack:', stack.split('\n').slice(1,4));
+  } catch (e) {}
   this.isRunning = isRunning;
   this.notifyObservers('runningStateChanged', { isRunning });
   }

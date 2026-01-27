@@ -4,16 +4,26 @@ let timerId = null;
 let isRunning = false;
 let stepInterval = 1000 / 30; // Default to 30 GPS
 
+function startLoop() {
+  if (timerId) clearInterval(timerId);
+  timerId = setInterval(() => {
+    // Notify main thread to perform a step
+    self.postMessage({ command: 'step' });
+    // Also post a lightweight debug message so main thread can confirm stepping
+    try { self.postMessage({ command: 'debug', msg: 'worker-step' }); } catch (e) { /* ignore */ }
+  }, stepInterval);
+}
+
 self.onmessage = function(e) {
-  const { command, payload } = e.data;
+  const { command, payload } = e.data || {};
+  try { console.debug('[GameWorker] onmessage', command, payload); } catch (e) {}
 
   switch (command) {
     case 'start':
       if (!isRunning) {
         isRunning = true;
-        timerId = setInterval(() => {
-          self.postMessage({ command: 'step' });
-        }, stepInterval);
+        startLoop();
+        try { self.postMessage({ command: 'debug', msg: 'worker-started' }); } catch (e) {}
       }
       break;
     case 'stop':
@@ -21,20 +31,19 @@ self.onmessage = function(e) {
         isRunning = false;
         clearInterval(timerId);
         timerId = null;
+        try { self.postMessage({ command: 'debug', msg: 'worker-stopped' }); } catch (e) {}
       }
       break;
     case 'set-interval':
-      stepInterval = payload;
+      stepInterval = payload || stepInterval;
       if (isRunning) {
-        clearInterval(timerId);
-        timerId = setInterval(() => {
-          self.postMessage({ command: 'step' });
-        }, stepInterval);
+        startLoop();
+        try { self.postMessage({ command: 'debug', msg: 'worker-interval-updated', payload: stepInterval }); } catch (e) {}
       }
       break;
     default:
       // Acknowledge unknown commands, but don't throw an error.
-      // This allows for future expansion without breaking older workers.
-      console.log(`[GameWorker] Unknown command: ${command}`);
+      try { console.log(`[GameWorker] Unknown command: ${command}`); } catch (e) {}
+      try { self.postMessage({ command: 'debug', msg: 'unknown-command', payload: command }); } catch (e) {}
   }
 };
