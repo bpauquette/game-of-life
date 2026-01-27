@@ -3,7 +3,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import PropTypes from 'prop-types';
 import logger from '../controller/utils/logger';
-import { createShape, deleteShapeById, fetchShapeById } from '../utils/backendApi';
+import ShapesDao from '../model/dao/ShapesDao';
 import { useShapePaletteSearch } from './hooks/useShapePaletteSearch';
 import ShapePaletteView from './ShapePaletteView';
 import { useAuth } from '../auth/AuthProvider';
@@ -17,6 +17,8 @@ const hasShapeCells = (shape) => {
 };
 
 export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, colorSchemeKey = 'bio', onAddRecent, prefetchOnMount = false, recentShapes = [], fetchShapes, checkBackendHealth }) {
+  // Default fetchShapes to ShapesDao.listShapes if not provided
+  const fetchShapesFn = fetchShapes || ShapesDao.listShapes;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useAuth();
@@ -36,7 +38,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     hydrateShape,
     deleteShape,
     createShapeInBackend
-  } = useShapePaletteSearch({ open, backendBase, prefetchOnMount, fetchShapes, checkBackendHealth });
+  } = useShapePaletteSearch({ open, backendBase, prefetchOnMount, fetchShapes: fetchShapesFn, checkBackendHealth });
 
     // Local preview state for selected shape
     const [selectedShape, setSelectedShape] = useState(null);
@@ -75,9 +77,14 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       const hydrate = hydrateShape || (async (s) => {
         if (!s?.id || hasShapeCells(s)) return s;
         logger.debug('[ShapePaletteDialog] safeAddRecent: fetching shape by id', { id: s.id, base: backendBase });
-        const res = await fetchShapeById(s.id, backendBase);
-        logger.debug('[ShapePaletteDialog] safeAddRecent: fetch result', { id: s.id, ok: !!res?.ok, hasData: !!res?.data, cellsLen: Array.isArray(res?.data?.cells) ? res.data.cells.length : null });
-        return (res?.ok && res.data && hasShapeCells(res.data)) ? res.data : null;
+        try {
+          const data = await ShapesDao.getShape(s.id);
+          logger.debug('[ShapePaletteDialog] safeAddRecent: fetch result', { id: s.id, hasData: !!data, cellsLen: Array.isArray(data?.cells) ? data.cells.length : null });
+          return (data && hasShapeCells(data)) ? data : null;
+        } catch (err) {
+          logger.warn('[ShapePaletteDialog] safeAddRecent: fetch failed', err);
+          return null;
+        }
       });
       const hydrated = await hydrate(shape);
       if (!hydrated) {
@@ -120,9 +127,14 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       const hydrate = hydrateShape || (async (s) => {
         if (!s?.id) return null;
         logger.debug('[ShapePaletteDialog] handleShapeSelect: fetching shape by id', { id: s.id, base: backendBase });
-        const res = await fetchShapeById(s.id, backendBase);
-        logger.debug('[ShapePaletteDialog] handleShapeSelect: fetch result', { id: s.id, ok: !!res?.ok, hasData: !!res?.data, cellsLen: Array.isArray(res?.data?.cells) ? res.data.cells.length : null });
-        return (res?.ok && res.data && hasShapeCells(res.data)) ? res.data : null;
+        try {
+          const data = await ShapesDao.getShape(s.id);
+          logger.debug('[ShapePaletteDialog] handleShapeSelect: fetch result', { id: s.id, hasData: !!data, cellsLen: Array.isArray(data?.cells) ? data.cells.length : null });
+          return (data && hasShapeCells(data)) ? data : null;
+        } catch (err) {
+          logger.warn('[ShapePaletteDialog] handleShapeSelect: fetch failed', err);
+          return null;
+        }
       });
       const hydrated = await hydrate(shape);
       setSelectedShape(hydrated || shape);
@@ -140,9 +152,8 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
     setToDelete(null);
     try {
       const del = deleteShape || (async (iid) => {
-        const outcome = await deleteShapeById(iid, backendBase);
-        if (!outcome || !outcome.ok) throw new Error(outcome?.details || 'delete failed');
-        return outcome;
+        await ShapesDao.deleteShape(iid);
+        return true;
       });
       await del(id);
       setSnackMsg('Shape deleted');
@@ -155,13 +166,13 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       setSnackDetails(err?.message || String(err));
       setSnackOpen(true);
     }
-  }, [results, deleteShape, backendBase]);
+  }, [results, deleteShape]);
 
   const handleUndo = useCallback(async () => {
     const shape = snackUndoShape;
     if (!shape) return;
     try {
-      const createCb = createShapeInBackend || (async (s) => createShape(s, backendBase));
+      const createCb = createShapeInBackend || (async (s) => ShapesDao.saveShape(s));
       const created = await createCb(shape);
       const toInsert = created && created.id ? created : shape;
       setResults(prev => [toInsert, ...prev]);
@@ -171,7 +182,7 @@ export default function ShapePaletteDialog({ open, onClose, onSelectShape, backe
       logger.error('Restore error:', err);
       setSnackMsg('Restore error');
     }
-  }, [snackUndoShape, createShapeInBackend, setResults, backendBase]);
+  }, [snackUndoShape, createShapeInBackend, setResults]);
 
   const handleSnackClose = useCallback(() => {
     setSnackOpen(false);
@@ -264,7 +275,10 @@ ShapePaletteDialog.propTypes = {
   colorScheme: PropTypes.object,
   colorSchemeKey: PropTypes.string,
   onAddRecent: PropTypes.func,
-  prefetchOnMount: PropTypes.bool
+  prefetchOnMount: PropTypes.bool,
+  recentShapes: PropTypes.array,
+  fetchShapes: PropTypes.func,
+  checkBackendHealth: PropTypes.func,
 };
 
 ShapePaletteDialog.defaultProps = {

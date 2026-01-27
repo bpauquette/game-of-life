@@ -39,7 +39,7 @@ describe('ShapePaletteDialog backend error handling', () => {
 
   it('does not show backend dialog when backend is healthy', async () => {
     function mockFetchShapesOk() {
-      return Promise.resolve({ ok: true, items: [], total: 0 });
+      return Promise.resolve([]); // ShapesDao.listShapes returns array
     }
     function mockCheckBackendHealthOk() {
       return Promise.resolve(true);

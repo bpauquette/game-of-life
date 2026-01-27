@@ -135,21 +135,33 @@ const OptionsPanel = ({
   const { themeMode, setThemeMode, availableThemes } = useTheme();
   const [localThemeMode, setLocalThemeMode] = useState(themeMode);
 
+
+  const prevAda = (() => {
+    try {
+      const stored = globalThis.localStorage.getItem('enableAdaCompliance');
+      if (stored === 'true' || stored === 'false') return stored === 'true';
+      if (stored != null) return Boolean(JSON.parse(stored));
+      return enableAdaCompliance;
+    } catch (e) {
+      return enableAdaCompliance;
+    }
+  })();
+
   const handleOk = () => {
-  try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
-  try { setBackendType?.(localBackendType); } catch (err) { logger.debug('setBackendType failed:', err); }
-  try { globalThis.localStorage.setItem('backendType', localBackendType); } catch {}
-  // Apply theme change
-  try { setThemeMode(localThemeMode); } catch (err) { logger.debug('setThemeMode failed:', err); }
-  // Clamp and default window size
-  let win = Number.parseInt(localWindow, 10);
-  if (Number.isNaN(win) || win < 1) win = 1;
-  try { setPopWindowSize(win); } catch (err) { logger.debug('setPopWindowSize failed:', err); }
-  // Clamp and default tolerance
-  let tol = Number.parseInt(localTolerance, 10);
-  if (Number.isNaN(tol) || tol < 0) tol = 0;
-  try { setPopTolerance(tol); } catch (err) { logger.debug('setPopTolerance failed:', err); }
-  try { setShowSpeedGauge?.(localShowSpeedGauge); } catch (err) { logger.debug('setShowSpeedGauge failed:', err); }
+    try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
+    try { setBackendType?.(localBackendType); } catch (err) { logger.debug('setBackendType failed:', err); }
+    try { globalThis.localStorage.setItem('backendType', localBackendType); } catch {}
+    // Apply theme change
+    try { setThemeMode(localThemeMode); } catch (err) { logger.debug('setThemeMode failed:', err); }
+    // Clamp and default window size
+    let win = Number.parseInt(localWindow, 10);
+    if (Number.isNaN(win) || win < 1) win = 1;
+    try { setPopWindowSize(win); } catch (err) { logger.debug('setPopWindowSize failed:', err); }
+    // Clamp and default tolerance
+    let tol = Number.parseInt(localTolerance, 10);
+    if (Number.isNaN(tol) || tol < 0) tol = 0;
+    try { setPopTolerance(tol); } catch (err) { logger.debug('setPopTolerance failed:', err); }
+    try { setShowSpeedGauge?.(localShowSpeedGauge); } catch (err) { logger.debug('setShowSpeedGauge failed:', err); }
     // If ADA compliance is on, force maxFPS to 2 and enable FPS cap
     const finalMaxFPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(120, Number(localMaxFPS) || 60));
     const finalMaxGPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(60, Number(localMaxGPS) || 30));
@@ -166,31 +178,35 @@ const OptionsPanel = ({
     try { setRandomRectPercent?.(Math.max(0, Math.min(100, Number(localRandomRectPercent)))); } catch (err) { logger.debug('setRandomRectPercent failed:', err); }
     try { setEnableAdaCompliance?.(!!localEnableAdaCompliance); } catch (err) { logger.debug('setEnableAdaCompliance failed:', err); }
     try { setPhotosensitivityTesterEnabled?.(!!localPhotosensitivityTesterEnabled); } catch (err) { logger.debug('setPhotosensitivityTesterEnabled failed:', err); }
-  // Persist all options so they are remembered across sessions
-  try { globalThis.localStorage.setItem('colorSchemeKey', String(localScheme)); } catch {}
-  try { globalThis.localStorage.setItem('popWindowSize', String(win)); } catch {}
-  try { globalThis.localStorage.setItem('popTolerance', String(tol)); } catch {}
-  try { globalThis.localStorage.setItem('showSpeedGauge', JSON.stringify(!!localShowSpeedGauge)); } catch {}
-  try { globalThis.localStorage.setItem('maxFPS', String(finalMaxFPS)); } catch {}
-  try { globalThis.localStorage.setItem('maxGPS', String(finalMaxGPS)); } catch {}
-  try { globalThis.localStorage.setItem('enableFPSCap', JSON.stringify(finalEnableFPSCap)); } catch {}
-  try { globalThis.localStorage.setItem('enableGPSCap', JSON.stringify(finalEnableGPSCap)); } catch {}
-  try { globalThis.localStorage.setItem('useWebWorker', JSON.stringify(!!localUseWebWorker)); } catch {}
-  try { globalThis.localStorage.setItem('confirmOnClear', JSON.stringify(!!localConfirmOnClear)); } catch {}
-  try { globalThis.localStorage.setItem('maxChartGenerations', String(localMaxChartGenerations)); } catch {}
-  try { globalThis.localStorage.setItem('detectStablePopulation', JSON.stringify(!!localDetectStablePopulation)); } catch {}
-  try { globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode)); } catch {}
-  try { globalThis.localStorage.setItem('randomRectPercent', String(Math.max(0, Math.min(100, Number(localRandomRectPercent))))); } catch {}
-  try { globalThis.localStorage.setItem('enableAdaCompliance', JSON.stringify(!!localEnableAdaCompliance)); } catch {}
-  try { globalThis.localStorage.setItem('photosensitivityTesterEnabled', JSON.stringify(!!localPhotosensitivityTesterEnabled)); } catch {}
+    // Persist all options so they are remembered across sessions
+    try { globalThis.localStorage.setItem('colorSchemeKey', String(localScheme)); } catch {}
+    try { globalThis.localStorage.setItem('popWindowSize', String(win)); } catch {}
+    try { globalThis.localStorage.setItem('popTolerance', String(tol)); } catch {}
+    try { globalThis.localStorage.setItem('showSpeedGauge', JSON.stringify(!!localShowSpeedGauge)); } catch {}
+    try { globalThis.localStorage.setItem('maxFPS', String(finalMaxFPS)); } catch {}
+    try { globalThis.localStorage.setItem('maxGPS', String(finalMaxGPS)); } catch {}
+    try { globalThis.localStorage.setItem('enableFPSCap', JSON.stringify(finalEnableFPSCap)); } catch {}
+    try { globalThis.localStorage.setItem('enableGPSCap', JSON.stringify(finalEnableGPSCap)); } catch {}
+    try { globalThis.localStorage.setItem('useWebWorker', JSON.stringify(!!localUseWebWorker)); } catch {}
+    try { globalThis.localStorage.setItem('confirmOnClear', JSON.stringify(!!localConfirmOnClear)); } catch {}
+    try { globalThis.localStorage.setItem('maxChartGenerations', String(localMaxChartGenerations)); } catch {}
+    try { globalThis.localStorage.setItem('detectStablePopulation', JSON.stringify(!!localDetectStablePopulation)); } catch {}
+    try { globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode)); } catch {}
+    try { globalThis.localStorage.setItem('randomRectPercent', String(Math.max(0, Math.min(100, Number(localRandomRectPercent))))); } catch {}
+    try { globalThis.localStorage.setItem('enableAdaCompliance', JSON.stringify(!!localEnableAdaCompliance)); } catch {}
+    try { globalThis.localStorage.setItem('photosensitivityTesterEnabled', JSON.stringify(!!localPhotosensitivityTesterEnabled)); } catch {}
+    try { globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning)); } catch {}
+    try { setDetectStablePopulation?.(!!localDetectStablePopulation); } catch {}
+    try {
+      setMemoryTelemetryEnabled?.(!!localMemoryTelemetryEnabled);
+      globalThis.localStorage.setItem('memoryTelemetryEnabled', (!!localMemoryTelemetryEnabled) ? 'true' : 'false');
+    } catch {}
 
-  try { globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning)); } catch {}
-  try { setDetectStablePopulation?.(!!localDetectStablePopulation); } catch {}
-  try {
-    setMemoryTelemetryEnabled?.(!!localMemoryTelemetryEnabled);
-    globalThis.localStorage.setItem('memoryTelemetryEnabled', (!!localMemoryTelemetryEnabled) ? 'true' : 'false');
-  } catch {}
-  onOk?.();
+    // Dispatch global event if ADA compliance changed
+    if (prevAda !== !!localEnableAdaCompliance) {
+      window.dispatchEvent(new CustomEvent('gol:adaChanged', { detail: { enabled: !!localEnableAdaCompliance } }));
+    }
+    onOk?.();
   };
 
   const handleCancel = () => {
