@@ -242,6 +242,15 @@ const ControlsBar = ({
 
   // Optional model to drive ToolStatus observer
   model
+  ,
+  // Engine control callbacks (forwarded to RunControlGroup)
+  onStartNormalMode,
+  onStopAllEngines,
+  onStartHashlifeMode,
+  onSetEngineMode,
+  useHashlife,
+  generationBatchSize,
+  onSetGenerationBatchSize
 }) => {
   // Options dialog open state
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -333,6 +342,13 @@ const ControlsBar = ({
           clear={clear}
           snapshotsRef={snapshotsRef}
           setSteadyInfo={setSteadyInfo}
+          onStartNormalMode={onStartNormalMode}
+          onStartHashlifeMode={onStartHashlifeMode}
+          onStopAllEngines={onStopAllEngines}
+          onSetEngineMode={onSetEngineMode}
+          useHashlife={useHashlife}
+          generationBatchSize={generationBatchSize}
+          onSetGenerationBatchSize={onSetGenerationBatchSize}
 
         />
 
@@ -448,6 +464,14 @@ ControlsBar.propTypes = {
   // ADA compliance props
   enableAdaCompliance: PropTypes.bool,
   setEnableAdaCompliance: PropTypes.func,
+  // Engine control callbacks
+  onStartNormalMode: PropTypes.func,
+  onStartHashlifeMode: PropTypes.func,
+  onStopAllEngines: PropTypes.func,
+  onSetEngineMode: PropTypes.func,
+  useHashlife: PropTypes.bool,
+  generationBatchSize: PropTypes.number,
+  onSetGenerationBatchSize: PropTypes.func,
   popWindowSize: PropTypes.number.isRequired,
   setPopWindowSize: PropTypes.func.isRequired,
   popTolerance: PropTypes.number.isRequired,

@@ -100,10 +100,19 @@ export default function RunControlGroup({
             aria-label={isRunning ? 'stop' : 'start'}
             color={isRunning ? 'error' : 'primary'}
             onClick={() => {
+              try { console.debug('[RunControlGroup] play button clicked', { isRunning, hasStart: !!onStartNormalMode, hasStop: !!onStopAllEngines }); } catch (e) {}
               if (isRunning) {
-                onStopAllEngines?.();
+                if (typeof onStopAllEngines === 'function') {
+                  onStopAllEngines();
+                } else {
+                  try { setIsRunning(false); } catch (e) {}
+                }
               } else {
-                onStartNormalMode?.();
+                if (typeof onStartNormalMode === 'function') {
+                  onStartNormalMode();
+                } else {
+                  try { setIsRunning(true); } catch (e) {}
+                }
               }
             }}
           >

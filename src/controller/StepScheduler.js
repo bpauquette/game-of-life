@@ -1,3 +1,4 @@
+ 
 // src/controller/StepScheduler.js
 // Unified scheduler for stepping via RAF or Web Worker
 // Abstracts away the choice of loop mechanism so controller never manages
@@ -6,28 +7,19 @@
 export class StepScheduler {
   constructor(stepFn, options = {}) {
     if (typeof stepFn !== 'function') throw new Error('StepScheduler requires a step function');
-    
     this.step = stepFn;
     this.maxFPS = Math.max(1, Math.min(Number(options.maxFPS) || 60, 120));
     this.maxGPS = Math.max(1, Math.min(Number(options.maxGPS) || 30, 60));
     this.useWorker = !!options.useWorker;
     this.onPerformance = typeof options.onPerformance === 'function' ? options.onPerformance : null;
-    
-    // Internal state
     this.isRunning = false;
     this.worker = null;
     this.animationId = null;
-    this.lastFrameTime = NaN;
+    this.lastFrameTime = Number.NaN;
     this._calculateFrameInterval();
   }
 
   _calculateFrameInterval() {
-    // If neither cap is enabled, run every frame (interval = 0)
-    if (!this.maxFPS && !this.maxGPS) {
-      this.frameInterval = 0;
-      return;
-    }
-    // Use minimum of enabled caps
     const fps = this.maxFPS || Infinity;
     const gps = this.maxGPS || Infinity;
     const rate = Math.min(fps, gps);
@@ -38,6 +30,9 @@ export class StepScheduler {
     this.maxFPS = Math.max(1, Math.min(Number(fps) || 60, 120));
     this._calculateFrameInterval();
     this._updateWorkerInterval();
+    if (this.worker) {
+      this.worker.postMessage({ command: 'start' });
+    }
   }
 
   setMaxGPS(gps) {
@@ -49,9 +44,7 @@ export class StepScheduler {
   setUseWorker(use) {
     const next = !!use;
     if (next === this.useWorker) return;
-    
     if (this.isRunning) {
-      // Restart with new mechanism
       this.stop();
       this.useWorker = next;
       this.start();
@@ -61,12 +54,8 @@ export class StepScheduler {
   }
 
   start() {
-    if (this.isRunning) {
-      console.log('[StepScheduler] start() called but already running');
-      return;
-    }
+    if (this.isRunning) return;
     this.isRunning = true;
-    console.log('[StepScheduler] start() - scheduler started');
     if (this.useWorker) {
       this._startWorkerLoop();
     } else {
@@ -75,54 +64,65 @@ export class StepScheduler {
   }
 
   stop() {
-    if (!this.isRunning) {
-      console.log('[StepScheduler] stop() called but already stopped');
-      return;
-    }
     this.isRunning = false;
-    console.log('[StepScheduler] stop() - scheduler stopped');
-    if (this.useWorker) {
-      this._stopWorkerLoop();
-    } else {
-      this._stopRAFLoop();
-    }
+    this.useWorker ? this._stopWorkerLoop() : this._stopRAFLoop();
   }
+// ...existing code...
 
-  // RAF Loop
   _startRAFLoop() {
-    const loop = async (timestamp) => {
-      if (!this.isRunning) {
-        this.animationId = null;
-        return;
-      }
-
-      // Initialize baseline on first frame
-      if (!Number.isFinite(this.lastFrameTime)) {
-        this.lastFrameTime = 0;
-      }
-
-      const delta = timestamp - this.lastFrameTime;
-      const shouldStep = this.frameInterval <= 0 || delta >= this.frameInterval;
-
+    const loop = (timestamp) => {
+      if (!this.isRunning) return;
+      const shouldStep = !this.lastFrameTime || (timestamp - this.lastFrameTime >= this.frameInterval);
       if (shouldStep) {
         const frameStart = performance.now();
         try {
-          await this.step();
-        } catch (error) {
-          console.warn('[StepScheduler] Step failed:', error);
+          this.step();
+        } catch (error_) {
+          console.warn('[StepScheduler] Step failed:', error_);
         }
-
         const frameTime = performance.now() - frameStart;
         if (this.onPerformance) {
-          try { this.onPerformance(frameTime); } catch (_) {}
+          try { this.onPerformance(frameTime); } catch (error_) { console.warn('[StepScheduler] onPerformance error', error_); }
         }
         this.lastFrameTime = timestamp;
       }
-
       this.animationId = requestAnimationFrame(loop);
     };
-
     this.animationId = requestAnimationFrame(loop);
+  }
+
+  _startWorkerLoop() {
+    if (this.worker) return;
+    if (typeof Worker === 'undefined' || typeof URL === 'undefined') {
+      this.useWorker = false;
+      this._startRAFLoop();
+      return;
+    }
+    try {
+      this.worker = new Worker(new URL('../workers/gameWorker.js', import.meta.url));
+    } catch (error_) {
+      console.warn('[StepScheduler] Worker creation failed, falling back to RAF:', error_);
+      this.useWorker = false;
+      this._startRAFLoop();
+      return;
+    }
+    this.worker.onmessage = (e) => {
+      const data = e.data || {};
+      if (data.command === 'step') {
+        const frameStart = performance.now();
+        try {
+          this.step();
+        } catch (error_) {
+          console.warn('[StepScheduler] Step failed:', error_);
+        }
+        const frameTime = performance.now() - frameStart;
+        if (this.onPerformance) {
+          try { this.onPerformance(frameTime); } catch (error_) { console.warn('[StepScheduler] onPerformance error', error_); }
+        }
+      }
+    };
+    this._updateWorkerInterval();
+    this.worker.postMessage({ command: 'start' });
   }
 
   _stopRAFLoop() {
@@ -132,49 +132,6 @@ export class StepScheduler {
     }
   }
 
-  // Worker Loop
-  _startWorkerLoop() {
-    if (this.worker) return; // Already created
-    
-    try {
-      if (typeof globalThis !== 'undefined' && typeof URL !== 'undefined' && typeof Worker !== 'undefined') {
-        try {
-          const createWorkerCode = `new Worker(new URL('../workers/gameWorker.js', import.meta.url))`;
-          // eslint-disable-next-line no-new-func
-          const createWorker = new Function('URL', 'Worker', `return ${createWorkerCode}`);
-          this.worker = createWorker(URL, Worker);
-        } catch (syntaxError) {
-          // import.meta not available (e.g., test environment)
-          return;
-        }
-      }
-    } catch (error) {
-      if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
-        console.warn('[StepScheduler] Could not create Web Worker:', error);
-      }
-      return;
-    }
-
-    if (!this.worker) return;
-
-    this.worker.onmessage = async (e) => {
-      if (e.data.command === 'step') {
-        const frameStart = performance.now();
-        try {
-          await this.step();
-        } catch (error) {
-          console.warn('[StepScheduler] Step failed:', error);
-        }
-
-        const frameTime = performance.now() - frameStart;
-        if (this.onPerformance) {
-          try { this.onPerformance(frameTime); } catch (_) {}
-        }
-      }
-    };
-
-    this._updateWorkerInterval();
-  }
 
   _stopWorkerLoop() {
     if (this.worker) {

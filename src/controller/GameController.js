@@ -64,6 +64,7 @@ export class GameController {
   // Lazy-initialize scheduler on first use
   _getScheduler() {
     if (!this.scheduler) {
+      try { console.debug('[GameController] creating StepScheduler', { maxFPS: this.performanceCaps.maxFPS, maxGPS: this.performanceCaps.maxGPS, useWebWorker: this.performanceCaps.useWebWorker }); } catch (e) {}
       const preferWorker = !!this.performanceCaps.useWebWorker || (typeof Worker !== 'undefined' && !(typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test'));
       this.scheduler = new StepScheduler(() => this.model.step(), {
         maxFPS: this.performanceCaps.maxFPS,
@@ -857,14 +858,30 @@ export class GameController {
   }
 
   handleRunningStateChange(isRunning) {
+    try { console.debug('[GameController] handleRunningStateChange:', isRunning); } catch (err) { console.warn('[GameController] debug log failed', err); }
     const scheduler = this._getScheduler();
+    // Defensive check: ensure scheduler has expected methods
+    if (!scheduler || typeof scheduler !== 'object') {
+      try { console.warn('[GameController] No scheduler instance available:', scheduler); } catch (err) { console.warn('[GameController] warn log failed', err); }
+      return;
+    }
+
     if (isRunning) {
-      scheduler.start();
+      if (typeof scheduler.start === 'function') {
+        scheduler.start();
+      } else {
+        try { console.warn('[GameController] scheduler.start is not a function:', scheduler); } catch (err) { console.warn('[GameController] warn log failed', err); }
+        return;
+      }
       // Mirror scheduler state
       this.animationId = scheduler.animationId;
       this.worker = scheduler.worker;
     } else {
-      scheduler.stop();
+      if (typeof scheduler.stop === 'function') {
+        scheduler.stop();
+      } else {
+        try { console.warn('[GameController] scheduler.stop is not a function; skipping call', scheduler); } catch (err) { console.warn('[GameController] warn log failed', err); }
+      }
       this.animationId = scheduler.animationId;
       this.worker = scheduler.worker;
     }

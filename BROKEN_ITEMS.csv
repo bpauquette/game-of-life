@@ -6,5 +6,6 @@ id,severity,status,description,reported_by,created_at,notes
 5,medium,open,"ADA compliance mode forces GUI repaint when enforcement enabled","bryan",2026-01-24,"Enabling ADA mode causes unnecessary GUI repaints; verify repaint behavior and fix enforcement path"
 6,high,open,"Load button does not load any grids","bryan",2026-01-24,"Clicking Load returns no grids; check load handler, localStorage, and /v1/shapes endpoints"
 7,medium,open,"Simulation motion is not smooth or fluid","bryan",2026-01-24,"Choppy animation/frame drops; investigate StepScheduler, RAF vs worker stepping, and rendering performance"
+7a,medium,open,"Not every generation is rendered (subproblem of slow rendering)","bryan",2026-01-27,"Suspect: some simulation steps are not visually rendered; verify render scheduling and coalescing logic."
 8,high,open,"Integration with backend is broken - shapes API failing or unreachable","bryan",2026-01-24,"Frontend can't load shapes from backend; check /v1/shapes endpoint and CORS/mounts"
 9,high,open,"Login dialog blocked by grid (z-index)","bryan",2026-01-24,"Login modal is behind the grid canvas; likely CSS z-index stacking context issue preventing login UI interaction"
