@@ -1,4 +1,4 @@
-import { eventToCellFromCanvas } from '../../src/controller/utils/canvasUtils';
+import { eventToCellFromCanvas } from '../../src/controller/utils/canvasUtils.js';
 
 describe('startPaletteDrag-like behavior', () => {
   it('uses offsetRef.cellSize when computing initial cell and calls controller._setToolState', () => {

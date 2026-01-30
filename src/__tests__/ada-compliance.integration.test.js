@@ -81,14 +81,14 @@ describe('ADA Compliance Integration Tests', () => {
               enableGPSCap: true
             }
           });
-          window.removeEventListener('gol:adaChanged', listener);
+          globalThis.removeEventListener('gol:adaChanged', listener);
           done();
         } catch (e) {
           done(e);
         }
       });
 
-      window.addEventListener('gol:adaChanged', listener);
+      globalThis.addEventListener('gol:adaChanged', listener);
 
       // Simulate event broadcast
       const event = new CustomEvent('gol:adaChanged', {
@@ -103,7 +103,7 @@ describe('ADA Compliance Integration Tests', () => {
           }
         }
       });
-      window.dispatchEvent(event);
+      globalThis.dispatchEvent(event);
     });
   });
 

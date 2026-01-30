@@ -1,5 +1,5 @@
 // Mock StepScheduler to bypass ESM/worker errors in Jest
-import { GameMVC } from './GameMVC';
+import { GameMVC } from './GameMVC.js';
 jest.mock('./StepScheduler', () => ({
   __esModule: true,
   default: function StepScheduler() {

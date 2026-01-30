@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import logger from '../../controller/utils/logger';
-import { resolveBackendBase } from '../../utils/backendApi';
-import { createHoverWorker } from '../../utils/workerFactories';
+import logger from '../../controller/utils/logger.js';
+import { resolveBackendBase } from '../../utils/backendApi.js';
+import { createHoverWorker } from '../../utils/workerFactories.js';
 
 function normalizePreview(shape) {
   if (!shape) return null;
@@ -23,7 +23,7 @@ export function useHoverPreview() {
 
   const stopWorker = useCallback(() => {
     if (workerRef.current) {
-      try { workerRef.current.terminate(); } catch (e) {}
+      try { workerRef.current.terminate(); } catch (e) { console.warn('Exception caught in stopWorker (terminate):', e); }
       workerRef.current = null;
     }
   }, []);

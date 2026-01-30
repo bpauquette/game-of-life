@@ -158,13 +158,20 @@ export function createFrameRateLimiter(targetFPS) {
  * Performance monitoring utility
  */
 export function usePerformanceMonitor(isRunning) {
+  // Initialize with zeros, set times in effect
   const metricsRef = useRef({
     frameCount: 0,
-    startTime: performance.now(),
-    lastUpdateTime: performance.now(),
+    startTime: 0,
+    lastUpdateTime: 0,
     fps: 0,
     averageFrameTime: 0
   });
+
+  // Set impure values after mount
+  useEffect(() => {
+    metricsRef.current.startTime = performance.now();
+    metricsRef.current.lastUpdateTime = performance.now();
+  }, []);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -197,8 +204,10 @@ export function usePerformanceMonitor(isRunning) {
     }
   }, []);
 
+  // Return a getter for metrics to avoid accessing ref during render
+  const getMetrics = () => metricsRef.current;
   return {
-    metrics: metricsRef.current,
+    getMetrics,
     trackFrame
   };
 }

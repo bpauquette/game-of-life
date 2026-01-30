@@ -1,11 +1,14 @@
+
 import { useState } from 'react';
-import { useAuth } from './AuthProvider';
-import Login from './Login';
-import Register from './Register';
+import { useAuth } from './AuthProvider.jsx';
+import Login from './Login.jsx';
+import Register from './Register.jsx';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
-import { isRegistered, getLastCheckedEmail, isLastEmailRegistered } from './emailCheck';
+import { isRegistered, getLastCheckedEmail, isLastEmailRegistered } from './emailCheck.js';
+import React from 'react';
+
 
 /**
  * Hook that wraps an action with authentication protection.
@@ -13,12 +16,13 @@ import { isRegistered, getLastCheckedEmail, isLastEmailRegistered } from './emai
  * If login fails, switches to register mode.
  *
  * @param {Function} action - The action to perform when authenticated
- * @returns {Function} - The wrapped action that checks auth first
+ * @returns {Object} - { wrappedAction, renderDialog }
  */
-export function useProtectedAction(action) {
-  const { token } = useAuth();
+export default function useProtectedAction(action) {
   const [showDialog, setShowDialog] = useState(false);
-  const [dialogMode, setDialogMode] = useState('register'); // Start with register for new users
+  const [dialogMode, setDialogMode] = useState('login');
+  const { token } = useAuth();
+  // Removed unused variable 'error'
 
   const wrappedAction = (...args) => {
     if (token) {
@@ -61,6 +65,7 @@ export function useProtectedAction(action) {
 
   const handleRegisterError = (error) => {
     // Stay on register mode if registration fails
+    console.warn(error);
     setDialogMode('register');
   };
 

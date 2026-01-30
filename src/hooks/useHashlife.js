@@ -1,5 +1,5 @@
-const { useState, useRef, useCallback, useEffect } = require('react');
-const adapter = require('../model/hashlife/adapter');
+import { useState, useRef, useCallback, useEffect } from 'react';
+import adapter from '../model/hashlife/adapter.js';
 
 // React hook that wraps the hashlife adapter/worker and exposes a small API
 function useHashlife() {

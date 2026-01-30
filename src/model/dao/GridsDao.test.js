@@ -1,5 +1,5 @@
 // GridsDao.test.js
-import GridsDao from './GridsDao';
+import GridsDao from './GridsDao.js';
 
 // Mock fetch globally
 beforeEach(() => {

@@ -1,4 +1,4 @@
-import { colorSchemes } from './colorSchemes';
+import { colorSchemes } from './colorSchemes.js';
 
 describe('colorSchemes', () => {
   it('should be an object', () => {

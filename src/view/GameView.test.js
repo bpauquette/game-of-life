@@ -1,4 +1,4 @@
-import { GameView } from './GameView';
+import { GameView } from './GameView.js';
 
 describe('GameView', () => {
   let canvas;

@@ -1,6 +1,6 @@
-const engine = require('../engine');
-const worker = require('../worker');
-const { resultMemo } = require('../node');
+const engine = require('../engine.js');
+const worker = require('../worker.js');
+const { resultMemo } = require('../node.js');
 
 describe('hashlife worker wrapper', () => {
   beforeEach(() => engine.clearEngineCache());

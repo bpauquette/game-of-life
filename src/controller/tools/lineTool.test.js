@@ -1,4 +1,4 @@
-import { lineTool } from './lineTool';
+import { lineTool } from './lineTool.js';
 describe('lineTool', () => {
   it('exports expected handlers', () => {
     expect(typeof lineTool.onMouseDown).toBe('function');

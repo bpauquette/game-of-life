@@ -1,4 +1,4 @@
-import LiveCellIndex from './liveCellIndex';
+import LiveCellIndex from './liveCellIndex.js';
 
 describe('LiveCellIndex', () => {
   it('can set and check cells', () => {

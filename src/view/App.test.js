@@ -1,7 +1,7 @@
 // Mock StepScheduler to bypass ESM/worker errors in Jest
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import App from './App';
+import App from './App.js';
 jest.mock('../controller/StepScheduler', () => ({
   __esModule: true,
   default: function StepScheduler() {

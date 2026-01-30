@@ -1,4 +1,4 @@
-import { shapesTool } from './shapesTool';
+import { shapesTool } from './shapesTool.js';
 describe('shapesTool', () => {
   it('exports expected handlers', () => {
     expect(typeof shapesTool.onMouseDown).toBe('function');

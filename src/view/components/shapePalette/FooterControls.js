@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Button from '@mui/material/Button';
-import { BUTTONS } from '../../../utils/Constants';
+import { BUTTONS } from '../../../utils/Constants.js';
 
 const SPACE_BETWEEN = 'space-between';
 const FOOTER_ROW_STYLE = {

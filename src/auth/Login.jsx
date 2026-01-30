@@ -1,21 +1,21 @@
 // src/auth/Login.jsx
-import { useState } from "react";
-import { post } from "./api";
-import { useAuth } from "./AuthProvider";
+import React, { useState } from "react";
+import { post } from "./api.js";
+import { useAuth } from "./AuthProvider.jsx";
 import validator from "validator";
-import ResetRequest from './ResetRequest';
+import ResetRequest from './ResetRequest.jsx';
 import IconButton from "@mui/material/IconButton";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import PropTypes from 'prop-types';
 
-export default function Login({ onSuccess, onError, showRegisterLink = true }) {
+export default function Login({ onSuccess, onError }) {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [showResetRequest, setShowResetRequest] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();

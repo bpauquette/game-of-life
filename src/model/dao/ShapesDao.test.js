@@ -1,5 +1,5 @@
 // ShapesDao.test.js
-import ShapesDao from './ShapesDao';
+import ShapesDao from './ShapesDao.js';
 
 // Mock fetch globally
 beforeEach(() => {

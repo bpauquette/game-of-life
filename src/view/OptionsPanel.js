@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import Dialog from '@mui/material/Dialog';
-import logger from '../controller/utils/logger';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
@@ -15,7 +14,7 @@ import Slider from '@mui/material/Slider';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import { Info as InfoIcon } from '@mui/icons-material';
-import { useTheme } from './context/ThemeContext';
+import { useTheme } from './context/ThemeContext.js';
 
 const OptionsPanel = ({
   // ...existing props...
@@ -64,11 +63,9 @@ const OptionsPanel = ({
 }) => {
   const [localScheme, setLocalScheme] = useState(colorSchemeKey || 'bio');
   const [localBackendType, setLocalBackendType] = useState(() => {
-    try {
-      const stored = globalThis.localStorage.getItem('backendType');
-      if (stored === 'node' || stored === 'java') return stored;
-    } catch {}
-    return backendType || 'node';
+  const stored = globalThis.localStorage.getItem('backendType');
+  if (stored === 'node' || stored === 'java') return stored;
+  return backendType || 'node';
   });
   const [localWindow, setLocalWindow] = useState(popWindowSize);
   const [localTolerance, setLocalTolerance] = useState(popTolerance);
@@ -81,55 +78,39 @@ const OptionsPanel = ({
   const [localConfirmOnClear, setLocalConfirmOnClear] = useState(confirmOnClear);
   const [localDrawToggleMode, setLocalDrawToggleMode] = useState(false); // default to off
   const [localDrawWhileRunning, setLocalDrawWhileRunning] = useState(() => {
-    try {
-      const v = globalThis.localStorage.getItem('drawWhileRunning');
-      if (v != null) return JSON.parse(v);
-      // Default draw-while-running to true per user request
-      return true;
-    } catch {
-      return true;
-    }
-  });
+  const v = globalThis.localStorage.getItem('drawWhileRunning');
+  if (v != null) return JSON.parse(v);
+  // Default draw-while-running to true per user request
+  return true;
+});
   const [localDetectStablePopulation, setLocalDetectStablePopulation] = useState(detectStablePopulation);
     const [localMaxChartGenerations, setLocalMaxChartGenerations] = useState(maxChartGenerations);
   const [localMemoryTelemetryEnabled, setLocalMemoryTelemetryEnabled] = useState(() => {
-    try {
-      const stored = globalThis.localStorage.getItem('memoryTelemetryEnabled');
-      if (stored === 'true' || stored === 'false') return stored === 'true';
-    } catch {}
-    return memoryTelemetryEnabled;
-  });
+  const stored = globalThis.localStorage.getItem('memoryTelemetryEnabled');
+  if (stored === 'true' || stored === 'false') return stored === 'true';
+  return memoryTelemetryEnabled;
+});
   const [localPhotosensitivityTesterEnabled, setLocalPhotosensitivityTesterEnabled] = useState(() => {
-    try {
-      const stored = globalThis.localStorage.getItem('photosensitivityTesterEnabled');
-      if (stored === 'true' || stored === 'false') return stored === 'true';
-    } catch {}
-    return photosensitivityTesterEnabled;
-  });
+  const stored = globalThis.localStorage.getItem('photosensitivityTesterEnabled');
+  if (stored === 'true' || stored === 'false') return stored === 'true';
+  return photosensitivityTesterEnabled;
+});
   const [localRandomRectPercent, setLocalRandomRectPercent] = useState(() => {
-    try {
-      const stored = globalThis.localStorage.getItem('randomRectPercent');
-      if (stored != null) {
-        const s = Number.parseInt(stored, 10);
-        if (!Number.isNaN(s)) return Math.max(0, Math.min(100, s));
-      }
-    } catch (e) {
-      // ignore
-    }
-    const n = Number(randomRectPercent);
-    if (!Number.isFinite(n)) return 50;
-    return Math.max(0, Math.min(100, Math.round(n)));
-  });
+  const stored = globalThis.localStorage.getItem('randomRectPercent');
+  if (stored != null) {
+    const s = Number.parseInt(stored, 10);
+    if (!Number.isNaN(s)) return Math.max(0, Math.min(100, s));
+  }
+  const n = Number(randomRectPercent);
+  if (!Number.isFinite(n)) return 50;
+  return Math.max(0, Math.min(100, Math.round(n)));
+});
   const [localEnableAdaCompliance, setLocalEnableAdaCompliance] = useState(() => {
-    try {
-      const stored = globalThis.localStorage.getItem('enableAdaCompliance');
-      if (stored === 'true' || stored === 'false') return stored === 'true';
-      if (stored != null) return Boolean(JSON.parse(stored));
-      return enableAdaCompliance;
-    } catch (e) {
-      return enableAdaCompliance;
-    }
-  });
+  const stored = globalThis.localStorage.getItem('enableAdaCompliance');
+  if (stored === 'true' || stored === 'false') return stored === 'true';
+  if (stored != null) return Boolean(JSON.parse(stored));
+  return enableAdaCompliance;
+});
 
   // Theme selection
   const { themeMode, setThemeMode, availableThemes } = useTheme();
@@ -137,76 +118,70 @@ const OptionsPanel = ({
 
 
   const prevAda = (() => {
-    try {
-      const stored = globalThis.localStorage.getItem('enableAdaCompliance');
-      if (stored === 'true' || stored === 'false') return stored === 'true';
-      if (stored != null) return Boolean(JSON.parse(stored));
-      return enableAdaCompliance;
-    } catch (e) {
-      return enableAdaCompliance;
-    }
-  })();
+  const stored = globalThis.localStorage.getItem('enableAdaCompliance');
+  if (stored === 'true' || stored === 'false') return stored === 'true';
+  if (stored != null) return Boolean(JSON.parse(stored));
+  return enableAdaCompliance;
+})();
 
   const handleOk = () => {
-    try { setColorSchemeKey(localScheme); } catch (err) { logger.debug('setColorSchemeKey failed:', err); }
-    try { setBackendType?.(localBackendType); } catch (err) { logger.debug('setBackendType failed:', err); }
-    try { globalThis.localStorage.setItem('backendType', localBackendType); } catch {}
-    // Apply theme change
-    try { setThemeMode(localThemeMode); } catch (err) { logger.debug('setThemeMode failed:', err); }
-    // Clamp and default window size
-    let win = Number.parseInt(localWindow, 10);
-    if (Number.isNaN(win) || win < 1) win = 1;
-    try { setPopWindowSize(win); } catch (err) { logger.debug('setPopWindowSize failed:', err); }
-    // Clamp and default tolerance
-    let tol = Number.parseInt(localTolerance, 10);
-    if (Number.isNaN(tol) || tol < 0) tol = 0;
-    try { setPopTolerance(tol); } catch (err) { logger.debug('setPopTolerance failed:', err); }
-    try { setShowSpeedGauge?.(localShowSpeedGauge); } catch (err) { logger.debug('setShowSpeedGauge failed:', err); }
-    // If ADA compliance is on, force maxFPS to 2 and enable FPS cap
-    const finalMaxFPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(120, Number(localMaxFPS) || 60));
-    const finalMaxGPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(60, Number(localMaxGPS) || 30));
-    try { setMaxFPS?.(finalMaxFPS); } catch (err) { logger.debug('setMaxFPS failed:', err); }
-    try { setMaxGPS?.(finalMaxGPS); } catch (err) { logger.debug('setMaxGPS failed:', err); }
-    // When ADA compliance is on, always enable FPS/GPS caps
-    const finalEnableFPSCap = localEnableAdaCompliance ? true : !!localEnableFPSCap;
-    const finalEnableGPSCap = localEnableAdaCompliance ? true : !!localEnableGPSCap;
-    try { setEnableFPSCap?.(finalEnableFPSCap); } catch (err) { logger.debug('setEnableFPSCap failed:', err); }
-    try { setEnableGPSCap?.(finalEnableGPSCap); } catch (err) { logger.debug('setEnableGPSCap failed:', err); }
-    try { setUseWebWorker?.(!!localUseWebWorker); } catch (err) { logger.debug('setUseWebWorker failed:', err); }
-    try { setConfirmOnClear?.(!!localConfirmOnClear); } catch (err) { logger.debug('setConfirmOnClear failed:', err); }
-    try { setMaxChartGenerations?.(Number(localMaxChartGenerations) || 5000); } catch (err) { logger.debug('setMaxChartGenerations failed:', err); }
-    try { setRandomRectPercent?.(Math.max(0, Math.min(100, Number(localRandomRectPercent)))); } catch (err) { logger.debug('setRandomRectPercent failed:', err); }
-    try { setEnableAdaCompliance?.(!!localEnableAdaCompliance); } catch (err) { logger.debug('setEnableAdaCompliance failed:', err); }
-    try { setPhotosensitivityTesterEnabled?.(!!localPhotosensitivityTesterEnabled); } catch (err) { logger.debug('setPhotosensitivityTesterEnabled failed:', err); }
-    // Persist all options so they are remembered across sessions
-    try { globalThis.localStorage.setItem('colorSchemeKey', String(localScheme)); } catch {}
-    try { globalThis.localStorage.setItem('popWindowSize', String(win)); } catch {}
-    try { globalThis.localStorage.setItem('popTolerance', String(tol)); } catch {}
-    try { globalThis.localStorage.setItem('showSpeedGauge', JSON.stringify(!!localShowSpeedGauge)); } catch {}
-    try { globalThis.localStorage.setItem('maxFPS', String(finalMaxFPS)); } catch {}
-    try { globalThis.localStorage.setItem('maxGPS', String(finalMaxGPS)); } catch {}
-    try { globalThis.localStorage.setItem('enableFPSCap', JSON.stringify(finalEnableFPSCap)); } catch {}
-    try { globalThis.localStorage.setItem('enableGPSCap', JSON.stringify(finalEnableGPSCap)); } catch {}
-    try { globalThis.localStorage.setItem('useWebWorker', JSON.stringify(!!localUseWebWorker)); } catch {}
-    try { globalThis.localStorage.setItem('confirmOnClear', JSON.stringify(!!localConfirmOnClear)); } catch {}
-    try { globalThis.localStorage.setItem('maxChartGenerations', String(localMaxChartGenerations)); } catch {}
-    try { globalThis.localStorage.setItem('detectStablePopulation', JSON.stringify(!!localDetectStablePopulation)); } catch {}
-    try { globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode)); } catch {}
-    try { globalThis.localStorage.setItem('randomRectPercent', String(Math.max(0, Math.min(100, Number(localRandomRectPercent))))); } catch {}
-    try { globalThis.localStorage.setItem('enableAdaCompliance', JSON.stringify(!!localEnableAdaCompliance)); } catch {}
-    try { globalThis.localStorage.setItem('photosensitivityTesterEnabled', JSON.stringify(!!localPhotosensitivityTesterEnabled)); } catch {}
-    try { globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning)); } catch {}
-    try { setDetectStablePopulation?.(!!localDetectStablePopulation); } catch {}
-    try {
-      setMemoryTelemetryEnabled?.(!!localMemoryTelemetryEnabled);
-      globalThis.localStorage.setItem('memoryTelemetryEnabled', (!!localMemoryTelemetryEnabled) ? 'true' : 'false');
-    } catch {}
+  setColorSchemeKey(localScheme);
+  setBackendType?.(localBackendType);
+  globalThis.localStorage.setItem('backendType', localBackendType);
+  // Apply theme change
+  setThemeMode(localThemeMode);
+  // Clamp and default globalThis size
+  let win = Number.parseInt(localWindow, 10);
+  if (Number.isNaN(win) || win < 1) win = 1;
+  setPopWindowSize(win);
+  // Clamp and default tolerance
+  let tol = Number.parseInt(localTolerance, 10);
+  if (Number.isNaN(tol) || tol < 0) tol = 0;
+  setPopTolerance(tol);
+  setShowSpeedGauge?.(localShowSpeedGauge);
+  // If ADA compliance is on, force maxFPS to 2 and enable FPS cap
+  const finalMaxFPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(120, Number(localMaxFPS) || 60));
+  const finalMaxGPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(60, Number(localMaxGPS) || 30));
+  setMaxFPS?.(finalMaxFPS);
+  setMaxGPS?.(finalMaxGPS);
+  // When ADA compliance is on, always enable FPS/GPS caps
+  const finalEnableFPSCap = localEnableAdaCompliance ? true : !!localEnableFPSCap;
+  const finalEnableGPSCap = localEnableAdaCompliance ? true : !!localEnableGPSCap;
+  setEnableFPSCap?.(finalEnableFPSCap);
+  setEnableGPSCap?.(finalEnableGPSCap);
+  setUseWebWorker?.(!!localUseWebWorker);
+  setConfirmOnClear?.(!!localConfirmOnClear);
+  setMaxChartGenerations?.(Number(localMaxChartGenerations) || 5000);
+  setRandomRectPercent?.(Math.max(0, Math.min(100, Number(localRandomRectPercent))));
+  setEnableAdaCompliance?.(!!localEnableAdaCompliance);
+  setPhotosensitivityTesterEnabled?.(!!localPhotosensitivityTesterEnabled);
+  // Persist all options so they are remembered across sessions
+  globalThis.localStorage.setItem('colorSchemeKey', String(localScheme));
+  globalThis.localStorage.setItem('popWindowSize', String(win));
+  globalThis.localStorage.setItem('popTolerance', String(tol));
+  globalThis.localStorage.setItem('showSpeedGauge', JSON.stringify(!!localShowSpeedGauge));
+  globalThis.localStorage.setItem('maxFPS', String(finalMaxFPS));
+  globalThis.localStorage.setItem('maxGPS', String(finalMaxGPS));
+  globalThis.localStorage.setItem('enableFPSCap', JSON.stringify(finalEnableFPSCap));
+  globalThis.localStorage.setItem('enableGPSCap', JSON.stringify(finalEnableGPSCap));
+  globalThis.localStorage.setItem('useWebWorker', JSON.stringify(!!localUseWebWorker));
+  globalThis.localStorage.setItem('confirmOnClear', JSON.stringify(!!localConfirmOnClear));
+  globalThis.localStorage.setItem('maxChartGenerations', String(localMaxChartGenerations));
+  globalThis.localStorage.setItem('detectStablePopulation', JSON.stringify(!!localDetectStablePopulation));
+  globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode));
+  globalThis.localStorage.setItem('randomRectPercent', String(Math.max(0, Math.min(100, Number(localRandomRectPercent)))));
+  globalThis.localStorage.setItem('enableAdaCompliance', JSON.stringify(!!localEnableAdaCompliance));
+  globalThis.localStorage.setItem('photosensitivityTesterEnabled', JSON.stringify(!!localPhotosensitivityTesterEnabled));
+  globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning));
+  setDetectStablePopulation?.(!!localDetectStablePopulation);
+  setMemoryTelemetryEnabled?.(!!localMemoryTelemetryEnabled);
+  globalThis.localStorage.setItem('memoryTelemetryEnabled', localMemoryTelemetryEnabled ? 'true' : 'false');
 
-    // Dispatch global event if ADA compliance changed
-    if (prevAda !== !!localEnableAdaCompliance) {
-      window.dispatchEvent(new CustomEvent('gol:adaChanged', { detail: { enabled: !!localEnableAdaCompliance } }));
-    }
-    onOk?.();
+  // Dispatch global event if ADA compliance changed
+  if (prevAda !== !!localEnableAdaCompliance) {
+    globalThis.dispatchEvent(new CustomEvent('gol:adaChanged', { detail: { enabled: !!localEnableAdaCompliance } }));
+  }
+  onOk?.();
   };
 
   const handleCancel = () => {
@@ -217,7 +192,8 @@ const OptionsPanel = ({
     <Dialog open onClose={handleCancel} maxWidth="sm" fullWidth>
       <DialogTitle>Options</DialogTitle>
       <DialogContent>
-                <TextField
+        {/* Options content here */}
+        <TextField
                   select
                   label="Backend"
                   value={localBackendType}
@@ -282,7 +258,7 @@ const OptionsPanel = ({
 
           <Stack direction="row" spacing={2}>
             <TextField
-              label="Steady window (generations)"
+              label="Steady globalThis (generations)"
               type="number"
               size="small"
               value={(() => { 
@@ -328,7 +304,7 @@ const OptionsPanel = ({
                 input: {
                   endAdornment: (
                     <InputAdornment position="end">
-                      <Tooltip title="Allowed change in population count over the window before we consider it stable.">
+                      <Tooltip title="Allowed change in population count over the globalThis before we consider it stable.">
                         <InfoIcon fontSize="small" />
                       </Tooltip>
                     </InputAdornment>
@@ -607,11 +583,7 @@ const OptionsPanel = ({
                   onChange={(e, v) => {
                     const clamped = Math.max(0, Math.min(100, Number(v)));
                     setLocalRandomRectPercent(clamped);
-                    try {
-                      setRandomRectPercent?.(clamped);
-                    } catch (err) {
-                      logger.debug('setRandomRectPercent live update failed:', err);
-                    }
+                    setRandomRectPercent?.(clamped);
                   }}
                   aria-labelledby="random-rect-percent-input"
                   min={0}
@@ -631,11 +603,7 @@ const OptionsPanel = ({
                     if (v < 0) v = 0;
                     if (v > 100) v = 100;
                     setLocalRandomRectPercent(v);
-                    try {
-                      setRandomRectPercent?.(v);
-                    } catch (err) {
-                      logger.debug('setRandomRectPercent live input update failed:', err);
-                    }
+                    setRandomRectPercent?.(v);
                   }}
                   style={{ width: 72 }}
                 />
@@ -672,7 +640,6 @@ OptionsPanel.propTypes = {
   useWebWorker: PropTypes.bool,
   setUseWebWorker: PropTypes.func,
   confirmOnClear: PropTypes.bool,
-  // setConfirmOnClear: PropTypes.func, // Removed duplicate
   detectStablePopulation: PropTypes.bool,
   setDetectStablePopulation: PropTypes.func,
   memoryTelemetryEnabled: PropTypes.bool,
@@ -683,6 +650,13 @@ OptionsPanel.propTypes = {
   setRandomRectPercent: PropTypes.func,
   enableAdaCompliance: PropTypes.bool,
   setEnableAdaCompliance: PropTypes.func,
+      setConfirmOnClear: PropTypes.func,
+      enableFPSCap: PropTypes.bool,
+      setEnableFPSCap: PropTypes.func,
+      enableGPSCap: PropTypes.bool,
+      setEnableGPSCap: PropTypes.func,
+      maxChartGenerations: PropTypes.number,
+      setMaxChartGenerations: PropTypes.func,
 
   onOk: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired

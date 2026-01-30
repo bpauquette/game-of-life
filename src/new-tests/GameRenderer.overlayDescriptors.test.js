@@ -1,5 +1,5 @@
-import { GameRenderer } from '../../src/view/GameRenderer';
-import { makeShapePreviewOverlay, makeCellsHighlightOverlay } from '../../src/overlays/overlayTypes';
+import { GameRenderer } from '../../src/view/GameRenderer.js';
+import { makeShapePreviewOverlay, makeCellsHighlightOverlay } from '../../src/overlays/overlayTypes.js';
 
 function createMockCanvas({ width = 300, height = 200 } = {}) {
   const calls = { fillRect: [], drawImage: [], setTransform: [] };

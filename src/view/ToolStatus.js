@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
-import useToolStateObserver from './hooks/useToolStateObserver';
+import useToolStateObserver from './hooks/useToolStateObserver.js';
 import PropTypes from 'prop-types';
-import TOOL_DESCRIPTIONS from './components/toolDescriptions';
+import { useToolDao } from '../model/dao/toolDao.js';
+import TOOL_DESCRIPTIONS from './components/toolDescriptions.js';
 function fmt(cell) {
   return cell ? `${cell.x},${cell.y}` : '—';
 }
@@ -55,7 +56,10 @@ function renderShapeStatus(selectedShape, cursorCell) {
   return getShapeToolStatus(selectedShape, cursorCell);
 }
 
-function ToolStatus({ selectedTool, toolStateRef, cursorCell, selectedShape, logTool, model }) {
+function ToolStatus({ toolStateRef, cursorCell, logTool, model }) {
+  // Tool state from toolDao (replace useGameStore as needed)
+  const selectedTool = useToolDao(state => state.selectedTool);
+  const selectedShape = useToolDao(state => state.selectedShape);
   // Use observer hook for live tool state (model-driven)
   const toolState = useToolStateObserver({ model, toolStateRef });
   useEffect(() => {
@@ -91,10 +95,8 @@ function ToolStatus({ selectedTool, toolStateRef, cursorCell, selectedShape, log
 }
 
 ToolStatus.propTypes = {
-  selectedTool: PropTypes.string.isRequired,
   toolStateRef: PropTypes.object.isRequired,
   cursorCell: PropTypes.object,
-  selectedShape: PropTypes.object,
   logTool: PropTypes.func,
   model: PropTypes.object
 };

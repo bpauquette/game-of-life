@@ -1,4 +1,4 @@
-import { rotateShape } from '../model/shapeTransforms';
+import { rotateShape } from '../model/shapeTransforms.js';
 
 // In our renderer, screen Y increases downward. A visual 90° clockwise rotation
 // corresponds to the mathematical transform (x, y) -> (-y, x), which is our

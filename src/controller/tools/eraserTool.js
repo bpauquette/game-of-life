@@ -1,10 +1,10 @@
 
-import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
+import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes.js';
 
 const ERASER_PREVIEW_COLOR = 'rgba(255,0,0,0.18)';
 
 export const eraserTool = {
-  getOverlay(state, cellSize) {
+  getOverlay(state) {
     if (!state.start || !state.last) return null;
     const cells = Array.isArray(state.preview) ? state.preview : [];
     return makeCellsHighlightOverlay(cells, { color: ERASER_PREVIEW_COLOR, alpha: 0.7 });
@@ -37,6 +37,7 @@ export const eraserTool = {
 
   drawOverlay(ctx, state, cellSize, offset) {
     try {
+      // const cellSize = getCellSize(); // Removed unused variable assignment, kept parameter
       if (!state.start || !state.last) return;
       if (state.preview && state.preview.length > 0) {
         ctx.save();

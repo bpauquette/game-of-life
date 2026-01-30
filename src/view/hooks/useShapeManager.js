@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import logger from '../../controller/utils/logger';
+import logger from '../../controller/utils/logger.js';
 
 // Worker setup
 let shapeWorker;
@@ -44,7 +44,7 @@ const MAX_RECENT_SHAPES = 20;
 const RECENTS_STORAGE_KEY = 'gol_recentShapes_v1';
 const RECENTS_STORAGE_VERSION = 1;
 
-const canUseLocalStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+const canUseLocalStorage = () => typeof globalThis !== 'undefined' && typeof globalThis.localStorage !== 'undefined';
 
 const extractCells = (shape) => {
   if (!shape) return [];
@@ -75,7 +75,7 @@ const normalizeRecentShape = (shape) => {
   if (!sourceCells.length) return shape;
 
   // Offload normalization to worker for all shapes
-  if (typeof window !== 'undefined' && window.Worker) {
+  if (typeof globalThis !== 'undefined' && globalThis.Worker) {
     normalizeRecentShapeWorker(shape).then((result) => {
       cache.set(key, result);
     });
@@ -138,7 +138,6 @@ export const useShapeManager = ({
   toolStateRef,
   drawWithOverlay,
   model,
-  selectedTool,
   setSelectedTool,
   setSelectedShape
 }) => {
@@ -334,7 +333,7 @@ export const useShapeManager = ({
         savedAt: Date.now(),
         shapes: normalized
       };
-      window.localStorage.setItem(RECENTS_STORAGE_KEY, JSON.stringify(payload));
+      globalThis.localStorage.setItem(RECENTS_STORAGE_KEY, JSON.stringify(payload));
       const fingerprint = computeFingerprint(normalized);
       lastPersistedFingerprintRef.current = fingerprint || null;
       setPersistenceState(prev => ({
@@ -354,7 +353,7 @@ export const useShapeManager = ({
   const restorePersistedRecentShapes = useCallback(() => {
     if (!canUseLocalStorage()) return { restored: false };
     try {
-      const raw = window.localStorage.getItem(RECENTS_STORAGE_KEY);
+      const raw = globalThis.localStorage.getItem(RECENTS_STORAGE_KEY);
       if (!raw) {
         setPersistenceState(prev => ({ ...prev, hasSavedState: false }));
         return { restored: false };
@@ -403,7 +402,7 @@ export const useShapeManager = ({
   const clearPersistedRecentShapes = useCallback(() => {
     if (!canUseLocalStorage()) return false;
     try {
-      window.localStorage.removeItem(RECENTS_STORAGE_KEY);
+      globalThis.localStorage.removeItem(RECENTS_STORAGE_KEY);
       lastPersistedFingerprintRef.current = null;
       setPersistenceState(prev => ({
         ...prev,

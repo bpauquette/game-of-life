@@ -4,9 +4,9 @@
 // don't block the caller synchronously. This makes it safe to call from UI
 // code and tests; later we can replace this with a real Worker implementation.
 
-const engine = require('./engine');
+import * as engine from './engine.js';
 
-function run(cells, generations, onProgress) {
+export function run(cells, generations, onProgress) {
   console.log('🔧 [fallback worker] run() called with:', { cellCount: cells?.length, generations });
   return new Promise((resolve, reject) => {
     // schedule the work asynchronously so the caller isn't blocked
@@ -25,8 +25,8 @@ function run(cells, generations, onProgress) {
   });
 }
 
-function clearCache() {
+export function clearCache() {
   return engine.clearEngineCache();
 }
 
-module.exports = { run, clearCache };
+// ES module named exports above

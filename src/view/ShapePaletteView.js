@@ -6,15 +6,15 @@ import DialogContent from '@mui/material/DialogContent';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
-import SearchBar from './components/SearchBar';
-import PreviewPanel from './components/PreviewPanel';
+import SearchBar from './components/SearchBar.js';
+import PreviewPanel from './components/PreviewPanel.js';
 import {
   ShapesList,
   FooterControls,
   DeleteConfirmDialog,
   SnackMessage,
   BackendServerDialog,
-} from './components/shapePalette';
+} from './components/shapePalette/index.js';
 
 export default function ShapePaletteView({
   open,

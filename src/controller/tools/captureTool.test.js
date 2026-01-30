@@ -1,4 +1,4 @@
-import { captureTool } from './captureTool';
+import { captureTool } from './captureTool.js';
 describe('captureTool', () => {
   it('exports expected handlers', () => {
     expect(typeof captureTool.onMouseDown).toBe('function');

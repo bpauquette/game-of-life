@@ -1,11 +1,16 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { lightTheme, darkTheme, highContrastTheme, oledTheme } from '../../themes';
+import PropTypes from 'prop-types';
+import { lightTheme, darkTheme, highContrastTheme, oledTheme } from '../../themes/index.js';
+ThemeProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
 // Create context
 export const ThemeContext = createContext();
 
 // Theme provider component
 export function ThemeProvider({ children }) {
+
   const [themeMode, setThemeModeState] = useState(() => {
     try {
       const stored = globalThis.localStorage?.getItem('themeMode');
@@ -18,9 +23,9 @@ export function ThemeProvider({ children }) {
   // Persist theme preference
   const setThemeMode = useCallback((mode) => {
     setThemeModeState(mode);
-    try {
-      globalThis.localStorage?.setItem('themeMode', mode);
-    } catch {}
+   
+    globalThis.localStorage?.setItem('themeMode', mode);
+   
   }, []);
 
   // Get current MUI theme object

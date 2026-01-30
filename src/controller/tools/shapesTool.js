@@ -1,6 +1,6 @@
-/* eslint-disable */
-import { getShapeCells, getCenteredOrigin } from '../../utils/shapeGeometry';
-import { makeShapePreviewWithCrosshairsOverlay } from '../../overlays/overlayTypes';
+ 
+import { getShapeCells, getCenteredOrigin } from '../../utils/shapeGeometry.js';
+import { makeShapePreviewWithCrosshairsOverlay } from '../../overlays/overlayTypes.js';
 const tokenOr = (name, fallback) => {
   try {
     const root = globalThis.document?.documentElement;

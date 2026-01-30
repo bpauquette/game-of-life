@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { useShapeManager } from '../view/hooks/useShapeManager';
+import { useShapeManager } from '../view/hooks/useShapeManager.js';
 
 const noop = () => {};
 
@@ -17,7 +17,7 @@ const createShapeManager = () => {
 
 describe('useShapeManager recent shapes cell safety', () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    globalThis.localStorage.clear();
   });
 
   afterEach(() => {

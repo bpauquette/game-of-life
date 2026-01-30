@@ -1,6 +1,6 @@
 // Mock StepScheduler to bypass ESM/worker errors in Jest
-import { GameController } from '../controller/GameController';
-import { GameModel } from '../model/GameModel';
+import { GameController } from '../controller/GameController.js';
+import { GameModel } from '../model/GameModel.js';
 jest.mock('../controller/StepScheduler', () => ({
   __esModule: true,
   default: function StepScheduler() {
@@ -19,7 +19,7 @@ jest.mock('../controller/StepScheduler', () => ({
 
 describe('GameController undo/redo', () => {
   let model, controller;
-  const { drawTool } = require('../controller/tools/drawTool');
+  const { drawTool } = require('../controller/tools/drawTool.js');
   // Helper to create a setCellAlive wrapper that records diffs before mutating model
   const makeSetCellAliveForUndo = (m, c) => (x, y, alive) => {
     const prevAlive = m.isCellAlive(x, y);

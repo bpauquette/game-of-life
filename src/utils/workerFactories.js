@@ -1,7 +1,7 @@
 /* Worker factories: prefer module workers (bundler-friendly) and provide a faux-worker
    fallback for environments without Worker support (tests/node).
 */
-import { fetchShapeNames, fetchShapeById } from './backendApi';
+import { fetchShapeNames, fetchShapeById, getBackendApiBase } from './backendApi.js';
 function createFauxNamesWorker() {
   const faux = {
     _aborted: false,
@@ -55,7 +55,7 @@ function postError(faux, message) {
 
 async function fetchNamesPage(base, qVal, limitVal, offset) {
   try {
-    const { getBackendApiBase } = require('./backendApi');
+    // getBackendApiBase is statically imported
     const baseUrl = base || getBackendApiBase();
     const r = await fetchShapeNames(baseUrl, qVal, limitVal, offset);
     if (!r || !r.ok) return { ok: false, error: 'Backend error', items: [], total: 0 };
@@ -65,48 +65,41 @@ async function fetchNamesPage(base, qVal, limitVal, offset) {
   }
 }
 
-export function createNamesWorker(base, q = '', limit = 50) {
-  const isTest = typeof process !== 'undefined' && !!process.env && !!process.env.JEST_WORKER_ID;
+export function createNamesWorker() {
+  const isTest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.JEST_WORKER_ID;
   const supportsWorker = typeof Worker === 'function' && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function';
   if (!supportsWorker || isTest) return createFauxNamesWorker();
+  try {
+    // First try serving worker from public/ path which dev servers
+    // will serve with a correct JS MIME type. This is the most
+    // reliable option in development when the worker file is placed
+    // under `public/workers`.
+    return new Worker('/workers/namesWorker.js', { type: 'module' });
+  } catch (errPublic) {
+    // If that fails, fall back to other strategies below.
+  }
+  try {
+    // Attempt a bundler-aware resolution using `import.meta.url` without
+    // embedding the token directly (which breaks Jest/CommonJS parsing).
+    // We dynamically retrieve import.meta.url via the Function constructor
+    // so the literal `import.meta` does not appear in this module's source.
     try {
-      // First try serving worker from public/ path which dev servers
-      // will serve with a correct JS MIME type. This is the most
-      // reliable option in development when the worker file is placed
-      // under `public/workers`.
-      // eslint-disable-next-line no-undef
-      return new Worker('/workers/namesWorker.js', { type: 'module' });
-    } catch (errPublic) {
-      // If that fails, fall back to other strategies below.
-    }
-
-    try {
-      // Attempt a bundler-aware resolution using `import.meta.url` without
-      // embedding the token directly (which breaks Jest/CommonJS parsing).
-      // We dynamically retrieve import.meta.url via the Function constructor
-      // so the literal `import.meta` does not appear in this module's source.
-      try {
-        // eslint-disable-next-line no-new-func
-        const getImportMetaUrl = new Function('try { return import.meta.url; } catch (e) { return undefined; }');
-        const metaUrl = getImportMetaUrl();
-        if (metaUrl) {
-          // eslint-disable-next-line no-undef
-          return new Worker(new URL('../workers/namesWorker.js', metaUrl), { type: 'module' });
-        }
-      } catch (inner) {
-        // ignore and fall back to relative worker path below
+      const getImportMetaUrl = new Function('try { return import.meta.url; } catch (e) { return undefined; }');
+      const metaUrl = getImportMetaUrl();
+      if (metaUrl) {
+        return new Worker(new URL('../workers/namesWorker.js', metaUrl), { type: 'module' });
       }
-
-      // Fallback: try creating a module worker from a relative path. Dev
-      // servers that can't resolve this will cause the catch below to run.
-      // eslint-disable-next-line no-undef
-      return new Worker('../workers/namesWorker.js', { type: 'module' });
-    } catch (err) {
-      // Fall back to faux if worker creation fails
-      // eslint-disable-next-line no-console
-      console.warn('createNamesWorker: Worker creation failed, using faux worker:', err);
-      return createFauxNamesWorker();
+    } catch (inner) {
+      // ignore and fall back to relative worker path below
     }
+    // Fallback: try creating a module worker from a relative path. Dev
+    // servers that can't resolve this will cause the catch below to run.
+    return new Worker('../workers/namesWorker.js', { type: 'module' });
+  } catch (err) {
+    // Fall back to faux if worker creation fails
+    console.warn('createNamesWorker: Worker creation failed, using faux worker:', err);
+    return createFauxNamesWorker();
+  }
 }
 
 function createFauxHoverWorker() {
@@ -142,34 +135,29 @@ function buildPreviewFromShape(s) {
   return { id: s.id, name: s.name || s.meta?.name || '(unnamed)', description: desc, cells };
 }
 
-export function createHoverWorker(base) {
-  const isTest = typeof process !== 'undefined' && !!process.env && !!process.env.JEST_WORKER_ID;
+export function createHoverWorker() {
+  const isTest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.JEST_WORKER_ID;
   const supportsWorker = typeof Worker === 'function' && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function';
   if (!supportsWorker || isTest) return createFauxHoverWorker();
+  try {
+    // Try public path first
+    return new Worker('/workers/hoverWorker.js', { type: 'module' });
+  } catch (errPublic) {
+    // ignore and try bundler-aware resolution
+  }
+  try {
     try {
-      // Try public path first
-      // eslint-disable-next-line no-undef
-      return new Worker('/workers/hoverWorker.js', { type: 'module' });
-    } catch (errPublic) {
-      // ignore and try bundler-aware resolution
-    }
-
-    try {
-      try {
-        // eslint-disable-next-line no-new-func
-        const getImportMetaUrl = new Function('try { return import.meta.url; } catch (e) { return undefined; }');
-        const metaUrl = getImportMetaUrl();
-        if (metaUrl) {
-          // eslint-disable-next-line no-undef
-          return new Worker(new URL('../workers/hoverWorker.js', metaUrl), { type: 'module' });
-        }
-      } catch (inner) {
-        // ignore and fall back
+      const getImportMetaUrl = new Function('try { return import.meta.url; } catch (e) { return undefined; }');
+      const metaUrl = getImportMetaUrl();
+      if (metaUrl) {
+        return new Worker(new URL('../workers/hoverWorker.js', metaUrl), { type: 'module' });
       }
-      // eslint-disable-next-line no-undef
-      return new Worker('../workers/hoverWorker.js', { type: 'module' });
-    } catch (err) {
-      console.warn('createHoverWorker: Worker creation failed, using faux worker:', err);
-      return createFauxHoverWorker();
+    } catch (inner) {
+      // ignore and fall back
     }
+    return new Worker('../workers/hoverWorker.js', { type: 'module' });
+  } catch (err) {
+    console.warn('createHoverWorker: Worker creation failed, using faux worker:', err);
+    return createFauxHoverWorker();
+  }
 }

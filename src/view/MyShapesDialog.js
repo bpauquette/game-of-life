@@ -18,8 +18,8 @@ import {
   CircularProgress
 } from '@mui/material';
 import { Delete as DeleteIcon, Public as PublicIcon, Lock as LockIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
-import { useAuth } from '../auth/AuthProvider';
-import { getBackendApiBase } from '../utils/backendApi';
+import { useAuth } from '../auth/AuthProvider.jsx';
+import { getBackendApiBase } from '../utils/backendApi.js';
 
 const baseUrl = getBackendApiBase();
 
@@ -83,7 +83,7 @@ const MyShapesDialog = ({ open, onClose }) => {
   };
 
   const deleteShape = async (shapeId) => {
-    // eslint-disable-next-line no-restricted-globals
+     
     if (!confirm('Are you sure you want to delete this shape?')) return;
 
     try {

@@ -1,4 +1,4 @@
-import { rotateShape, transformShape, rotate90, rotate180, rotate270, flipH, flipV, diag1, diag2 } from './shapeTransforms';
+import { rotateShape, transformShape, rotate90, rotate180, rotate270, flipH, flipV, diag1, diag2 } from './shapeTransforms.js';
 
 describe('shapeTransforms', () => {
   it('rotateShape returns array', () => {

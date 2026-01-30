@@ -1,4 +1,4 @@
-import { randomRectTool } from './randomRectTool';
+import { randomRectTool } from './randomRectTool.js';
 describe('randomRectTool', () => {
   it('exports expected handlers', () => {
     expect(typeof randomRectTool.onMouseDown).toBe('function');

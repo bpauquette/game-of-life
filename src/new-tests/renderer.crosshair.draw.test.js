@@ -1,5 +1,5 @@
-import { GameRenderer } from '../view/GameRenderer';
-import { makeShapePreviewWithCrosshairsOverlay } from '../overlays/overlayTypes';
+import { GameRenderer } from '../view/GameRenderer.js';
+import { makeShapePreviewWithCrosshairsOverlay } from '../overlays/overlayTypes.js';
 
 function makeMockCanvas(width = 400, height = 300) {
   const calls = [];

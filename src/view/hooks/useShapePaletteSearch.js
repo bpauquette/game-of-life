@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import logger from '../../controller/utils/logger';
-import { createNamesWorker, createFauxNamesWorker } from '../../utils/workerFactories';
-import { fetchShapeById, deleteShapeById, createShape } from '../../utils/backendApi';
+import logger from '../../controller/utils/logger.js';
+import { createNamesWorker, createFauxNamesWorker } from '../../utils/workerFactories.js';
+import { fetchShapeById, deleteShapeById, createShape, getBackendApiBase, fetchShapeNames } from '../../utils/backendApi.js';
 
 const DEFAULT_LIMIT = 50;
 
@@ -14,7 +14,7 @@ function useDebouncedValue(value, delay) {
   return debounced;
 }
 
-export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT, prefetchOnMount = false, fetchShapes, checkBackendHealth }) {
+export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT, prefetchOnMount = false, fetchShapes }) {
   const [inputValue, setInputValue] = useState('');
   const debouncedFilter = useDebouncedValue(inputValue || '', 200);
   const [results, setResults] = useState([]);
@@ -110,11 +110,11 @@ export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT
     setLoading(true);
     setResults([]);
     setTotal(0);
-    const { getBackendApiBase } = require('../../utils/backendApi');
+    // getBackendApiBase is statically imported
     const base = getBackendApiBase();
+    const isTest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.JEST_WORKER_ID;
     // In Jest test environments, avoid async worker scheduling issues by
     // directly fetching the first page so tests can observe results immediately.
-    const isTest = typeof process !== 'undefined' && !!process.env && !!process.env.JEST_WORKER_ID;
     if (isTest) {
       (async () => {
         try {
@@ -122,7 +122,7 @@ export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT
           if (typeof fetchShapes === 'function') {
             page = await fetchShapes();
           } else {
-            const { fetchShapeNames } = require('../../utils/backendApi');
+            // fetchShapeNames is statically imported
             page = await fetchShapeNames(base, '', limit, 0);
           }
           if (page && page.ok) {
@@ -225,7 +225,8 @@ export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT
       logger.error('[useShapePaletteSearch] worker.postMessage failed', postErr);
       handleWorkerFailure(postErr?.message || 'Shapes catalog worker error');
     }
-  }, [limit, handleWorkerFailure, stopWorker, fetchShapes, hydrateShape]);
+  } // <-- close useCallback function
+  , [limit, handleWorkerFailure, stopWorker, fetchShapes, hydrateShape]);
 
   const shouldStartWorker = open || prefetchOnMount;
 

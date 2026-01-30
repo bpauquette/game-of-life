@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import PaymentDialog from '../PaymentDialog';
-import { AuthProvider } from '../../auth/AuthProvider';
+import PaymentDialog from '../PaymentDialog.js';
+import { AuthProvider } from '../../auth/AuthProvider.js';
 
 // Mock fetch globally
 global.fetch = jest.fn();

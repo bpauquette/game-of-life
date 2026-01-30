@@ -1,7 +1,7 @@
 /* namesWorker served from public/ - simple module worker
    This file is copied to public so dev servers serve it with application/javascript
 */
-/* eslint-disable */
+ 
 console.log('[namesWorker] Initialized');
 addEventListener('message', async (ev) => {
   const msg = ev.data || {};

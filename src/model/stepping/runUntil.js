@@ -38,7 +38,7 @@ export async function runUntil(opts = {}) {
     steps += 1;
 
     if (onProgress) {
-      try { onProgress({ current: steps, total: maxSteps }); } catch (_) {}
+      try { onProgress({ current: steps, total: maxSteps }); } catch (_) { /* ignore progress errors */ }
     }
 
     if (getHash) {
@@ -56,7 +56,7 @@ export async function runUntil(opts = {}) {
 
 /**
  * Convenience: run main model/controller until a steady state or repeat.
- * Uses model.getStateHash() to detect repeats, avoiding coupling to history windows.
+ * Uses model.getStateHash() to detect repeats, avoiding coupling to history globalThiss.
  */
 export async function runUntilSteadyModel(model, controller, opts = {}) {
   if (!model || !controller) throw new Error('runUntilSteadyModel requires model and controller');

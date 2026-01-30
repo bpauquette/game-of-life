@@ -25,7 +25,7 @@ function BackendServerDialog({ open, onClose, backendError, backendStarting, onR
       </DialogTitle>
       <DialogContent>
         <Typography sx={{ mb: 2 }}>
-          The shapes catalog backend server doesn't appear to be running. You need to start it to access the shapes catalog.
+          The shapes catalog backend server doesn&apos;t appear to be running. You need to start it to access the shapes catalog.
         </Typography>
         {backendError && (
           <Alert severity="info" sx={{ mb: 2 }}>
@@ -35,7 +35,7 @@ function BackendServerDialog({ open, onClose, backendError, backendStarting, onR
           </Alert>
         )}
         <Typography variant="body2" color="text.secondary">
-          The backend provides access to a catalog of Conway's Game of Life patterns and shapes.
+          The backend provides access to a catalog of Conway&apos;s Game of Life patterns and shapes.
         </Typography>
       </DialogContent>
       <DialogActions>

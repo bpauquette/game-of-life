@@ -3,9 +3,9 @@ import PropTypes from 'prop-types';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
-import AutoSizer from 'react-virtualized-auto-sizer';
-import { FixedSizeList } from 'react-window';
-import ShapeListItem from './ShapeListItem';
+import { AutoSizer } from 'react-virtualized-auto-sizer';
+import { List as VirtualizedList } from 'react-window';
+import ShapeListItem from './ShapeListItem.js';
 
 const ROW_HEIGHT = 32; // Match ListItem minHeight + padding
 const MIN_RENDER_HEIGHT = ROW_HEIGHT * 4;
@@ -44,6 +44,7 @@ VirtualRow.propTypes = {
     onAddRecent: PropTypes.func.isRequired,
     onHover: PropTypes.func,
     user: PropTypes.object,
+    backendBase: PropTypes.string,
   }).isRequired,
 };
 
@@ -79,7 +80,7 @@ const ShapesList = memo(function ShapesList({
     );
   }
 
-  const hasResizeObserver = typeof window !== 'undefined' && typeof window.ResizeObserver === 'function';
+  const hasResizeObserver = typeof globalThis !== 'undefined' && typeof globalThis.ResizeObserver === 'function';
   const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
   if (!hasResizeObserver || isTestEnv) {
@@ -108,7 +109,7 @@ const ShapesList = memo(function ShapesList({
         const listHeight = Math.max(height || 0, MIN_RENDER_HEIGHT);
         const listWidth = width || 300; // Use available width, fallback to reasonable default
         return (
-          <FixedSizeList
+          <VirtualizedList
             height={listHeight}
             width={listWidth}
             itemCount={items.length}
@@ -118,7 +119,7 @@ const ShapesList = memo(function ShapesList({
             style={{ overflowX: 'hidden' }}
           >
             {VirtualRow}
-          </FixedSizeList>
+          </VirtualizedList>
         );
       }}
     </AutoSizer>

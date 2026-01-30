@@ -1,4 +1,4 @@
-import { rectTool } from './rectTool';
+import { rectTool } from './rectTool.js';
 describe('rectTool', () => {
   it('exports expected handlers', () => {
     expect(typeof rectTool.onMouseDown).toBe('function');

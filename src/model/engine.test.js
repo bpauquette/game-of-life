@@ -1,4 +1,4 @@
-import { useEngine } from './engine';
+import { useEngine } from './engine.js';
 
 describe('useEngine', () => {
   it('should be a function', () => {

@@ -14,7 +14,7 @@
 class PhotosensitivityAnalyzer {
   constructor() {
     this.SAFE_FLASH_RATE = 3; // flashes per second
-    this.FLASH_WINDOW_MS = 1000; // 1 second window
+    this.FLASH_WINDOW_MS = 1000; // 1 second globalThis
     this.MAX_FLASH_AREA_PIXELS = 87296; // 341 × 256 pixels (10° visual field)
     this.RED_LUMINANCE_THRESHOLD = 75; // More conservative for red
     this.GENERAL_LUMINANCE_THRESHOLD = 20; // cd/m²
@@ -182,7 +182,7 @@ class PhotosensitivityAnalyzer {
     } else if (this.flashHistory.length >= 2) {
       this.warnings.push({
         type: 'FLASH_RATE_WARNING',
-        message: `Flash rate approaching threshold: ${this.flashHistory.length}/${this.SAFE_FLASH_RATE} flashes in window`,
+        message: `Flash rate approaching threshold: ${this.flashHistory.length}/${this.SAFE_FLASH_RATE} flashes in globalThis`,
         severity: 'WARNING'
       });
     }

@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import useGridMousePosition from '../../src/view/hooks/useGridMousePosition';
+import useGridMousePosition from '../../src/view/hooks/useGridMousePosition.js';
+
+import PropTypes from 'prop-types';
 
 function TestComp({ canvasRef, offsetRef }) {
   const pos = useGridMousePosition({ canvasRef, cellSize: 16, offsetRef });
@@ -10,6 +12,11 @@ function TestComp({ canvasRef, offsetRef }) {
     </div>
   );
 }
+
+TestComp.propTypes = {
+  canvasRef: PropTypes.object,
+  offsetRef: PropTypes.object,
+};
 
 describe('useGridMousePosition during drag', () => {
   it('updates fractional coords while pointer moves (dragging)', async () => {
@@ -25,7 +32,7 @@ describe('useGridMousePosition during drag', () => {
     render(<TestComp canvasRef={canvasRef} offsetRef={offsetRef} />);
 
     // initial move
-    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 120, clientY: 110, bubbles: true }));
+    globalThis.dispatchEvent(new MouseEvent('pointermove', { clientX: 120, clientY: 110, bubbles: true }));
 
     await waitFor(() => {
       const txt = screen.getByTestId('pos').textContent;
@@ -38,7 +45,7 @@ describe('useGridMousePosition during drag', () => {
     // update the shared offsetRef to represent a zoom change
     offsetRef.current.cellSize = 32;
     // fire a wheel event to trigger recompute using lastClientRef
-    window.dispatchEvent(new WheelEvent('wheel', { clientX: 160, clientY: 140, bubbles: true }));
+    globalThis.dispatchEvent(new WheelEvent('wheel', { clientX: 160, clientY: 140, bubbles: true }));
 
     await waitFor(() => {
       const second = screen.getByTestId('pos').textContent;

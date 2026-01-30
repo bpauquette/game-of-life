@@ -1,5 +1,5 @@
-import { circleTool } from '../controller/tools/circleTool';
-import { ovalTool } from '../controller/tools/ovalTool';
+import { circleTool } from '../controller/tools/circleTool.js';
+import { ovalTool } from '../controller/tools/ovalTool.js';
 
 const makeState = (start, last, preview) => ({ start, last, preview: preview ?? [] });
 

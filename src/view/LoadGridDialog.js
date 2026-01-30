@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import {
   Dialog,
@@ -21,8 +21,8 @@ import {
   TextField
 } from '@mui/material';
 import { FolderOpen as FolderOpenIcon, Cancel as CancelIcon, GridOn as GridOnIcon, Delete as DeleteIcon, Search as SearchIcon, AccessTime as AccessTimeIcon } from '@mui/icons-material';
-import logger from '../controller/utils/logger';
-import { BUTTONS, STATUS, PLACEHOLDERS } from '../utils/Constants';
+import logger from '../controller/utils/logger.js';
+import { BUTTONS, STATUS, PLACEHOLDERS } from '../utils/Constants.js';
 
 const LoadGridDialog = ({ 
   open, 
@@ -36,7 +36,17 @@ const LoadGridDialog = ({
 }) => {
   const [selectedGrid, setSelectedGrid] = useState(null);
   const [searchFilter, setSearchFilter] = useState('');
-  const [filteredGrids, setFilteredGrids] = useState(grids);
+  // Use useMemo for filteredGrids to avoid setState in effect
+  const filteredGrids = React.useMemo(() => {
+    if (searchFilter.trim() === '') {
+      return grids;
+    }
+    const searchTerm = searchFilter.toLowerCase();
+    return grids.filter(grid =>
+      grid.name.toLowerCase().includes(searchTerm) ||
+      grid.description?.toLowerCase().includes(searchTerm)
+    );
+  }, [grids, searchFilter]);
 
   const handleClose = () => {
     setSelectedGrid(null);
@@ -44,18 +54,7 @@ const LoadGridDialog = ({
     onClose();
   };
 
-  useEffect(() => {
-    if (searchFilter.trim() === '') {
-      setFilteredGrids(grids);
-    } else {
-      const searchTerm = searchFilter.toLowerCase();
-      const filtered = grids.filter(grid => 
-        grid.name.toLowerCase().includes(searchTerm) ||
-        grid.description?.toLowerCase().includes(searchTerm)
-      );
-      setFilteredGrids(filtered);
-    }
-  }, [grids, searchFilter]);
+  // Removed useEffect that set state synchronously; useMemo above handles filtering.
 
   const handleGridSelect = (grid) => {
     setSelectedGrid(grid);

@@ -2,7 +2,7 @@
 // Compute the base URL for auth endpoints.
 // In Docker, REACT_APP_API_BASE is typically the backend origin
 // (e.g. http://localhost:55000); we normalize it to include /auth.
-import { getBackendApiBase } from '../utils/backendApi';
+import { getBackendApiBase } from '../utils/backendApi.js';
 export function getAuthApiBase() {
   const base = getBackendApiBase();
   return base.endsWith('/api') ? base + '/auth' : base + '/api/auth';
@@ -11,8 +11,8 @@ export function getAuthApiBase() {
 export async function post(path, body) {
   try {
     const headers = { "Content-Type": "application/json" };
-    // Propagate existing X-Request-Id if present on window for end-to-end correlation
-    const existingReqId = (typeof window !== 'undefined' && window.__REQUEST_ID__) ? window.__REQUEST_ID__ : null;
+    // Propagate existing X-Request-Id if present on globalThis for end-to-end correlation
+    const existingReqId = (typeof globalThis !== 'undefined' && globalThis.__REQUEST_ID__) ? globalThis.__REQUEST_ID__ : null;
     if (existingReqId) headers['X-Request-Id'] = existingReqId;
 
     const res = await fetch(`${getAuthApiBase()}${path}`, {
@@ -36,9 +36,9 @@ export async function post(path, body) {
     }
     const parsed = data || {};
     if (data.error === 'Invalid or expired token') {
-      // Trigger logout via window event or callback (guard for non-browser envs)
-      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-        window.dispatchEvent(new CustomEvent('auth:logout'));
+      // Trigger logout via globalThis event or callback (guard for non-browser envs)
+      if (typeof globalThis !== 'undefined' && typeof globalThis.dispatchEvent === 'function') {
+        globalThis.dispatchEvent(new CustomEvent('auth:logout'));
       }
     }
     return parsed;

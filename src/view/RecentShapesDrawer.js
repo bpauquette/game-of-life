@@ -94,9 +94,9 @@ export default function RecentShapesDrawer({ open, onClose, recentShapes, onSele
 }
 
 RecentShapesDrawer.propTypes = {
-  open: PropTypes.bool,
-  onClose: PropTypes.func,
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
   recentShapes: PropTypes.array.isRequired,
-  onSelectShape: PropTypes.func,
-  colorScheme: PropTypes.object
+  onSelectShape: PropTypes.func.isRequired,
+  colorScheme: PropTypes.object.isRequired
 };

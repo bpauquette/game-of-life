@@ -1,8 +1,8 @@
 // src/auth/useAuthStatus.js
 import { useEffect, useState } from 'react';
-import { useAuth } from './AuthProvider';
+import { useAuth } from './AuthProvider.jsx';
 
-import { getBackendApiBase } from '../utils/backendApi';
+import { getBackendApiBase } from '../utils/backendApi.js';
 const API_BASE = getBackendApiBase();
 
 export function useAuthStatus() {

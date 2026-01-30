@@ -1,4 +1,4 @@
-import { ovalTool } from './ovalTool';
+import { ovalTool } from './ovalTool.js';
 describe('ovalTool', () => {
   it('exports expected handlers', () => {
     expect(typeof ovalTool.onMouseDown).toBe('function');

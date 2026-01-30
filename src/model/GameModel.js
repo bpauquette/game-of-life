@@ -1,9 +1,10 @@
+import hashlifeAdapter from './hashlife/adapter.js';
 // GameModel.js - Model layer for Conway's Game of Life
 // Handles all game state, rules, and data operations
 
-import { step as gameStep } from './gameLogic';
-import { colorSchemes } from './colorSchemes';
-import logger from '../controller/utils/logger';
+import { step as gameStep } from './gameLogic.js';
+import { colorSchemes } from './colorSchemes.js';
+import logger from '../controller/utils/logger.js';
 
 // Helpers for bulk updates (module-scope to keep method complexity low)
 function normalizeBulkUpdate(u) {
@@ -49,7 +50,7 @@ export class GameModel {
   getOverlay() {
     return this.overlay || null;
   }
-  
+
   // Clear overlay only when explicitly needed (e.g., tool/shape changes)
   clearOverlay() {
     this.setOverlay(null);
@@ -81,21 +82,21 @@ export class GameModel {
     this.maxTimestamps = 60; // Keep last 60 timestamps for averaging
     // Color scheme for rendering (not serialized)
     // Safe default comes from model; renderer should not guess/import
-  const defaultKey = 'bio';
+    const defaultKey = 'bio';
     const defaultFromKey = colorSchemes?.[defaultKey] || null;
     const firstKey = Object.keys(colorSchemes || {}).at(0);
     const fallback = firstKey ? colorSchemes[firstKey] : { background: '#000000', getCellColor: () => '#ffffff' };
     this.colorScheme = defaultFromKey || fallback;
     // Overlay for tools
-  this.overlay = null;
-  // Tool and interaction state (not serialized)
-  this.selectedTool = 'draw'; // Default to draw tool
-  this.selectedShape = null;
-  this.cursorPosition = null;
-  this.lastCursorUpdateTime = 0;
-  this.cursorThrottleDelay = 16; // ~60fps throttling for cursor updates
-  // Observers for state changes
-  this.observers = new Set();
+    this.overlay = null;
+    // Tool and interaction state (not serialized)
+    this.selectedTool = 'draw'; // Default to draw tool
+    this.selectedShape = null;
+    this.cursorPosition = null;
+    this.lastCursorUpdateTime = 0;
+    this.cursorThrottleDelay = 16; // ~60fps throttling for cursor updates
+    // Observers for state changes
+    this.observers = new Set();
     this.performanceSettings = {
       maxFPS: 60,
       maxGPS: 30,
@@ -118,12 +119,8 @@ export class GameModel {
   notifyObservers(event, data) {
     // Lightweight debug trace for captureCompleted to help diagnose why
     // the UI might not be reacting to capture events.
-    try {
-      if (event === 'captureCompleted') {
-        logger.debug('[GameModel] notifyObservers -> captureCompleted (observerCount=' + this.observers.size + ')', data);
-      }
-    } catch (e) {
-      // swallow logging errors to avoid breaking runtime observer delivery
+    if (event === 'captureCompleted') {
+      logger.debug('[GameModel] notifyObservers -> captureCompleted (observerCount=' + this.observers.size + ')', data);
     }
 
     for (const observer of this.observers) {
@@ -135,7 +132,7 @@ export class GameModel {
         }
       } catch (err) {
         // Protect observer iteration from individual observer failures
-        try { logger.error('[GameModel] observer threw for event ' + event + ':', err); } catch (e) {}
+        logger.error('[GameModel] observer threw for event ' + event + ':', err);
       }
     }
   }
@@ -192,22 +189,19 @@ export class GameModel {
   // Generate a hash representing the current state of all live cells
   getStateHash() {
     if (this.liveCells.size === 0) return 'empty';
-    
+
     // Sort cell coordinates to ensure consistent hash regardless of Map iteration order
     const sortedCells = Array.from(this.liveCells.keys()).sort();
     return sortedCells.join('|');
   }
 
   setRunningModel(isRunning) {
-  try { console.debug('[GameModel] setRunningModel called:', isRunning); } catch (e) {}
-  logger.debug('[GameModel] setRunningModel called:', isRunning);
-  try {
+    logger.debug('[GameModel] setRunningModel called:', isRunning);
     // include short stack to help identify caller
     const stack = new Error().stack;
-    if (stack) console.debug('[GameModel] setRunningModel stack:', stack.split('\n').slice(1,4));
-  } catch (e) {}
-  this.isRunning = isRunning;
-  this.notifyObservers('runningStateChanged', { isRunning });
+    if (stack) console.debug('[GameModel] setRunningModel stack:', stack.split('\n').slice(1, 4));
+    this.isRunning = isRunning;
+    this.notifyObservers('runningStateChanged', { isRunning });
   }
 
   setEngineMode(mode) {
@@ -339,12 +333,12 @@ export class GameModel {
     return { ...this.viewport };
   }
 
-  
+
   setOffsetModel(offsetX, offsetY) {
     return this.setViewportModel(offsetX, offsetY, undefined, this.viewport.zoom);
   }
 
-  setCellSizeModel(cellSize) {
+  setCellSizeModel() {
     // Cell size is not managed by the model
     return undefined;
   }
@@ -410,10 +404,10 @@ export class GameModel {
       });
 
       // Use hashlife adapter to step multiple generations based on batch size
-      const hashlifeAdapter = require('./hashlife/adapter');
+      // hashlifeAdapter is now statically imported at the top
       const gens = Math.max(1, Number(generations) || Number(this.generationBatchSize) || 1);
       const result = await hashlifeAdapter.run(cellsArray, gens);
-      
+
       if (result && result.cells) {
         this.applyExternalStepResult({ ...result, generations: gens }, gens);
       } else {
@@ -442,7 +436,7 @@ export class GameModel {
     }
   }
 
-  applyExternalStepResult(result, generations = 1) {
+  applyExternalStepResult(result) {
     if (!result || !Array.isArray(result.cells)) {
       return;
     }
@@ -459,7 +453,7 @@ export class GameModel {
     this.liveCells = nextLiveCells;
     this.generation += generationDelta;
     this.trackGeneration();
-    
+
     // Record one history entry per applied step. For Hashlife batch
     // stepping we rely on generationDelta to track how many
     // generations were advanced, without faking intermediate states.
@@ -592,39 +586,39 @@ export class GameModel {
   }
 
   // Enhanced pattern analysis with sophisticated heuristic algorithm
-  isStable(windowSize = 50, tolerance = 3) {
+  isStable(globalThisSize = 50, tolerance = 3) {
     // Adjust parameters for hashlife batch stepping
     const isHashlife = this.engineMode === 'hashlife';
     const batchSize = isHashlife ? this.generationBatchSize : 1;
-    
-    // Adjust window size and tolerance for batch stepping
-    const effectiveWindowSize = isHashlife ? 
-      Math.min(windowSize, Math.max(10, Math.floor(windowSize / Math.max(1, batchSize / 10)))) :
-      windowSize;
-    const effectiveTolerance = isHashlife ? 
+
+    // Adjust globalThis size and tolerance for batch stepping
+    const effectiveWindowSize = isHashlife ?
+      Math.min(globalThisSize, Math.max(10, Math.floor(globalThisSize / Math.max(1, batchSize / 10)))) :
+      globalThisSize;
+    const effectiveTolerance = isHashlife ?
       Math.max(tolerance, tolerance * Math.min(2, Math.sqrt(batchSize / 10))) :
       tolerance;
-    
+
     // Require less history for hashlife due to batch stepping
-    const minHistory = isHashlife ? 
-      Math.max(effectiveWindowSize, 15) : 
-      Math.max(windowSize * 1.5, 40);
-      
+    const minHistory = isHashlife ?
+      Math.max(effectiveWindowSize, 15) :
+      Math.max(globalThisSize * 1.5, 40);
+
     if (this.populationHistory.length < minHistory) {
       // console.log(`🔍 [Stability] Not enough history: ${this.populationHistory.length} < ${minHistory} (${isHashlife ? 'hashlife' : 'normal'})`);
       return false;
     }
 
     const recent = this.populationHistory.slice(-effectiveWindowSize);
-    
+
     // Multi-criteria stability detection heuristic (adjusted for batch stepping)
-    
+
     // Criterion 1: Population variance analysis (primary indicator)
     const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
     const variance = recent.reduce((sum, pop) => sum + Math.pow(pop - avg, 2), 0) / recent.length;
     const stdDev = Math.sqrt(variance);
     const populationStable = stdDev <= effectiveTolerance;
-    
+
     // Criterion 2: Trend analysis (detect long-term drift)
     let trendStable = true;
     if (recent.length >= 10) {
@@ -633,25 +627,25 @@ export class GameModel {
       const secondHalf = recent.slice(mid);
       const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
       const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-      
+
       // Allow small drift but reject significant population changes
       trendStable = Math.abs(secondAvg - firstAvg) <= effectiveTolerance * 1.5;
     }
-    
+
     // Criterion 3: Oscillation detection using state hashes (proper detection for oscillators)
     let periodicStable = false;
     let detectedPeriod = 0;
-    
+
     if (this.stateHashHistory.length >= 6) {
       const recentStates = this.stateHashHistory.slice(-effectiveWindowSize);
-      
+
       // State hash debugging removed to reduce log spam
-      
+
       // Check for stable oscillations (periods 1-8)
       for (let period = 1; period <= Math.min(8, Math.floor(recentStates.length / 3)); period++) {
         let cyclicMatch = true;
         const cyclesToCheck = Math.floor(recentStates.length / period) - 1;
-        
+
         if (cyclesToCheck >= 2) {
           // Check if the pattern repeats with this period
           for (let cycle = 0; cycle < cyclesToCheck && cyclicMatch; cycle++) {
@@ -666,14 +660,14 @@ export class GameModel {
           if (cyclicMatch) {
             periodicStable = true;
             detectedPeriod = period;
-            
+
             // Period detection successful
             break;
           }
         }
       }
     }
-    
+
     // Criterion 4: Plateau detection (stable still life) - adjusted for batch stepping
     let plateauStable = false;
     const plateauWindow = this.engineMode === 'hashlife' ? Math.min(15, Math.max(5, effectiveWindowSize)) : 15;
@@ -690,30 +684,30 @@ export class GameModel {
         const sorted = uniqueValues.sort((a, b) => a - b);
         plateauStable = (sorted[1] - sorted[0]) <= Math.max(1, effectiveTolerance * 0.5);
       }
-      
+
       // Debug plateau detection
       if (this.generation >= 500 && this.generation <= 505) {
         // Plateau debug logging removed
       }
     }
-    
+
     // Combine criteria with stricter logic to reduce false positives
     // Require both population stability AND trend stability for still life
     // OR require both periodic pattern AND population stability for oscillators
     const stillLifeDetected = populationStable && trendStable && plateauStable;
     const oscillatorDetected = periodicStable && populationStable;
-    
+
     // RELAXED CRITERIA: Only apply if we also have some state repetition to prevent
     // moving patterns (like gliders) from being detected as stable just because population is constant
     const perfectlyStableForLongTime = populationStable && stdDev <= 0.1 && recent.length >= 20;
-    const recentlyPerfectStable = recent.length >= 10 && 
+    const recentlyPerfectStable = recent.length >= 10 &&
       recent.slice(-10).every(pop => pop === recent[recent.length - 1]);
     const hasStateRepetition = periodicStable || detectedPeriod > 0;
-    
+
     const finalResult = stillLifeDetected || oscillatorDetected || (perfectlyStableForLongTime && recentlyPerfectStable && hasStateRepetition);
-    
+
     // Stability analysis complete
-    
+
     return finalResult;
   }
 
@@ -725,30 +719,30 @@ export class GameModel {
     }
 
     const recentStates = this.stateHashHistory;
-    
+
     // Use state hash comparison for accurate period detection
     // Only test periods where we have enough history for at least 3 full cycles
     const effectiveMaxPeriod = Math.min(maxPeriod, Math.floor(recentStates.length / 3));
-    
+
     for (let period = 1; period <= effectiveMaxPeriod; period++) {
       const cyclesToCheck = Math.floor(recentStates.length / period) - 1;
-      
+
       if (cyclesToCheck < 2) continue; // Need at least 2 complete cycles
-      
+
       let perfectMatch = true;
-      
+
       // Check if the pattern repeats perfectly with this period
       for (let cycle = 0; cycle < cyclesToCheck && perfectMatch; cycle++) {
         for (let offset = 0; offset < period && perfectMatch; offset++) {
           const idx1 = recentStates.length - 1 - offset;
           const idx2 = idx1 - period;
-          
+
           if (idx2 >= 0 && recentStates[idx1] !== recentStates[idx2]) {
             perfectMatch = false;
           }
         }
       }
-      
+
       if (perfectMatch) {
         return period;
       }
@@ -840,11 +834,11 @@ export class GameModel {
   }
 
   toggleSpeedGauge() {
-  this.uiState.showSpeedGauge = !this.uiState.showSpeedGauge;
-  this.notifyObservers(CONST_UISTATECHANGED, { showSpeedGauge: this.uiState.showSpeedGauge });
+    this.uiState.showSpeedGauge = !this.uiState.showSpeedGauge;
+    this.notifyObservers(CONST_UISTATECHANGED, { showSpeedGauge: this.uiState.showSpeedGauge });
   }
 
-  setCaptureDataModel(data) {
+  setCaptureDataModel() {
     // No-op: UI state now managed in React
   }
 

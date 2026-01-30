@@ -4,7 +4,7 @@
 // imports lets the bundler emit a standalone worker asset that the dev
 // server can serve as JavaScript (avoiding index.html responses).
 
-import engineModule from './engine';
+import engineModule from './engine.js';
 const engine = engineModule && engineModule.default ? engineModule.default : engineModule;
 
 let running = false;

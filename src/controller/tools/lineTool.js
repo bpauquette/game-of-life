@@ -14,9 +14,13 @@ const computeLine = (x0, y0, x1, y1) => {
 
   let x = x0;
   let y = y0;
-  while (true) {
+  let done = false;
+  while (!done) {
     pts.push([x, y]);
-    if (x === x1 && y === y1) break;
+    if (x === x1 && y === y1) {
+      done = true;
+      continue;
+    }
     const e2 = ERROR_MULTIPLIER * err;
     if (e2 >= dy) {
       err += dy;
@@ -32,21 +36,34 @@ const computeLine = (x0, y0, x1, y1) => {
 
 export const lineTool = {
   onMouseDown(state, x, y) {
+    console.log('[lineTool] onMouseDown', { x, y, state });
     state.start = { x, y };
     state.last = { x, y };
     state.preview = [];
   },
 
-  onMouseMove(state, x, y, setCellAlive) {
-    if (!state.start) return;
+  onMouseMove(state, x, y) {
+    if (!state.start) {
+      console.warn('[lineTool] onMouseMove called but state.start is missing', { x, y, state });
+      return;
+    }
     state.last = { x, y };
     // preview only; do not commit until mouseup
     state.preview = computeLine(state.start.x, state.start.y, x, y);
+    console.log('[lineTool] onMouseMove', { x, y, state });
   },
 
   onMouseUp(state, x, y, setCellAlive, setCellsAliveBulk) {
-    if (!state.start) return;
+    if (!state.start) {
+      console.warn('[lineTool] onMouseUp called but state.start is missing', { x, y, state });
+      // Still clear state to avoid stuck state
+      state.start = null;
+      state.last = null;
+      state.preview = [];
+      return;
+    }
     const pts = computeLine(state.start.x, state.start.y, x, y);
+    console.log('[lineTool] onMouseUp', { x, y, state, pts });
     if (typeof setCellsAliveBulk === 'function') {
       const updates = pts.map(([px, py]) => [px, py, true]);
       setCellsAliveBulk(updates);

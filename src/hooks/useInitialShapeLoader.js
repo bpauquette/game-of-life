@@ -1,9 +1,64 @@
+
 import { useState, useEffect, useRef } from 'react';
-import logger from '../controller/utils/logger';
-import { fetchShapes, getBackendApiBase } from '../utils/backendApi';
+import logger from '../controller/utils/logger.js';
+import { fetchShapes, getBackendApiBase } from '../utils/backendApi.js';
+
+// helper: yield to browser to allow paints
+function yieldToBrowser() {
+  return new Promise((resolve) => {
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(resolve);
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+}
 
 // Fetch the full catalog from the backend in paged requests and write to IDB.
-export default function useInitialShapeLoader({ strategy = 'background', batchSize = 200, autoStart = false, backendBase } = {}) {
+
+// Move fetchAllPages to outer scope
+async function fetchAllPages(base, page, abortedRef, progressCb) {
+  let offset = 0;
+  const all = [];
+  while (!abortedRef.current) {
+    const out = await fetchShapes(base, '', page, offset);
+    if (!out.ok) throw new Error(`Failed to fetch shapes: status ${out.status}`);
+    const items = out.items || [];
+    const total = out.total || 0;
+    if (offset === 0 && typeof progressCb === 'function') progressCb({ done: 0, total });
+    if (!items.length) break;
+    all.push(...items);
+    offset += items.length;
+    if (all.length >= total) break;
+    await yieldToBrowser();
+  }
+  return all;
+}
+
+
+function dedupeItems(all) {
+  const seen = new Set();
+  const deduped = [];
+  for (let i = 0; i < (all || []).length; i++) {
+    const s = all[i];
+    let key = '';
+    if (s?.id) key = `id:${s.id}`;
+    else if (s) {
+      const name = s.name || s.meta?.name || '';
+      const cells = s.cells || s.pattern || s.liveCells || [];
+      try {
+        key = `nm:${name}#c:${JSON.stringify(cells)}`;
+      } catch (e) {
+        logger.error('dedupeItems: failed to stringify cells', e);
+        key = `nm:${name}#c:${cells.length||0}`;
+      }
+    }
+    if (!seen.has(key)) { seen.add(key); deduped.push(s); }
+  }
+  return deduped;
+}
+
+export default function useInitialShapeLoader({ batchSize = 200, autoStart = false } = {}) {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState(null);
@@ -34,50 +89,6 @@ export default function useInitialShapeLoader({ strategy = 'background', batchSi
       if (!aborted.current) setLoading(false);
     }
   };
-
-  // helper: yield to browser to allow paints
-  function yieldToBrowser() {
-    return new Promise((resolve) => {
-      if (typeof requestIdleCallback === 'function') return requestIdleCallback(resolve);
-      return setTimeout(resolve, 0);
-    });
-  }
-
-  async function fetchAllPages(base, page, abortedRef, progressCb) {
-    let offset = 0;
-    const all = [];
-    while (!abortedRef.current) {
-      const out = await fetchShapes(base, '', page, offset);
-      if (!out.ok) throw new Error(`Failed to fetch shapes: status ${out.status}`);
-      const items = out.items || [];
-      const total = out.total || 0;
-      if (offset === 0 && typeof progressCb === 'function') progressCb({ done: 0, total });
-      if (!items.length) break;
-      all.push(...items);
-      offset += items.length;
-      if (all.length >= total) break;
-      await yieldToBrowser();
-    }
-    return all;
-  }
-
-  function dedupeItems(all) {
-    const seen = new Set();
-    const deduped = [];
-    for (let i = 0; i < (all || []).length; i++) {
-      const s = all[i];
-      let key = '';
-      if (!s) key = '';
-      else if (s.id) key = `id:${s.id}`;
-      else {
-        const name = s.name || s.meta?.name || '';
-        const cells = s.cells || s.pattern || s.liveCells || [];
-        try { key = `nm:${name}#c:${JSON.stringify(cells)}`; } catch (e) { key = `nm:${name}#c:${cells.length||0}`; }
-      }
-      if (!seen.has(key)) { seen.add(key); deduped.push(s); }
-    }
-    return deduped;
-  }
 
   useEffect(() => {
     aborted.current = false;

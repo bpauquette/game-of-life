@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
-import { rotateShape } from '../../model/shapeTransforms';
-import ShapePreview from './ShapePreview';
+import { rotateShape } from '../../model/shapeTransforms.js';
+import ShapePreview from './ShapePreview.js';
 
 // Thumbnail size is now passed as a prop for flexibility
 const DEFAULT_THUMBNAIL_SIZE = 64;
@@ -24,7 +24,6 @@ function getShapeCells(shape) {
 function ShapeSlot({
   shape,
   index,
-  inputType,
   colorScheme,
   selected,
   onSelect,
@@ -32,14 +31,15 @@ function ShapeSlot({
   onSwitchToShapesTool,
   onStartPaletteDrag,
   title,
-  thumbnailSize = DEFAULT_THUMBNAIL_SIZE,
-  zoom = 1
+  thumbnailSize = DEFAULT_THUMBNAIL_SIZE
 }) {
-  const tRef = useRef();
+  // No tRef or t prop needed; ShapePreview is now fully pure and deterministic.
   // Drag-to-place ghost logic
   const startDrag = (e) => {
-    if (e && typeof e.button === 'number' && e.button !== 0) return;
-    try { e.preventDefault(); } catch (err) {}
+    if (e && typeof e.button === 'number' && e.button !== 0) {
+      return;
+    }
+    e.preventDefault();
     if (typeof onSelect === 'function') onSelect();
     if (typeof onSwitchToShapesTool === 'function') onSwitchToShapesTool();
 
@@ -73,32 +73,23 @@ function ShapeSlot({
     document.body.appendChild(ghost);
 
     let cleanupControllerDrag = null;
-    try {
-      if (typeof onStartPaletteDrag === 'function') {
-        cleanupControllerDrag = onStartPaletteDrag(shape, e, ghost);
-      }
-    } catch (err) {
-      cleanupControllerDrag = null;
+    if (typeof onStartPaletteDrag === 'function') {
+      cleanupControllerDrag = onStartPaletteDrag(shape, e, ghost);
     }
 
-    const onMove = (ev) => {
+    const onMove = (e) => {
       // Update ghost position to follow cursor
-      ghost.style.left = `${ev.clientX}px`;
-      ghost.style.top = `${ev.clientY}px`;
+      ghost.style.left = `${e.clientX}px`;
+      ghost.style.top = `${e.clientY}px`;
     };
 
-    const onUp = (ev) => {
+    const onUp = () => {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
-      try {
-        if (typeof cleanupControllerDrag === 'function') {
-          try { cleanupControllerDrag(); } catch (err) { /* ignore cleanup errors */ }
-        }
-      } catch (err) {
-        // swallow
-      } finally {
-        if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+      if (typeof cleanupControllerDrag === 'function') {
+        cleanupControllerDrag();
       }
+      ghost.remove();
     };
 
     document.addEventListener('pointermove', onMove);
@@ -180,7 +171,6 @@ function ShapeSlot({
             borderRadius={SHAPE_BORDER_RADIUS}
             borderOpacity={0.06}
             defaultCellColor={DEFAULT_SHAPE_COLOR}
-            t={tRef.current}
             selected={selected}
             source={'recent'}
           />
@@ -259,14 +249,15 @@ ShapeSlot.propTypes = {
   onSwitchToShapesTool: PropTypes.func,
   onStartPaletteDrag: PropTypes.func,
   inputType: PropTypes.string,
-  title: PropTypes.string
+  title: PropTypes.string,
+  thumbnailSize: PropTypes.number,
+  zoom: PropTypes.number
 };
 
 ShapeSlot.defaultProps = {
   colorScheme: {},
   selected: false,
-  title: '',
-  onRotate: null
+  title: ''
 };
 
 export default ShapeSlot;

@@ -1,10 +1,10 @@
-import logger from '../utils/logger';
-import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
+import logger from '../utils/logger.js';
+import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes.js';
 let createRandomRectWorker;
-if (globalThis.window !== undefined && globalThis.Worker !== undefined) {
+if (globalThis.globalThis !== undefined && globalThis.Worker !== undefined) {
   // In browser, use a static string for the worker URL
   createRandomRectWorker = function() {
-    return new globalThis.Worker(new URL('./randomRectWorker.js', globalThis.window.location.href));
+    return new globalThis.Worker(new URL('./randomRectWorker.js', globalThis.globalThis.location.href));
   };
 } else {
   // In Node/Jest, provide a mock that never references import.meta.url
@@ -30,7 +30,7 @@ const computeRect = (x0, y0, x1, y1) => {
 
 // Randomize cells within a dragged rectangle. Commits on mouseup.
 export const randomRectTool = {
-  getOverlay(state, cellSize) {
+  getOverlay(state) {
     if (!state.start || !state.last) return null;
     // Descriptor-based overlay for absolute preview cells
     try {
@@ -67,7 +67,7 @@ export const randomRectTool = {
     }
 
     // Always use controller buffer for double buffering
-    if (pts.length > 500 && globalThis.window !== undefined && globalThis.Worker !== undefined && state._controller) {
+    if (pts.length > 500 && globalThis.globalThis !== undefined && globalThis.Worker !== undefined && state._controller) {
       drawInWorker(state, x, y, p, pts, setCellAlive);
     }
     else {
@@ -117,7 +117,7 @@ function drawSynchronous(pts, p, setCellAlive, state, setCellsAliveBulk) {
 }
 
 function drawInWorker(state, x, y, p, pts, setCellAlive) {
-  let isJest = typeof process !== 'undefined' && process.env?.JEST_WORKER_ID !== undefined;
+  let isJest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.JEST_WORKER_ID !== undefined;
   try {
     let worker;
     if (isJest) {

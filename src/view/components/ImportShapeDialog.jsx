@@ -11,8 +11,8 @@ import {
   Alert,
 } from '@mui/material';
 import PropTypes from 'prop-types';
-import { useAuth } from '../../auth/AuthProvider';
-import { getBackendApiBase } from '../../utils/backendApi';
+import { useAuth } from '../../auth/AuthProvider.jsx';
+import { getBackendApiBase } from '../../utils/backendApi.js';
 
 const ImportShapeDialog = ({ open, onClose, onImportSuccess }) => {
   const { token } = useAuth();

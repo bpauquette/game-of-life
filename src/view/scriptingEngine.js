@@ -180,7 +180,7 @@ function parseComparison(expr, state) {
 }
 
 // Split expression by operator, respecting nesting
-// eslint-disable-next-line no-unused-vars
+ 
 function splitByOperator(expr, operator, depth) {
   const result = [];
   let current = '';

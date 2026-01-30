@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import ShapePaletteDialog from './ShapePaletteDialog';
-import { colorSchemes } from '../model/colorSchemes';
+import ShapePaletteDialog from './ShapePaletteDialog.js';
+import { colorSchemes } from '../model/colorSchemes.js';
 
 // Mock useAuth hook
 jest.mock('../auth/AuthProvider', () => ({

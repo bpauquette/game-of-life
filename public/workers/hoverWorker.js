@@ -1,7 +1,7 @@
 /* hoverWorker served from public/ - simple module worker
    This file is placed in public so dev servers serve it with application/javascript
 */
-/* eslint-disable */
+ 
 // Keep a single active request and allow aborting when a new start arrives
 let currentId = null;
 let currentAbort = null;

@@ -79,12 +79,4 @@ function makeNode(nw, ne, sw, se) {
   return node;
 }
 
-module.exports = {
-  HLNode,
-  makeLeaf,
-  makeNode,
-  makeEmpty,
-  nodeMemo,
-  resultMemo,
-  clearMemo
-};
+export { HLNode, makeLeaf, makeNode, makeEmpty, nodeMemo, resultMemo, clearMemo };

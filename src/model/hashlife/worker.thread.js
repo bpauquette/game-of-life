@@ -2,7 +2,7 @@
 // available as a separate worker script. This file expects to be run in a
 // Worker context where `postMessage`/`onmessage` are available.
 
-const engine = require('./engine');
+const engine = require('./engine.js');
 
 let running = false;
 

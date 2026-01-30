@@ -2,11 +2,12 @@ import React, { useState, useCallback, useDeferredValue, useMemo } from 'react';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import PropTypes from 'prop-types';
-import logger from '../controller/utils/logger';
-import ShapesDao from '../model/dao/ShapesDao';
-import { useShapePaletteSearch } from './hooks/useShapePaletteSearch';
-import ShapePaletteView from './ShapePaletteView';
-import { useAuth } from '../auth/AuthProvider';
+import { useUiDao } from '../model/dao/uiDao.js';
+import logger from '../controller/utils/logger.js';
+import ShapesDao from '../model/dao/ShapesDao.js';
+import { useShapePaletteSearch } from './hooks/useShapePaletteSearch.js';
+import ShapePaletteView from './ShapePaletteView.js';
+import { useAuth } from '../auth/AuthProvider.jsx';
 
 const LARGE_CATALOG_THRESHOLD = 1000;
 
@@ -16,7 +17,10 @@ const hasShapeCells = (shape) => {
   return has(shape.cells) || has(shape.pattern) || has(shape.liveCells);
 };
 
-export default function ShapePaletteDialog({ open, onClose, onSelectShape, backendBase, colorScheme = {}, colorSchemeKey = 'bio', onAddRecent, prefetchOnMount = false, recentShapes = [], fetchShapes, checkBackendHealth }) {
+export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRecent, prefetchOnMount = false, recentShapes = [], fetchShapes, checkBackendHealth }) {
+  // UI state from uiDao
+  const colorScheme = useUiDao(state => state.colorScheme);
+  const colorSchemeKey = useUiDao(state => state.colorSchemeKey || 'bio');
   // Default fetchShapes to ShapesDao.listShapes if not provided
   const fetchShapesFn = fetchShapes || ShapesDao.listShapes;
   const theme = useTheme();

@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, waitFor, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import GameOfLifeApp from '../GameOfLifeApp';
+import GameOfLifeApp from '../GameOfLifeApp.js';
 
 // Mock canvas BEFORE importing GameOfLifeApp
 if (!HTMLCanvasElement.prototype.getContext) {

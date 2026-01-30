@@ -1,5 +1,5 @@
-/* eslint-env worker */
-/* eslint-disable no-console */
+/* global self */
+ 
 import { getBackendApiBase } from '../utils/backendApi.js';
 // hoverWorker.js - module worker to fetch a single shape preview
 // Keep a single active request and support aborting when a new start arrives.

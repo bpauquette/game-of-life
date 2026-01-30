@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Tabs, Tab, Link, List, ListItem, ListItemText, Divider, Card, CardContent, Chip } from '@mui/material';
 import { Brush as BrushIcon, ShowChart as LineAxisIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Widgets as WidgetsIcon, PlayArrow as PlayArrowIcon, BarChart as BarChartIcon, Settings as SettingsIcon, Backspace as BackspaceIcon } from '@mui/icons-material';
-import OvalIcon from './components/OvalIcon';
+import OvalIcon from './components/OvalIcon.js';
 
 function TabPanel({ children, value, index, ...other }) {
   return (
@@ -25,7 +25,7 @@ export default function HelpDialog({ open, onClose }) {
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth slotProps={{ paper: { sx: { minHeight: '70vh', maxHeight: '90vh' } } }}>
-      <DialogTitle>Conway's Game of Life - Help & Guide</DialogTitle>
+      <DialogTitle>Conway&apos;s Game of Life - Help &amp; Guide</DialogTitle>
       <DialogContent dividers>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="help tabs">
@@ -38,7 +38,7 @@ export default function HelpDialog({ open, onClose }) {
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Typography variant="h5" component="h2" gutterBottom>What is Conway's Game of Life?</Typography>
+          <Typography variant="h5" component="h2" gutterBottom>What is Conway&apos;s Game of Life?</Typography>
           <Typography sx={{ mb: 2 }}>The Game of Life is a cellular automaton. You set the initial pattern and watch it evolve without additional input.</Typography>
           <Typography variant="h5" component="h2" gutterBottom>The Rules</Typography>
           <Card variant="outlined" sx={{ mb: 2 }}>
@@ -99,8 +99,8 @@ export default function HelpDialog({ open, onClose }) {
             </ListItem>
             <ListItem>
               <ListItemText
-                primary="Steady window & population tolerance"
-                secondary="Both values are clamped (window ≥1, tolerance ≥0) before calling setPopWindowSize/setPopTolerance; GameModel.isStable(window, tolerance) uses them whenever we evaluate steady-state runs." />
+                primary="Steady globalThis & population tolerance"
+                secondary="Both values are clamped (globalThis ≥1, tolerance ≥0) before calling setPopWindowSize/setPopTolerance; GameModel.isStable(globalThis, tolerance) uses them whenever we evaluate steady-state runs." />
             </ListItem>
             <ListItem>
               <ListItemText
@@ -187,10 +187,10 @@ export default function HelpDialog({ open, onClose }) {
 
               <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>How to Enable/Disable</Typography>
               <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>To Enable:</strong> Open Options (gear icon or press 'O') → Check "Enable ADA Compliance"
+                <strong>To Enable:</strong> Open Options (gear icon or press &apos;O&apos;) &rarr; Check &quot;Enable ADA Compliance&quot;
               </Typography>
               <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>To Disable:</strong> Open Options → Uncheck "Enable ADA Compliance"
+                <strong>To Disable:</strong> Open Options &rarr; Uncheck &quot;Enable ADA Compliance&quot;
               </Typography>
               <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic', color: 'text.secondary' }}>
                 Note: ADA compliance is enabled by default for safety. A legal warning is displayed when disabled.
@@ -198,8 +198,8 @@ export default function HelpDialog({ open, onClose }) {
 
               <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>Photosensitivity Testing</Typography>
               <Typography variant="body2">
-                Advanced users can test photosensitivity compliance using the built-in tester. Enable it in Options → 
-                "Enable Photosensitivity Tester" → then access it via the bug icon in the header. The tester analyzes 
+                Advanced users can test photosensitivity compliance using the built-in tester. Enable it in Options &rarr; 
+                &quot;Enable Photosensitivity Tester&quot; &rarr; then access it via the bug icon in the header. The tester analyzes 
                 flash rate (must be ≤3/sec) and flash area (must be ≤87,296px) to verify WCAG compliance.
               </Typography>
             </CardContent>
@@ -309,7 +309,7 @@ export default function HelpDialog({ open, onClose }) {
                 © Stephen A. Silver, 1997–2018. Used under the Creative Commons Attribution-ShareAlike 3.0 license (CC BY-SA 3.0).
               </Typography>
               <Typography sx={{ mb: 1 }} variant="body2">
-                Major contributors include John Conway, Dean Hickerson, David Bell, Bill Gosper, Bob Wainwright, Noam Elkies, Nathan Thompson, Harold McIntosh, Dan Hoey, Alan Hensel, and the Conway's Game of Life community.
+                Major contributors include John Conway, Dean Hickerson, David Bell, Bill Gosper, Bob Wainwright, Noam Elkies, Nathan Thompson, Harold McIntosh, Dan Hoey, Alan Hensel, and the Conway&apos;s Game of Life community.
               </Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 <Link href="http://conwaylife.com/ref/lexicon/" target="_blank" rel="noopener noreferrer" variant="body2">Life Lexicon Home</Link>

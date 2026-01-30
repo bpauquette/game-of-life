@@ -1,4 +1,4 @@
-import { post } from './api';
+import { post } from './api.js';
 
 // Mock fetch
 global.fetch = jest.fn();
@@ -23,11 +23,11 @@ describe('API post function', () => {
   });
 
   test('uses REACT_APP_API_BASE if set', async () => {
-    // Simulate Node environment (no window)
-    delete global.window;
+    // Simulate Node environment (no globalThis)
+    delete global.globalThis;
     process.env.REACT_APP_API_BASE = 'https://api.example.com';
     jest.resetModules();
-    const { post } = require('./api');
+    const { post } = require('./api.js');
     const mockResponse = { ok: true, json: () => Promise.resolve({}) };
     fetch.mockResolvedValue(mockResponse);
 
@@ -45,16 +45,16 @@ describe('API post function', () => {
   });
 
   test('dispatches logout event on token expiry', async () => {
-    // Ensure window exists for this test
-    if (!global.window) global.window = {};
-    global.window.dispatchEvent = jest.fn();
+    // Ensure globalThis exists for this test
+    if (!global.globalThis) global.globalThis = {};
+    global.globalThis.dispatchEvent = jest.fn();
     const mockResponse = { ok: true, json: () => Promise.resolve({ error: 'Invalid or expired token' }) };
     fetch.mockResolvedValue(mockResponse);
 
     await post('/test', {});
 
-    expect(global.window.dispatchEvent).toHaveBeenCalledWith(expect.any(CustomEvent));
-    expect(global.window.dispatchEvent.mock.calls[0][0].type).toBe('auth:logout');
+    expect(global.globalThis.dispatchEvent).toHaveBeenCalledWith(expect.any(CustomEvent));
+    expect(global.globalThis.dispatchEvent.mock.calls[0][0].type).toBe('auth:logout');
   });
 
   test('handles fetch errors', async () => {
@@ -64,11 +64,11 @@ describe('API post function', () => {
   });
 
   test('uses browser /api/auth if in browser', () => {
-    const originalWindow = global.window;
-    global.window = { location: { origin: 'https://example.com' } };
+    const originalWindow = global.globalThis;
+    global.globalThis = { location: { origin: 'https://example.com' } };
     jest.resetModules();
-    const { getAuthApiBase } = require('./api');
+    const { getAuthApiBase } = require('./api.js');
     expect(getAuthApiBase()).toBe('https://example.com/api/auth');
-    global.window = originalWindow;
+    global.globalThis = originalWindow;
   });
 });

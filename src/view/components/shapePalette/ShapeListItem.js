@@ -8,9 +8,9 @@ import Typography from '@mui/material/Typography';
 import { Delete as DeleteIcon, Public as PublicIcon, PublicOff as PublicOffIcon } from '@mui/icons-material';
 import Checkbox from '@mui/material/Checkbox';
 import Tooltip from '@mui/material/Tooltip';
-import { updateShapePublic } from '../../../utils/backendApi';
-import logger from '../../../controller/utils/logger';
-import { fetchShapeById } from '../../../utils/backendApi';
+import { updateShapePublic } from '../../../utils/backendApi.js';
+import logger from '../../../controller/utils/logger.js';
+import { fetchShapeById } from '../../../utils/backendApi.js';
 const ShapeListItem = memo(function ShapeListItem({
   shape,
   idx,

@@ -1,8 +1,8 @@
 // Mock StepScheduler to bypass ESM/worker errors in Jest
 import React from 'react';
 import { render } from '@testing-library/react';
-import GameOfLifeApp from './GameOfLifeApp';
-import { AuthProvider } from '../auth/AuthProvider';
+import GameOfLifeApp from './GameOfLifeApp.js';
+import { AuthProvider } from '../auth/AuthProvider.jsx';
 
 jest.mock('../controller/StepScheduler', () => ({
   __esModule: true,

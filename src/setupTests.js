@@ -48,7 +48,7 @@ HTMLCanvasElement.prototype.getBoundingClientRect = jest.fn(() => ({
   y: 0
 }));
 
-// Mock window.devicePixelRatio
+// Mock globalThis.devicePixelRatio
 Object.defineProperty(globalThis, 'devicePixelRatio', {
   value: 1,
   writable: true

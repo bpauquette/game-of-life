@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, fireEvent, waitFor, cleanup, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import ShapePaletteDialog from '../ShapePaletteDialog';
-import { useShapePaletteSearch } from '../hooks/useShapePaletteSearch';
-import { useHoverPreview } from '../hooks/useHoverPreview';
-import { fetchShapeById } from '../../utils/backendApi';
+import ShapePaletteDialog from '../ShapePaletteDialog.js';
+import { useShapePaletteSearch } from '../hooks/useShapePaletteSearch.js';
+import { useHoverPreview } from '../hooks/useHoverPreview.js';
+import { fetchShapeById } from '../../utils/backendApi.js';
 
 jest.mock('../hooks/useShapePaletteSearch');
 jest.mock('../hooks/useHoverPreview');

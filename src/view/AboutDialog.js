@@ -36,7 +36,7 @@ export default function AboutDialog({ open, onClose, onOpenPrivacy }) {
       <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
           <InfoIcon color="primary" />
-          About Conway's Game of Life
+          About Conway&apos;s Game of Life
         </Box>
       </DialogTitle>
       
@@ -67,7 +67,7 @@ export default function AboutDialog({ open, onClose, onOpenPrivacy }) {
           About This Implementation
         </Typography>
         <Typography sx={{ mb: 2 }}>
-          This is a modern web-based implementation of John Conway's Game of Life, featuring 
+          This is a modern web-based implementation of John Conway&apos;s Game of Life, featuring 
           an infinite canvas, optimized performance through chunked state management, and 
           a comprehensive set of drawing tools for creating and exploring cellular automata patterns.
         </Typography>
@@ -125,11 +125,11 @@ export default function AboutDialog({ open, onClose, onOpenPrivacy }) {
         <Divider sx={{ my: 2 }} />
 
         <Typography variant="h5" component="h2" gutterBottom>
-          About Conway's Game of Life
+          About Conway&apos;s Game of Life
         </Typography>
         <Typography sx={{ mb: 2 }}>
           The Game of Life was devised by British mathematician John Horton Conway in 1970. 
-          It became widely known when it was featured in Martin Gardner's "Mathematical Games" 
+          It became widely known when it was featured in Martin Gardner&apos;s &quot;Mathematical Games&quot; 
           column in Scientific American. Despite its simple rules, the Game of Life is 
           Turing complete and can simulate any computer algorithm.
         </Typography>
@@ -137,9 +137,9 @@ export default function AboutDialog({ open, onClose, onOpenPrivacy }) {
         <Card variant="outlined" sx={{ mb: 2, bgcolor: 'action.hover' }}>
           <CardContent>
             <Typography variant="body2" fontStyle="italic">
-              "The Game of Life is not a game in the conventional sense. There are no players, 
-              and no winning or losing. Once the 'pieces' are placed in the starting position, 
-              the rules determine everything that happens later."
+              &quot;The Game of Life is not a game in the conventional sense. There are no players, 
+              and no winning or losing. Once the &apos;pieces&apos; are placed in the starting position, 
+              the rules determine everything that happens later.&quot;
             </Typography>
             <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
               — Martin Gardner, Scientific American (1970)
@@ -166,7 +166,7 @@ export default function AboutDialog({ open, onClose, onOpenPrivacy }) {
             <Typography variant="body2" sx={{ mb: 1 }}>
               <strong>Contributors:</strong> John Conway, Dean Hickerson, David Bell, Bill Gosper, 
               Bob Wainwright, Noam Elkies, Nathan Thompson, Harold McIntosh, Dan Hoey, Alan Hensel, 
-              and many others from the Conway's Game of Life community.
+              and many others from the Conway&apos;s Game of Life community.
             </Typography>
             <Link 
               href="http://conwaylife.com/ref/lexicon/" 

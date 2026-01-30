@@ -1,4 +1,4 @@
-import { parseBlocks, execBlock } from '../scriptingInterpreter';
+import { parseBlocks, execBlock } from '../scriptingInterpreter.js';
 
 describe('ScriptPanelIntegration', () => {
   test.skip('full script execution creates expected grid state', async () => {

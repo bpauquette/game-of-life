@@ -1,5 +1,5 @@
 // Mock StepScheduler to bypass ESM/worker errors in Jest
-import { GameController } from '../controller/GameController';
+import { GameController } from '../controller/GameController.js';
 jest.mock('../controller/StepScheduler', () => ({
   __esModule: true,
   default: function StepScheduler() {
