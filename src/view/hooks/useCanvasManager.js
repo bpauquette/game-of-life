@@ -1,5 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { eventToCellFromCanvas, computeComputedOffset, drawLiveCells } from '../../controller/utils/canvasUtils';
+import { eventToCellFromCanvas, computeComputedOffset, drawLiveCells } from '../../controller/utils/canvasUtils.js';
+import { useToolDao } from '../../model/dao/toolDao.js';
+import { useUiDao } from '../../model/dao/uiDao.js';
+import { useGameDao } from '../../model/dao/gameDao.js';
 
 const CONST_CAPTURE = 'capture';
 
@@ -12,7 +15,7 @@ const tokenOr = (name, fallback) => {
     const v = globalThis.getComputedStyle(root).getPropertyValue(name);
     return (v && v.trim()) || fallback;
   } catch (e) {
-    return fallback;
+    // ignore
   }
 };
 const FALLBACK_CANVAS_BG = tokenOr('--surface-0', '#000000');
@@ -36,18 +39,21 @@ const FALLBACK_CANVAS_BG = tokenOr('--surface-0', '#000000');
  * @returns {Object} Canvas manager interface
  */
 export const useCanvasManager = ({
-  getLiveCells,
-  cellSize,
   offsetRef,
-  colorScheme,
-  selectedTool,
-  toolMap,
-  toolStateRef,
-  setCellAlive,
-  scheduleCursorUpdate,
-  placeShape,
-  logger
+  canvasRef
 }) => {
+  // DAO state selectors
+  const colorScheme = useUiDao(state => state.colorScheme);
+  const cellSize = useUiDao(state => state.cellSize);
+  const selectedTool = useToolDao(state => state.selectedTool);
+  const toolMap = useToolDao(state => state.toolMap);
+  const toolStateRef = useToolDao(state => state.toolStateRef);
+  const getLiveCells = useGameDao(state => state.getLiveCells);
+  const setCellAlive = useGameDao(state => state.setCellAlive);
+  const scheduleCursorUpdate = useUiDao(state => state.scheduleCursorUpdate);
+  const placeShape = useToolDao(state => state.placeShape);
+  const logger = useUiDao(state => state.logger);
+  // Use canvasRef directly; do not assign to a local variable to avoid prop mutation warnings
   // Small helper to push debug messages into an on-page overlay buffer
   const pushDebug = (msg) => {
     try {
@@ -65,7 +71,7 @@ export const useCanvasManager = ({
       const entry = { ts: Date.now(), text };
       globalThis.__GOL_CANVAS_LOGS__ = globalThis.__GOL_CANVAS_LOGS__ || [];
       globalThis.__GOL_CANVAS_LOGS__.push(entry);
-      try { globalThis.dispatchEvent && globalThis.dispatchEvent(new CustomEvent('__GOL_CANVAS_LOG_UPDATE')); } catch (e) {}
+      try { globalThis.dispatchEvent && globalThis.dispatchEvent(new CustomEvent('__GOL_CANVAS_LOG_UPDATE')); } catch (e) { console.warn('Exception caught in pushCanvasLog (dispatchEvent):', e); }
       return entry;
     } catch (e) {
       // swallow and return null to indicate failure
@@ -73,7 +79,6 @@ export const useCanvasManager = ({
     }
   };
 
-  const canvasRef = useRef(null);
   const [ready, setReady] = useState(false);
   // store last observed content rect from ResizeObserver (if available)
   const observedSizeRef = useRef(null);
@@ -85,45 +90,50 @@ export const useCanvasManager = ({
 
   // Draw function - renders the game state
   const draw = useCallback(() => {
-    if (!canvasRef.current || !offsetRef) return;
-    const ctx = canvasRef.current.getContext && canvasRef.current.getContext('2d');
+    const canvas = canvasRef.current;
+    if (!canvas || !offsetRef) return;
+    const ctx = canvas.getContext && canvas.getContext('2d');
     if (!ctx) return;
-    const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
+    const computedOffset = computeComputedOffset(canvas, offsetRef, cellSize);
 
-    // Use the current color scheme
-    ctx.fillStyle = colorScheme?.background || FALLBACK_CANVAS_BG;
-    ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    // Use the current color scheme (assign to local variable to avoid mutating props)
+    const background = colorScheme && typeof colorScheme.background !== 'undefined' ? colorScheme.background : undefined;
+    // Use a local variable for background color to avoid mutating props or arguments
+    const backgroundLocal = background || FALLBACK_CANVAS_BG;
+    // ESLint false positive: assigning to ctx.fillStyle is correct and not a prop/hook mutation
+    // eslint-disable-next-line react-hooks/immutability
+    ctx.fillStyle = backgroundLocal;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw live cells
     drawLiveCells(ctx, getLiveCells(), computedOffset, cellSize, colorScheme);
-  }, [getLiveCells, cellSize, offsetRef, colorScheme]);
+  }, [getLiveCells, cellSize, offsetRef, colorScheme, canvasRef]);
 
   // Helper function to draw tool overlays
   const drawToolOverlay = useCallback((ctx, computedOffset) => {
-    const tool = toolMap[selectedTool];
+    const tool = toolMap?.[selectedTool];
     if (tool?.drawOverlay) {
-      tool.drawOverlay(ctx, toolStateRef.current, cellSize, computedOffset, colorScheme);
+      tool.drawOverlay(ctx, toolStateRef?.current, cellSize, computedOffset, colorScheme);
     }
   }, [toolMap, selectedTool, cellSize, toolStateRef, colorScheme]);
 
   const drawWithOverlay = useCallback(() => {
     draw();
-    
     try {
-      const ctx = canvasRef.current?.getContext('2d');
-      if (!ctx || !selectedTool || !offsetRef?.current) return;
-
-      const computedOffset = computeComputedOffset(canvasRef.current, offsetRef, cellSize);
-      
+      const canvas = canvasRef.current;
+      if (!canvas || !selectedTool || !offsetRef?.current) return;
+      const ctx = canvas.getContext && canvas.getContext('2d');
+      if (!ctx) return;
+      const computedOffset = computeComputedOffset(canvas, offsetRef, cellSize);
       // Draw tool overlay
       drawToolOverlay(ctx, computedOffset);
     } catch (err) {
       // overlay drawing should never break main render
-      logger.warn('Overlay rendering failed:', err);
+      if (logger) logger.warn('Overlay rendering failed:', err);
     }
-  }, [draw, selectedTool, cellSize, offsetRef, drawToolOverlay, logger]);
+  }, [draw, selectedTool, cellSize, offsetRef, drawToolOverlay, logger, canvasRef]);
 
-  // Resize canvas to fill window and account for devicePixelRatio
+  // Resize canvas to fill globalThis and account for devicePixelRatio
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -134,9 +144,11 @@ export const useCanvasManager = ({
         console?.warn?.('[useCanvasManager] resizeCanvas invoked');
         if (typeof pushDebug === 'function') pushDebug('[useCanvasManager] resizeCanvas invoked');
       }
-    } catch (e) {}
+    } catch (e) {
+      // Intentionally ignored
+    }
 
-    const dpr = (globalThis.window?.devicePixelRatio) || 1;
+    const dpr = (globalThis.globalThis?.devicePixelRatio) || 1;
     // Prefer the canvas's actual layout rect when available (most robust across browsers)
     // This avoids observing a parent element that may not reflect the canvas' final
     // visual size (fixed positioning / stacking contexts can make parent sizes
@@ -152,19 +164,19 @@ export const useCanvasManager = ({
         logicalWidth = observedSizeRef.current.width;
         logicalHeight = observedSizeRef.current.height;
       } else {
-        logicalWidth = globalThis.window?.innerWidth || DEFAULT_WINDOW_WIDTH;
-        logicalHeight = globalThis.window?.innerHeight || DEFAULT_WINDOW_HEIGHT;
+        logicalWidth = globalThis.globalThis?.innerWidth || DEFAULT_WINDOW_WIDTH;
+        logicalHeight = globalThis.globalThis?.innerHeight || DEFAULT_WINDOW_HEIGHT;
       }
     } catch (err) {
-      logicalWidth = (observedSizeRef.current && observedSizeRef.current.width) || globalThis.window?.innerWidth || DEFAULT_WINDOW_WIDTH;
-      logicalHeight = (observedSizeRef.current && observedSizeRef.current.height) || globalThis.window?.innerHeight || DEFAULT_WINDOW_HEIGHT;
+      logicalWidth = (observedSizeRef.current && observedSizeRef.current.width) || globalThis.globalThis?.innerWidth || DEFAULT_WINDOW_WIDTH;
+      logicalHeight = (observedSizeRef.current && observedSizeRef.current.height) || globalThis.globalThis?.innerHeight || DEFAULT_WINDOW_HEIGHT;
     }
 
     // Debugging: print layout and sizing information when enabled at runtime.
     try {
       const DBG = Boolean(globalThis.__GOL_DEBUG_CANVAS__ || globalThis.GOL_DEBUG_CANVAS);
       if (DBG) {
-        const dpr = (globalThis.window?.devicePixelRatio) || 1;
+        const dpr = (globalThis.globalThis?.devicePixelRatio) || 1;
         // canvas.clientWidth/Height may be fractional; getBoundingClientRect used above
         const clientRect = canvas.getBoundingClientRect();
         // Use info level to ensure visibility in Chrome DevTools (debug may be filtered)
@@ -214,19 +226,46 @@ export const useCanvasManager = ({
       }
     } catch (err) {
       // don't let drawing errors bubble
-      try { console.error && console.error('drawWithOverlay failed after resize', err); } catch (e) {}
+      try { console.error && console.error('drawWithOverlay failed after resize', err); } catch (e) {
+        // Intentionally ignored
+      }
     }
-  }, [drawWithOverlay]);
+  }, [drawWithOverlay, canvasRef]);
 
   // Helper to convert mouse event to cell coordinates
   const eventToCell = useCallback((e) => {
-    return eventToCellFromCanvas(e, canvasRef.current, offsetRef, cellSize);
-  }, [offsetRef, cellSize]);
+    const canvas = canvasRef.current;
+    const offset = offsetRef?.current;
+    if (!canvas) {
+      if (logger) logger.warn('[useCanvasManager] eventToCell: canvasRef.current is null');
+      return null;
+    }
+    if (!offset) {
+      if (logger) logger.warn('[useCanvasManager] eventToCell: offsetRef.current is null');
+      return null;
+    }
+    if (!cellSize) {
+      if (logger) logger.warn('[useCanvasManager] eventToCell: cellSize is falsy', cellSize);
+      return null;
+    }
+    // Use only local variables in eventToCellFromCanvas
+    const pt = eventToCellFromCanvas(e, canvas, offsetRef, cellSize);
+    if (!pt) {
+      if (logger) logger.warn('[useCanvasManager] eventToCell: eventToCellFromCanvas returned null', {
+        e,
+        canvas,
+        offset,
+        cellSize
+      });
+    }
+    return pt;
+  }, [offsetRef, cellSize, canvasRef, logger]);
 
   // Canvas click: toggle or place shape
   const handleCanvasClick = useCallback((e) => {
-    if (!canvasRef.current || !offsetRef?.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
+    const canvas = canvasRef.current;
+    if (!canvas || !offsetRef?.current) return;
+    const rect = canvas.getBoundingClientRect();
     // compute cell relative to canvas center (center is world origin)
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
@@ -314,7 +353,11 @@ export const useCanvasManager = ({
   }, [toolStateRef]);
 
   // Mouse event handlers
+  // Track if a drag is in progress for global mouseup
+  const dragActiveRef = useRef(false);
+
   const handleMouseDown = useCallback((e) => {
+    dragActiveRef.current = true;
     if (shouldStartPanning(e)) {
       startPanning(e);
       return;
@@ -344,17 +387,25 @@ export const useCanvasManager = ({
   }, [eventToCell, scheduleCursorUpdate, toolMap, selectedTool, shouldToolMove, handleShapeToolMove, drawWithOverlay, updatePanning, toolStateRef]);
 
   const handleMouseUp = useCallback((e) => {
+    if (!dragActiveRef.current) return;
+    dragActiveRef.current = false;
+    console.log('[useCanvasManager] handleMouseUp fired', { selectedTool });
     if (isPanningRef.current) {
       isPanningRef.current = false;
       try { e.target.releasePointerCapture?.(e.pointerId); } catch { /* releasePointerCapture not supported */ }
+      console.log('[useCanvasManager] handleMouseUp: was panning, exiting');
       return;
     }
 
     const tool = toolMap[selectedTool];
-    if (!tool) return;
+    if (!tool) {
+      console.warn('[useCanvasManager] handleMouseUp: no tool found for', selectedTool);
+      return;
+    }
 
     const pt = eventToCell(e);
     if (pt) {
+      console.log('[useCanvasManager] handleMouseUp: calling tool.onMouseUp', { selectedTool, pt });
       // Special handling for capture tool which needs getLiveCells and tool object
       if (selectedTool === CONST_CAPTURE) {
         tool.onMouseUp?.(toolStateRef.current, pt.x, pt.y, setCellAlive, getLiveCells, tool);
@@ -362,25 +413,40 @@ export const useCanvasManager = ({
         tool.onMouseUp?.(toolStateRef.current, pt.x, pt.y, setCellAlive, placeShape);
       }
       drawWithOverlay();
+    } else {
+      console.warn('[useCanvasManager] handleMouseUp: eventToCell returned null', { e });
     }
-    
   }, [toolMap, selectedTool, eventToCell, setCellAlive, placeShape, getLiveCells, drawWithOverlay, toolStateRef]);
+  // Attach global mouseup handler during drag
+  useEffect(() => {
+    function globalMouseUp(e) {
+      if (dragActiveRef.current) {
+        handleMouseUp(e);
+      }
+    }
+    globalThis.addEventListener('mouseup', globalMouseUp);
+    globalThis.addEventListener('touchend', globalMouseUp);
+    return () => {
+      globalThis.removeEventListener('mouseup', globalMouseUp);
+      globalThis.removeEventListener('touchend', globalMouseUp);
+    };
+  }, [handleMouseUp]);
 
   // Initial setup and resize handling
   useEffect(() => {
     // mark ready after first render so draw exists for resizeCanvas
-    setReady(true);
+    Promise.resolve().then(() => setReady(true));
   }, []);
 
   useEffect(() => {
     if (!ready) return;
     // initial size and subscribe
     resizeCanvas();
-    globalThis.window.addEventListener('resize', resizeCanvas);
+    globalThis.globalThis.addEventListener('resize', resizeCanvas);
 
     // Setup ResizeObserver on the canvas container to automatically resize when
     // layout changes (e.g., header hide/show). If ResizeObserver is unavailable
-    // fall back to window resize events only.
+    // fall back to globalThis resize events only.
     let ro;
     try {
       if (typeof globalThis.ResizeObserver !== 'undefined') {
@@ -393,7 +459,9 @@ export const useCanvasManager = ({
                     console.warn && console.warn('[useCanvasManager] ResizeObserver callback', entries && entries[0] ? Object.keys(entries[0]) : entries);
                     pushDebug && pushDebug('[useCanvasManager] ResizeObserver callback');
                   }
-                } catch (e) {}
+                } catch (e) {
+                  // Intentionally ignored
+                }
             // Use requestAnimationFrame to ensure layout has stabilized in the
             // browser before reading bounding rects. Some browsers (Chrome)
             // may schedule RO callbacks before final layout is committed.
@@ -407,39 +475,45 @@ export const useCanvasManager = ({
               // If contentRect isn't available (some RO implementations), prefer
               // to read the canvas's own boundingClientRect which reflects the
               // visual size we care about.
-              if ((!width || !height) && canvasRef.current) {
-                const b = canvasRef.current.getBoundingClientRect();
+              const canvas = canvasRef.current;
+              if ((!width || !height) && canvas) {
+                const b = canvas.getBoundingClientRect();
                 width = b.width || width;
                 height = b.height || height;
               }
               if (width && height) {
                 observedSizeRef.current = { width: Math.max(1, Math.floor(width)), height: Math.max(1, Math.floor(height)) };
-                if (Boolean(globalThis.__GOL_DEBUG_CANVAS__ || globalThis.GOL_DEBUG_CANVAS)) pushDebug && pushDebug('[useCanvasManager] ResizeObserver observed size ' + JSON.stringify(observedSizeRef.current));
+                if (globalThis.__GOL_DEBUG_CANVAS__ || globalThis.GOL_DEBUG_CANVAS) pushDebug && pushDebug('[useCanvasManager] ResizeObserver observed size ' + JSON.stringify(observedSizeRef.current));
                 resizeCanvas();
               } else {
                 try {
                   const DBG = Boolean(globalThis.__GOL_DEBUG_CANVAS__ || globalThis.GOL_DEBUG_CANVAS);
-                  if (DBG) console.warn && console.warn('[useCanvasManager] ResizeObserver produced empty rect, canvas rect:', canvasRef.current && canvasRef.current.getBoundingClientRect());
-                  if (DBG) pushDebug && pushDebug('[useCanvasManager] ResizeObserver produced empty rect');
-                } catch (e) {}
+                  if (DBG) {
+                    const canvas = canvasRef.current;
+                    console.warn && console.warn('[useCanvasManager] ResizeObserver produced empty rect, canvas rect:', canvas && canvas.getBoundingClientRect());
+                    pushDebug && pushDebug('[useCanvasManager] ResizeObserver produced empty rect');
+                  }
+                } catch (e) {
+                  // Intentionally ignored
+                }
               }
             });
           } catch (err) {
             // swallow observer errors to avoid breaking the app
           }
         });
-        const el = canvasRef.current || null;
-        if (el) ro.observe(el);
+        const canvas = canvasRef.current || null;
+        if (canvas) ro.observe(canvas);
       }
     } catch (err) {
       // ignore
     }
 
     return () => {
-      globalThis.window.removeEventListener('resize', resizeCanvas);
+      globalThis.globalThis.removeEventListener('resize', resizeCanvas);
       try { if (ro) ro.disconnect(); } catch (e) { /* ignore */ }
     };
-  }, [ready, resizeCanvas]);
+  }, [ready, resizeCanvas, canvasRef]);
 
   return {
     canvasRef,

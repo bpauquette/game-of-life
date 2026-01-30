@@ -1,5 +1,5 @@
-import logger from '../utils/logger';
-import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
+import logger from '../utils/logger.js';
+import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes.js';
 const tokenOr = (name, fallback) => {
   try {
     const root = globalThis.document?.documentElement;

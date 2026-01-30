@@ -9,8 +9,8 @@ jest.mock('../backendApi', () => ({
 }));
 
 
-const { createNamesWorker, createHoverWorker } = require('../workerFactories');
-const { fetchShapeNames, fetchShapeById } = require('../backendApi');
+const { createNamesWorker, createHoverWorker } = require('../workerFactories.js');
+const { fetchShapeNames, fetchShapeById } = require('../backendApi.js');
 
 describe('workerFactories (faux worker behavior)', () => {
   beforeAll(() => {

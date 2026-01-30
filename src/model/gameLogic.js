@@ -1,4 +1,4 @@
-import LiveCellIndex from './liveCellIndex';
+import LiveCellIndex from './liveCellIndex.js';
 
 // Game of Life constants
 const NEIGHBOR_RANGE_MIN = -1;

@@ -1,8 +1,8 @@
-import { ticks as gameTicks } from '../model/gameLogic';
+import { ticks as gameTicks } from '../model/gameLogic.js';
 
 // Hashlife engine is CommonJS in src/hashlife
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { advance, clearEngineCache } = require('../hashlife/engine');
+ 
+const { advance, clearEngineCache } = require('../hashlife/engine.js');
 
 function indexToCells(liveIndex) {
   const cells = [];

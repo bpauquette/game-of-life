@@ -9,17 +9,17 @@ const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 
 // Determine initial level:
 // 1) REACT_APP_LOG_LEVEL (CRA env) if present
-// 2) window.GOL_LOG_LEVEL if set at runtime
+// 2) globalThis.GOL_LOG_LEVEL if set at runtime
 // 3) NODE_ENV fallback: 'debug' for development, 'warn' otherwise (includes test/production)
 // Default to debug for now to ensure verbose logs during troubleshooting.
 let currentLevel = LEVELS.debug;
 const envLevel = typeof process !== 'undefined' && process?.env?.REACT_APP_LOG_LEVEL;
 const nodeEnv = typeof process !== 'undefined' && process?.env?.NODE_ENV;
-const runtimeLevel = globalThis.window?.GOL_LOG_LEVEL;
+const runtimeLevel = globalThis.globalThis?.GOL_LOG_LEVEL;
 
-if (envLevel && LEVELS.hasOwnProperty(envLevel)) {
+if (envLevel && Object.prototype.hasOwnProperty.call(LEVELS, envLevel)) {
   currentLevel = LEVELS[envLevel];
-} else if (runtimeLevel && LEVELS.hasOwnProperty(runtimeLevel)) {
+} else if (runtimeLevel && Object.prototype.hasOwnProperty.call(LEVELS, runtimeLevel)) {
   currentLevel = LEVELS[runtimeLevel];
 } else if (nodeEnv === 'development') {
   currentLevel = LEVELS.debug;
@@ -29,18 +29,18 @@ if (envLevel && LEVELS.hasOwnProperty(envLevel)) {
 }
 
 // Also expose a simple global toggle to completely silence logging if desired
-if (globalThis.window !== undefined && globalThis.window.GOL_LOGGING_ENABLED === undefined) {
-  globalThis.window.GOL_LOGGING_ENABLED = true;
+if (globalThis.globalThis !== undefined && globalThis.globalThis.GOL_LOGGING_ENABLED === undefined) {
+  globalThis.globalThis.GOL_LOGGING_ENABLED = true;
 }
 
 function shouldLog(level) {
-  const enabled = globalThis.window?.GOL_LOGGING_ENABLED !== false;
+  const enabled = globalThis.globalThis?.GOL_LOGGING_ENABLED !== false;
   return enabled && LEVELS[level] <= currentLevel;
 }
 
 const logger = {
   setLevel: (level) => {
-    if (LEVELS.hasOwnProperty(level)) {
+    if (Object.prototype.hasOwnProperty.call(LEVELS, level)) {
       currentLevel = LEVELS[level];
     }
   },

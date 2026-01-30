@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import LoadGridDialog from '../LoadGridDialog';
+import LoadGridDialog from '../LoadGridDialog.js';
 
 describe('LoadGridDialog', () => {
   it('renders grid names from props', () => {

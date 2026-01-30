@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import PropTypes from 'prop-types';
 // Removed unused alpha import
 
 /**
@@ -8,6 +9,14 @@ import Typography from '@mui/material/Typography';
  * Displays: current command, variables, progress, loop context
  */
 function ScriptExecutionHUD({ enableAdaCompliance = false }) {
+    // Add a function to dispatch a stop event
+    const handleClose = () => {
+      if (typeof globalThis.globalThis !== 'undefined') {
+        const event = new CustomEvent('gol:script:stop', { detail: { reason: 'user' } });
+        globalThis.globalThis.dispatchEvent(event);
+      }
+      setHudData(prev => ({ ...prev, visible: false }));
+    };
   const [hudData, setHudData] = useState({
     visible: false,
     currentLine: '',
@@ -84,15 +93,15 @@ function ScriptExecutionHUD({ enableAdaCompliance = false }) {
       }, 500);
     }
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('gol:script:debug', onScriptDebug);
-      window.addEventListener('gol:script:start', onScriptStart);
-      window.addEventListener('gol:script:end', onScriptEnd);
+    if (typeof globalThis.globalThis !== 'undefined') {
+      globalThis.globalThis.addEventListener('gol:script:debug', onScriptDebug);
+      globalThis.globalThis.addEventListener('gol:script:start', onScriptStart);
+      globalThis.globalThis.addEventListener('gol:script:end', onScriptEnd);
 
       return () => {
-        window.removeEventListener('gol:script:debug', onScriptDebug);
-        window.removeEventListener('gol:script:start', onScriptStart);
-        window.removeEventListener('gol:script:end', onScriptEnd);
+        globalThis.globalThis.removeEventListener('gol:script:debug', onScriptDebug);
+        globalThis.globalThis.removeEventListener('gol:script:start', onScriptStart);
+        globalThis.globalThis.removeEventListener('gol:script:end', onScriptEnd);
       };
     }
   }, []);
@@ -119,6 +128,26 @@ function ScriptExecutionHUD({ enableAdaCompliance = false }) {
         pointerEvents: 'auto'
       }}
     >
+      {/* Close Button */}
+      <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
+        <button
+          onClick={handleClose}
+          style={{
+            background: 'var(--surface-3)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '4px',
+            padding: '2px 8px',
+            fontSize: '12px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            zIndex: 1100
+          }}
+          title="Stop Script and Close"
+        >
+          ×
+        </button>
+      </Box>
       {/* Current Command */}
       {hudData.currentLine && (
         <Box sx={{ mb: 1 }}>
@@ -228,3 +257,7 @@ function ScriptExecutionHUD({ enableAdaCompliance = false }) {
 }
 
 export default ScriptExecutionHUD;
+
+ScriptExecutionHUD.propTypes = {
+    enableAdaCompliance: PropTypes.bool,
+};

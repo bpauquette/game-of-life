@@ -1,4 +1,4 @@
-import { GameModel } from './GameModel';
+import { GameModel } from './GameModel.js';
 
 describe('GameModel', () => {
   it('can be constructed', () => {

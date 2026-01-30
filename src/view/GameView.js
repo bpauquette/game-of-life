@@ -1,7 +1,7 @@
 // GameView.js - View layer for Conway's Game of Life
 // Handles all rendering and presentation logic
 
-import { GameRenderer } from './GameRenderer';
+import { GameRenderer } from './GameRenderer.js';
 
 export class GameView {
   constructor(canvas, options = {}, model = null) {
@@ -416,7 +416,7 @@ export class GameView {
 
   // Window event setup
   setupWindowEvents() {
-    window.addEventListener('resize', () => {
+    globalThis.addEventListener('resize', () => {
       const container = this.canvas.parentElement;
       if (container) {
         const rect = container.getBoundingClientRect();
@@ -426,7 +426,7 @@ export class GameView {
     });
 
     // Listen for script-driven grid updates and trigger re-render
-    window.addEventListener('gol:script:step', (ev) => {
+    globalThis.addEventListener('gol:script:step', (ev) => {
       // Update model liveCells with new cells from event, then re-render
       try {
         const detail = ev && ev.detail ? ev.detail : {};
@@ -436,7 +436,7 @@ export class GameView {
           this.model.setCellsAliveBulk(cells);
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
+         
         console.error('GameView: failed to update model on gol:script:step', e);
       }
       // Now trigger a re-render
@@ -448,7 +448,7 @@ export class GameView {
           const viewport = this.model?.getViewport?.() ?? { offsetX: 0, offsetY: 0, cellSize: 8 };
           this.render(liveCells, viewport);
         } catch (e) {
-          // eslint-disable-next-line no-console
+           
           console.error('GameView: failed to re-render on gol:script:step', e);
         }
       }

@@ -15,6 +15,7 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import { Warning as WarningIcon, Info as InfoIcon, LocalActivity as DonateIcon } from '@mui/icons-material';
+import PropTypes from 'prop-types';
 
 /**
  * First Load Warning Dialog
@@ -22,15 +23,13 @@ import { Warning as WarningIcon, Info as InfoIcon, LocalActivity as DonateIcon }
  * and the donation/community model on app's first load.
  * Only shows once per browser (stored in localStorage).
  */
-export default function FirstLoadWarningDialog({ open, onClose, onOpenRegister }) {
+export default function FirstLoadWarningDialog({ open, onClose }) {
   const [understood, setUnderstood] = useState(false);
 
   const handleClose = () => {
     if (understood) {
       // Mark that user has seen this dialog
-      try {
-        globalThis.localStorage?.setItem('gol-first-load-warning-seen', 'true');
-      } catch (e) {}
+      globalThis.localStorage?.setItem('gol-first-load-warning-seen', 'true');
       onClose();
     }
   };
@@ -66,7 +65,7 @@ export default function FirstLoadWarningDialog({ open, onClose, onOpenRegister }
         <Card variant="outlined" sx={{ mb: 2.5, borderLeft: '4px solid', borderLeftColor: 'error.main', bgcolor: 'var(--warning-surface)', borderColor: 'var(--warning-border)' }}>
           <CardContent sx={{ pb: 1 }}>
             <Typography sx={{ mb: 1 }}>
-              <strong>Conway's Game of Life can trigger photosensitive seizures.</strong> Rapidly flashing patterns may cause seizures in people with photosensitive epilepsy or other conditions.
+              <strong>Conway&apos;s Game of Life can trigger photosensitive seizures.</strong> Rapidly flashing patterns may cause seizures in people with photosensitive epilepsy or other conditions.
             </Typography>
             <Typography sx={{ mb: 1 }}>
               If you experience symptoms (dizziness, blurred vision, eye pain, muscle twitching), <strong>STOP immediately</strong> and seek medical attention.
@@ -77,15 +76,15 @@ export default function FirstLoadWarningDialog({ open, onClose, onOpenRegister }
             <List dense sx={{ ml: 0 }}>
               <ListItem disableGutters sx={{ py: 0.25 }}>
                 <ListItemIcon sx={{ minWidth: 24 }}>•</ListItemIcon>
-                <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary="Limits animation to 2 FPS (safe threshold)" />
+                <ListItemText sx={{ typography: 'body2' }} primary="Limits animation to 2 FPS (safe threshold)" />
               </ListItem>
               <ListItem disableGutters sx={{ py: 0.25 }}>
                 <ListItemIcon sx={{ minWidth: 24 }}>•</ListItemIcon>
-                <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary="Restricts canvas to 160×160 pixels" />
+                <ListItemText sx={{ typography: 'body2' }} primary="Restricts canvas to 160×160 pixels" />
               </ListItem>
               <ListItem disableGutters sx={{ py: 0.25 }}>
                 <ListItemIcon sx={{ minWidth: 24 }}>•</ListItemIcon>
-                <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary="Uses low-contrast colors to reduce flash risk" />
+                <ListItemText sx={{ typography: 'body2' }} primary="Uses low-contrast colors to reduce flash risk" />
               </ListItem>
             </List>
             <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
@@ -115,15 +114,15 @@ export default function FirstLoadWarningDialog({ open, onClose, onOpenRegister }
                 <List dense sx={{ ml: 0 }}>
                   <ListItem disableGutters sx={{ py: 0.25 }}>
                     <ListItemIcon sx={{ minWidth: 24 }}>•</ListItemIcon>
-                    <ListItemText primaryTypographyProps={{ variant: 'caption' }} primary="Save grids and patterns" />
+                    <ListItemText sx={{ typography: 'caption' }} primary="Save grids and patterns" />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0.25 }}>
                     <ListItemIcon sx={{ minWidth: 24 }}>•</ListItemIcon>
-                    <ListItemText primaryTypographyProps={{ variant: 'caption' }} primary="Publish shapes to community" />
+                    <ListItemText sx={{ typography: 'caption' }} primary="Publish shapes to community" />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0.25 }}>
                     <ListItemIcon sx={{ minWidth: 24 }}>•</ListItemIcon>
-                    <ListItemText primaryTypographyProps={{ variant: 'caption' }} primary="Support ongoing development" />
+                    <ListItemText sx={{ typography: 'caption' }} primary="Support ongoing development" />
                   </ListItem>
                 </List>
               </CardContent>
@@ -182,6 +181,13 @@ export default function FirstLoadWarningDialog({ open, onClose, onOpenRegister }
           Got It!
         </Button>
       </DialogActions>
+
     </Dialog>
   );
 }
+
+FirstLoadWarningDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onOpenRegister: PropTypes.func,
+};

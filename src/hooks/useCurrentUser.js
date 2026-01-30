@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { getBackendApiBase } from '../utils/backendApi';
+import { getBackendApiBase } from '../utils/backendApi.js';
 const backendBase = getBackendApiBase();
 
 export function useCurrentUser(token) {

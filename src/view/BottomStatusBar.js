@@ -1,8 +1,9 @@
 import React from 'react';
-import PropTypes from 'prop-types';
-import GridMouseTracker from './GridMouseTracker';
+import GridMouseTracker from './GridMouseTracker.js';
+import { useGameStore } from '../store/useGameStore.js';
 
-function BottomStatusBar({ cursorCell }) {
+function BottomStatusBar() {
+  const cursorCell = useGameStore(state => state.cursorCell);
   return (
     <div
       style={{
@@ -23,11 +24,6 @@ function BottomStatusBar({ cursorCell }) {
   );
 }
 
-BottomStatusBar.propTypes = {
-  cursorCell: PropTypes.shape({
-    x: PropTypes.number,
-    y: PropTypes.number
-  })
-};
+
 
 export default BottomStatusBar;

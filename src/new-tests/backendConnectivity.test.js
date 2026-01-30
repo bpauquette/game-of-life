@@ -1,6 +1,6 @@
 // Debug: print the environment variable at test startup
-// eslint-disable-next-line no-console
-import { checkBackendHealth } from '../utils/backendApi';
+ 
+import { checkBackendHealth } from '../utils/backendApi.js';
 console.log('[TEST] process.env.REACT_APP_API_BASE:', process.env.REACT_APP_API_BASE);
 
 describe('Backend connectivity', () => {

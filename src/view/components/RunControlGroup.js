@@ -22,11 +22,11 @@ export default function RunControlGroup({
   snapshotsRef,
   setSteadyInfo,
   confirmOnClear = true,
-  // Engine mode props (Hashlife UI disabled; always normal)
+  // Engine mode props
   engineMode = 'normal',
-  isHashlifeMode = false,
   onStartNormalMode,
-  onStopAllEngines
+  onStopAllEngines,
+  onSetEngineMode
 }) {
 
   
@@ -43,8 +43,9 @@ export default function RunControlGroup({
     // Always stop the simulation when clearing the grid
     try {
       setIsRunning(false);
-    } catch {
+    } catch (e) {
       // ignore if setter is unavailable in tests
+      console.warn('setIsRunning(false) failed in handleConfirmClear:', e);
     }
     clear();
     draw();
@@ -65,9 +66,37 @@ export default function RunControlGroup({
       data-testid="run-control-group"
       aria-label="Run controls"
     >
+
       <Stack direction="row" spacing={0.5} alignItems="center">
-        {/* Engine selection and Hashlife controls are temporarily disabled; UI
-            always uses the normal engine. */}
+        {/* Engine selection dropdown */}
+        <Tooltip title="Select simulation engine">
+          <Box>
+            <select
+              aria-label="Engine mode"
+              value={engineMode}
+              onChange={e => {
+                if (typeof onSetEngineMode === 'function') {
+                  onSetEngineMode(e.target.value);
+                }
+              }}
+              style={{
+                fontSize: '0.9rem',
+                padding: '2px 8px',
+                borderRadius: 4,
+                border: '1px solid #888',
+                background: '#222',
+                color: '#fff',
+                marginRight: 8,
+                minWidth: 90
+              }}
+              data-testid="engine-mode-select"
+            >
+              <option value="normal">Normal</option>
+              <option value="hashlife">Hashlife</option>
+            </select>
+          </Box>
+        </Tooltip>
+
         {/* Step button - only for normal engine */}
         {engineMode === 'normal' && (
           <Tooltip title="Step once">
@@ -100,18 +129,18 @@ export default function RunControlGroup({
             aria-label={isRunning ? 'stop' : 'start'}
             color={isRunning ? 'error' : 'primary'}
             onClick={() => {
-              try { console.debug('[RunControlGroup] play button clicked', { isRunning, hasStart: !!onStartNormalMode, hasStop: !!onStopAllEngines }); } catch (e) {}
+              try { console.debug('[RunControlGroup] play button clicked', { isRunning, hasStart: !!onStartNormalMode, hasStop: !!onStopAllEngines }); } catch (e) { console.warn('Debug log failed:', e); }
               if (isRunning) {
                 if (typeof onStopAllEngines === 'function') {
                   onStopAllEngines();
                 } else {
-                  try { setIsRunning(false); } catch (e) {}
+                  try { setIsRunning(false); } catch (e) { console.warn('setIsRunning(false) failed:', e); }
                 }
               } else {
                 if (typeof onStartNormalMode === 'function') {
                   onStartNormalMode();
                 } else {
-                  try { setIsRunning(true); } catch (e) {}
+                  try { setIsRunning(true); } catch (e) { console.warn('setIsRunning(true) failed:', e); }
                 }
               }
             }}
@@ -171,8 +200,9 @@ export default function RunControlGroup({
                 // immediate clear without confirmation
                 try {
                   setIsRunning(false);
-                } catch {
+                } catch (e) {
                   // ignore if setter is unavailable in tests
+                  console.warn('setIsRunning(false) failed:', e);
                 }
                 clear();
                 draw();
@@ -181,11 +211,12 @@ export default function RunControlGroup({
                 // UI-level session reset: clear population history and any cached
                 // stability/performance state so charts and gauges start fresh.
                 try {
-                  if (typeof window.dispatchEvent === 'function') {
-                    window.dispatchEvent(new CustomEvent('gol:sessionCleared'));
+                  if (typeof globalThis.dispatchEvent === 'function') {
+                    globalThis.dispatchEvent(new CustomEvent('gol:sessionCleared'));
                   }
-                } catch {
-                  // ignore if CustomEvent/window is unavailable (e.g. tests)
+                } catch (e) {
+                  // ignore if CustomEvent/globalThis is unavailable (e.g. tests)
+                  console.warn('globalThis.dispatchEvent failed:', e);
                 }
               }
             }}
@@ -225,11 +256,11 @@ RunControlGroup.propTypes = {
   engineMode: PropTypes.oneOf(['normal', 'hashlife']),
   isHashlifeMode: PropTypes.bool,
   onStartNormalMode: PropTypes.func,
-  onStartHashlifeMode: PropTypes.func,
   onStopAllEngines: PropTypes.func,
   onSetEngineMode: PropTypes.func,
   useHashlife: PropTypes.bool,
   // Hashlife batch size
   generationBatchSize: PropTypes.number,
-  onSetGenerationBatchSize: PropTypes.func
+  onSetGenerationBatchSize: PropTypes.func,
+  confirmOnClear: PropTypes.bool
 };

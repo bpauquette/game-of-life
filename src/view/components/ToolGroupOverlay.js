@@ -5,8 +5,8 @@ import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { Brush as BrushIcon, ShowChart as LineAxisIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Colorize as ColorizeIcon } from '@mui/icons-material';
-import OvalIcon from '../components/OvalIcon';
-import TOOL_DESCRIPTIONS from './toolDescriptions';
+import OvalIcon from '../components/OvalIcon.js';
+import TOOL_DESCRIPTIONS from './toolDescriptions.js';
 
 // Top-center overlay grouping all draw/pick tools
 export default function ToolGroupOverlay({ selectedTool, setSelectedTool }) {

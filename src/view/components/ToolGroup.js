@@ -3,31 +3,27 @@ import PropTypes from 'prop-types';
 import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import RubberEraserIcon from './icons/RubberEraserIcon';
-import TOOL_DESCRIPTIONS from './toolDescriptions';
+import RubberEraserIcon from './icons/RubberEraserIcon.js';
+import TOOL_DESCRIPTIONS from './toolDescriptions.js';
 // icons are imported above from @mui/icons-material
-import OvalIcon from '../components/OvalIcon';
+import OvalIcon from '../components/OvalIcon.js';
 import { Widgets as WidgetsIcon, Edit as EditIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Colorize as ColorizeIcon, HorizontalRule as HorizontalRuleIcon } from '@mui/icons-material';
 
 // ToolGroup groups the primary tools into a single, reusable control
-export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = false, shapesEnabled = true }) {
+export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = false }) {
   // On small screens (mobile portrait) hide less-essential tools to
   // preserve space and avoid accidental taps. When the device is rotated
   // sideways (landscape) show them again.
   const [isPortrait, setIsPortrait] = useState(() => {
-    try {
-      if (typeof window !== 'undefined' && window.matchMedia) {
-        return window.matchMedia('(orientation: portrait)').matches;
-      }
-    } catch (e) {
-      // ignore
+    if (typeof globalThis !== 'undefined' && globalThis.matchMedia) {
+      return globalThis.matchMedia('(orientation: portrait)').matches;
     }
     return false;
   });
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
-    const mq = window.matchMedia('(orientation: portrait)');
+    if (typeof globalThis === 'undefined' || !globalThis.matchMedia) return undefined;
+    const mq = globalThis.matchMedia('(orientation: portrait)');
     const handler = (ev) => setIsPortrait(ev.matches);
     try {
       if (typeof mq.addEventListener === 'function') mq.addEventListener('change', handler);
@@ -102,5 +98,6 @@ export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = fal
 ToolGroup.propTypes = {
   selectedTool: PropTypes.string,
   setSelectedTool: PropTypes.func.isRequired,
-  isSmall: PropTypes.bool
+  isSmall: PropTypes.bool,
+  shapesEnabled: PropTypes.bool
 };

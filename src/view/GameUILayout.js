@@ -1,231 +1,194 @@
 import React, { useCallback, useRef, useState, useLayoutEffect } from 'react';
-import PropTypes from 'prop-types';
-import HeaderBar from './HeaderBar';
-import PalettePortal from './PalettePortal';
-import CaptureDialogPortal from './CaptureDialogPortal';
-import MyShapesDialog from './MyShapesDialog';
-import ImportShapeDialog from './components/ImportShapeDialog';
-import RecentShapesDrawer from './RecentShapesDrawer';
-import StatisticsPanel from './StatisticsPanel';
-import BottomStatusBar from './BottomStatusBar';
+import { useToolDao } from '../model/dao/toolDao.js';
+import { useUiDao } from '../model/dao/uiDao.js';
+import { usePopulationDao } from '../model/dao/populationDao.js';
+import { useGameContext } from '../context/GameContext.js';
+import HeaderBar from './HeaderBar.js';
+import PalettePortal from './PalettePortal.js';
+import CaptureDialogPortal from './CaptureDialogPortal.js';
+import MyShapesDialog from './MyShapesDialog.js';
+import ImportShapeDialog from './components/ImportShapeDialog.jsx';
+import RecentShapesDrawer from './RecentShapesDrawer.js';
+import StatisticsPanel from './StatisticsPanel.js';
+import BottomStatusBar from './BottomStatusBar.js';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import { FullscreenExit as FullscreenExitIcon } from '@mui/icons-material';
-import SkipLink from './SkipLink';
-function GameUILayout({
-  recentShapes,
-  recentShapesPersistence,
-  onSaveRecentShapes,
-  onClearRecentShapes,
-  onSelectShape,
-  drawWithOverlay,
-  colorScheme,
-  selectedShape,
-  onRotateShape,
-  onSwitchToShapesTool,
-  controlsProps,
-  selectedTool,
-  uiState,
-  onClosePalette,
-  onPaletteSelect,
-  captureDialogOpen,
-  onCloseCaptureDialog,
-  captureData,
-  onSaveCapture,
-  myShapesDialogOpen,
-  onCloseMyShapesDialog,
-  onOpenMyShapes,
-  importDialogOpen,
-  onCloseImportDialog,
-  onOpenImportDialog,
-  onImportSuccess,
-  canvasRef,
-  cursorStyle,
-  cursorCell,
-  populationHistory,
-  onCloseChart,
-  isRunning,
-  showSpeedGauge,
-  onToggleSpeedGauge,
-  gameRef,
-  liveCellsCount,
-  generation,
-  sidebarOpen,
-  onToggleSidebar,
-  isSmall,
-  onToggleChrome,
-  shapesReady
-  ,
-  startPaletteDrag,
-  enableAdaCompliance
-}) {
+
+// Fallback SkipLink if not present
+import PropTypes from 'prop-types';
+const SkipLink = ({ href, children }) => (
+  <a href={href} style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}>{children}</a>
+);
+SkipLink.propTypes = {
+  href: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired
+};
+
+function GameUILayout(/* props */) {
+  // Use context for refs/controllers only
+  const { canvasRef, drawWithOverlay, gameRef, controlsProps } = useGameContext();
+
+  // Destructure needed props from controlsProps for use in JSX
+  const {
+    isRunning,
+    colorScheme,
+    selectedTool,
+    showSpeedGauge,
+    importDialogOpen,
+    onCloseImportDialog,
+    onOpenImportDialog,
+    cursorStyle
+  } = controlsProps || {};
+  // Tool state/actions from toolDao
+  const recentShapes = useToolDao(state => state.recentShapes);
+  const recentShapesPersistence = useToolDao(state => state.recentShapesPersistence);
+  const onSaveRecentShapes = useToolDao(state => state.onSaveRecentShapes);
+  const onClearRecentShapes = useToolDao(state => state.onClearRecentShapes);
+  const onSelectShape = useToolDao(state => state.onSelectShape);
+  const onRotateShape = useToolDao(state => state.onRotateShape);
+  const onSwitchToShapesTool = useToolDao(state => state.onSwitchToShapesTool);
+
+  // UI/dialog/palette state/actions from uiDao
+  const onClosePalette = useUiDao(state => state.onClosePalette);
+  const onPaletteSelect = useUiDao(state => state.onPaletteSelect);
+  const captureDialogOpen = useUiDao(state => state.captureDialogOpen);
+  const onCloseCaptureDialog = useUiDao(state => state.onCloseCaptureDialog);
+  const captureData = useUiDao(state => state.captureData);
+  const onSaveCapture = useUiDao(state => state.onSaveCapture);
+  const myShapesDialogOpen = useUiDao(state => state.myShapesDialogOpen);
+  const onCloseMyShapesDialog = useUiDao(state => state.onCloseMyShapesDialog);
+  const onOpenMyShapes = useUiDao(state => state.onOpenMyShapes);
+  const onImportSuccess = useUiDao(state => state.onImportSuccess);
+  const onCloseChart = useUiDao(state => state.onCloseChart);
+  const isSmall = useUiDao(state => state.isSmall);
+  const onToggleChrome = useUiDao(state => state.onToggleChrome);
+  const shapesReady = useUiDao(state => state.shapesReady);
+  const startPaletteDrag = useUiDao(state => state.startPaletteDrag);
+  // DialogDao (if still needed for dialog state)
+  // const captureDialogOpen = useDialogDao(state => state.captureDialogOpen);
+  // const setCaptureDialogOpen = useDialogDao(state => state.setCaptureDialogOpen);
+  // const captureData = useDialogDao(state => state.captureData);
+  // const setCaptureData = useDialogDao(state => state.setCaptureData);
+  // const myShapesDialogOpen = useDialogDao(state => state.myShapesDialogOpen);
+  // const setMyShapesDialogOpen = useDialogDao(state => state.setMyShapesDialogOpen);
+  // const importDialogOpen = useDialogDao(state => state.importDialogOpen);
+  // const setImportDialogOpen = useDialogDao(state => state.setImportDialogOpen);
+  // const sidebarOpen = useGameStore(state => state.sidebarOpen); // purged
+  const uiState = useUiDao(state => state.uiState);
+  const enableAdaCompliance = useUiDao(state => state.enableAdaCompliance);
+  // Population state from populationDao
+  const populationHistory = usePopulationDao(state => state.populationHistory);
+  const setPopulationHistory = usePopulationDao(state => state.setPopulationHistory);
+  const popWindowSize = usePopulationDao(state => state.popWindowSize);
+  const setPopWindowSize = usePopulationDao(state => state.setPopWindowSize);
+  const generation = usePopulationDao(state => state.generation);
+  const setGeneration = usePopulationDao(state => state.setGeneration);
+  const maxChartGenerations = usePopulationDao(state => state.maxChartGenerations);
+  const setMaxChartGenerations = usePopulationDao(state => state.setMaxChartGenerations);
+  // ...existing code...
+
+  // Robust canvas initialization: sets up size, scaling, and clears for zoom/resize/refresh
+  const initCanvas = useCallback(() => {
+    if (!canvasRef?.current) return;
+    const canvas = canvasRef.current;
+    // Get device pixel ratio for crisp rendering
+    const dpr = globalThis.devicePixelRatio || 1;
+    // Set canvas size to match container
+    const container = canvas.parentElement;
+    if (!container) return;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    // Only update if changed
+    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+    }
+    // Set transform for crisp scaling
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+    }
+    // Optionally trigger overlay redraw
+    if (typeof drawWithOverlay === 'function') {
+      drawWithOverlay();
+    }
+  }, [canvasRef, drawWithOverlay]);
+
   // measure header height so content is positioned correctly under it
   const headerRef = useRef(null);
-  const [headerTop, setHeaderTop] = useState((uiState?.showChrome ?? true) ? 104 : 0);
+  const [headerTop, setHeaderTop] = useState((uiState?.showUIControls ?? true) ? 104 : 0);
 
-  // helper to push small debug messages into the overlay buffer (if present)
-  const pushDebug = (obj) => {
-    try {
-      const text = typeof obj === 'string' ? obj : JSON.stringify(obj);
-      if (globalThis.__GOL_PUSH_CANVAS_LOG__) {
-        try { globalThis.__GOL_PUSH_CANVAS_LOG__(text); } catch (e) {}
-      } else {
-        globalThis.__GOL_CANVAS_LOGS__ = globalThis.__GOL_CANVAS_LOGS__ || [];
-        globalThis.__GOL_CANVAS_LOGS__.push({ ts: Date.now(), text });
-        try { globalThis.dispatchEvent && globalThis.dispatchEvent(new CustomEvent('__GOL_CANVAS_LOG_UPDATE')); } catch (e) {}
-      }
-    } catch (e) { /* ignore */ }
-  };
-
-  // Wrap the provided onToggleChrome so we automatically capture diagnostics
-  // before and after the UI chrome toggles. This reduces manual console work.
-  /* eslint-disable complexity */
   const handleToggleChrome = useCallback(() => {
-    try {
-      globalThis.__GOL_DUMP_CANVAS_STATE__ && globalThis.__GOL_DUMP_CANVAS_STATE__();
-    } catch (e) { pushDebug({ event: 'toggleChrome.before.error', error: String(e) }); }
-
-    try {
-      if (typeof onToggleChrome === 'function') onToggleChrome();
-    } catch (e) { pushDebug({ event: 'toggleChrome.invoke.error', error: String(e) }); }
-
-    // After layout change give the browser a frame or two and record the new state.
-    // Use double rAF to wait for layout & paint, then force an immediate resize
-    // and schedule a render to avoid intermediate paints at the wrong size.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        try {
-          const after = (globalThis.__GOL_DUMP_CANVAS_STATE__ && globalThis.__GOL_DUMP_CANVAS_STATE__()) || null;
-          pushDebug({ event: 'toggleChrome.after', after });
-        } catch (e) { pushDebug({ event: 'toggleChrome.after.error', error: String(e) }); }
-
-        // Also dispatch a resize event to make sure any listeners run
-        try { globalThis.dispatchEvent && globalThis.dispatchEvent(new Event('resize')); } catch (e) {}
-
-        // Compute final viewport size
-        let w = document.documentElement.clientWidth || document.body.clientWidth;
-        let h = document.documentElement.clientHeight || document.body.clientHeight;
-
-        // Preferred path: call renderer.forceResize then controller.requestRender
-        try {
-          const renderer = gameRef && gameRef.current && gameRef.current.view && gameRef.current.view.renderer;
-          const controller = gameRef && gameRef.current && gameRef.current.controller;
-          if (renderer && typeof renderer.forceResize === 'function') {
-            try { renderer.forceResize(w, h); } catch (e) { /* ignore */ }
-          } else if (globalThis.__GOL_FORCE_RESIZE__) {
-            try { globalThis.__GOL_FORCE_RESIZE__(); } catch (e) { /* ignore */ }
-          } else if (gameRef && gameRef.current && gameRef.current.view && typeof gameRef.current.view.resize === 'function') {
-            try { gameRef.current.view.resize(w, h); } catch (e) { /* ignore */ }
-          }
-
-          if (controller && typeof controller.requestRender === 'function') {
-            try { controller.requestRender(); } catch (e) { /* ignore */ }
-          } else {
-            // fallback: try a global helper that may trigger a render
-            try { if (globalThis.__GOL_REQUEST_RENDER__) globalThis.__GOL_REQUEST_RENDER__(); } catch (e) {}
-          }
-        } catch (e) {}
-      });
-    });
-  }, [onToggleChrome, gameRef]);
-  /* eslint-enable complexity */
+    if (typeof onToggleChrome === 'function') onToggleChrome();
+  }, [onToggleChrome]);
 
   useLayoutEffect(() => {
     const measure = () => {
       try {
         const h = headerRef.current ? headerRef.current.offsetHeight : 0;
-        setHeaderTop(h || ((uiState?.showChrome ?? true) ? 104 : 0));
+        setHeaderTop(h || ((uiState?.showUIControls ?? true) ? 104 : 0));
       } catch (e) {
-        setHeaderTop((uiState?.showChrome ?? true) ? 104 : 0);
+        setHeaderTop((uiState?.showUIControls ?? true) ? 104 : 0);
       }
+      // Re-init canvas on resize
+      initCanvas();
     };
     measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [uiState?.showChrome, isSmall]);
+    globalThis.addEventListener('resize', measure);
+    return () => globalThis.removeEventListener('resize', measure);
+  }, [uiState?.showUIControls, isSmall, initCanvas]);
+
+  // Init canvas on mount and when relevant state changes
+  useLayoutEffect(() => {
+    initCanvas();
+  }, [initCanvas]);
+
   return (
     <div className="canvas-container" style={{ height: '100vh', backgroundColor: 'var(--surface-0)' }}>
-      {/* Skip Links for Keyboard Navigation (ADA Compliance) */}
       <SkipLink href="#main-game-content">Skip to main content</SkipLink>
       <SkipLink href="#header-controls">Skip to controls</SkipLink>
-      
       <h1 style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}>
-        Conway's Game of Life - Interactive Cellular Automaton Simulator
+          Conway&apos;s Game of Life - Interactive Cellular Automaton Simulator
       </h1>
-      {(uiState?.showChrome ?? true) && (
-          <HeaderBar
+      {(uiState?.showUIControls ?? true) && (
+        <HeaderBar
           id="header-controls"
           tabIndex="-1"
           headerRef={headerRef}
           recentShapes={recentShapes}
-            recentShapesPersistence={recentShapesPersistence}
+          recentShapesPersistence={recentShapesPersistence}
           selectShape={onSelectShape}
           drawWithOverlay={drawWithOverlay}
-              startPaletteDrag={startPaletteDrag}
-        onRotateShape={onRotateShape}
-        onSwitchToShapesTool={onSwitchToShapesTool}
-            onSaveRecentShapes={onSaveRecentShapes}
+          startPaletteDrag={startPaletteDrag}
+          onRotateShape={onRotateShape}
+          onSwitchToShapesTool={onSwitchToShapesTool}
+          onSaveRecentShapes={onSaveRecentShapes}
           onClearRecentShapes={onClearRecentShapes}
           isRunning={isRunning}
-          setIsRunning={controlsProps?.setIsRunning}
-          step={controlsProps?.step}
-          draw={drawWithOverlay}
-          clear={controlsProps?.clear}
-          snapshotsRef={controlsProps?.snapshotsRef}
-          setSteadyInfo={controlsProps?.setSteadyInfo}
-          colorSchemes={controlsProps?.colorSchemes}
           colorScheme={colorScheme}
-          selectedShape={selectedShape}
-          colorSchemeKey={uiState?.colorSchemeKey || 'bio'}
-          setColorSchemeKey={controlsProps?.setColorSchemeKey}
-          popWindowSize={controlsProps?.popWindowSize}
-          setPopWindowSize={controlsProps?.setPopWindowSize}
-          popTolerance={controlsProps?.popTolerance}
-          setPopTolerance={controlsProps?.setPopTolerance}
-          showSpeedGauge={showSpeedGauge}
-          setShowSpeedGauge={controlsProps?.setShowSpeedGauge}
-          detectStablePopulation={controlsProps?.detectStablePopulation ?? false}
-          setDetectStablePopulation={controlsProps?.setDetectStablePopulation}
-          maxFPS={controlsProps?.maxFPS}
-          setMaxFPS={controlsProps?.setMaxFPS}
-          maxGPS={controlsProps?.maxGPS}
-          setMaxGPS={controlsProps?.setMaxGPS}
-          enableAdaCompliance={controlsProps?.enableAdaCompliance}
-          setEnableAdaCompliance={controlsProps?.setEnableAdaCompliance}
-
-          // Engine mode props
-          engineMode={controlsProps?.engineMode}
-          isHashlifeMode={controlsProps?.isHashlifeMode}
-          onStartNormalMode={controlsProps?.onStartNormalMode}
-          onStartHashlifeMode={controlsProps?.onStartHashlifeMode}
-          onStopAllEngines={controlsProps?.onStopAllEngines}
-          onSetEngineMode={controlsProps?.onSetEngineMode}
-          useHashlife={controlsProps?.useHashlife}
-          // Hashlife batch size
-          generationBatchSize={controlsProps?.generationBatchSize}
-          onSetGenerationBatchSize={controlsProps?.onSetGenerationBatchSize}
-          getLiveCells={controlsProps?.getLiveCells}
-          onLoadGrid={controlsProps?.onLoadGrid}
-          generation={generation}
-          setShowChart={controlsProps?.setShowChart}
-          onToggleSidebar={onToggleSidebar}
-          onToggleChrome={handleToggleChrome}
-          isSidebarOpen={sidebarOpen}
-          isSmall={isSmall}
           selectedTool={selectedTool}
-          setSelectedTool={controlsProps?.setSelectedTool}
+          showSpeedGauge={showSpeedGauge}
+          enableAdaCompliance={enableAdaCompliance}
+          generation={generation}
+          isSmall={isSmall}
           shapesReady={shapesReady}
           showToolsRow={true}
           onOpenMyShapes={onOpenMyShapes}
           onOpenImport={onOpenImportDialog}
+          onToggleChrome={handleToggleChrome}
         />
       )}
-  {/* main content: absolutely positioned below header and sized to fill remaining viewport */}
-  <div 
-    id="main-game-content"
-    tabIndex="-1"
-    style={{ position: 'absolute', top: (uiState?.showChrome ?? true) ? (headerTop || 0) : 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+      <div
+        id="main-game-content"
+        tabIndex="-1"
+        style={{ position: 'absolute', top: (uiState?.showUIControls ?? true) ? (headerTop || 0) : 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}
+      >
         <PalettePortal
           open={uiState?.paletteOpen ?? false}
           onClose={onClosePalette}
@@ -254,45 +217,51 @@ function GameUILayout({
         <canvas
           ref={el => {
             if (canvasRef) canvasRef.current = el;
-            if (el && typeof drawWithOverlay === 'function') {
-              drawWithOverlay();
+            if (el) {
+              initCanvas();
             }
           }}
+          onMouseDown={controlsProps?.handleMouseDown}
+          onMouseMove={controlsProps?.handleMouseMove}
+          onMouseUp={controlsProps?.handleMouseUp}
+          onPointerDown={controlsProps?.handleMouseDown}
+          onPointerMove={controlsProps?.handleMouseMove}
+          onPointerUp={controlsProps?.handleMouseUp}
           style={
-            !(uiState?.showChrome ?? true)
-              ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, cursor: cursorStyle, display: 'block', width: enableAdaCompliance ? '160px' : '100vw', height: enableAdaCompliance ? '160px' : '100vh', maxWidth: enableAdaCompliance ? '160px' : 'none', maxHeight: enableAdaCompliance ? '160px' : 'none', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', boxSizing: 'border-box', zIndex: 9999 }
-              : { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: cursorStyle, display: 'block', width: enableAdaCompliance ? '160px' : '100%', height: enableAdaCompliance ? '160px' : '100%', maxWidth: enableAdaCompliance ? '160px' : 'none', maxHeight: enableAdaCompliance ? '160px' : 'none', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', boxSizing: 'border-box' }
+            !(uiState?.showUIControls ?? true)
+              ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, cursor: typeof cursorStyle === 'string' ? cursorStyle : 'default', display: 'block', width: enableAdaCompliance ? '160px' : '100vw', height: enableAdaCompliance ? '160px' : '100vh', maxWidth: enableAdaCompliance ? '160px' : 'none', maxHeight: enableAdaCompliance ? '160px' : 'none', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', boxSizing: 'border-box', zIndex: 9999 }
+              : { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: typeof cursorStyle === 'string' ? cursorStyle : 'default', display: 'block', width: enableAdaCompliance ? '160px' : '100%', height: enableAdaCompliance ? '160px' : '100%', maxWidth: enableAdaCompliance ? '160px' : 'none', maxHeight: enableAdaCompliance ? '160px' : 'none', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', boxSizing: 'border-box' }
           }
         />
-        {(uiState?.showChrome ?? true) && isSmall && (
+        {(uiState?.showUIControls ?? true) && (
           <RecentShapesDrawer
-            open={sidebarOpen}
-            onClose={onToggleSidebar}
+            open={true}
+            onClose={() => {}}
             recentShapes={recentShapes}
             onSelectShape={(shape) => { onSelectShape(shape); onSwitchToShapesTool(); }}
             colorScheme={colorScheme}
           />
         )}
-        {(uiState?.showChrome ?? true) && (uiState?.showChart ?? false) && (
+        {(uiState?.showUIControls ?? true) && (uiState?.showChart ?? false) && (
           <StatisticsPanel
             open
             onClose={onCloseChart}
-            history={populationHistory}
-            isRunning={isRunning}
+            history={typeof populationHistory !== 'undefined' ? populationHistory : []}
             gameRef={gameRef}
+            setPopulationHistory={setPopulationHistory}
+            popWindowSize={popWindowSize}
+            setPopWindowSize={setPopWindowSize}
+            generation={generation}
+            setGeneration={setGeneration}
+            maxChartGenerations={maxChartGenerations}
+            setMaxChartGenerations={setMaxChartGenerations}
           />
         )}
-        {(uiState?.showChrome ?? true) && (
-          <BottomStatusBar cursorCell={cursorCell} />
+        {(uiState?.showUIControls ?? true) && (
+          <BottomStatusBar />
         )}
-        {/* Floating "Show controls" button appears only when the chrome is hidden
-            so it sits over the canvas and lets the user bring the header back. */}
-        {!(uiState?.showChrome ?? true) && (
-          // Ensure the floating "Show controls" button sits above the canvas
-          // when chrome is hidden. The canvas uses a very large z-index
-          // (9999) in the fullscreen-hidden style, so give this button a
-          // higher z-index and tuck it into the top-right corner of the
-          // viewport so it hovers over the canvas.
+        {/* Floating "Show controls" button appears only when the chrome is hidden */}
+        {!(uiState?.showUIControls ?? true) && (
           <Box sx={{ position: 'fixed', top: 8, right: 8, zIndex: 11000 }}>
             <Tooltip title="Show controls">
               <IconButton
@@ -311,50 +280,5 @@ function GameUILayout({
     </div>
   );
 }
-
-GameUILayout.propTypes = {
-  recentShapes: PropTypes.array,
-  recentShapesPersistence: PropTypes.object,
-  onSaveRecentShapes: PropTypes.func,
-  onSelectShape: PropTypes.func,
-  drawWithOverlay: PropTypes.func,
-  colorScheme: PropTypes.object,
-  selectedShape: PropTypes.object,
-  onRotateShape: PropTypes.func,
-  onSwitchToShapesTool: PropTypes.func,
-  controlsProps: PropTypes.object,
-  selectedTool: PropTypes.string,
-  uiState: PropTypes.object,
-  onClosePalette: PropTypes.func,
-  onPaletteSelect: PropTypes.func,
-  captureDialogOpen: PropTypes.bool,
-  onCloseCaptureDialog: PropTypes.func,
-  captureData: PropTypes.object,
-  onSaveCapture: PropTypes.func,
-  myShapesDialogOpen: PropTypes.bool,
-  importDialogOpen: PropTypes.bool,
-  onCloseImportDialog: PropTypes.func,
-  onOpenImportDialog: PropTypes.func,
-  onImportSuccess: PropTypes.func,
-  onCloseMyShapesDialog: PropTypes.func,
-  onOpenMyShapes: PropTypes.func,
-  canvasRef: PropTypes.object,
-  cursorStyle: PropTypes.string,
-  cursorCell: PropTypes.object,
-  populationHistory: PropTypes.array,
-  onCloseChart: PropTypes.func,
-  isRunning: PropTypes.bool,
-  showSpeedGauge: PropTypes.bool,
-  onToggleSpeedGauge: PropTypes.func,
-  gameRef: PropTypes.object,
-  liveCellsCount: PropTypes.number,
-  generation: PropTypes.number,
-  sidebarOpen: PropTypes.bool,
-  onToggleSidebar: PropTypes.func,
-  isSmall: PropTypes.bool,
-  onToggleChrome: PropTypes.func,
-  startPaletteDrag: PropTypes.func,
-  onClearRecentShapes: PropTypes.func,
-};
 
 export default GameUILayout;

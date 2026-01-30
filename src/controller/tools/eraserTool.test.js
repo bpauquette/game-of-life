@@ -1,4 +1,4 @@
-import { eraserTool } from './eraserTool';
+import { eraserTool } from './eraserTool.js';
 describe('eraserTool', () => {
   it('exports expected handlers', () => {
     expect(typeof eraserTool.onMouseDown).toBe('function');

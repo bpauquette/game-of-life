@@ -6,7 +6,7 @@
 // (nodeMemo/resultMemo) are in place for adding the optimized center-step
 // algorithm later.
 
-const { makeLeaf, makeNode, clearMemo } = require('./node');
+const { makeLeaf, makeNode, clearMemo } = require('./node.js');
 
 // Helper: convert flat cell array or array of {x,y} into Set of "x,y" strings
 function cellsToSet(cells) {
@@ -136,7 +136,7 @@ function clearEngineCache() {
 }
 
 // Memoized power-of-two stepping for nodes: cache results keyed by node.key
-const { resultMemo } = require('./node');
+const { resultMemo } = require('./node.js');
 
 // Helper: extract subnode of given level starting at target origin
 function extractSubnode(node, nodeOx, nodeOy, targetLevel, targetOx, targetOy) {

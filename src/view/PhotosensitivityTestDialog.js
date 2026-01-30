@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React, { useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -21,11 +22,11 @@ import Snackbar from '@mui/material/Snackbar';
  */
 export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCompliance = false }) {
   const [testing, setTesting] = useState(false);
-  const [progress, setProgress] = useState(0); // eslint-disable-line no-unused-vars
+  const [progress, setProgress] = useState(0);  
   const [result, setResult] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [testDuration, setTestDuration] = useState(0); // eslint-disable-line no-unused-vars
+  const [testDuration, setTestDuration] = useState(0);  
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Sync external open prop with internal state
@@ -129,7 +130,7 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
       
       let violationDetected = false;
       let violationType = null;
-      let violationTime = 0; // eslint-disable-line no-unused-vars
+      let violationTime = 0;  
 
       // Capture start time before defining completeTest function
       const startTime = Date.now();
@@ -433,3 +434,9 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
     </>
   );
 }
+
+PhotosensitivityTestDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  enableAdaCompliance: PropTypes.bool,
+};

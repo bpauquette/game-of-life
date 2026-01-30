@@ -340,7 +340,7 @@ function initializeGameWithAccessibility(canvasElement) {
   validateColorPalette(renderer.colorPalette);
   
   // Generate report on exit
-  window.addEventListener('beforeunload', () => {
+  globalThis.addEventListener('beforeunload', () => {
     const report = generateAccessibilityReport();
     console.log(report.summary);
     // Optionally: monitor.logToServer('/api/accessibility-metrics');

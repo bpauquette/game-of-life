@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import CaptureShapeDialog from './CaptureShapeDialog';
+import CaptureShapeDialog from './CaptureShapeDialog.js';
 
 function CaptureDialogPortal({ open, onClose, captureData, onSave }) {
   if (!open) return null;

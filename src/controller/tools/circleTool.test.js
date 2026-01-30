@@ -1,4 +1,4 @@
-import { circleTool } from './circleTool';
+import { circleTool } from './circleTool.js';
 describe('circleTool', () => {
   it('exports expected handlers', () => {
     expect(typeof circleTool.onMouseDown).toBe('function');

@@ -1,6 +1,6 @@
-/* eslint-env worker */
-import LiveCellIndex from '../model/liveCellIndex';
-import { step as gameStep } from '../model/gameLogic';
+/* global self */
+import LiveCellIndex from '../model/liveCellIndex.js';
+import { step as gameStep } from '../model/gameLogic.js';
 
 let currentState = new LiveCellIndex();
 
@@ -25,6 +25,11 @@ const performStep = (generations = 1) => {
 };
 
 self.addEventListener('message', (event) => {
+  // Only accept messages from the same origin (if origin is defined)
+  if (event.origin && event.origin !== self.origin) {
+    self.postMessage({ type: 'log', level: 'warn', message: `simulationWorker: rejected message from origin ${event.origin}` });
+    return;
+  }
   const msg = event.data || {};
   switch (msg.type) {
     case 'hydrate':

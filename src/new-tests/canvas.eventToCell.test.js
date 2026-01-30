@@ -1,4 +1,4 @@
-import { eventToCellFromCanvas } from '../../src/controller/utils/canvasUtils';
+import { eventToCellFromCanvas } from '../../src/controller/utils/canvasUtils.js';
 
 describe('eventToCellFromCanvas', () => {
   it('calculates integer cell coordinates from client event', () => {

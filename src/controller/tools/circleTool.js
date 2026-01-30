@@ -1,4 +1,4 @@
-import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
+import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes.js';
 
 // Helper function: compute circle perimeter using Bresenham/midpoint algorithm
 const computeCirclePerimeter = (cx, cy, r) => {
@@ -75,7 +75,7 @@ const computeCirclePerimeterFromBounds = (x0, y0, x1, y1) => {
 
 // Circle (perimeter-only) tool - commits on mouseup
 export const circleTool = {
-  getOverlay(state, cellSize) {
+  getOverlay(state) {
     if (!state.start || !state.last) return null;
     // Descriptor-based overlay: highlight absolute preview cells
     const cells = Array.isArray(state.preview) ? state.preview : [];
@@ -114,6 +114,7 @@ export const circleTool = {
 
   drawOverlay(ctx, state, cellSize, offset) {
     try {
+      // const cellSize = getCellSize(); // Removed unused variable assignment, kept parameter
       if (!state.start || !state.last) return;
       if (state.preview && state.preview.length > 0) {
         ctx.save();

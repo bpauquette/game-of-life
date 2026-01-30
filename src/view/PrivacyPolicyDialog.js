@@ -199,5 +199,10 @@ This privacy policy is effective as of January 8, 2026 and applies to all users 
         </Button>
       </DialogActions>
     </Dialog>
-  );
+	);
 }
+
+PrivacyPolicyDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+};

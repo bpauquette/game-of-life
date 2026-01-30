@@ -1,20 +1,21 @@
 // GameMVC.js - Main orchestrator for MVC pattern
 // Creates and coordinates Model, View, and Controller
 
-import { GameModel } from '../model/GameModel';
-import { colorSchemes } from '../model/colorSchemes';
-import { GameView } from '../view/GameView';
-import { GameController } from './GameController';
-import { drawTool } from './tools/drawTool';
-import { eraserTool } from './tools/eraserTool';
-import { lineTool } from './tools/lineTool';
-import { rectTool, squareTool } from './tools/rectTool';
-import { circleTool } from './tools/circleTool';
-import { ovalTool } from './tools/ovalTool';
-import { randomRectTool } from './tools/randomRectTool';
-import { shapesTool } from './tools/shapesTool';
-import { captureTool } from './tools/captureTool';
-import logger from './utils/logger';
+import { GameModel } from '../model/GameModel.js';
+import { colorSchemes } from '../model/colorSchemes.js';
+import { GameView } from '../view/GameView.js';
+import { GameController } from './GameController.js';
+import { drawTool } from './tools/drawTool.js';
+import { eraserTool } from './tools/eraserTool.js';
+import { lineTool } from './tools/lineTool.js';
+import { rectTool } from './tools/rectTool.js';
+import { squareTool } from './tools/squareTool.js';
+import { circleTool } from './tools/circleTool.js';
+import { ovalTool } from './tools/ovalTool.js';
+import { randomRectTool } from './tools/randomRectTool.js';
+import { shapesTool } from './tools/shapesTool.js';
+import { captureTool } from './tools/captureTool.js';
+import logger from './utils/logger.js';
 
 export class GameMVC {
   setSelectedTool(toolName) {
@@ -105,9 +106,9 @@ export class GameMVC {
     const enhancedCaptureTool = {
       ...captureTool,
       onCaptureComplete: (captureData) => {
+        // Debug: trace capture completion flow
+        logger.debug('[GameMVC] enhancedCaptureTool.onCaptureComplete', { cellCount: captureData?.cellCount, bounds: captureData?.originalBounds });
         try {
-          // Debug: trace capture completion flow
-          try { logger.debug('[GameMVC] enhancedCaptureTool.onCaptureComplete', { cellCount: captureData?.cellCount, bounds: captureData?.originalBounds }); } catch (e) { /* ignore */ }
           this.model.notifyObservers('captureCompleted', captureData);
         } catch (e) {
           logger.error('Failed to notify captureCompleted:', e);
@@ -117,7 +118,10 @@ export class GameMVC {
 
     this.controller.registerTool('capture', enhancedCaptureTool);
 
-    // Mark tools as loaded immediately
+    // Debug: log all registered tools
+    if (typeof console !== 'undefined') {
+      console.log('[GameMVC] Registered tools:', Object.keys(this.controller.toolMap));
+    }
     this.toolsLoaded = true;
   } catch (error) {
     logger.error('GameMVC: ❌ Error registering default tools:', error);
@@ -210,13 +214,13 @@ export class GameMVC {
       }
 
       if (!schemeObj) {
-        logger.warn && logger.warn('[GameMVC] setColorScheme: invalid scheme provided', colorScheme);
+        logger.warn?.('[GameMVC] setColorScheme: invalid scheme provided', colorScheme);
         return;
       }
 
       this.model.setColorSchemeModel(schemeObj);
     } catch (err) {
-      logger.error && logger.error('[GameMVC] setColorScheme failed:', err);
+      logger.error?.('[GameMVC] setColorScheme failed:', err);
     }
   }
 
@@ -327,8 +331,8 @@ export class GameMVC {
   }
 
   // Utility methods
-  isStable(windowSize, tolerance) {
-    return this.model.isStable(windowSize, tolerance);
+  isStable(globalThisSize, tolerance) {
+    return this.model.isStable(globalThisSize, tolerance);
   }
 
   detectPeriod(maxPeriod) {

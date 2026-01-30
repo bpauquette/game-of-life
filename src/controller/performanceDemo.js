@@ -72,7 +72,7 @@
  * 5. **Still lifes**: Nearly zero rendering cost after initial draw
  */
 
-import logger from './utils/logger';
+import logger from './utils/logger.js';
 
 logger.info(`
 🚀 GAME OF LIFE PERFORMANCE OPTIMIZATIONS ACTIVE

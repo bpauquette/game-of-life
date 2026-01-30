@@ -1,6 +1,8 @@
 // src/auth/ResetConfirm.jsx
+import React from 'react';
 import { useState } from "react";
-import { post } from "./api";
+import PropTypes from 'prop-types';
+import { post } from "./api.js";
 
 export default function ResetConfirm({ token }) {
   const [password, setPassword] = useState("");
@@ -30,3 +32,7 @@ export default function ResetConfirm({ token }) {
     </div>
   );
 }
+
+ResetConfirm.propTypes = {
+  token: PropTypes.string.isRequired,
+};

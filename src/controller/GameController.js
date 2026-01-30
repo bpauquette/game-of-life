@@ -1,6 +1,6 @@
-import { eraserTool } from './tools/eraserTool';
-import logger from './utils/logger';
-import StepScheduler from './StepScheduler';
+import { eraserTool } from './tools/eraserTool.js';
+import logger from './utils/logger.js';
+import StepScheduler from './StepScheduler.js';
 const CONST_SHAPES = 'shapes';
 // GameController.js - Controller layer for Conway's Game of Life
 // Handles user interactions, game loop, and coordination between Model and View
@@ -61,31 +61,7 @@ export class GameController {
     this.registerTool('eraser', eraserTool);
   }
 
-  // Lazy-initialize scheduler on first use
-  _getScheduler() {
-    if (!this.scheduler) {
-      try { console.debug('[GameController] creating StepScheduler', { maxFPS: this.performanceCaps.maxFPS, maxGPS: this.performanceCaps.maxGPS, useWebWorker: this.performanceCaps.useWebWorker }); } catch (e) {}
-      const preferWorker = !!this.performanceCaps.useWebWorker || (typeof Worker !== 'undefined' && !(typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test'));
-      this.scheduler = new StepScheduler(() => this.model.step(), {
-        maxFPS: this.performanceCaps.maxFPS,
-        maxGPS: this.performanceCaps.maxGPS,
-        useWorker: preferWorker,
-        onPerformance: (frameTime) => {
-          if (globalThis.speedGaugeTracker) {
-            globalThis.speedGaugeTracker(frameTime, frameTime);
-          }
-          for (const callback of this.performanceCallbacks) {
-            callback(frameTime);
-          }
-        }
-      });
-      // Keep controller-level references in sync with scheduler
-      // so tests and consumers can inspect the active loop mechanism.
-      // Note: StepScheduler manages its own `animationId` and `worker`.
-      // We will mirror those after start/stop calls.
-    }
-    return this.scheduler;
-  }
+  // Duplicate _getScheduler removed
 
   // Record diff: push cells to undo stack and clear redo
   recordDiff(cells) {
@@ -204,26 +180,20 @@ export class GameController {
       if (!cellCoords) return;
       this.handleMouseDown(cellCoords, event);
     });
-
     this.view.on('mouseMove', ({ cellCoords, event }) => {
       if (!cellCoords) return;
       this.handleMouseMove(cellCoords, event);
     });
-
-    this.view.on('mouseUp', ({ cellCoords, event }) => {
-      if (!cellCoords) return;
-      this.handleMouseUp(cellCoords, event);
+    this.view.on('mouseUp', () => {
+      this.handleToolMouseUp();
     });
-
     this.view.on('click', ({ cellCoords, event }) => {
       if (!cellCoords) return;
       this.handleClick(cellCoords, event);
     });
-
-    this.view.on('wheel', ({ cellCoords, deltaY, event }) => {
+    this.view.on('wheel', ({ deltaY, event }) => {
       this.handleWheel(deltaY, event);
     });
-
     // Two-finger pan from touch/pointer gestures
     this.view.on('gesturePan', ({ dx, dy }) => {
       this.handleGesturePan(dx, dy);
@@ -231,12 +201,10 @@ export class GameController {
     this.view.on('pinchZoom', ({ scaleDelta, center }) => {
       this.handlePinchZoom(scaleDelta, center);
     });
-
     this.view.on('keyDown', ({ key, shiftKey, event }) => {
       this.handleKeyDown(key, shiftKey, event);
     });
-
-    this.view.on('resize', ({ width, height }) => {
+    this.view.on('resize', () => {
       this.requestRender();
     });
   }
@@ -295,23 +263,17 @@ export class GameController {
     if (!this.toolMap[toolName]) return;
     // Temporary instrumentation: record tool selection into the on-page
     // debug buffer so it's visible when diagnosing rendering regressions.
-    try {
-      const before = this.model && typeof this.model.getSelectedTool === 'function' ? this.model.getSelectedTool() : null;
-      const info = { event: 'controller.setSelectedTool.before', toolName, before, ts: Date.now() };
-      try { globalThis.__GOL_PUSH_CANVAS_LOG__ && globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info)); } catch (e) {}
-    } catch (e) {}
+    const before = this.model && typeof this.model.getSelectedTool === 'function' ? this.model.getSelectedTool() : null;
+    const info = { event: 'controller.setSelectedTool.before', toolName, before, ts: Date.now() };
+    if (globalThis.__GOL_PUSH_CANVAS_LOG__) globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info));
     logger.debug(`[GameController] setSelectedTool: toolName=${toolName}`);
     const prevTool = this.model.getSelectedTool();
     this.model.setSelectedToolModel(toolName);
 
     // If switching away from the shapes tool, clear the selected shape
     // so overlays and selection state tied to shapes are removed.
-    try {
-      if (prevTool === CONST_SHAPES && toolName !== CONST_SHAPES) {
-        this.setSelectedShape(null);
-      }
-    } catch (e) {
-      // swallow any error to avoid breaking tool switch
+    if (prevTool === CONST_SHAPES && toolName !== CONST_SHAPES) {
+      this.setSelectedShape(null);
     }
     // If user selects the capture (pick) tool, pause the simulation for precise selection
     if (toolName === 'capture' && this.model.getIsRunning?.() === true) {
@@ -320,11 +282,9 @@ export class GameController {
     // Always update overlay after tool change
     this.updateToolOverlay();
 
-    try {
-      const after = this.model && typeof this.model.getSelectedTool === 'function' ? this.model.getSelectedTool() : null;
-      const info2 = { event: 'controller.setSelectedTool.after', toolName, after, ts: Date.now() };
-      try { globalThis.__GOL_PUSH_CANVAS_LOG__ && globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info2)); } catch (e) {}
-    } catch (e) {}
+    const after = this.model && typeof this.model.getSelectedTool === 'function' ? this.model.getSelectedTool() : null;
+    const info2 = { event: 'controller.setSelectedTool.after', toolName, after, ts: Date.now() };
+    if (globalThis.__GOL_PUSH_CANVAS_LOG__) globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info2));
   }
 
   getSelectedTool() {
@@ -416,7 +376,7 @@ export class GameController {
     }
   }
 
-  handleMouseMove(cellCoords, event) {
+  handleMouseMove(cellCoords) {
     this.model.setCursorPositionModel(cellCoords);
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
@@ -456,7 +416,7 @@ export class GameController {
     this._setToolState({ last: lastPoint }, { updateOverlay: !!tool?.getOverlay });
   }
 
-  handleMouseUp(cellCoords, event) {
+  handleMouseUp(cellCoords) {
     this.mouseState.isDown = false;
     this.mouseState.button = undefined;
     this.handleToolMouseUp(cellCoords);
@@ -564,7 +524,7 @@ export class GameController {
     } else if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape()) {
       // Guard against duplicate placements: if we just placed via mouseup,
       // the click event may fire immediately after. Ignore clicks within
-      // a short window after a placement.
+      // a short globalThis after a placement.
       const now = Date.now();
       if (this._lastPlacementAt && (now - this._lastPlacementAt) < 350) {
         // ignore duplicate click
@@ -595,7 +555,7 @@ export class GameController {
   }
 
   calculateNewCellSize(currentSize, zoomDirection) {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = globalThis.devicePixelRatio || 1;
     const minCellSize = 1 / dpr;
     const maxCellSize = 200;
     const factor = zoomDirection < 0 ? this.options.zoomFactor : 1 / this.options.zoomFactor;
@@ -638,7 +598,7 @@ export class GameController {
     const currentSize = this.view.renderer.viewport.cellSize || 8; // Get cellSize from renderer
     const effectiveScale = Math.min(Math.max(scaleDelta, 0.5), 2);
     let nextSize = currentSize * effectiveScale;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = globalThis.devicePixelRatio || 1;
     const minCellSize = 1 / dpr;
     const maxCellSize = 200;
     nextSize = Math.min(Math.max(nextSize, minCellSize), maxCellSize);
@@ -826,7 +786,7 @@ export class GameController {
     this.model.clear();
     this.clearToolState();
     // Also clear any selected shape when the board is cleared
-    try { this.setSelectedShape(null); } catch (e) { /* ignore */ }
+    this.setSelectedShape(null);
   }
 
   // Reset transient tool state and clear overlay
@@ -858,11 +818,11 @@ export class GameController {
   }
 
   handleRunningStateChange(isRunning) {
-    try { console.debug('[GameController] handleRunningStateChange:', isRunning); } catch (err) { console.warn('[GameController] debug log failed', err); }
+    console.debug('[GameController] handleRunningStateChange:', isRunning);
     const scheduler = this._getScheduler();
     // Defensive check: ensure scheduler has expected methods
     if (!scheduler || typeof scheduler !== 'object') {
-      try { console.warn('[GameController] No scheduler instance available:', scheduler); } catch (err) { console.warn('[GameController] warn log failed', err); }
+      console.warn('[GameController] No scheduler instance available:', scheduler);
       return;
     }
 
@@ -870,7 +830,7 @@ export class GameController {
       if (typeof scheduler.start === 'function') {
         scheduler.start();
       } else {
-        try { console.warn('[GameController] scheduler.start is not a function:', scheduler); } catch (err) { console.warn('[GameController] warn log failed', err); }
+        console.warn('[GameController] scheduler.start is not a function:', scheduler);
         return;
       }
       // Mirror scheduler state
@@ -880,7 +840,7 @@ export class GameController {
       if (typeof scheduler.stop === 'function') {
         scheduler.stop();
       } else {
-        try { console.warn('[GameController] scheduler.stop is not a function; skipping call', scheduler); } catch (err) { console.warn('[GameController] warn log failed', err); }
+        console.warn('[GameController] scheduler.stop is not a function; skipping call', scheduler);
       }
       this.animationId = scheduler.animationId;
       this.worker = scheduler.worker;
@@ -941,7 +901,7 @@ export class GameController {
 
   applyPerformanceSettings(settings = {}) {
     if (!settings || typeof settings !== 'object') return;
-    try { console.debug(`[GameController.applyPerformanceSettings] Called with:`, settings); } catch (e) {}
+    console.debug(`[GameController.applyPerformanceSettings] Called with:`, settings);
 
     let capsChanged = false;
 
@@ -987,44 +947,42 @@ export class GameController {
     if (capsChanged && this.scheduler) {
       this.scheduler.setMaxFPS(this.performanceCaps.maxFPS);
       this.scheduler.setMaxGPS(this.performanceCaps.maxGPS);
-      try { console.debug(`[GameController] Caps updated via scheduler`); } catch (e) {}
+      console.debug(`[GameController] Caps updated via scheduler`);
     }
   }
 
-  _getLoopRate() {
-    // Deprecated: delegated to scheduler
-    if (!this.performanceCaps.enableFPSCap && !this.performanceCaps.enableGPSCap) {
-      return 60;
+  _getScheduler() {
+    if (!this.scheduler) {
+      console.debug('[GameController] creating StepScheduler', { maxFPS: this.performanceCaps.maxFPS, maxGPS: this.performanceCaps.maxGPS, useWebWorker: this.performanceCaps.useWebWorker });
+      const preferWorker = !!this.performanceCaps.useWebWorker || (typeof Worker !== 'undefined' && !(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.MODE === 'test'));
+      // In browser, import.meta.env.MODE is the correct way to check mode
+      this.scheduler = new StepScheduler(() => this.model.step(), {
+        maxFPS: this.performanceCaps.maxFPS,
+        maxGPS: this.performanceCaps.maxGPS,
+        useWorker: preferWorker,
+        onPerformance: (frameTime) => {
+          if (globalThis.speedGaugeTracker) {
+            globalThis.speedGaugeTracker(frameTime, frameTime);
+          }
+          for (const callback of this.performanceCallbacks) {
+            callback(frameTime);
+          }
+        }
+      });
+      // Keep controller-level references in sync with scheduler
+      // so tests and consumers can inspect the active loop mechanism.
+      // Note: StepScheduler manages its own `animationId` and `worker`.
+      // We will mirror those after start/stop calls.
     }
-    const fps = this.performanceCaps.enableFPSCap ? Math.max(1, this.performanceCaps.maxFPS || 60) : Infinity;
-    const gps = this.performanceCaps.enableGPSCap ? Math.max(1, this.performanceCaps.maxGPS || 30) : Infinity;
-    const rate = Math.min(fps, gps);
-    return Number.isFinite(rate) && rate > 0 ? rate : 60;
+    return this.scheduler;
   }
 
-  // Rendering
-  requestRender() {
-    // Coalesce multiple requestRender calls into a single animation frame
-    // Instrument the moment a new render is scheduled (only when scheduling,
-    // not on subsequent coalesced calls) so we can trace interactive tool
-    // selections that should cause a render.
-    if (this.renderScheduled) return;
-    
-    // Apply FPS throttling for ADA compliance
-    const now = Date.now();
-    const minRenderInterval = this.performanceCaps?.enableFPSCap && this.performanceCaps?.maxFPS > 0
-      ? 1000 / this.performanceCaps.maxFPS
-      : 0;
-    
+  requestRender(now = Date.now(), minRenderInterval = 0) {
     if (minRenderInterval > 0 && this._lastRenderTime && (now - this._lastRenderTime) < minRenderInterval) {
-      // Too soon - skip this render request
       return;
     }
-    
-    try {
-      const info = { event: 'controller.requestRender.scheduled', ts: Date.now(), selectedTool: this.model?.getSelectedTool?.() };
-      try { globalThis.__GOL_PUSH_CANVAS_LOG__ && globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info)); } catch (e) {}
-    } catch (e) {}
+    const info = { event: 'controller.requestRender.scheduled', ts: Date.now(), selectedTool: this.model?.getSelectedTool?.() };
+    if (globalThis.__GOL_PUSH_CANVAS_LOG__) globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info));
     this.renderScheduled = true;
 
     const doRender = () => {

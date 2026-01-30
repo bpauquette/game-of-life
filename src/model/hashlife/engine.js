@@ -4,7 +4,10 @@
 // engine uses a combination of brute-force stepping for small regions and a
 // memoized center-step algorithm for larger power-of-two squares.
 
-const { makeLeaf, makeNode, clearMemo } = require('./node');
+import { makeLeaf, makeNode, clearMemo } from './node.js';
+
+// Memoized power-of-two stepping for nodes: cache results keyed by node.key
+import { resultMemo } from './node.js';
 // Only use makeLeaf and makeNode where needed, do not leave unused
 
 // Helper: convert flat cell array or array of {x,y} into Set of "x,y" strings
@@ -145,9 +148,6 @@ function advanceBrute(cells, n, onProgress) {
 function clearEngineCache() {
     clearMemo();
 }
-
-// Memoized power-of-two stepping for nodes: cache results keyed by node.key
-const { resultMemo } = require('./node');
 
 // Helper: extract subnode of given level starting at target origin
 function extractSubnode(node, nodeOx, nodeOy, targetLevel, targetOx, targetOy) {
@@ -339,7 +339,7 @@ async function advance(cells, n, onProgress) {
             progressed += topStep;
             remaining -= topStep;
             if (progressCb) {
-                try { progressCb({ generation: progressed, cells: currentCells }); } catch (e) { }
+                try { progressCb({ generation: progressed, cells: currentCells }); } catch (e) { /* no-op */ }
             }
         } else {
             // The node is larger than the remaining steps; fall back to brute force.
@@ -354,7 +354,7 @@ async function advance(cells, n, onProgress) {
                     ? (p) => {
                         if (!p) return;
                         const gen = typeof p.generation === 'number' ? baseProgress + p.generation : baseProgress;
-                        try { progressCbLocal({ generation: gen, cells: p.cells || [] }); } catch (e) { }
+                        try { progressCbLocal({ generation: gen, cells: p.cells || [] }); } catch (e) { /* no-op */ }
                     }
                     : null
             );
@@ -372,10 +372,5 @@ async function advance(cells, n, onProgress) {
     return { tree: finalTreeObj.node, originX: finalTreeObj.originX, originY: finalTreeObj.originY, cells: currentCells, generations: progressed };
 }
 
-module.exports = {
-    buildTreeFromCells,
-    nodeToCells,
-    advance,
-    clearEngineCache
-};
+export { buildTreeFromCells, nodeToCells, advance, clearEngineCache };
 

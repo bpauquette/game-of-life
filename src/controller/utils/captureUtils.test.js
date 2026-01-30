@@ -4,7 +4,7 @@ import {
   validateCapture, 
   generateCapturePreview, 
   getCaptureCenter 
-} from './captureUtils';
+} from './captureUtils.js';
 
 describe('captureUtils', () => {
   it('exports all expected functions', () => {

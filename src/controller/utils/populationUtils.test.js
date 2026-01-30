@@ -1,4 +1,4 @@
-import isPopulationStable from './populationUtils';
+import isPopulationStable from './populationUtils.js';
 
 describe('isPopulationStable', () => {
   it('returns true for stable population', () => {

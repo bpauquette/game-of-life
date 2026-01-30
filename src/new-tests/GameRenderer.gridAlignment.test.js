@@ -5,7 +5,7 @@
   - A cell at (0,0) is drawn at the expected screen position for various offsets
 */
 
-import { GameRenderer } from '../../src/view/GameRenderer';
+import { GameRenderer } from '../../src/view/GameRenderer.js';
 
 function createMockCanvas({ width = 500, height = 400 } = {}) {
   const ctxCalls = { fillRects: [], strokes: [], drawImages: [], moves: [], lines: [] };

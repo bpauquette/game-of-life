@@ -8,8 +8,9 @@ import Typography from '@mui/material/Typography';
 import { Close as CloseIcon } from '@mui/icons-material';
 import Drawer from '@mui/material/Drawer';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import PopulationChart from './PopulationChart';
-import SpeedGauge from './SpeedGauge';
+import PopulationChart from './PopulationChart.js';
+import SpeedGauge from './SpeedGauge.js';
+import { useGameDao } from '../model/dao/gameDao.js';
 
 /**
  * StatisticsPanel: shows PopulationChart and Performance Gauge together.
@@ -19,9 +20,9 @@ export default function StatisticsPanel({
   open,
   onClose,
   history,
-  isRunning,
   gameRef
 }) {
+  const isRunning = useGameDao(state => state.isRunning);
   // Hooks must be called unconditionally
   const isSmall = useMediaQuery('(max-width:900px)');
 

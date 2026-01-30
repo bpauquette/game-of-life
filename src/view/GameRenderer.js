@@ -6,9 +6,10 @@ const safeToken = (name, fallback) => {
   try {
     const root = globalThis.document?.documentElement;
     if (!root) return fallback;
-    const v = globalThis.getComputedStyle(root).getPropertyValue(name);
-    return (v && v.trim()) || fallback;
+    const v = globalThis.getComputedStyle(root)?.getPropertyValue?.(name);
+    return v?.trim?.() || fallback;
   } catch (e) {
+    console.warn('Exception caught in safeToken:', e);
     return fallback;
   }
 };
@@ -32,6 +33,8 @@ export class GameRenderer {
     } catch (e) {
       if (typeof console !== 'undefined' && typeof console.warn === 'function') {
         console.warn('GameRenderer: failed to get 2D context, falling back to noop context.', e);
+      } else {
+        // fallback if console.warn is not available
       }
       ctx = null;
     }
@@ -78,20 +81,20 @@ export class GameRenderer {
 
   // Enable verbose renderer logs only when explicitly requested to avoid
   // spamming the console during normal development. Can be enabled with
-  // options.debugLogs or the global flag `window.GOL_DEBUG_CANVAS`.
-  this._enableLogs = !!(options && options.debugLogs) || !!globalThis.GOL_DEBUG_CANVAS || !!globalThis.__GOL_DEBUG_CANVAS__;
+  // options.debugLogs or the global flag `globalThis.GOL_DEBUG_CANVAS`.
+  this._enableLogs = !!options?.debugLogs || !!globalThis.GOL_DEBUG_CANVAS || !!globalThis.__GOL_DEBUG_CANVAS__;
   // Setup high-DPI rendering
   this.setupHighDPI();
   }
 
   // Internal immediate resize implementation (used by debounce and tests)
-  /* eslint-disable complexity */
+   
   _doResizeImmediate(width, height) {
     // Clear any existing scaling (guard if ctx missing)
     if (this.ctx && typeof this.ctx.setTransform === CONST_FUNCTION) {
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = globalThis.globalThis?.devicePixelRatio || 1;
 
     // Ensure minimum size
     width = Math.max(width, 200);
@@ -109,7 +112,7 @@ export class GameRenderer {
     this.canvas.style.height = styleHeight + 'px';
     // Make sure canvas participates as a block-level element to avoid
     // inline whitespace/layout surprises
-    try { this.canvas.style.display = this.canvas.style.display || 'block'; } catch (e) {}
+    try { this.canvas.style.display = this.canvas.style.display || 'block'; } catch (e) { console.warn('Exception caught in set canvas style.display:', e); }
 
     // Defensive clear/fill of the backing buffer (operate in device pixels)
     try {
@@ -130,6 +133,7 @@ export class GameRenderer {
       }
     } catch (e) {
       // Non-fatal: continue to scale and draw even if clearing fails
+      console.warn('Exception caught in clear/fill backing buffer:', e);
     }
 
     // Scale for high-DPI (guard)
@@ -285,20 +289,22 @@ export class GameRenderer {
    * Setup high-DPI (retina) display support
    */
   setupHighDPI() {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = globalThis.globalThis?.devicePixelRatio || 1;
     const { displayWidth, displayHeight } = this._getDisplaySize();
     this._setCanvasSize(displayWidth, displayHeight, dpr);
     this._scaleContextForDPI(dpr);
     this.viewport.width = displayWidth;
     this.viewport.height = displayHeight;
     try {
-      const info = { phase: 'setupHighDPI', dpr, displayWidth, displayHeight, canvasClient: this.canvas.getBoundingClientRect && this.canvas.getBoundingClientRect() };
+      const info = { phase: 'setupHighDPI', dpr, displayWidth, displayHeight, canvasClient: this.canvas.getBoundingClientRect?.() };
   if (this._enableLogs && console && typeof console.info === 'function') console.info('[GameRenderer] setupHighDPI', info);
       try {
         globalThis.__GOL_PUSH_CANVAS_LOG__?.(JSON.stringify(info));
       } catch (e) {
         if (typeof console !== 'undefined' && typeof console.debug === 'function') {
           console.debug(DEBUG_PUSH_LOG_FAILED, e);
+        } else {
+          console.warn('Exception caught in setupHighDPI (push log):', e);
         }
       }
     } catch (e) {
@@ -337,14 +343,14 @@ export class GameRenderer {
     const styleH = Math.ceil(Math.max(displayHeight || 0, 200));
     this.canvas.style.width = styleW + 'px';
     this.canvas.style.height = styleH + 'px';
-    try { this.canvas.style.display = this.canvas.style.display || 'block'; } catch (e) {}
+    try { this.canvas.style.display = this.canvas.style.display || 'block'; } catch (e) { console.warn('Exception caught in _setCanvasSize (style.display):', e); }
 
     // Backing buffer must be at least as large as the displayed size in device pixels
     this.canvas.width = Math.ceil(styleW * dpr);
     this.canvas.height = Math.ceil(styleH * dpr);
 
     try {
-      const rect = this.canvas.getBoundingClientRect && this.canvas.getBoundingClientRect();
+      const rect = this.canvas.getBoundingClientRect?.();
       const info = { phase: '_setCanvasSize', displayWidth, displayHeight, dpr, backingWidth: this.canvas.width, backingHeight: this.canvas.height, styleW: this.canvas.style.width, styleH: this.canvas.style.height, clientRect: rect };
   if (this._enableLogs && console && typeof console.info === 'function') console.info('[GameRenderer] _setCanvasSize', info);
       try {
@@ -399,15 +405,19 @@ export class GameRenderer {
     this._pendingResizeArgs = { width, height };
     try {
       globalThis.__GOL_PUSH_CANVAS_LOG__?.(JSON.stringify({ phase: 'resize.scheduled', width, height, pending: !!this._pendingResizeTimer }));
-    } catch (e) {}
-    try { if (this._pendingResizeTimer) clearTimeout(this._pendingResizeTimer); } catch (e) {}
+    } catch (e) { console.warn('Exception caught in scheduleResize (resize.scheduled):', e); }
+    try {
+      if (this._pendingResizeTimer) clearTimeout(this._pendingResizeTimer);
+    } catch (e) {
+      console.warn('Exception caught in scheduleResize (clearTimeout):', e);
+    }
     this._pendingResizeTimer = setTimeout(() => {
       this._pendingResizeTimer = null;
       const args = this._pendingResizeArgs;
       this._pendingResizeArgs = null;
       try {
         globalThis.__GOL_PUSH_CANVAS_LOG__?.(JSON.stringify({ phase: 'resize.flushed', width: args?.width, height: args?.height }));
-      } catch (e) {}
+      } catch (e) { console.warn('Exception caught in scheduleResize (resize.flushed):', e); }
       if (args) this._doResizeImmediate(args.width, args.height);
     }, this._resizeDebounceMs);
   }
@@ -522,8 +532,8 @@ export class GameRenderer {
    * Draw the grid (cached for performance)
    */
   drawGrid() {
-    const dpr = (typeof window !== 'undefined' && Number.isFinite(window.devicePixelRatio))
-      ? window.devicePixelRatio
+    const dpr = Number.isFinite(globalThis.globalThis?.devicePixelRatio)
+      ? globalThis.globalThis.devicePixelRatio
       : 1;
     if (this.gridCache && this.gridCacheDpr !== dpr) {
       this._invalidateGridCache();
@@ -757,7 +767,7 @@ export class GameRenderer {
   /**
    * Main render method - draws everything
    */
-  /* eslint-disable-next-line complexity */
+   
   render(liveCells, colorScheme = null, overlay = null) {
     // Store colorScheme for use in getCellColor. The model is the single source.
     // If null, retain previous currentColorScheme; if still missing, use a minimal local fallback.
@@ -777,7 +787,7 @@ export class GameRenderer {
     // Defensive: reset transform and ensure background is filled to avoid
     // exposing any underlying container pixels during rapid resizes.
     try {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = globalThis.globalThis?.devicePixelRatio || 1;
       if (this.ctx && typeof this.ctx.setTransform === CONST_FUNCTION) this.ctx.setTransform(1, 0, 0, 1, 0, 0);
       if (this.ctx && typeof this.ctx.scale === CONST_FUNCTION) this.ctx.scale(dpr, dpr);
       if (this.ctx && typeof this.ctx.fillRect === CONST_FUNCTION) {
@@ -789,6 +799,9 @@ export class GameRenderer {
       }
     } catch (e) {
       // Non-fatal; continue to draw normally
+      if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+        console.warn('Exception caught in render (reset transform/fill):', e);
+      }
     }
 
     // Draw grid background
@@ -796,11 +809,11 @@ export class GameRenderer {
 
     // Optional debug: report render vs DOM sizes when enabled
     try {
-      if (window.GOL_DEBUG_CANVAS) {
-        const rect = this.canvas.getBoundingClientRect && this.canvas.getBoundingClientRect();
+      if (globalThis.GOL_DEBUG_CANVAS) {
+        const rect = this.canvas.getBoundingClientRect?.();
         globalThis.__GOL_PUSH_CANVAS_LOG__?.(JSON.stringify({ phase: 'render', viewport: { ...this.viewport }, rect, backingW: this.canvas.width, backingH: this.canvas.height, overlay: !!overlay }));
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Exception caught in render (debug log):', e); }
 
     // Draw live cells
     this.drawCells(liveCells);
@@ -824,7 +837,7 @@ export class GameRenderer {
   forceResize(width, height) {
     try {
       this._doResizeImmediate(width, height);
-      try { globalThis.__GOL_PUSH_CANVAS_LOG__?.(JSON.stringify({ phase: 'forceResize', width, height })); } catch (e) {}
+      try { globalThis.__GOL_PUSH_CANVAS_LOG__?.(JSON.stringify({ phase: 'forceResize', width, height })); } catch (e) { console.warn('Exception caught in forceResize (push log):', e); }
     } catch (e) {
       if (typeof console !== 'undefined' && typeof console.warn === 'function') console.warn('[GameRenderer] forceResize failed', e);
     }
@@ -848,7 +861,7 @@ export class GameRenderer {
       viewport: { ...this.viewport },
       colorCacheSize: this.colorCache.size,
       hasGridCache: !!this.gridCache,
-      devicePixelRatio: window.devicePixelRatio || 1
+      devicePixelRatio: globalThis.globalThis?.devicePixelRatio || 1
     };
   }
 
@@ -857,7 +870,7 @@ export class GameRenderer {
    * Returns an object and also pushes it into the on-page log buffer.
    */
   dumpCanvasState() {
-    const rect = this.canvas.getBoundingClientRect && this.canvas.getBoundingClientRect();
+    const rect = this.canvas.getBoundingClientRect?.();
     const state = {
       viewport: { ...this.viewport },
       backingWidth: this.canvas.width,
@@ -865,11 +878,11 @@ export class GameRenderer {
       styleWidth: this.canvas.style.width,
       styleHeight: this.canvas.style.height,
       clientRect: rect,
-      devicePixelRatio: window.devicePixelRatio || 1,
+      devicePixelRatio: globalThis.globalThis?.devicePixelRatio || 1,
       pendingResize: !!this._pendingResizeTimer,
       pendingResizeArgs: this._pendingResizeArgs || null
     };
-    try { globalThis.__GOL_PUSH_CANVAS_LOG__?.(JSON.stringify({ phase: 'dumpCanvasState', state })); } catch (e) {}
+    try { globalThis.__GOL_PUSH_CANVAS_LOG__?.(JSON.stringify({ phase: 'dumpCanvasState', state })); } catch (e) { console.warn('Exception caught in dumpCanvasState (push log):', e); }
     return state;
   }
 }
@@ -885,6 +898,7 @@ export class RenderOverlay {
   // Override in subclasses
   draw(renderer) {
     // Default implementation does nothing
+    console.warn(renderer);
   }
 }
 
@@ -904,8 +918,8 @@ export class EraseOverlay extends RenderOverlay {
     }
     if (this.showText) {
       const ctx = renderer.ctx;
-      const w = renderer.canvas.width / (window.devicePixelRatio || 1);
-      const h = renderer.canvas.height / (window.devicePixelRatio || 1);
+      const w = renderer.canvas.width / (globalThis.devicePixelRatio || 1);
+      const h = renderer.canvas.height / (globalThis.devicePixelRatio || 1);
       ctx.save();
       ctx.font = 'bold 32px sans-serif';
       ctx.textAlign = 'center';

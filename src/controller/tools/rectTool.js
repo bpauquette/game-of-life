@@ -1,4 +1,4 @@
-import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
+import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes.js';
 
 // Rectangle perimeter-only tool
 // Rectangle tool constants
@@ -56,7 +56,7 @@ const computeSquarePerimeter = (x0, y0, x1, y1) => {
 };
 
 export const rectTool = {
-  getOverlay(state, cellSize) {
+  getOverlay(state) {
     if (!state.start || !state.last) return null;
     // Descriptor-based overlay: highlight absolute preview cells
     const cells = Array.isArray(state.preview) ? state.preview : [];
@@ -114,7 +114,7 @@ export const rectTool = {
 
 // Square tool - always draws squares
 export const squareTool = {
-  getOverlay(state, cellSize) {
+  getOverlay(state) {
     if (!state.start || !state.last) return null;
     // Descriptor-based overlay: highlight absolute preview cells
     const cells = Array.isArray(state.preview) ? state.preview : [];

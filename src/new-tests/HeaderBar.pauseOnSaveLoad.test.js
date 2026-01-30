@@ -2,9 +2,9 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import HeaderBar from '../view/HeaderBar';
-import { AuthProvider } from '../auth/AuthProvider';
-import useGridFileManager from '../view/hooks/useGridFileManager';
+import HeaderBar from '../view/HeaderBar.js';
+import { AuthProvider } from '../auth/AuthProvider.jsx';
+import useGridFileManager from '../view/hooks/useGridFileManager.js';
 // Mock the grid file manager hook to avoid network and heavy UI
 jest.mock('../view/hooks/useGridFileManager', () => ({ __esModule: true, default: jest.fn() }));
 
@@ -14,7 +14,7 @@ const mockSessionStorage = {
   setItem: jest.fn(),
   removeItem: jest.fn(),
 };
-Object.defineProperty(window, 'sessionStorage', { value: mockSessionStorage });
+Object.defineProperty(globalThis, 'sessionStorage', { value: mockSessionStorage });
 
 beforeEach(() => {
   jest.clearAllMocks();

@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent, screen, waitFor } from '@testing-library/react';
-import ShapeListItem from './ShapeListItem';
+import ShapeListItem from './ShapeListItem.js';
 
 jest.mock('../../../utils/backendApi', () => ({
   updateShapePublic: jest.fn(async (id, isPublic) => ({ id, public: isPublic }))

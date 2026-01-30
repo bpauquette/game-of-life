@@ -1,8 +1,8 @@
 // Comprehensive test suite for GOL Scripting Language
 // Tests cover all major language features, edge cases, and error conditions
 
-import { parseBlocks, execBlock, splitCond, executeCommand } from '../view/scriptingInterpreter';
-import { parseValue, evalExpr, evalCond, evalCondCompound } from '../view/scriptingEngine';
+import { parseBlocks, execBlock, splitCond, executeCommand } from '../view/scriptingInterpreter.js';
+import { parseValue, evalExpr, evalCond, evalCondCompound } from '../view/scriptingEngine.js';
 
 describe('Scripting Engine - Core Functions', () => {
   describe('parseValue', () => {

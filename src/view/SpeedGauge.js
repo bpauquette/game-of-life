@@ -71,13 +71,13 @@ const SpeedGauge = ({
       });
     };
 
-    if (typeof window !== 'undefined' && window.addEventListener) {
-      window.addEventListener('gol:sessionCleared', handleSessionCleared);
+    if (typeof globalThis !== 'undefined' && globalThis.addEventListener) {
+      globalThis.addEventListener('gol:sessionCleared', handleSessionCleared);
     }
 
     return () => {
-      if (typeof window !== 'undefined' && window.removeEventListener) {
-        window.removeEventListener('gol:sessionCleared', handleSessionCleared);
+      if (typeof globalThis !== 'undefined' && globalThis.removeEventListener) {
+        globalThis.removeEventListener('gol:sessionCleared', handleSessionCleared);
       }
     };
   }, []);

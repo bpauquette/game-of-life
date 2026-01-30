@@ -1,4 +1,4 @@
-const { advance, clearEngineCache } = require('../engine');
+const { advance, clearEngineCache } = require('../engine.js');
 
 describe('hashlife engine scaffold', () => {
   beforeEach(() => clearEngineCache());

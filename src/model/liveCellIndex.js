@@ -186,9 +186,8 @@ export default class LiveCellIndex {
   }
 
   *_iterateValues() {
-    // eslint-disable-next-line no-unused-vars
-    for (const _ of this._iterateEntries()) {
-      yield true;
+    for (const entry of this._iterateEntries()) {
+      yield entry[1];
     }
   }
 

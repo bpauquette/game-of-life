@@ -7,7 +7,7 @@
   - Passing null scheme retains previously-set scheme
 */
 
-import { GameRenderer } from '../../src/view/GameRenderer';
+import { GameRenderer } from '../../src/view/GameRenderer.js';
 
 function createMockCanvas({ width = 400, height = 300 } = {}) {
   // Minimal 2D context stub with methods/properties used by GameRenderer

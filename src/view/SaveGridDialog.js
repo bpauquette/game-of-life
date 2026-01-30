@@ -18,8 +18,8 @@ import { Save as SaveIcon, Cancel as CancelIcon, GridOn as GridOnIcon } from '@m
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 
-import { BUTTONS, STATUS } from '../utils/Constants';
-import logger from '../controller/utils/logger';
+import { BUTTONS, STATUS } from '../utils/Constants.js';
+import logger from '../controller/utils/logger.js';
 
 const SaveGridDialog = ({ 
   open, 

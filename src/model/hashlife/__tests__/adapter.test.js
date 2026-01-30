@@ -1,5 +1,5 @@
-const adapter = require('../adapter');
-const engine = require('../engine');
+const adapter = require('../adapter.js');
+const engine = require('../engine.js');
 
 describe('hashlife adapter', () => {
   beforeEach(() => engine.clearEngineCache());

@@ -1,4 +1,4 @@
-import { makeShapePreviewWithCrosshairsOverlay } from '../overlays/overlayTypes';
+import { makeShapePreviewWithCrosshairsOverlay } from '../overlays/overlayTypes.js';
 
 describe('Shape preview with crosshairs overlay', () => {
   test('preserves fractional cursor coordinates (fx/fy)', () => {

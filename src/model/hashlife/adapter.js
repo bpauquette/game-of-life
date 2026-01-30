@@ -2,8 +2,8 @@
 // dedicated Web Worker when available, or falls back to the in-process
 // worker implementation used in tests and environments without Workers.
 
-const engine = require('./engine');
-const fallbackWorker = require('./worker');
+import * as engine from './engine.js';
+import * as fallbackWorker from './worker.js';
 
 // Worker loader: if runtime supports Worker, spawn worker.thread.js
 function createWorker() {
@@ -14,11 +14,11 @@ function createWorker() {
       try {
         // Avoid referencing `import.meta` directly so this file remains valid
         // in CommonJS/Jest environments that don't support import.meta.
-        /* eslint-disable no-eval */
+         
         const metaUrl = (function () {
           try { return eval('import.meta.url'); } catch (e) { return undefined; }
         }());
-        /* eslint-enable no-eval */
+         
         if (metaUrl && typeof URL === 'function') {
           // Prefer the ESM shim which the bundler can emit as a standalone
           // module worker asset (`worker.esm.js`). This avoids referencing
@@ -90,9 +90,8 @@ class HashlifeAdapter {
     const w = this._ensureWorker();
     if (!w) {
       // fallback: in-process wrapper
-      return fallbackWorker.run(cells, generations, (p) => {
-        // Progress callback is currently unused; Hashlife UI only consumes
-        // final results from a step.
+        return fallbackWorker.run(cells, generations, () => {
+          // Progress callback is currently unused; Hashlife UI only consumes final results from a step.
       });
     }
 
@@ -116,4 +115,7 @@ class HashlifeAdapter {
   onProgress(cb) { this._progressCb = cb; }
 }
 
-module.exports = new HashlifeAdapter();
+const hashlifeAdapter = new HashlifeAdapter();
+export { hashlifeAdapter };
+export default hashlifeAdapter;
+

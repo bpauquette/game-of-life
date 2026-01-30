@@ -1,5 +1,7 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
-import useToolStateObserver from '../../src/view/hooks/useToolStateObserver';
+import useToolStateObserver from '../../src/view/hooks/useToolStateObserver.js';
+import PropTypes from 'prop-types';
 
 function createFakeModel() {
   const observers = new Set();
@@ -22,6 +24,16 @@ function HookHarness({ model, toolStateRef }) { // NOSONAR: valid React componen
   // Use an accessible element so we can query without test IDs
   return <output aria-label="tool-state">{JSON.stringify(state)}</output>;
 }
+HookHarness.propTypes = {
+  model: PropTypes.object,
+  toolStateRef: PropTypes.object,
+};
+// Removed extra closing brace
+const TestComponent = ({ model, toolStateRef }) => null;
+TestComponent.propTypes = {
+  model: PropTypes.object,
+  toolStateRef: PropTypes.object,
+};
 
 describe('useToolStateObserver', () => {
   test('initializes from ref and updates on model event', async () => {

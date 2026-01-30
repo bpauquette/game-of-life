@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { render, waitFor, cleanup, fireEvent, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import RecentShapesStrip from '../RecentShapesStrip';
-import { useShapeManager } from '../hooks/useShapeManager';
+import RecentShapesStrip from '../RecentShapesStrip.js';
+import { useShapeManager } from '../hooks/useShapeManager.js';
+
+import PropTypes from 'prop-types';
 
 const noop = () => {};
 const colorScheme = {
@@ -43,6 +45,11 @@ function StripHarness({ shape, enablePersistenceControls = false }) {
     />
   );
 }
+
+StripHarness.propTypes = {
+  shape: PropTypes.object,
+  enablePersistenceControls: PropTypes.bool,
+};
 
 describe('RecentShapesStrip integration', () => {
   afterEach(() => {

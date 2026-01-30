@@ -2,10 +2,11 @@ import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import './view/styles/design-tokens.css';
-import App from './view/App';
-import reportWebVitals from './reportWebVitals';
+// ...existing code...
+import App from './view/App.js';
+import reportWebVitals from './reportWebVitals.js';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
-import { ThemeProvider, useTheme } from './view/context/ThemeContext';
+import { ThemeProvider, useTheme } from './view/context/ThemeContext.js';
 
 // Wrapper component to use theme from context
 function AppWithTheme() {

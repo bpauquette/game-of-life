@@ -25,8 +25,8 @@ import {
   Info as InfoIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
-import { getBackendApiBase } from '../utils/backendApi';
-import { useAuth } from '../auth/AuthProvider';
+import { getBackendApiBase } from '../utils/backendApi.js';
+import { useAuth } from '../auth/AuthProvider.jsx';
 
 /**
  * AccountManagementDialog - GDPR/CCPA compliant account management
@@ -118,7 +118,7 @@ export default function AccountManagementDialog({ open, onClose }) {
       link.download = `game-of-life-data-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      link.remove();
       URL.revokeObjectURL(url);
 
       setSuccess('Your data has been exported successfully');
@@ -266,7 +266,7 @@ export default function AccountManagementDialog({ open, onClose }) {
                   <WarningIcon />
                   Account Deletion Scheduled
                 </AlertTitle>
-                <Typography variant="body2" paragraph>
+                <Typography variant="body2" component="p">
                   Your account will be permanently deleted on{' '}
                   <Chip 
                     label={new Date(deletionStatus.deletionDate).toLocaleDateString('en-US', { 
@@ -281,7 +281,7 @@ export default function AccountManagementDialog({ open, onClose }) {
                   />
                 </Typography>
                 {deletionStatus.daysRemaining > 0 && (
-                  <Typography variant="body2" paragraph>
+                  <Typography variant="body2" component="p">
                     <strong>{deletionStatus.daysRemaining} days</strong> remaining to cancel
                   </Typography>
                 )}
@@ -305,7 +305,7 @@ export default function AccountManagementDialog({ open, onClose }) {
                 <DownloadIcon color="primary" />
                 <Typography variant="h6">Export Your Data</Typography>
               </Box>
-              <Typography variant="body2" color="text.secondary" paragraph>
+              <Typography variant="body2" color="text.secondary" component="p">
                 Download all your data including shapes, collections, and metadata in JSON format.
                 This complies with <strong>GDPR Article 20</strong> (Right to Data Portability) and <strong>CCPA Section 1798.110</strong>.
               </Typography>
@@ -330,8 +330,8 @@ export default function AccountManagementDialog({ open, onClose }) {
                   <DeleteIcon color="error" />
                   <Typography variant="h6">Delete Your Account</Typography>
                 </Box>
-                <Typography variant="body2" color="text.secondary" paragraph>
-                  Permanently delete your account and all associated data. You'll have a <strong>30-day grace period</strong> to cancel before deletion becomes final.
+                <Typography variant="body2" color="text.secondary" component="p">
+                  Permanently delete your account and all associated data. You&apos;ll have a <strong>30-day grace period</strong> to cancel before deletion becomes final.
                   Complies with <strong>GDPR Article 17</strong> (Right to Erasure) and <strong>CCPA Section 1798.105</strong>.
                 </Typography>
                 <Button
@@ -354,7 +354,7 @@ export default function AccountManagementDialog({ open, onClose }) {
                   <WarningIcon color="error" sx={{ fontSize: 32 }} />
                   <Typography variant="h6" color="error">Confirm Account Deletion</Typography>
                 </Box>
-                <Typography variant="body2" paragraph sx={{ fontWeight: 500 }}>
+                <Typography variant="body2" component="p" sx={{ fontWeight: 500 }}>
                   Are you absolutely sure? This action will:
                 </Typography>
                 <List dense sx={{ mb: 2 }}>
@@ -362,28 +362,28 @@ export default function AccountManagementDialog({ open, onClose }) {
                     <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
                     <ListItemText 
                       primary="Delete all your private shapes, grids, and scripts" 
-                      primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
+                      sx={{ fontWeight: 500 }}
                     />
                   </ListItem>
                   <ListItem>
                     <ListItemIcon><InfoIcon fontSize="small" color="warning" /></ListItemIcon>
                     <ListItemText 
                       primary="Anonymize your public contributions (attributed to 'Deleted User')" 
-                      primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
+                      sx={{ fontWeight: 500 }}
                     />
                   </ListItem>
                   <ListItem>
                     <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
                     <ListItemText 
                       primary="Remove all your personal information (email, name, etc.)" 
-                      primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
+                      sx={{ fontWeight: 500 }}
                     />
                   </ListItem>
                   <ListItem>
                     <ListItemIcon><CheckCircleIcon fontSize="small" color="success" /></ListItemIcon>
                     <ListItemText 
                       primary="30-day grace period to cancel before permanent deletion" 
-                      primaryTypographyProps={{ variant: 'body2', fontWeight: 500, color: 'success.main' }}
+                      sx={{ fontWeight: 500, color: 'success.main' }}
                     />
                   </ListItem>
                 </List>
@@ -419,5 +419,10 @@ export default function AccountManagementDialog({ open, onClose }) {
         </Button>
       </DialogActions>
     </Dialog>
-  );
+	);
 }
+
+AccountManagementDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+};

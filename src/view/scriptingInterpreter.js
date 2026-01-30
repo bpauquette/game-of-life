@@ -1,6 +1,6 @@
 // src/view/scriptingInterpreter.js
 // Interpreter and block execution logic for GOL ScriptPanel scripting
-import { parseValue, evalExpr, evalCondCompound } from './scriptingEngine';
+import { parseValue, evalExpr, evalCondCompound } from './scriptingEngine.js';
 
 // Block parser: returns array of {type, line, indent, raw}
 function parseBlocks(rawLines) {
@@ -24,10 +24,10 @@ function splitCond(cond) {
 
 // Execute script commands (drawing, simulation, etc.)
 async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, setIsRunning, onLoadGrid) {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'command', line } }));
+  if (typeof globalThis !== 'undefined') {
+    globalThis.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'command', line } }));
   }
-  // eslint-disable-next-line no-console
+   
   console.debug('[Script Debug] Executing command:', line);
   
   // Helper function to pause simulation for drawing commands
@@ -35,8 +35,8 @@ async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, s
     if (typeof setIsRunning === 'function' && !state.simulationPausedForDrawing) {
       setIsRunning(false);
       state.simulationPausedForDrawing = true;
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: 'Paused simulation for drawing' } }));
+      if (typeof globalThis !== 'undefined') {
+        globalThis.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: 'Paused simulation for drawing' } }));
       }
     }
   };
@@ -55,19 +55,19 @@ async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, s
         state.cells = new Set();
         for (const key of next.keys ? next.keys() : Object.keys(next)) {
           state.cells.add(key);
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'cell', key } }));
+          if (typeof globalThis !== 'undefined') {
+            globalThis.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'cell', key } }));
           }
         }
         if (onStep) onStep(new Set(state.cells));
         if (emitStepEvent) emitStepEvent(state.cells);
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: `Step ${i+1}/${n}`, cells: Array.from(state.cells) } }));
+        if (typeof globalThis !== 'undefined') {
+          globalThis.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: `Step ${i+1}/${n}`, cells: Array.from(state.cells) } }));
         }
-        // eslint-disable-next-line no-console
+         
         console.debug(`[Script Debug] Step ${i+1}/${n}, cells:`, Array.from(state.cells));
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('gol:script:step-anim', {
+        if (typeof globalThis !== 'undefined') {
+          globalThis.dispatchEvent(new CustomEvent('gol:script:step-anim', {
             detail: {
               step: i + 1,
               total: n,
@@ -75,7 +75,7 @@ async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, s
               emoji: ['✨','🎉','💥','🌟','🔥','⚡','🌀'][i % 7]
             }
           }));
-          if (window.navigator.vibrate) window.navigator.vibrate(30);
+          if (globalThis.navigator.vibrate) globalThis.navigator.vibrate(30);
         }
         // Reduced from 180 + Math.min(200, ...) to 16ms for one frame at 60 FPS
         // This aligns with the main animation loop and greatly improves performance
@@ -91,8 +91,8 @@ async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, s
   if (captureMatch) {
     const name = captureMatch[1].trim();
     // Emit capture event with current cells
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('gol:script:capture', { 
+    if (typeof globalThis !== 'undefined') {
+      globalThis.dispatchEvent(new CustomEvent('gol:script:capture', { 
         detail: { 
           name, 
           cells: Array.from(state.cells),
@@ -100,7 +100,7 @@ async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, s
         } 
       }));
     }
-    // eslint-disable-next-line no-console
+     
     console.debug(`[Script Debug] Captured pattern "${name}" with ${state.cells.size} cells`);
     return;
   }
@@ -148,7 +148,7 @@ async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, s
           const [x, y] = String(cellStr).split(',').map(Number);
           return { x, y };
         }).filter(cell => !isNaN(cell.x) && !isNaN(cell.y));
-        // eslint-disable-next-line no-console
+         
         console.log('[scriptingInterpreter] Calling onLoadGrid with', currentCells.length, 'cells after RECT');
         onLoadGrid(currentCells);
       }
@@ -160,12 +160,12 @@ async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, s
   if (/^CLEAR$/i.test(line)) {
     pauseForDrawing();
     state.cells = new Set();
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: 'Grid cleared' } }));
+    if (typeof globalThis !== 'undefined') {
+      globalThis.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: 'Grid cleared' } }));
     }
     // Update the grid immediately after clearing
     if (onLoadGrid) {
-      // eslint-disable-next-line no-console
+       
       console.log('[scriptingInterpreter] Calling onLoadGrid with 0 cells (CLEAR command)');
       onLoadGrid([]);
     }
@@ -179,10 +179,10 @@ async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, s
     if (typeof setIsRunning === 'function') {
       setIsRunning(true);
     }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: 'Simulation started' } }));
+    if (typeof globalThis !== 'undefined') {
+      globalThis.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: 'Simulation started' } }));
     }
-    // eslint-disable-next-line no-console
+     
     console.debug('[Script Debug] Simulation started');
     return;
   }
@@ -192,10 +192,10 @@ async function executeCommand(line, state, onStep, emitStepEvent, step, ticks, s
     if (typeof setIsRunning === 'function') {
       setIsRunning(false);
     }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: 'Simulation stopped' } }));
+    if (typeof globalThis !== 'undefined') {
+      globalThis.dispatchEvent(new CustomEvent('gol:script:debug', { detail: { type: 'state', msg: 'Simulation stopped' } }));
     }
-    // eslint-disable-next-line no-console
+     
     console.debug('[Script Debug] Simulation stopped');
     return;
   }
@@ -219,8 +219,8 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
     const val = evalExpr(printMatch[1], state);
     if (!state.output) state.output = [];
     state.output.push(String(val));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('gol:script:print', { detail: { value: String(val) } }));
+    if (typeof globalThis !== 'undefined') {
+      globalThis.dispatchEvent(new CustomEvent('gol:script:print', { detail: { value: String(val) } }));
     }
     return i + 1;
   }
@@ -271,8 +271,8 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
     }
     
     // Emit start event
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('gol:script:debug', { 
+    if (typeof globalThis !== 'undefined') {
+      globalThis.dispatchEvent(new CustomEvent('gol:script:debug', { 
         detail: { 
           type: 'command', 
           command: `UNTIL_STEADY ${varName} ${maxSteps}`,
@@ -306,8 +306,8 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
       stepCount++;
       
       // Emit progress event
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('gol:script:debug', { 
+      if (typeof globalThis !== 'undefined') {
+        globalThis.dispatchEvent(new CustomEvent('gol:script:debug', { 
           detail: { 
             type: 'progress', 
             command: `UNTIL_STEADY ${varName}`,
@@ -347,8 +347,8 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
     }
     
     // Emit completion event
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('gol:script:debug', { 
+    if (typeof globalThis !== 'undefined') {
+      globalThis.dispatchEvent(new CustomEvent('gol:script:debug', { 
         detail: { 
           type: 'complete', 
           command: `UNTIL_STEADY ${varName}`,
@@ -506,7 +506,7 @@ async function execBlock(blocks, state, onStep, emitStepEvent, step, ticks, setI
 // Geometric computation functions matching the tools
 
 // Bresenham line algorithm
-// eslint-disable-next-line no-unused-vars
+ 
 function computeLine(x0, y0, x1, y1) {
   const points = [];
   const dx = Math.abs(x1 - x0);
@@ -534,7 +534,7 @@ function computeLine(x0, y0, x1, y1) {
 }
 
 // Rectangle perimeter computation
-// eslint-disable-next-line no-unused-vars
+ 
 function computeRectPerimeter(x0, y0, x1, y1) {
   const xMin = Math.min(x0, x1);
   const xMax = Math.max(x0, x1);
@@ -555,7 +555,7 @@ function computeRectPerimeter(x0, y0, x1, y1) {
 }
 
 // Ellipse perimeter computation
-// eslint-disable-next-line no-unused-vars
+ 
 function computeEllipsePerimeter(x0, y0, x1, y1) {
   const cx = Math.floor((x0 + x1) / 2);
   const cy = Math.floor((y0 + y1) / 2);
@@ -586,7 +586,7 @@ function computeEllipsePerimeter(x0, y0, x1, y1) {
 }
 
 // Midpoint Circle Algorithm for drawing circles
-// eslint-disable-next-line no-unused-vars
+ 
 function computeCircle(cx, cy, radius) {
   if (radius < 0) return [];
   if (radius === 0) return [[cx, cy]];

@@ -11,7 +11,7 @@
  * 4. Review test results and fix any issues
  */
 
-import { PhotosensitivityAnalyzer } from './PhotosensitivitySafety';
+import { PhotosensitivityAnalyzer } from './PhotosensitivitySafety.js';
 
 /**
  * Test wrapper for Game of Life renderer
@@ -421,10 +421,10 @@ export async function runAllPhotosensitivityTests(renderer) {
 }
 
 // Export for browser console testing
-if (typeof window !== 'undefined') {
-  window.PhotosensitivityTestWrapper = PhotosensitivityTestWrapper;
-  window.testGameOfLifeAnimation = testGameOfLifeAnimation;
-  window.runAllPhotosensitivityTests = runAllPhotosensitivityTests;
+if (typeof globalThis !== 'undefined') {
+  globalThis.PhotosensitivityTestWrapper = PhotosensitivityTestWrapper;
+  globalThis.testGameOfLifeAnimation = testGameOfLifeAnimation;
+  globalThis.runAllPhotosensitivityTests = runAllPhotosensitivityTests;
 }
 
 export default PhotosensitivityTestWrapper;

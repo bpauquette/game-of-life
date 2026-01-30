@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import useCanvasManager from '../../src/view/hooks/useCanvasManager';
+import useCanvasManager from '../../src/view/hooks/useCanvasManager.js';
 
 function TestCanvas() {
   const offsetRef = React.useRef({ x: 0, y: 0 });

@@ -1,4 +1,4 @@
-import { GameModel } from '../../src/model/GameModel';
+import { GameModel } from '../../src/model/GameModel.js';
 
 // Lightweight helper to capture events
 function createObserverCapture() {

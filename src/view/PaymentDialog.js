@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React, { useState, useEffect, useCallback } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -6,16 +7,19 @@ import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
-import { useAuth } from '../auth/AuthProvider';
+import { useAuth } from '../auth/AuthProvider.jsx';
+PaymentDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+};
 
 // Donation dialog supporting both Stripe and PayPal.
 export default function PaymentDialog({ open, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [paymentConfig, setPaymentConfig] = useState({ paypal: { enabled: false }, stripe: { enabled: false, publishableKey: null } });
+  const [paymentConfig, setPaymentConfig] = useState({ paypal: { enabled: false } });
   const { user } = useAuth();
 
   // Canonical project URLs — update to match repository/location
@@ -61,10 +65,10 @@ export default function PaymentDialog({ open, onClose }) {
 
   const initializePayPalButtons = useCallback(() => {
     const container = document.getElementById('paypal-button-container');
-    if (container && window.paypal) {
+    if (container && globalThis.paypal) {
       container.innerHTML = '';
 
-      window.paypal.Buttons({
+      globalThis.paypal.Buttons({
         createOrder(data, actions) {
           return actions.order.create({
             purchase_units: [
@@ -91,7 +95,7 @@ export default function PaymentDialog({ open, onClose }) {
   }, [recordPayPalDonation]);
 
   const loadPayPalSDK = useCallback((clientId) => {
-    if (window.paypal) {
+    if (globalThis.paypal) {
       initializePayPalButtons();
       return;
     }
@@ -103,7 +107,7 @@ export default function PaymentDialog({ open, onClose }) {
     };
     script.onerror = () => {
       console.error('Failed to load PayPal SDK');
-      setError('PayPal SDK failed to load. Please use Stripe instead.');
+      setError('PayPal SDK failed to load.');
     };
     document.head.appendChild(script);
   }, [initializePayPalButtons]);
@@ -153,13 +157,16 @@ export default function PaymentDialog({ open, onClose }) {
       }
 
       // Redirect to Stripe checkout
-      window.location.assign(data.url);
+      globalThis.location.assign(data.url);
     } catch (err) {
       console.error('Stripe checkout error:', err);
       setError(err.message || 'Failed to initiate Stripe checkout');
       setLoading(false);
     }
   };
+
+  // Check if Stripe is enabled via environment variable
+  const stripeEnabled = process.env.REACT_APP_STRIPE_ENABLED === 'true';
 
   return (
     <Dialog open={!!open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -178,24 +185,7 @@ export default function PaymentDialog({ open, onClose }) {
         )}
 
         <Stack spacing={2}>
-          {/* Stripe button */}
-          {paymentConfig.stripe?.enabled && (
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Pay with Card (Stripe)
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleStripeCheckout}
-                disabled={loading}
-                fullWidth
-                data-testid="stripe-button"
-              >
-                {loading ? <CircularProgress size={24} /> : 'Donate with Card'}
-              </Button>
-            </Box>
-          )}
+
 
           {/* PayPal button container - always present for tests; buttons load into it when enabled */}
           <Box>
@@ -212,14 +202,27 @@ export default function PaymentDialog({ open, onClose }) {
             />
           </Box>
 
-          {!paymentConfig.stripe?.enabled && !paymentConfig.paypal?.enabled && (
+          {/* Conditionally render Stripe button if enabled */}
+          {stripeEnabled && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleStripeCheckout}
+              disabled={loading}
+              sx={{ mt: 2 }}
+            >
+              Donate with Stripe
+            </Button>
+          )}
+
+          {!paymentConfig.paypal?.enabled && !stripeEnabled && (
             <Alert severity="warning">
               Payment methods are not currently configured. Please try again later.
             </Alert>
           )}
 
           <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-            Both Stripe and PayPal are secure payment methods. Your donation helps support this project.
+            PayPal is a secure payment method. Your donation helps support this project.
           </Typography>
 
           {links.map((l) => (

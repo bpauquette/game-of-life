@@ -1,4 +1,4 @@
-import logger from './logger';
+import logger from './logger.js';
 
 describe('logger', () => {
   it('should have error, warn, info, debug methods', () => {

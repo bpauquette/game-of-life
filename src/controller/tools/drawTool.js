@@ -43,7 +43,7 @@ export const drawTool = {
       toolState.last = { x, y };
     }
   },
-  onMouseUp(toolState, ...args) {
+  onMouseUp(toolState) {
     toolState.start = null;
     toolState.last = null;
   },

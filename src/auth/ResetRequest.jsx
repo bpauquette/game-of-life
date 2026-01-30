@@ -1,6 +1,7 @@
 // src/auth/ResetRequest.jsx
+import React from 'react';
 import { useState } from "react";
-import { post } from "./api";
+import { post } from "./api.js";
 import validator from "validator";
 
 export default function ResetRequest() {

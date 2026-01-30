@@ -1,5 +1,6 @@
 import React from 'react';
 import './LoadingShapesOverlay.css';
+import PropTypes from 'prop-types';
 
 export default function LoadingShapesOverlay({ loading, progress, error, onRetry }) {
   if (!loading && !error) return null;
@@ -25,3 +26,12 @@ export default function LoadingShapesOverlay({ loading, progress, error, onRetry
     </div>
   );
 }
+LoadingShapesOverlay.propTypes = {
+  loading: PropTypes.bool.isRequired,
+  progress: PropTypes.shape({
+    total: PropTypes.number,
+    done: PropTypes.number
+  }),
+  error: PropTypes.any,
+  onRetry: PropTypes.func
+};

@@ -10,14 +10,14 @@ import { useState, useEffect, useRef } from 'react';
  */
 const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomputeRef }) => {
   const [gridPosition, setGridPosition] = useState(null);
-  const canvas = canvasRef?.current;
   const lastClientRef = useRef(null);
 
   useEffect(() => {
+    const canvas = canvasRef?.current;
     if (!canvas) return undefined;
     const defaultOffsetRef = { current: { x: 0, y: 0, cellSize: cellSize } };
     const targetOffsetRef = offsetRef?.current ? offsetRef : defaultOffsetRef;
-    
+
     // Initialize lastClientRef to canvas center on first mount so cursor can be
     // recomputed even if no mouse movement has occurred yet (e.g., shape selection before mouse move)
     if (!lastClientRef.current) {
@@ -27,7 +27,7 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomp
         y: (rect?.top || 0) + (rect?.height || 600) / 2
       };
     }
-    
+
     const getEffectiveCellSize = () => {
       // Prefer the dynamic cellSize from offsetRef (reflects zoom changes).
       const dynamic = targetOffsetRef.current?.cellSize;
@@ -37,7 +37,7 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomp
     const handleMove = (ev) => {
       // remember client coords so wheel/zoom handlers can recompute from
       // the last known cursor position even when pointer events aren't fired
-      try { lastClientRef.current = { x: ev.clientX, y: ev.clientY }; } catch (e) { /* ignore */ }
+      lastClientRef.current = { x: ev.clientX, y: ev.clientY };
       // Compute both exact (fractional) and floored cell coords so renderers
       // can draw precise crosshairs while still exposing integer cell indices.
       const rect = canvas.getBoundingClientRect() || { left: 0, top: 0, width: 0, height: 0 };
@@ -48,7 +48,7 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomp
       const fy = targetOffsetRef.current.y + (ev.clientY - rect.top - centerY) / eff;
       const point = { x: Math.floor(fx), y: Math.floor(fy), fx, fy };
       setGridPosition((prev) => (prev && prev.x === point.x && prev.y === point.y && prev.fx === point.fx && prev.fy === point.fy ? prev : point));
-      try { if (typeof onCursor === 'function') onCursor(point); } catch (e) {}
+      try { if (typeof onCursor === 'function') onCursor(point); } catch (e) { console.warn('Exception caught in handleMove (onCursor):', e); }
     };
     const recomputeFromLastClient = () => {
       if (!lastClientRef.current) return null;
@@ -60,14 +60,14 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomp
       const fy = targetOffsetRef.current.y + (lastClientRef.current.y - rect.top - centerY) / eff;
       const point = { x: Math.floor(fx), y: Math.floor(fy), fx, fy };
       setGridPosition((prev) => (prev && prev.x === point.x && prev.y === point.y && prev.fx === point.fx && prev.fy === point.fy ? prev : point));
-      try { if (typeof onCursor === 'function') onCursor(point); } catch (e) {}
+      if (typeof onCursor === 'function') onCursor(point);
       return point;
     };
 
     const handleWheel = (ev) => {
       // When zooming (wheel) the mouse may not move; recompute grid pos
       if (!lastClientRef.current) {
-        try { lastClientRef.current = { x: ev.clientX, y: ev.clientY }; } catch (e) {}
+        try { lastClientRef.current = { x: ev.clientX, y: ev.clientY }; } catch (e) { console.warn('Exception caught in handleWheel (lastClientRef):', e); }
       }
       recomputeFromLastClient();
     };
@@ -97,7 +97,7 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomp
       const pt = { x: Math.floor(fx), y: Math.floor(fy), fx, fy };
       if (pt) {
         setGridPosition((prev) => (prev && prev.x === pt.x && prev.y === pt.y && prev.fx === pt.fx && prev.fy === pt.fy ? prev : pt));
-        try { if (typeof onCursor === 'function') onCursor(pt); } catch (e) {}
+        if (typeof onCursor === 'function') onCursor(pt);
       }
     }
 
@@ -110,7 +110,7 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomp
         recomputeRef.current = null;
       }
     };
-  }, [canvas, offsetRef, cellSize, onCursor, recomputeRef]);
+  }, [canvasRef, offsetRef, cellSize, onCursor, recomputeRef]);
 
   return gridPosition;
 };

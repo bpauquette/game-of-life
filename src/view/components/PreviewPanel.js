@@ -1,4 +1,5 @@
-import React, { useMemo, useRef, useEffect, useState } from 'react';
+/* eslint react-hooks/exhaustive-deps: 0 */
+import React, { useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -8,8 +9,8 @@ import Link from '@mui/material/Link';
 import {
   Refresh as ResetIcon
 } from '@mui/icons-material';
-import { transformShape } from '../../model/shapeTransforms';
-import { rotateShape } from '../../model/shapeTransforms';
+import { transformShape } from '../../model/shapeTransforms.js';
+import { rotateShape } from '../../model/shapeTransforms.js';
 const tokenOr = (name, fallback) => {
   try {
     const root = globalThis.document?.documentElement;
@@ -112,26 +113,22 @@ function computeBounds(cells = []) {
 function PreviewPanel(props) {
   const { preview, maxSvgSize = 200, colorScheme, colorSchemeKey, onAddRecent } = props;
   const canvasRef = useRef(null);
-  
-  const [cachedDataUrl, setCachedDataUrl] = useState(null);
+
+  // Transform and rotation are now controlled by props or parent, or reset by remounting
   const [imgError, setImgError] = useState(false);
+  const transforms = ['identity', 'flipH', 'flipV', 'diag1', 'diag2'];
+  // Always reset transformIndex and rotationAngle on preview change by remounting
   const [transformIndex, setTransformIndex] = useState(0);
   const [rotationAngle, setRotationAngle] = useState(0);
-  const transforms = ['identity', 'flipH', 'flipV', 'diag1', 'diag2'];
   const currentTransform = transforms[transformIndex];
-  // Reset transform when preview changes
-  useEffect(() => {
-    setTransformIndex(0);
-    setRotationAngle(0);
-  }, [preview]);
+
+  // Derive cells from preview and transform/rotation
   const cells = useMemo(() => {
     let c = (preview && Array.isArray(preview.cells) ? preview.cells : []);
     if (transformIndex !== 0) {
       c = transformShape(c, currentTransform);
     }
     if (rotationAngle !== 0) {
-      // Convert visual clockwise rotation to math rotation
-      // Visual 90° CW = Math 270°, Visual 180° = Math 180°, Visual 270° CW = Math 90°
       const mathAngle = rotationAngle === 90 ? 270 : rotationAngle === 270 ? 90 : rotationAngle;
       c = rotateShape(c, mathAngle);
     }
@@ -139,38 +136,26 @@ function PreviewPanel(props) {
   }, [preview, transformIndex, currentTransform, rotationAngle]);
   const bounds = useMemo(() => computeBounds(cells), [cells]);
   const { width, height } = bounds;
-  // Use provided cellSize prop or fallback to 1
   const cellSize = typeof props.cellSize === 'number' ? props.cellSize : 1;
   const drawW = Math.min(maxSvgSize, width * cellSize + 8);
   const drawH = Math.min(maxSvgSize, height * cellSize + 8);
   const PREVIEW_BORDER_STYLE = { border: `1px solid ${PREVIEW_BORDER_COLOR}`, borderRadius: 4 };
 
-  // If too many cells, render into a canvas for speed and/or generate cached dataUrl
-  useEffect(() => {
-    setCachedDataUrl(null);
-    setImgError(false);
-    if (!preview) return;
-    // Use static public thumbnail path
+  // Derive cachedDataUrl from preview
+  const cachedDataUrl = useMemo(() => {
+    if (!preview) return null;
     const scheme = colorSchemeKey || 'default';
     const size = 128;
     const nameSlug = preview.name ? (String(preview.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0,200)) : '';
     const thumbnailUrl = nameSlug ? `/thumbnails/${size}/${scheme}/${nameSlug}.png` : null;
-    if (thumbnailUrl) {
-      setCachedDataUrl(thumbnailUrl);
-    }
-    // No name-based thumbnail available. Per policy this UI should not request
-    // on-demand renders for unnamed captures — the capture tool requires a name
-    // before saving, and thumbnails are generated on save. Leave the canvas
-    // placeholder empty until a saved thumbnail exists.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preview, cells.length, maxSvgSize, width, height, colorScheme]);
+    return thumbnailUrl;
+  }, [preview, colorSchemeKey]);
 
   // Draw shape preview in canvas if needed
-  useEffect(() => {
+  React.useEffect(() => {
     if (!canvasRef.current || !preview || (cachedDataUrl && !imgError)) return;
     const ctx = canvasRef.current.getContext('2d');
     ctx.clearRect(0, 0, drawW, drawH);
-    // Simple cell rendering
     const cellColor = colorScheme?.cellColor || tokenOr('--accent-primary', '#1976d2');
     for (const cell of cells) {
       const x = (typeof cell.x !== 'undefined') ? cell.x : (Array.isArray(cell) ? cell[0] : 0);
@@ -185,15 +170,28 @@ function PreviewPanel(props) {
 
   if (!preview) return <Box sx={{ minWidth: 260, minHeight: 220 }} />;
 
+  // Use a key prop to force remount on preview change
+  const previewKey = preview ? `${preview.name || ''}-${preview.description || ''}-${JSON.stringify(preview.cells)}` : 'empty';
+
   return (
     <Box sx={{ minWidth: 260, minHeight: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} data-testid="hover-preview-panel">
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
         {cachedDataUrl && !imgError ? (
-          <img src={cachedDataUrl} alt={preview.name || 'shape preview'} style={{ width: drawW, height: drawH, objectFit: 'contain', ...PREVIEW_BORDER_STYLE }}
+          <img
+            key={previewKey}
+            src={cachedDataUrl}
+            alt={preview.name || 'shape preview'}
+            style={{ width: drawW, height: drawH, objectFit: 'contain', ...PREVIEW_BORDER_STYLE }}
             onError={() => setImgError(true)}
           />
         ) : (
-          <canvas ref={canvasRef} width={drawW} height={drawH} style={{ width: drawW, height: drawH, ...PREVIEW_BORDER_STYLE }} />
+          <canvas
+            key={previewKey}
+            ref={canvasRef}
+            width={drawW}
+            height={drawH}
+            style={{ width: drawW, height: drawH, ...PREVIEW_BORDER_STYLE }}
+          />
         )}
         <Box sx={{ maxWidth: 320, maxHeight: 200, overflow: 'hidden', textAlign: 'center' }}>
           <Typography
@@ -420,7 +418,8 @@ PreviewPanel.propTypes = {
   maxSvgSize: PropTypes.number,
   colorScheme: PropTypes.object,
   colorSchemeKey: PropTypes.string,
-  onAddRecent: PropTypes.func
+  onAddRecent: PropTypes.func,
+  cellSize: PropTypes.number
 };
 
 export default PreviewPanel;

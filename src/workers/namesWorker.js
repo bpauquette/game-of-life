@@ -1,4 +1,4 @@
-/* eslint-disable */
+ 
 // namesWorker.js - module worker for incremental names loading
 // Hardcode API base to always use proxy
 const API_BASE = '/api';
@@ -7,13 +7,15 @@ addEventListener('message', async (ev) => {
   const msg = ev.data || {};
   // Debug: indicate worker received a message
   try {
+    // no-op for now
   } catch (e) {
     // ignore logging errors
+    console.warn('Exception caught in namesWorker (debug):', e);
   }
   if (!msg) return;
   if (msg.type === 'start') {
     await runNamesWorkerLoop(msg).catch(err => {
-      try { console.error('[namesWorker] run loop error', err); } catch (e) {}
+      try { console.error('[namesWorker] run loop error', err); } catch (e) { console.warn('Exception caught in namesWorker (console.error):', e); }
       postMessage({ type: 'error', message: String(err) });
     });
   }
@@ -27,7 +29,10 @@ async function runNamesWorkerLoop(msg) {
   while (true) {
     const url = `${base}/v1/shapes/names?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`;
     try {
-    } catch (e) {}
+      // no-op for now
+    } catch (e) {
+      console.warn('Exception caught in runNamesWorkerLoop (debug):', e);
+    }
     const res = await fetch(url);
     if (!res.ok) { postMessage({ type: 'error', message: 'HTTP ' + res.status }); return; }
     const data = await res.json().catch(() => ({}));

@@ -1,4 +1,4 @@
-import { FRONTEND_VERSION, FRONTEND_TIMESTAMP } from '../version';
+import { FRONTEND_VERSION, FRONTEND_TIMESTAMP } from '../version.js';
 
 describe('Frontend build version', () => {
   it('should have a valid version string', () => {

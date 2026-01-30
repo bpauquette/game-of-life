@@ -1,8 +1,9 @@
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { AuthProvider } from './AuthProvider';
-import Login from './Login';
+import { AuthProvider } from './AuthProvider.jsx';
+import Login from './Login.jsx';
 
-import { post } from './api';
+import { post } from './api.js';
 
 // Mock the API
 jest.mock('./api', () => ({

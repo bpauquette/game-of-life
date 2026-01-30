@@ -15,8 +15,8 @@ jest.mock('../view/../utils/backendApi', () => ({
 
 // The module under test must be imported after the mocked module is declared.
 /* eslint-disable import/first */
-import ShapePaletteDialog from '../view/ShapePaletteDialog';
-import { fetchShapeNames } from '../utils/backendApi';
+import ShapePaletteDialog from '../view/ShapePaletteDialog.js';
+import { fetchShapeNames } from '../utils/backendApi.js';
 /* eslint-enable import/first */
 
 // Mock useAuth hook

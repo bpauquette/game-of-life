@@ -1,4 +1,4 @@
-import { useOptimizedEngine, createFrameRateLimiter, usePerformanceMonitor, GameLogicWorker } from './optimizedEngine';
+import { useOptimizedEngine, createFrameRateLimiter, usePerformanceMonitor, GameLogicWorker } from './optimizedEngine.js';
 
 describe('optimizedEngine', () => {
   it('should export useOptimizedEngine as a function', () => {

@@ -1,7 +1,13 @@
 // src/auth/AuthProvider.jsx
 import React, { useState, useEffect, useContext, createContext } from 'react';
-import jwt from 'jsonwebtoken';
-import logger from '../controller/utils/logger';
+import { jwtDecode } from 'jwt-decode';
+import logger from '../controller/utils/logger.js';
+import PropTypes from 'prop-types';
+import { getBackendApiBase } from '../utils/backendApi.js';
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
 const AuthContext = createContext(null);
 
@@ -15,7 +21,7 @@ export function AuthProvider({ children }) {
     const stored = sessionStorage.getItem('authToken');
     if (stored) {
       try {
-        const decoded = jwt.decode(stored);
+        const decoded = jwtDecode(stored);
         if (decoded && decoded.exp * 1000 < Date.now()) {
           sessionStorage.removeItem('authToken');
           sessionStorage.removeItem('authEmail');
@@ -37,11 +43,11 @@ export function AuthProvider({ children }) {
     try {
       const tokenNow = sessionStorage.getItem('authToken');
       if (!tokenNow) return;
-      const base = require('../utils/backendApi').getBackendApiBase();
+      const base = getBackendApiBase();
       const resp = await fetch(`${base}/v1/me?_ts=${Date.now()}`, { headers: { Authorization: `Bearer ${tokenNow}`, 'Cache-Control': 'no-cache' }, cache: 'no-store' });
       if (!resp.ok) return;
       const data = await resp.json();
-      if (data && typeof data.hasDonated !== 'undefined') setHasDonated(!!data.hasDonated);
+      if (data?.hasDonated !== undefined) setHasDonated(!!data.hasDonated);
       if (data && typeof data.email === 'string') setEmail(data.email);
     } catch (e) {
       // ignore refresh errors
@@ -66,11 +72,14 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const handleLogout = () => logout();
-    window.addEventListener('auth:logout', handleLogout);
-    return () => window.removeEventListener('auth:logout', handleLogout);
+    globalThis.addEventListener('auth:logout', handleLogout);
+    return () => globalThis.removeEventListener('auth:logout', handleLogout);
   }, []);
 
-  useEffect(() => { refreshMe(); }, []);
+  useEffect(() => {
+    // Avoid setState-in-effect: schedule refreshMe in a microtask
+    Promise.resolve().then(refreshMe);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ token, email, hasDonated, login, logout, refreshMe }}>

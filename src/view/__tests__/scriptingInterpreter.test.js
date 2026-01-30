@@ -1,5 +1,5 @@
-import { parseBlocks, execBlock, splitCond, executeCommand } from '../scriptingInterpreter';
-import { parseValue, evalExpr, evalCond } from '../scriptingEngine';
+import { parseBlocks, execBlock, splitCond, executeCommand } from '../scriptingInterpreter.js';
+import { parseValue, evalExpr, evalCond } from '../scriptingEngine.js';
 
 describe('ScriptingInterpreter', () => {
   test('parseBlocks extracts non-empty lines with proper structure', () => {

@@ -30,9 +30,10 @@ function useSubscribeToolState(model, setToolState) {
   }, [model, setToolState]);
 }
 
+
 export default function useToolStateObserver({ model, toolStateRef } = {}) {
-  const initial = toolStateRef?.current ? { ...toolStateRef.current } : {};
-  const [toolState, setToolState] = useState(initial);
+  // Always initialize to empty object; sync from ref in effect only
+  const [toolState, setToolState] = useState({});
 
   useSyncFromRef(toolStateRef, setToolState);
   useSubscribeToolState(model, setToolState);

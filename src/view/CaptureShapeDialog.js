@@ -14,7 +14,7 @@ import {
   FormControlLabel,
   Switch
 } from '@mui/material';
-import { BUTTONS, STATUS } from '../utils/Constants';
+import { BUTTONS, STATUS } from '../utils/Constants.js';
 // logger not needed here after preview removal
 
 const CaptureShapeDialog = ({ 

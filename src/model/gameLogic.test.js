@@ -1,6 +1,6 @@
-import { step, ticks } from './gameLogic';
+import { step, ticks } from './gameLogic.js';
 
-import LiveCellIndex from './liveCellIndex';
+import LiveCellIndex from './liveCellIndex.js';
 
 describe('gameLogic', () => {
   it('step returns a LiveCellIndex', () => {

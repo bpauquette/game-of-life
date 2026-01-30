@@ -1,9 +1,9 @@
 // populationUtils.js
 // Small utility for population stability checks.
 
-export function isPopulationStable(history, windowSize, tolerance) {
+export function isPopulationStable(history, globalThisSize, tolerance) {
   if (!history || history.length < 2) return false;
-  const w = Math.max(1, Math.min(windowSize, history.length));
+  const w = Math.max(1, Math.min(globalThisSize, history.length));
   const slice = history.slice(-w);
   let min = Infinity;
   let max = -Infinity;

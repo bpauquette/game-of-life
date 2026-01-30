@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useRef, useState, useMemo, useLayoutEffect } from 'react';
 import PropTypes from 'prop-types';
-import ShapeSlot from './components/ShapeSlot';
+import ShapeSlot from './components/ShapeSlot.js';
 
 const thumbnailSize = 64;
 
@@ -13,8 +13,6 @@ const RecentShapesStrip = ({
   onRotateShape,
   onSwitchToShapesTool,
   startPaletteDrag,
-  onSaveRecentShapes,
-  onClearRecentShapes
 }) => {
   const getShapeTitle = (shape, index) => {
     return shape?.name || shape?.meta?.name || shape?.id || `shape ${index}`;
@@ -54,18 +52,12 @@ const RecentShapesStrip = ({
 
   // Log the order of shapes every render
   // Persist zoom factor across clears
-  const [zoom, setZoom] = useState(1);
-  useEffect(() => {
-    // Compute zoom factor for drag ghost scaling
+  // Compute zoom as a derived value
+  const zoom = useMemo(() => {
     const thumbnailSize = 64;
     const cellSize = colorScheme?.cellSize;
     const maxShapeDim = Math.max(...slots.map(s => Math.max(s?.width || s?.meta?.width || 1, s?.height || s?.meta?.height || 1)), 1);
-    const newZoom = (cellSize * maxShapeDim) / thumbnailSize || 1;
-    // Only update zoom if there are shapes
-    if (slots.length > 0) {
-      setZoom(newZoom);
-    }
-    // If cleared, keep previous zoom
+    return slots.length > 0 ? (cellSize * maxShapeDim) / thumbnailSize || 1 : 1;
   }, [slots, colorScheme]);
 
   const bg = (colorScheme && (colorScheme.panelBackground || colorScheme.background)) || '#111217';
@@ -150,8 +142,8 @@ const RecentShapesStrip = ({
     if (!id) return undefined;
     // Defer SVG compare to idle time to avoid blocking paint
     const runCompare = () => {
-      if ('requestIdleCallback' in window) {
-        window.requestIdleCallback(() => compareSVGsAndLog(id), { timeout: 1000 });
+      if ('requestIdleCallback' in globalThis) {
+        globalThis.requestIdleCallback(() => compareSVGsAndLog(id), { timeout: 1000 });
       } else {
         setTimeout(() => compareSVGsAndLog(id), 500);
       }
@@ -162,8 +154,10 @@ const RecentShapesStrip = ({
 
   // --- Netflix-style strip behavior ---
   const scrollRef = useRef(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  // Compute scroll button state as derived values
+  const [scrollState, setScrollState] = useState({ left: false, right: false });
+  const canScrollLeft = scrollState.left;
+  const canScrollRight = scrollState.right;
   const holdIntervalRef = useRef(null);
   // Drag-to-scroll state for touch / pointer devices
   const [isDragging, setIsDragging] = useState(false);
@@ -178,25 +172,25 @@ const RecentShapesStrip = ({
   const updateScrollButtons = useCallback(() => {
     const el = scrollRef.current;
     if (!el) {
-      setCanScrollLeft(false);
-      setCanScrollRight(false);
+      setScrollState((prev) => (prev.left || prev.right ? { left: false, right: false } : prev));
       return;
     }
     const { scrollLeft, scrollWidth, clientWidth } = el;
-    setCanScrollLeft(scrollLeft > 2);
-    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 2);
-  }, [setCanScrollLeft, setCanScrollRight]);
+    const left = scrollLeft > 2;
+    const right = scrollLeft + clientWidth < scrollWidth - 2;
+    setScrollState((prev) => (prev.left !== left || prev.right !== right ? { left, right } : prev));
+  }, []);
 
   useLayoutEffect(() => {
-    updateScrollButtons();
+    Promise.resolve().then(updateScrollButtons);
     const el = scrollRef.current;
     if (!el) return undefined;
     const onScroll = () => updateScrollButtons();
     el.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', updateScrollButtons);
+    globalThis.addEventListener('resize', updateScrollButtons);
     return () => {
       el.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', updateScrollButtons);
+      globalThis.removeEventListener('resize', updateScrollButtons);
     };
   }, [updateScrollButtons, slots]);
 
@@ -245,11 +239,9 @@ const RecentShapesStrip = ({
     // If the pointerdown originated from inside a shape slot, don't take
     // pointer capture here so the child `ShapeSlot` can capture and start
     // a drag/placement interaction instead of the scroll-to-pan behavior.
-    try {
-      if (e.target && typeof e.target.closest === 'function' && e.target.closest('[data-shape-slot]')) return;
-    } catch (err) {}
+    if (e.target && typeof e.target.closest === 'function' && e.target.closest('[data-shape-slot]')) return;
     cancelMomentum();
-    try { el.setPointerCapture?.(e.pointerId); } catch (err) {}
+    el.setPointerCapture?.(e.pointerId);
     isDraggingRef.current = true;
     setIsDragging(true);
     startXRef.current = e.clientX;
@@ -297,7 +289,7 @@ const RecentShapesStrip = ({
   const finishPointer = useCallback((e) => {
     const el = scrollRef.current;
     if (el) {
-      try { el.releasePointerCapture?.(e.pointerId); } catch (err) {}
+      el.releasePointerCapture?.(e.pointerId);
     }
     isDraggingRef.current = false;
     setIsDragging(false);
@@ -502,8 +494,6 @@ RecentShapesStrip.propTypes = {
   onRotateShape: PropTypes.func,
   onSwitchToShapesTool: PropTypes.func,
   startPaletteDrag: PropTypes.func,
-  onSaveRecentShapes: PropTypes.func,
-  onClearRecentShapes: PropTypes.func
 };
 
 export default RecentShapesStrip;

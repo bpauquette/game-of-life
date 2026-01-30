@@ -1,8 +1,8 @@
 // --- TEST ENVIRONMENT PATCHES FOR JEST ---
 // Robust global mocks for RAF/CAF and Worker
-import { GameModel } from '../../src/model/GameModel';
-import { GameView } from '../../src/view/GameView';
-import { GameController } from '../../src/controller/GameController';
+import { GameModel } from '../../src/model/GameModel.js';
+import { GameView } from '../../src/view/GameView.js';
+import { GameController } from '../../src/controller/GameController.js';
 let rafCallbacks = [];
 let rafId = 0;
 beforeAll(() => {
@@ -76,7 +76,7 @@ describe('GameController animation loop', () => {
   let originalRAF;
   let originalCAF;
   let rafId = 0;
-  const rafCalls = [];
+  // Removed unused rafCalls array
   const cafCalls = [];
 
   const installRAFMock = () => {

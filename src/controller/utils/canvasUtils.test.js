@@ -2,7 +2,7 @@ import {
   computeComputedOffset, 
   eventToCellFromCanvas, 
   drawLiveCells 
-} from './canvasUtils';
+} from './canvasUtils.js';
 
 describe('canvasUtils', () => {
   it('exports all expected functions', () => {

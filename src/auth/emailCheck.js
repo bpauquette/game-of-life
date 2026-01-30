@@ -1,4 +1,4 @@
-import { checkEmail } from './api';
+import { checkEmail } from './api.js';
 
 /**
  * Checks if an email is registered and stores it for future reference

@@ -4,7 +4,7 @@
 // don't block the caller synchronously. This makes it safe to call from UI
 // code and tests; later we can replace this with a real Worker implementation.
 
-const engine = require('./engine');
+const engine = require('./engine.js');
 
 function run(cells, generations, onProgress) {
   return new Promise((resolve, reject) => {

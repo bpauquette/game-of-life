@@ -1,4 +1,4 @@
-const engine = require('../engine');
+const engine = require('../engine.js');
 
 // Gosper glider gun pattern (relative coordinates)
 const GOSPER = [
@@ -37,7 +37,7 @@ test('Gosper glider gun: deterministic stepping (compose steps)', async () => {
   }
 });
 
-const gameLogic = require('../../gameLogic');
+const gameLogic = require('../../gameLogic.js');
 
 test('Gosper glider gun: compare `gameLogic.ticks` reference to engine (15 gens)', async () => {
   const initial = GOSPER.map(([x,y]) => ({ x, y }));

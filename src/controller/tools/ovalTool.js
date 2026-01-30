@@ -1,4 +1,4 @@
-import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes';
+import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes.js';
 
 // Midpoint ellipse algorithm for computing ellipse perimeter
 const computeEllipsePerimeter = (x0, y0, x1, y1) => {
@@ -76,7 +76,7 @@ const computeEllipsePerimeter = (x0, y0, x1, y1) => {
 
 // Oval (ellipse) perimeter-only tool - axis-aligned, commits on mouseup
 export const ovalTool = {
-  getOverlay(state, cellSize) {
+  getOverlay(state) {
     if (!state.start || !state.last) return null;
     // Descriptor-based overlay: highlight absolute preview cells
     const cells = Array.isArray(state.preview) ? state.preview : [];
@@ -114,6 +114,7 @@ export const ovalTool = {
 
   drawOverlay(ctx, state, cellSize, offset) {
     try {
+      // const cellSize = getCellSize(); // Removed unused variable assignment, kept parameter
       if (!state.start || !state.last) return;
       if (state.preview && state.preview.length > 0) {
         ctx.save();

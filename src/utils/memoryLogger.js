@@ -1,4 +1,4 @@
-import logger from '../controller/utils/logger';
+import logger from '../controller/utils/logger.js';
 
 const MB = 1024 * 1024;
 const DEFAULT_INTERVAL_MS = 5_000;
@@ -15,7 +15,7 @@ const canSampleMemory = () => {
 };
 
 const getIntervalMs = (requestedInterval) => {
-  const runtimeInterval = typeof window !== 'undefined' ? window.GOL_MEMORY_LOG_INTERVAL_MS : undefined;
+  const runtimeInterval = typeof globalThis !== 'undefined' ? globalThis.GOL_MEMORY_LOG_INTERVAL_MS : undefined;
   const parsedRuntime = Number(runtimeInterval);
   if (Number.isFinite(requestedInterval) && requestedInterval > 0) return requestedInterval;
   if (Number.isFinite(parsedRuntime) && parsedRuntime > 0) return parsedRuntime;
@@ -25,11 +25,11 @@ const getIntervalMs = (requestedInterval) => {
 };
 
 function storeSample(sample) {
-  if (typeof window === 'undefined') return;
-  if (!Array.isArray(window.__GOL_MEMORY_SAMPLES__)) {
-    window.__GOL_MEMORY_SAMPLES__ = [];
+  if (typeof globalThis === 'undefined') return;
+  if (!Array.isArray(globalThis.__GOL_MEMORY_SAMPLES__)) {
+    globalThis.__GOL_MEMORY_SAMPLES__ = [];
   }
-  const samples = window.__GOL_MEMORY_SAMPLES__;
+  const samples = globalThis.__GOL_MEMORY_SAMPLES__;
   samples.push(sample);
   if (samples.length > MAX_SAMPLES) {
     samples.splice(0, samples.length - MAX_SAMPLES);
@@ -39,7 +39,7 @@ function storeSample(sample) {
 
 function resolveUploadTarget(requestedUrl) {
   if (typeof requestedUrl === 'string') return requestedUrl;
-  const runtimeUrl = typeof window !== 'undefined' ? window.GOL_MEMORY_UPLOAD_URL : undefined;
+  const runtimeUrl = typeof globalThis !== 'undefined' ? globalThis.GOL_MEMORY_UPLOAD_URL : undefined;
   if (typeof runtimeUrl === 'string' && runtimeUrl.length > 0) return runtimeUrl;
   const envUrl = typeof process !== 'undefined' ? process?.env?.REACT_APP_MEMORY_UPLOAD_URL : undefined;
   if (typeof envUrl === 'string' && envUrl.length > 0) return envUrl;
@@ -48,7 +48,7 @@ function resolveUploadTarget(requestedUrl) {
 
 function shouldUpload(enabled) {
   if (typeof enabled === 'boolean') return enabled;
-  const runtimeFlag = typeof window !== 'undefined' ? window.GOL_MEMORY_UPLOAD_ENABLED : undefined;
+  const runtimeFlag = typeof globalThis !== 'undefined' ? globalThis.GOL_MEMORY_UPLOAD_ENABLED : undefined;
   if (typeof runtimeFlag === 'boolean') return runtimeFlag;
   const envFlag = typeof process !== 'undefined' ? process?.env?.REACT_APP_MEMORY_UPLOAD_ENABLED : undefined;
   if (envFlag === 'true' || envFlag === '1') return true;
@@ -115,7 +115,7 @@ async function uploadSamples(samples, { url, signal }) {
  */
 export function startMemoryLogger(options = {}) {
   const enabledOverride = options.enabled;
-  const runtimeFlag = typeof window !== 'undefined' ? window.GOL_MEMORY_LOGGER_ENABLED : undefined;
+  const runtimeFlag = typeof globalThis !== 'undefined' ? globalThis.GOL_MEMORY_LOGGER_ENABLED : undefined;
   const envFlag = typeof process !== 'undefined' ? process?.env?.REACT_APP_MEMORY_LOGGER : undefined;
   const shouldEnable = () => {
     if (typeof enabledOverride === 'boolean') return enabledOverride;
@@ -144,9 +144,9 @@ export function startMemoryLogger(options = {}) {
     : DEFAULT_UPLOAD_INTERVAL;
   const batchSize = Number.isFinite(options.batchSize) && options.batchSize > 0 ? options.batchSize : 10;
   const uploadQueue = [];
-  const sessionId = (typeof window !== 'undefined' && window.GOL_MEMORY_SESSION_ID) || safeRandomId();
-  if (typeof window !== 'undefined' && !window.GOL_MEMORY_SESSION_ID) {
-    window.GOL_MEMORY_SESSION_ID = sessionId;
+  const sessionId = (typeof globalThis !== 'undefined' && globalThis.GOL_MEMORY_SESSION_ID) || safeRandomId();
+  if (typeof globalThis !== 'undefined' && !globalThis.GOL_MEMORY_SESSION_ID) {
+    globalThis.GOL_MEMORY_SESSION_ID = sessionId;
   }
   let uploadTimer = null;
   let uploadAbortController = null;
@@ -191,11 +191,11 @@ export function startMemoryLogger(options = {}) {
   };
 
   logSample();
-  const timer = window.setInterval(logSample, intervalMs);
+  const timer = globalThis.setInterval(logSample, intervalMs);
   if (uploadEnabled) {
-    uploadTimer = window.setInterval(flushUploadQueue, uploadInterval);
-    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('beforeunload', () => {
+    uploadTimer = globalThis.setInterval(flushUploadQueue, uploadInterval);
+    if (typeof globalThis !== 'undefined' && typeof globalThis.addEventListener === 'function') {
+      globalThis.addEventListener('beforeunload', () => {
         if (uploadQueue.length > 0) {
           sendBeaconIfAvailable(uploadUrl, { samples: uploadQueue.slice(0, batchSize), sessionId });
         }
@@ -203,8 +203,8 @@ export function startMemoryLogger(options = {}) {
     }
   }
   return () => {
-    if (timer) window.clearInterval(timer);
-    if (uploadTimer) window.clearInterval(uploadTimer);
+    if (timer) globalThis.clearInterval(timer);
+    if (uploadTimer) globalThis.clearInterval(uploadTimer);
     if (uploadAbortController) uploadAbortController.abort();
   };
 }

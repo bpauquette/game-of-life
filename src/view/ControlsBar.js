@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import OptionsPanel from './OptionsPanel';
-import ToolStatus from './ToolStatus';
-import SaveGridDialog from './SaveGridDialog';
-import LoadGridDialog from './LoadGridDialog';
-import useGridFileManager from './hooks/useGridFileManager';
+import OptionsPanel from './OptionsPanel.js';
+import ToolStatus from './ToolStatus.js';
+import SaveGridDialog from './SaveGridDialog.js';
+import LoadGridDialog from './LoadGridDialog.js';
+import useGridFileManager from './hooks/useGridFileManager.js';
 import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -16,11 +16,11 @@ import InfoIcon from '@mui/icons-material/Info';
 // tool icons moved to ToolGroupOverlay
 // Save/Load icons moved to SaveLoadGroup component
 // OvalIcon used in ToolGroupOverlay
-import HelpDialog from './HelpDialog';
-import AboutDialog from './AboutDialog';
-import RunControlGroup from './components/RunControlGroup';
-import SaveLoadGroup from './components/SaveLoadGroup';
-import ToolGroup from './components/ToolGroup';
+import HelpDialog from './HelpDialog.js';
+import AboutDialog from './AboutDialog.js';
+import RunControlGroup from './components/RunControlGroup.js';
+import SaveLoadGroup from './components/SaveLoadGroup.js';
+import ToolGroup from './components/ToolGroup.js';
 
 // UI Layout Constants  
 const CONTROL_SPACING = 1;
@@ -190,7 +190,11 @@ ControlsDialogs.propTypes = {
   onLoadGrid: PropTypes.func.isRequired,
   onDeleteGrid: PropTypes.func.isRequired,
   grids: PropTypes.array,
-  loadingGrids: PropTypes.bool
+  loadingGrids: PropTypes.bool,
+  setUseHashlife: PropTypes.func,
+  setHashlifeMaxRun: PropTypes.func,
+  setHashlifeCacheSize: PropTypes.func,
+  clearHashlifeCache: PropTypes.func
 };
 
 // Minimal, correct ControlsBar composed of smaller pieces
@@ -241,8 +245,11 @@ const ControlsBar = ({
   setEnableAdaCompliance,
 
   // Optional model to drive ToolStatus observer
-  model
-  ,
+  model,
+  setUseHashlife,
+  setHashlifeMaxRun,
+  setHashlifeCacheSize,
+  clearHashlifeCache,
   // Engine control callbacks (forwarded to RunControlGroup)
   onStartNormalMode,
   onStopAllEngines,
@@ -280,10 +287,10 @@ const ControlsBar = ({
   });
 
   const handleOpenSave = () => {
-    if (!sessionStorage.getItem('authToken')) {
-      window.dispatchEvent(new CustomEvent('auth:needLogin', { detail: { message: 'Please login to save.' } }));
-    } else {
+    if (sessionStorage.getItem('authToken')) {
       openSaveDialog();
+    } else {
+      globalThis.dispatchEvent(new CustomEvent('auth:needLogin', { detail: { message: 'Please login to save.' } }));
     }
   };
 
@@ -356,9 +363,9 @@ const ControlsBar = ({
         <ToolGroup
           selectedTool={selectedTool}
           setSelectedTool={(tool) => {
-            try { setSelectedTool(tool); } catch {}
+            try { setSelectedTool(tool); } catch (e) { console.warn('Exception caught in setSelectedTool:', e); }
             if (tool === 'shapes') {
-              try { openPalette?.(); } catch {}
+              try { openPalette?.(); } catch (e) { console.warn('Exception caught in openPalette:', e); }
             }
           }}
           isSmall={false}
@@ -427,6 +434,11 @@ const ControlsBar = ({
 };
 
 ControlsBar.propTypes = {
+      setUseHashlife: PropTypes.func,
+      setHashlifeMaxRun: PropTypes.func,
+      setHashlifeCacheSize: PropTypes.func,
+      clearHashlifeCache: PropTypes.func,
+    // ...existing code...
   selectedTool: PropTypes.string.isRequired,
   setSelectedTool: PropTypes.func.isRequired,
   isRunning: PropTypes.bool.isRequired,
@@ -478,7 +490,7 @@ ControlsBar.propTypes = {
   setPopTolerance: PropTypes.func.isRequired,
 
   // Optional model for tool state observation
-  model: PropTypes.object
+  model: PropTypes.object,
 };
 
 export default ControlsBar;

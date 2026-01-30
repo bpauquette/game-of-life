@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
-import logger from '../../controller/utils/logger';
-import GridsDao from '../../model/dao/GridsDao';
+import logger from '../../controller/utils/logger.js';
+import GridsDao from '../../model/dao/GridsDao.js';
+
 
 /**
  * Hook for managing grid file operations (save/load)
@@ -19,12 +20,7 @@ const useGridFileManager = (config = {}) => {
   const inFlightSaveRef = useRef(null);
 
   // Always use the correct base URL, never allow override
-  // Always use the correct base URL, never allow override
-  const getBackendApiBaseRef = useRef(null);
-  if (!getBackendApiBaseRef.current) {
-    getBackendApiBaseRef.current = require('../../utils/backendApi').getBackendApiBase;
-  }
-  // Removed unused getBaseUrl
+  // getBackendApiBase is now statically imported
 
   // Convert live cells to serializable format
   const serializeLiveCells = useCallback((liveCells) => {
