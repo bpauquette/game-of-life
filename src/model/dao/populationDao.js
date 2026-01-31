@@ -10,4 +10,6 @@ export const usePopulationDao = create((set) => ({
   setGeneration: (generation) => set({ generation }),
   maxChartGenerations: 5000,
   setMaxChartGenerations: (maxChartGenerations) => set({ maxChartGenerations }),
+  stableDetectionInfo: null,
+  setStableDetectionInfo: (info) => set({ stableDetectionInfo: info }),
 }));

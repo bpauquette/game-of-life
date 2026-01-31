@@ -438,7 +438,6 @@ ControlsBar.propTypes = {
       setHashlifeMaxRun: PropTypes.func,
       setHashlifeCacheSize: PropTypes.func,
       clearHashlifeCache: PropTypes.func,
-    // ...existing code...
   selectedTool: PropTypes.string.isRequired,
   setSelectedTool: PropTypes.func.isRequired,
   isRunning: PropTypes.bool.isRequired,

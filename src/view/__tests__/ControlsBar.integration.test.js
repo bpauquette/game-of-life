@@ -1,5 +1,4 @@
 // ControlsBar.integration.test.js
-// ...existing code...
 
 // Mock useGridFileManager to simulate backend response
 jest.mock('../hooks/useGridFileManager', () => () => ({

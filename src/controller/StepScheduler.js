@@ -67,7 +67,6 @@ export class StepScheduler {
     this.isRunning = false;
     this.useWorker ? this._stopWorkerLoop() : this._stopRAFLoop();
   }
-// ...existing code...
 
   _startRAFLoop() {
     const loop = (timestamp) => {

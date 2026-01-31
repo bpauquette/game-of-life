@@ -53,7 +53,7 @@ function getColorSchemeFromKey(key) {
 const INITIAL_STEADY_INFO = Object.freeze({ steady: false, period: 0, popChanging: false });
 
 function GameOfLifeApp() {
-  // Use extracted hooks for state selectors
+  // ...all destructuring and hook calls...
   const {
     selectedTool, setSelectedTool, toolState, setToolState, selectedShape, setSelectedShape, randomRectPercent, setRandomRectPercent
   } = useToolState();
@@ -64,7 +64,7 @@ function GameOfLifeApp() {
     populationHistory, setPopulationHistory, popWindowSize, setPopWindowSize, generation, setGeneration, maxChartGenerations, setMaxChartGenerations, stableDetectionInfo, setStableDetectionInfo
   } = usePopulationState();
   const {
-    paletteOpen, setPaletteOpen, showChart, setShowChart, showUIControls, setShowUIControls, showStableDialog, setShowStableDialog, shapesNotifOpen, setShapesNotifOpen, loginNotifOpen, setLoginNotifOpen, loginNotifMessage, setLoginNotifMessage, showDuplicateDialog, setShowDuplicateDialog, duplicateShape, setDuplicateShape, showFirstLoadWarning, setShowFirstLoadWarning
+    paletteOpen, setPaletteOpen, setShowChart, showUIControls, setShowUIControls, showStableDialog, setShowStableDialog, shapesNotifOpen, setShapesNotifOpen, loginNotifOpen, setLoginNotifOpen, loginNotifMessage, setLoginNotifMessage, showDuplicateDialog, setShowDuplicateDialog, duplicateShape, setDuplicateShape, showFirstLoadWarning, setShowFirstLoadWarning
   } = useUiState();
   const {
     performanceCaps, setPerformanceCaps, memoryTelemetryEnabled, setMemoryTelemetryEnabled
@@ -72,6 +72,34 @@ function GameOfLifeApp() {
   const {
     captureDialogOpen, setCaptureDialogOpen, captureData, setCaptureData, myShapesDialogOpen, setMyShapesDialogOpen, importDialogOpen, setImportDialogOpen
   } = useDialogState();
+  // ...all refs, useState, useUiDao, etc...
+
+  // UI state from uiDao (must be after all other destructuring, before debug logs)
+  const enableAdaCompliance = useUiDao(state => state.enableAdaCompliance);
+  const setEnableAdaCompliance = useUiDao(state => state.setEnableAdaCompliance);
+
+  // Now, after ALL destructuring/hooks/refs, place your debug logs:
+  console.log('[GameOfLifeApp] function called');
+   
+  console.log('[GameOfLifeApp] selectedTool:', selectedTool, 'isRunning:', isRunning, 'paletteOpen:', paletteOpen, 'showUIControls:', showUIControls, 'enableAdaCompliance:', enableAdaCompliance, 'generation:', generation);
+  React.useEffect(() => {
+    console.log('[GameOfLifeApp] useEffect: selectedTool changed:', selectedTool);
+  }, [selectedTool]);
+  React.useEffect(() => {
+    console.log('[GameOfLifeApp] useEffect: isRunning changed:', isRunning);
+  }, [isRunning]);
+  React.useEffect(() => {
+    console.log('[GameOfLifeApp] useEffect: paletteOpen changed:', paletteOpen);
+  }, [paletteOpen]);
+  React.useEffect(() => {
+    console.log('[GameOfLifeApp] useEffect: showUIControls changed:', showUIControls);
+  }, [showUIControls]);
+  React.useEffect(() => {
+    console.log('[GameOfLifeApp] useEffect: enableAdaCompliance changed:', enableAdaCompliance);
+  }, [enableAdaCompliance]);
+  React.useEffect(() => {
+    console.log('[GameOfLifeApp] useEffect: generation changed:', generation);
+  }, [generation]);
 
   // Refs and constants (must come after useState, before effects/callbacks)
   const userNotifiedRef = useRef(false);
@@ -104,15 +132,12 @@ function GameOfLifeApp() {
   const setPopTolerance = useUiDao(state => state.setPopTolerance);
   const detectStablePopulation = useUiDao(state => state.detectStablePopulation);
   const setDetectStablePopulation = useUiDao(state => state.setDetectStablePopulation);
-  const enableAdaCompliance = useUiDao(state => state.enableAdaCompliance);
-  const setEnableAdaCompliance = useUiDao(state => state.setEnableAdaCompliance);
+  const useWebWorker = useUiDao(state => state.useWebWorker);
+  const setUseWebWorker = useUiDao(state => state.setUseWebWorker);
   const setUseWebWorkerPreference = useCallback((value) => {
-  setUseWebWorker(value);
-  try { globalThis.localStorage?.setItem('useWebWorker', JSON.stringify(value)); } catch (e) { console.error(e); }
-}, [setUseWebWorker]);
-
-const useWebWorker = useUiDao(state => state.useWebWorker);
-const setUseWebWorker = useUiDao(state => state.setUseWebWorker);
+    setUseWebWorker(value);
+    try { globalThis.localStorage?.setItem('useWebWorker', JSON.stringify(value)); } catch (e) { console.error(e); }
+  }, [setUseWebWorker]);
  
   const setRunningState = useCallback((running) => {
     const modelIsRunning = !!running;
@@ -139,6 +164,7 @@ const setUseWebWorker = useUiDao(state => state.setUseWebWorker);
   // Effects (after all refs and callbacks)
   // Keep generation in sync with the model
   useEffect(() => {
+    console.log('[GameOfLifeApp] useEffect: gameRef or setGeneration changed');
     const mvc = gameRef.current;
     if (!mvc || typeof mvc.onModelChange !== 'function') return;
 
@@ -157,19 +183,29 @@ const setUseWebWorker = useUiDao(state => state.setUseWebWorker);
     };
     mvc.onModelChange(handler);
 
-    return () => mvc.offModelChange(handler);
+    return () => {
+      console.log('[GameOfLifeApp] useEffect cleanup: removing modelChange handler');
+      mvc.offModelChange(handler);
+    };
   }, [gameRef, setGeneration]); // Only run once on mount
   
   // Save generation batch size to localStorage
   useEffect(() => {
+    console.log('[GameOfLifeApp] useEffect: generationBatchSize changed:', generationBatchSize);
     try {
       globalThis.localStorage.setItem('generationBatchSize', generationBatchSize.toString());
     } catch (e) {
       console.error(e);
     }
   }, [generationBatchSize, gameRef]);
-  useEffect(() => { popHistoryRef.current = populationHistory; }, [populationHistory]);
+  useEffect(() => {
+    console.log('[GameOfLifeApp] useEffect: populationHistory changed');
+    popHistoryRef.current = populationHistory;
+  }, [populationHistory]);
   const isSmall = useMediaQuery('(max-width:900px)');
+  React.useEffect(() => {
+    console.log('[GameOfLifeApp] useEffect: isSmall changed:', isSmall);
+  }, [isSmall]);
   const getViewport = useCallback(() => (
     gameRef.current?.getViewport?.() ?? { offsetX: 0, offsetY: 0 }
   ), [gameRef]);
@@ -290,33 +326,6 @@ const setUseWebWorker = useUiDao(state => state.setUseWebWorker);
 
 
 
-  // Global keyboard shortcuts for UI actions (ADA compliance)
-  useEffect(() => {
-    const handleGlobalKeyDown = (e) => {
-      const target = e.target;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-        return;
-      }
-      const key = e.key.toLowerCase();
-      const ctrl = e.ctrlKey || e.metaKey;
-      let handled = false;
-      if (key === 'p' && !ctrl) {
-        setPaletteOpen(true);
-        handled = true;
-      } else if (key === 'g' && !ctrl) {
-        setShowChart(!showChart);
-        handled = true;
-      } else if (key === 'h' && !ctrl) {
-        setShowUIControls(!showUIControls);
-        handled = true;
-      }
-      if (handled) {
-        e.preventDefault();
-      }
-    };
-    document.addEventListener('keydown', handleGlobalKeyDown);
-    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [setPaletteOpen, setShowChart, setShowUIControls, showChart, showUIControls]);
 
   const setShowSpeedGauge = useUiDao(state => state.setShowSpeedGauge);
 
@@ -627,6 +636,11 @@ const setUseWebWorker = useUiDao(state => state.setUseWebWorker);
 
         const entry = { generation, population };
         const prev = Array.isArray(popHistoryRef.current) ? popHistoryRef.current : [];
+        // Only add if changed from last entry
+        const last = prev[prev.length - 1];
+        if (last && last.generation === entry.generation && last.population === entry.population) {
+          return; // No change, skip update
+        }
         const globalThisSize = Math.max(1, Number(maxChartGenerations) || 5000);
         const next = prev.length >= globalThisSize
           ? [...prev.slice(-(globalThisSize - 1)), entry]
@@ -634,7 +648,6 @@ const setUseWebWorker = useUiDao(state => state.setUseWebWorker);
         popHistoryRef.current = next;
         setPopulationHistory(next);
       } catch (e) {
-         
         console.warn('population sampling failed:', e);
       }
     };

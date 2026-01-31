@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import './view/styles/design-tokens.css';
-// ...existing code...
 import App from './view/App.js';
 import reportWebVitals from './reportWebVitals.js';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
@@ -32,9 +31,11 @@ function AppWithTheme() {
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <ThemeProvider>
-    <AppWithTheme />
-  </ThemeProvider>
+  <React.StrictMode>
+    <ThemeProvider>
+      <AppWithTheme />
+    </ThemeProvider>
+  </React.StrictMode>
 );
 
 // If you want to start measuring performance in your app, pass a function

@@ -22,11 +22,9 @@ import Snackbar from '@mui/material/Snackbar';
  */
 export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCompliance = false }) {
   const [testing, setTesting] = useState(false);
-  const [progress, setProgress] = useState(0);  
   const [result, setResult] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [testDuration, setTestDuration] = useState(0);  
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Sync external open prop with internal state
@@ -76,8 +74,6 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
   const runTest = async () => {
     // Reset all state before starting new test
     setResult(null);
-    setProgress(0);
-    setTestDuration(0);
     setTesting(true);
     
     // Close dialog and show snackbar
@@ -130,7 +126,7 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
       
       let violationDetected = false;
       let violationType = null;
-      let violationTime = 0;  
+     // let violationTime = 0;
 
       // Capture start time before defining completeTest function
       const startTime = Date.now();
@@ -138,7 +134,7 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
       // Complete test function defined before interval to avoid hoisting issues
       const completeTest = () => {
         const elapsed = Date.now() - startTime;
-        setTestDuration(elapsed);
+       // setTestDuration(elapsed);
         
         // Calculate final metrics
         const oneSecondAgo = Date.now() - 1000;
@@ -168,7 +164,7 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
         });
 
         setTesting(false);
-        setProgress(100);
+       // setProgress(100);
         setSnackbarOpen(false);
 
         // Reopen dialog with results
@@ -205,13 +201,13 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
               if (flashRate > maxFlashRate) {
                 violationDetected = true;
                 violationType = 'FLASH_RATE';
-                violationTime = Date.now() - startTime;
+ //               violationTime = Date.now() - startTime;
                 clearInterval(intervalId);
                 completeTest();
               } else if (flash.flashPixels > maxFlashArea) {
                 violationDetected = true;
                 violationType = 'FLASH_AREA';
-                violationTime = Date.now() - startTime;
+  //              violationTime = Date.now() - startTime;
                 clearInterval(intervalId);
                 completeTest();
               }
@@ -220,8 +216,8 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
           
           // Update progress
           const elapsed = Date.now() - startTime;
-          const progressPercent = Math.min((elapsed / maxTestDuration) * 100, 100);
-          setProgress(progressPercent);
+        //  const progressPercent = Math.min((elapsed / maxTestDuration) * 100, 100);
+         // setProgress(progressPercent);
           setSnackbarMessage(`Testing... ${Math.floor(elapsed / 1000)}s elapsed`);
           
         } catch (e) {
@@ -253,8 +249,8 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
     if (!testing) {
       // Only close if we're not actively testing
       setResult(null);
-      setProgress(0);
-      setTestDuration(0);
+     // setProgress(0);
+      //setTestDuration(0);
       setDialogOpen(false);
       onClose?.();
     }

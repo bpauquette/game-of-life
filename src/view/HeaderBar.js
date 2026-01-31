@@ -1,3 +1,4 @@
+import useGlobalShortcuts from './hooks/useGlobalShortcuts.js';
 import React, { useCallback } from 'react';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import UserLoggedInIcon from '@mui/icons-material/LockPerson';
@@ -49,12 +50,24 @@ export default function HeaderBar({
   selectedShape
 }) {
 
+  console.log('[HeaderBar] mounted');
+
+  useGlobalShortcuts();
 
   // Zustand selectors (including all UI/dialog state)
+
+  // UI state from uiDao (helpOpen and setHelpOpen must come first for hook order)
+  const helpOpen = useUiDao(state => state.helpOpen);
+  const setHelpOpen = useUiDao(state => state.setHelpOpen);
+
+  // Memoized handler for HelpDialog onClose
+  const handleHelpClose = useCallback(() => setHelpOpen(false), [setHelpOpen]);
+
   // Fix for missing setShowChart, handleUserIconClick, handleLogout
   const setShowChart = () => {};
   const handleUserIconClick = () => {};
   const handleLogout = () => {};
+
   // UI state from uiDao
   const colorScheme = useUiDao(state => state.colorScheme);
   const colorSchemes = useUiDao(state => state.colorSchemes);
@@ -68,8 +81,6 @@ export default function HeaderBar({
   const setOptionsOpen = useUiDao(state => state.setOptionsOpen);
   const wasRunningBeforeOptions = useUiDao(state => state.wasRunningBeforeOptions);
   const setWasRunningBeforeOptions = useUiDao(state => state.setWasRunningBeforeOptions);
-  const helpOpen = useUiDao(state => state.helpOpen);
-  const setHelpOpen = useUiDao(state => state.setHelpOpen);
   const aboutOpen = useUiDao(state => state.aboutOpen);
   const setAboutOpen = useUiDao(state => state.setAboutOpen);
   const donateOpen = useUiDao(state => state.donateOpen);
@@ -186,6 +197,8 @@ export default function HeaderBar({
     if (grid && onLoadGrid) onLoadGrid(grid.liveCells);
   }, [loadGrid, onLoadGrid]);
 
+  // Global drawer state from uiDao
+
   return (
     <>
       {/* Three-row header: RunControlGroup, ToolGroup, RecentShapesStrip */}
@@ -292,8 +305,28 @@ export default function HeaderBar({
             </Box>
           </Box>
         )}
-        {/* Third row: RecentShapesStrip (increased height to fit thumbnails + controls) */}
-        <Box sx={{ position: 'relative', left: 0, right: 0, py: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(30,30,40,0.85)', borderBottom: '1px solid rgba(255,255,255,0.12)', zIndex: 41, pointerEvents: 'auto', overflowX: 'hidden', overflowY: 'hidden', mt: 0 }}>
+        {/* Third row: RecentShapesStrip (always visible, compact) */}
+        <Box
+          sx={{
+            position: 'relative',
+            left: 0,
+            right: 0,
+            py: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            px: 1,
+            backgroundColor: 'rgba(20,20,25,0.98)',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            zIndex: 41,
+            pointerEvents: 'auto',
+            overflow: 'visible',
+            mt: 0,
+            minHeight: 90,
+            maxHeight: 120,
+            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.10)'
+          }}
+        >
           <RecentShapesStrip
             recentShapes={recentShapes}
             selectShape={selectShape}
@@ -307,7 +340,9 @@ export default function HeaderBar({
             onClearRecentShapes={onClearRecentShapes}
             persistenceStatus={recentShapesPersistence}
           />
+          {/* Button to open the expanded drawer */}
         </Box>
+        {/* Drawer for expanded recent shapes view (no strip inside) */}
       </Box>
 
       {/* Script playground dialog */}
@@ -351,7 +386,7 @@ export default function HeaderBar({
         />
       )}
 
-      <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HelpDialog open={helpOpen} onClose={handleHelpClose} />
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <PaymentDialog open={donateOpen} onClose={() => setDonateOpen(false)} />
       <PhotosensitivityTestDialog open={photoTestOpen} onClose={() => setPhotoTestOpen(false)} />

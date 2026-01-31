@@ -48,7 +48,6 @@ export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRe
     const [selectedShape, setSelectedShape] = useState(null);
 
 
-  // ...existing code...
   const shapesForRender = useDeferredValue(
     useMemo(() => {
       // Sort shapes: user-owned shapes first, then system shapes

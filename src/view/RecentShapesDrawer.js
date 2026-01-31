@@ -67,10 +67,12 @@ export default function RecentShapesDrawer({ open, onClose, recentShapes, onSele
       anchor="bottom"
       open={open}
       onClose={onClose}
+      hideBackdrop={true}
+      PaperProps={{ sx: { zIndex: 100 } }}
     >
-      <Box sx={{ width: '100%', height: '45vh', bgcolor: 'var(--surface-modal)', color: 'var(--text-primary)', p: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <Box sx={{ width: '100%', height: '25vh', bgcolor: 'var(--surface-modal)', color: 'var(--text-primary)', p: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Typography variant="subtitle2" sx={{ textTransform: 'uppercase', letterSpacing: 0.5, color: 'primary.light' }}>
-          Recent Shapes
+          Recent Shapes (Expanded)
         </Typography>
         <Box sx={{ flex: 1, overflowY: 'auto' }}>
           <Grid container spacing={1} columns={6}>
