@@ -1,5 +1,4 @@
-/* eslint react-hooks/exhaustive-deps: 0 */
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef } from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -113,13 +112,16 @@ function computeBounds(cells = []) {
 function PreviewPanel(props) {
   const { preview, maxSvgSize = 200, colorScheme, colorSchemeKey, onAddRecent } = props;
   const canvasRef = useRef(null);
-
-  // Transform and rotation are now controlled by props or parent, or reset by remounting
-  const [imgError, setImgError] = useState(false);
   const transforms = ['identity', 'flipH', 'flipV', 'diag1', 'diag2'];
-  // Always reset transformIndex and rotationAngle on preview change by remounting
-  const [transformIndex, setTransformIndex] = useState(0);
-  const [rotationAngle, setRotationAngle] = useState(0);
+  // Use controlled props for transformIndex, rotationAngle, and imgError
+  const {
+    transformIndex = 0,
+    rotationAngle = 0,
+    imgError = false,
+    setTransformIndex,
+    setRotationAngle,
+    setImgError
+  } = props;
   const currentTransform = transforms[transformIndex];
 
   // Derive cells from preview and transform/rotation
@@ -170,8 +172,8 @@ function PreviewPanel(props) {
 
   if (!preview) return <Box sx={{ minWidth: 260, minHeight: 220 }} />;
 
-  // Use a key prop to force remount on preview change
-  const previewKey = preview ? `${preview.name || ''}-${preview.description || ''}-${JSON.stringify(preview.cells)}` : 'empty';
+  // Use a key prop to force remount on preview change and transformation
+  const previewKey = preview ? `${preview.name || ''}-${preview.description || ''}-${JSON.stringify(preview.cells)}-${transformIndex}-${rotationAngle}` : 'empty';
 
   return (
     <Box sx={{ minWidth: 260, minHeight: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} data-testid="hover-preview-panel">
@@ -420,6 +422,12 @@ PreviewPanel.propTypes = {
   colorSchemeKey: PropTypes.string,
   onAddRecent: PropTypes.func,
   cellSize: PropTypes.number
+  , transformIndex: PropTypes.number
+  , rotationAngle: PropTypes.number
+  , imgError: PropTypes.bool
+  , setTransformIndex: PropTypes.func
+  , setRotationAngle: PropTypes.func
+  , setImgError: PropTypes.func
 };
 
 export default PreviewPanel;

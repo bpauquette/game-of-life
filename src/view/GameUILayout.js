@@ -8,7 +8,6 @@ import PalettePortal from './PalettePortal.js';
 import CaptureDialogPortal from './CaptureDialogPortal.js';
 import MyShapesDialog from './MyShapesDialog.js';
 import ImportShapeDialog from './components/ImportShapeDialog.jsx';
-import RecentShapesDrawer from './RecentShapesDrawer.js';
 import StatisticsPanel from './StatisticsPanel.js';
 import BottomStatusBar from './BottomStatusBar.js';
 import Box from '@mui/material/Box';
@@ -87,7 +86,6 @@ function GameUILayout(/* props */) {
   const setGeneration = usePopulationDao(state => state.setGeneration);
   const maxChartGenerations = usePopulationDao(state => state.maxChartGenerations);
   const setMaxChartGenerations = usePopulationDao(state => state.setMaxChartGenerations);
-  // ...existing code...
 
   // Robust canvas initialization: sets up size, scaling, and clears for zoom/resize/refresh
   const initCanvas = useCallback(() => {
@@ -147,7 +145,7 @@ function GameUILayout(/* props */) {
   // Init canvas on mount and when relevant state changes
   useLayoutEffect(() => {
     initCanvas();
-  }, [initCanvas]);
+  }, [initCanvas, enableAdaCompliance]);
 
   return (
     <div className="canvas-container" style={{ height: '100vh', backgroundColor: 'var(--surface-0)' }}>
@@ -233,15 +231,6 @@ function GameUILayout(/* props */) {
               : { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: typeof cursorStyle === 'string' ? cursorStyle : 'default', display: 'block', width: enableAdaCompliance ? '160px' : '100%', height: enableAdaCompliance ? '160px' : '100%', maxWidth: enableAdaCompliance ? '160px' : 'none', maxHeight: enableAdaCompliance ? '160px' : 'none', backgroundColor: '#000', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', boxSizing: 'border-box' }
           }
         />
-        {(uiState?.showUIControls ?? true) && (
-          <RecentShapesDrawer
-            open={true}
-            onClose={() => {}}
-            recentShapes={recentShapes}
-            onSelectShape={(shape) => { onSelectShape(shape); onSwitchToShapesTool(); }}
-            colorScheme={colorScheme}
-          />
-        )}
         {(uiState?.showUIControls ?? true) && (uiState?.showChart ?? false) && (
           <StatisticsPanel
             open

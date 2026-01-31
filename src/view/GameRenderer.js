@@ -1,4 +1,3 @@
-// ...existing code...
 const CONST_FUNCTION = 'function';
 const CONST_FFFFFF = '#ffffff';
 const DEBUG_PUSH_LOG_FAILED = '[GameRenderer] Failed to push canvas log to __GOL_PUSH_CANVAS_LOG__';

@@ -13,6 +13,7 @@ export const useToolDao = create((set) => ({
   setRecentShapesPersistence: (recentShapesPersistence) => set({ recentShapesPersistence }),
   onSaveRecentShapes: (shapes) => set({ recentShapes: shapes }),
   onClearRecentShapes: () => set({ recentShapes: [] }),
+  setSelectedShape: (shape) => set({ selectedShape: shape }),
   onSelectShape: (shape) => set({ selectedShape: shape }),
   onRotateShape: (shape) => set({ selectedShape: shape }),
   onSwitchToShapesTool: () => set({ selectedTool: 'shapes' }),

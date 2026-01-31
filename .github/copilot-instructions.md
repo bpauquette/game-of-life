@@ -1,3 +1,11 @@
+
+
+**Error Logging Policy:**
+Always log errors (e.g., with console.error) instead of silently ignoring them. Do not use empty catch blocks or suppress errors. This is a project-wide preference. If you must catch and ignore, log the error with context.
+
+**Code Patch Formatting Policy:**
+Do not add // ...existing code... or similar placeholder comments in code patches or edits unless explicitly requested by the user. These comments are not wanted in the codebase.
+
 Short guidance for AI coding agents working on Game of Life (frontend + two backends).
 
 1) Big picture
