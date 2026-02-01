@@ -3,23 +3,23 @@ import React, { useCallback } from 'react';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import UserLoggedInIcon from '@mui/icons-material/LockPerson';
 import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
+// import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import PropTypes from 'prop-types';
-import { useToolDao } from '../model/dao/toolDao.js';
+// import { useToolDao } from '../model/dao/toolDao.js';
 import { useUiDao } from '../model/dao/uiDao.js';
 import { useGameDao } from '../model/dao/gameDao.js';
 import { usePopulationDao } from '../model/dao/populationDao.js';
-import { useAuth } from '../auth/AuthProvider.jsx';
+import { useAuth } from '../auth/AuthProvider.js';
 import Login from '../auth/Login.js';
 import Register from '../auth/Register.js';
 import AboutDialog from './AboutDialog.js';
 import AuxActions from './AuxActions.js';
 import RunControlGroup from './components/RunControlGroup.js';
 import SaveLoadGroup from './components/SaveLoadGroup.js';
-import TOOL_DESCRIPTIONS from './components/toolDescriptions.js';
+// import TOOL_DESCRIPTIONS from './components/toolDescriptions.js';
 import ToolGroup from './components/ToolGroup.js';
 import HelpDialog from './HelpDialog.js';
 import useGridFileManager from './hooks/useGridFileManager.js';
@@ -28,6 +28,7 @@ import OptionsPanel from './OptionsPanel.js';
 import PaymentDialog from './PaymentDialog.js';
 import PhotosensitivityTestDialog from './PhotosensitivityTestDialog.js';
 import RecentShapesStrip from './RecentShapesStrip.js';
+// import { useGameContext } from '../context/GameContext.js';
 import SaveGridDialog from './SaveGridDialog.js';
 import ScriptPanel from './ScriptPanel.js';
 
@@ -36,7 +37,6 @@ export default function HeaderBar({
   recentShapes,
   recentShapesPersistence,
   selectShape,
-  drawWithOverlay,
   startPaletteDrag,
   onSaveRecentShapes,
   onClearRecentShapes,
@@ -47,12 +47,21 @@ export default function HeaderBar({
   headerRef,
   showToolsRow = true,
   shapesReady,
-  selectedShape
+  selectedShape,
+  step,
+  draw,
+  clear,
+  snapshotsRef,
+  setSteadyInfo,
+  isRunning: isRunningProp,
+  setIsRunning: setIsRunningProp
 }) {
 
   console.log('[HeaderBar] mounted');
 
+
   useGlobalShortcuts();
+  // const { drawWithOverlay } = useGameContext();
 
   // Zustand selectors (including all UI/dialog state)
 
@@ -99,12 +108,13 @@ export default function HeaderBar({
   const setMemoryTelemetryEnabled = useUiDao(state => state.setMemoryTelemetryEnabled);
 
   // Tool state from toolDao
-  const selectedTool = useToolDao(state => state.selectedTool);
-  const setSelectedTool = useToolDao(state => state.setSelectedTool);
+  // Tool selection is now handled via context in ToolGroup
 
   // Game state from gameDao
-  const isRunning = useGameDao(state => state.isRunning);
-  const setIsRunning = useGameDao(state => state.setIsRunning);
+  const storeIsRunning = useGameDao(state => state.isRunning);
+  const storeSetIsRunning = useGameDao(state => state.setIsRunning);
+  const isRunning = typeof isRunningProp === 'boolean' ? isRunningProp : storeIsRunning;
+  const setIsRunning = typeof setIsRunningProp === 'function' ? setIsRunningProp : storeSetIsRunning;
   const engineMode = useGameDao(state => state.engineMode);
   const isHashlifeMode = useGameDao(state => state.isHashlifeMode);
   const onStartNormalMode = useGameDao(state => state.onStartNormalMode);
@@ -130,11 +140,9 @@ export default function HeaderBar({
   const { token, email } = useAuth();
 
   // Placeholder refs and handlers for missing logic
-  const snapshotsRef = React.useRef();
+  // snapshotsRef is now passed as a prop from GameUILayout/GameOfLifeApp
   const getLiveCells = useCallback(() => new Set(), []); // TODO: Replace with real logic
-  const step = useCallback(() => {}, []); // TODO: Replace with real logic
-  const draw = useCallback(() => {}, []); // TODO: Replace with real logic
-  const clear = useCallback(() => {}, []); // TODO: Replace with real logic
+  // step, draw, clear, snapshotsRef, setSteadyInfo are now passed from props (from GameOfLifeApp)
   const onRotateShape = useCallback(() => {}, []); // TODO: Replace with real logic
   const onSwitchToShapesTool = useCallback(() => {}, []); // TODO: Replace with real logic
   const onLoadGrid = useCallback(() => {}, []); // TODO: Replace with real logic
@@ -216,6 +224,7 @@ export default function HeaderBar({
               draw={draw}
               clear={clear}
               snapshotsRef={snapshotsRef}
+              setSteadyInfo={setSteadyInfo}
               confirmOnClear={confirmOnClear}
               engineMode={engineMode}
               isHashlifeMode={isHashlifeMode}
@@ -282,20 +291,9 @@ export default function HeaderBar({
         {/* Second row: ToolGroup */}
         {showToolsRow && (
           <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(0,0,0,0.28)', borderBottom: '1px solid rgba(255,255,255,0.18)', zIndex: 40, pointerEvents: 'auto', overflowX: 'hidden' }}>
-            <ToolGroup selectedTool={selectedTool} setSelectedTool={setSelectedTool} isSmall={isSmall} shapesEnabled={shapesReady} />
+            <ToolGroup isSmall={isSmall} shapesEnabled={shapesReady} />
             {/* Only show chip if enough space for both chip and tool icons */}
-            {(!isSmall || (globalThis.globalThis !== undefined && globalThis.innerWidth > 520)) && (
-              <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
-                <Chip
-                  size={isSmall ? 'small' : 'medium'}
-                  color="primary"
-                  label={`Tool: ${TOOL_DESCRIPTIONS[selectedTool] || String(selectedTool || '').toUpperCase()}`}
-                  sx={{ fontWeight: 600 }}
-                  data-testid="selected-tool-chip"
-                />
-              </Box>
-            )}
-            {/* Hide controls button - appears in Row 2 of the header when chrome is visible */}
+            {/* ToolGroup now handles selectedTool via context; chip can be moved there if needed */}
             <Box sx={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}>
               <Tooltip title="Hide controls">
                 <IconButton size={isSmall ? 'small' : 'medium'} aria-label="hide-controls" onClick={onToggleChrome} sx={{ backgroundColor: 'rgba(0,0,0,0.35)' }}>
@@ -330,7 +328,6 @@ export default function HeaderBar({
           <RecentShapesStrip
             recentShapes={recentShapes}
             selectShape={selectShape}
-            drawWithOverlay={drawWithOverlay}
             colorScheme={colorScheme}
             selectedShape={selectedShape}
             onRotateShape={onRotateShape}
@@ -420,7 +417,6 @@ HeaderBar.propTypes = {
   recentShapes: PropTypes.array,
   recentShapesPersistence: PropTypes.object,
   selectShape: PropTypes.func,
-  drawWithOverlay: PropTypes.func,
   startPaletteDrag: PropTypes.func,
   onSaveRecentShapes: PropTypes.func,
   onClearRecentShapes: PropTypes.func,
@@ -431,5 +427,12 @@ HeaderBar.propTypes = {
   headerRef: PropTypes.object,
   showToolsRow: PropTypes.bool,
   shapesReady: PropTypes.bool,
-  selectedShape: PropTypes.object
+  selectedShape: PropTypes.any,
+  step: PropTypes.func.isRequired,
+  draw: PropTypes.func.isRequired,
+  clear: PropTypes.func.isRequired,
+  snapshotsRef: PropTypes.object.isRequired,
+  setSteadyInfo: PropTypes.func,
+  isRunning: PropTypes.bool,
+  setIsRunning: PropTypes.func
 };

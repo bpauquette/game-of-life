@@ -15,7 +15,8 @@ const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 let currentLevel = LEVELS.debug;
 const envLevel = typeof process !== 'undefined' && process?.env?.REACT_APP_LOG_LEVEL;
 const nodeEnv = typeof process !== 'undefined' && process?.env?.NODE_ENV;
-const runtimeLevel = globalThis.globalThis?.GOL_LOG_LEVEL;
+const globalRef = typeof globalThis !== 'undefined' ? globalThis : (typeof global !== 'undefined' ? global : undefined);
+const runtimeLevel = globalRef && globalRef.GOL_LOG_LEVEL;
 
 if (envLevel && Object.prototype.hasOwnProperty.call(LEVELS, envLevel)) {
   currentLevel = LEVELS[envLevel];
@@ -29,12 +30,12 @@ if (envLevel && Object.prototype.hasOwnProperty.call(LEVELS, envLevel)) {
 }
 
 // Also expose a simple global toggle to completely silence logging if desired
-if (globalThis.globalThis !== undefined && globalThis.globalThis.GOL_LOGGING_ENABLED === undefined) {
-  globalThis.globalThis.GOL_LOGGING_ENABLED = true;
+if (globalRef && globalRef.GOL_LOGGING_ENABLED === undefined) {
+  globalRef.GOL_LOGGING_ENABLED = true;
 }
 
 function shouldLog(level) {
-  const enabled = globalThis.globalThis?.GOL_LOGGING_ENABLED !== false;
+  const enabled = !globalRef || globalRef.GOL_LOGGING_ENABLED !== false;
   return enabled && LEVELS[level] <= currentLevel;
 }
 

@@ -68,19 +68,16 @@ export class GameView {
   // Rendering methods
   render(liveCells, viewport) {
     if (!this.isVisible) return;
-    
+    console.debug('[GameView] render() called');
     // Track render timestamp for performance metrics
     if (this.model?.trackRender) {
       this.model.trackRender();
     }
-    
     // Update viewport
     this.renderer.setViewport(viewport.offsetX, viewport.offsetY, viewport.cellSize);
-    
     // Get colorScheme and overlay from model
     const colorScheme = this.model?.getColorScheme();
     const overlay = this.model?.getOverlay ? this.model.getOverlay() : null;
-
     // Pass overlay descriptor directly to renderer
     this.renderer.render(liveCells, colorScheme, overlay);
   }

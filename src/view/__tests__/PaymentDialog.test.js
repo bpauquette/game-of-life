@@ -6,10 +6,12 @@ import { AuthProvider } from '../../auth/AuthProvider.js';
 
 // Mock fetch globally
 global.fetch = jest.fn();
+const originalStripeEnabled = process.env.REACT_APP_STRIPE_ENABLED;
 
 describe('PaymentDialog', () => {
   beforeEach(() => {
     fetch.mockClear();
+    process.env.REACT_APP_STRIPE_ENABLED = 'true';
     // Mock the payment config endpoint
     fetch.mockResolvedValueOnce({
       ok: true,
@@ -18,6 +20,14 @@ describe('PaymentDialog', () => {
         stripe: { enabled: true }
       })
     });
+  });
+
+  afterEach(() => {
+    if (originalStripeEnabled === undefined) {
+      delete process.env.REACT_APP_STRIPE_ENABLED;
+    } else {
+      process.env.REACT_APP_STRIPE_ENABLED = originalStripeEnabled;
+    }
   });
 
   it('renders the donation dialog with title', () => {
@@ -50,7 +60,7 @@ describe('PaymentDialog', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Donate with Card/i)).toBeInTheDocument();
+      expect(screen.getByText(/Donate with Stripe/i)).toBeInTheDocument();
     });
   });
 
@@ -140,7 +150,7 @@ describe('PaymentDialog', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Donate with Card/i)).toBeInTheDocument();
+      expect(screen.getByText(/Donate with Stripe/i)).toBeInTheDocument();
     });
 
     // This test would ideally verify that clicking the button

@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 
 // (Removed broken/stray return and duplicate mock)
-jest.mock('../view/../utils/backendApi', () => ({
+jest.mock('../utils/backendApi.js', () => ({
+  __esModule: true,
   fetchShapeNames: jest.fn(),
   getBackendApiBase: () => 'http://localhost:55000/api',
   fetchShapeById: jest.fn(),
@@ -20,9 +21,13 @@ import { fetchShapeNames } from '../utils/backendApi.js';
 /* eslint-enable import/first */
 
 // Mock useAuth hook
-jest.mock('../auth/AuthProvider', () => ({
+jest.mock('../auth/AuthProvider.js', () => ({
   useAuth: () => ({ user: null }),
 }));
+
+beforeAll(() => {
+  globalThis.__JEST__ = true;
+});
 
 // Tests now use mocked idbCatalog; no localStorage cache key
 
@@ -40,8 +45,9 @@ describe('ShapePaletteDialog caching behavior', () => {
   it('downloads and stores the full catalog in localStorage when Cache Catalog is clicked', async () => {
     // Mock a single-page catalog
   fetchShapeNames.mockResolvedValueOnce({ ok: true, items: [{ id: 's1', name: 'Alpha' }], total: 1 });
+    const fetchShapesStub = jest.fn(() => fetchShapeNames('/api', '', 50, 0));
     render(
-      <ShapePaletteDialog open={true} onClose={() => {}} onSelectShape={() => {}} backendBase="/api" />
+      <ShapePaletteDialog open={true} onClose={() => {}} onSelectShape={() => {}} backendBase="/api" fetchShapes={fetchShapesStub} />
     );
   // Wait for the auto-download to trigger on first open and the item to appear
   await waitFor(() => expect(fetchShapeNames).toHaveBeenCalled());
@@ -52,8 +58,9 @@ describe('ShapePaletteDialog caching behavior', () => {
     // Mock backend search response for 'Alpha'
   fetchShapeNames.mockResolvedValueOnce({ ok: true, items: [{ id: 's1', name: 'Alpha' }], total: 1 });
 
+    const fetchShapesStub = jest.fn(() => fetchShapeNames('/api', '', 50, 0));
     render(
-      <ShapePaletteDialog open={true} onClose={() => {}} onSelectShape={() => {}} backendBase="/api" />
+      <ShapePaletteDialog open={true} onClose={() => {}} onSelectShape={() => {}} backendBase="/api" fetchShapes={fetchShapesStub} />
     );
 
     // Clear any calls that may happen on mount, then type — filtering is client-side
@@ -62,7 +69,7 @@ describe('ShapePaletteDialog caching behavior', () => {
     // Type a search string into the search input
 
     const input = await screen.findByLabelText(/search shapes/i);
-    userEvent.type(input, 'Alpha'); // userEvent.type returns a Promise in modern @testing-library/user-event, but not always required to await in all setups
+    await userEvent.type(input, 'Alpha');
 
   // Wait for the debounced filter to run and the result to appear
   expect(await screen.findByText(/Alpha/)).toBeInTheDocument();

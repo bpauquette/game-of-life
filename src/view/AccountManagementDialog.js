@@ -26,7 +26,7 @@ import {
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { getBackendApiBase } from '../utils/backendApi.js';
-import { useAuth } from '../auth/AuthProvider.jsx';
+import { useAuth } from '../auth/AuthProvider.js';
 
 /**
  * AccountManagementDialog - GDPR/CCPA compliant account management

@@ -92,10 +92,15 @@ jest.mock('../../controller/GameMVC', () => ({
 }));
 
 // Mock auth hooks used by GameOfLifeApp to avoid needing full auth context
-jest.mock('../../auth/useProtectedAction', () => ({
-  useProtectedAction: (action) => ({ wrappedAction: (...args) => action(...args), renderDialog: () => null })
-}));
-jest.mock('../../auth/AuthProvider', () => ({
+jest.mock('../../auth/useProtectedAction', () => {
+  const shim = (action) => ({ wrappedAction: (...args) => action(...args), renderDialog: () => null });
+  return {
+    __esModule: true,
+    useProtectedAction: shim,
+    default: shim
+  };
+});
+jest.mock('../../auth/AuthProvider.js', () => ({
   useAuth: () => ({ token: null, email: null, logout: () => {} })
 }));
 

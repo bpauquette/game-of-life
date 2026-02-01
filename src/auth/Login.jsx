@@ -1,7 +1,7 @@
 // src/auth/Login.jsx
 import React, { useState } from "react";
 import { post } from "./api.js";
-import { useAuth } from "./AuthProvider.jsx";
+import { useAuth } from "./AuthProvider.js";
 import validator from "validator";
 import ResetRequest from './ResetRequest.jsx';
 import IconButton from "@mui/material/IconButton";

@@ -22,6 +22,7 @@ import FirstLoadWarningDialog from './FirstLoadWarningDialog.js';
 import './GameOfLife.css';
 import React, { useRef, useEffect, useCallback, useLayoutEffect, useMemo } from 'react';
 import { useToolState } from './hooks/useToolState.js';
+import { useToolDao } from '../model/dao/toolDao.js';
 import { useGameState } from './hooks/useGameState.js';
 import { usePopulationState } from './hooks/usePopulationState.js';
 import { useUiState } from './hooks/useUiState.js';
@@ -32,6 +33,8 @@ import { useGameDao } from './hooks/useGameState.js';
 import { GameProvider } from '../context/GameContext.js';
 import PropTypes from 'prop-types';
 import { GameMVC } from '../controller/GameMVC.js';
+import { setupGameDaoFromMVC } from '../controller/setupGameDao.js';
+import { setupToolDaoFromMVC } from '../controller/setupToolDao.js';
 import { startMemoryLogger } from '../utils/memoryLogger.js';
 import { computePopulationChange } from '../utils/stabilityMetrics.js';
 import hashlifeAdapter from '../model/hashlife/adapter.js';
@@ -53,9 +56,33 @@ function getColorSchemeFromKey(key) {
 const INITIAL_STEADY_INFO = Object.freeze({ steady: false, period: 0, popChanging: false });
 
 function GameOfLifeApp() {
+  // Declare gameRef before any use
+  const gameRef = React.useRef(null);
+  // selectedTool is now derived from the model/controller, not local state.
+  const [selectedTool, setSelectedTool] = React.useState('draw');
+  React.useEffect(() => {
+    // Subscribe to model/controller tool changes
+    const handler = (event, data) => {
+      if (event === 'selectedToolChanged') {
+        setSelectedTool(data);
+      }
+    };
+    if (gameRef.current && typeof gameRef.current.onModelChange === 'function') {
+      gameRef.current.onModelChange(handler);
+    }
+    // Set initial tool from model
+    if (gameRef.current && gameRef.current.model && typeof gameRef.current.model.getSelectedTool === 'function') {
+      setSelectedTool(gameRef.current.model.getSelectedTool());
+    }
+    return () => {
+      if (gameRef.current && typeof gameRef.current.offModelChange === 'function') {
+        gameRef.current.offModelChange(handler);
+      }
+    };
+  }, [gameRef]);
   // ...all destructuring and hook calls...
   const {
-    selectedTool, setSelectedTool, toolState, setToolState, selectedShape, setSelectedShape, randomRectPercent, setRandomRectPercent
+    toolState, setToolState, selectedShape, setSelectedShape, randomRectPercent, setRandomRectPercent
   } = useToolState();
   const {
     isRunning, setIsRunning, engineMode, setEngineMode, isHashlifeMode, useHashlife, generationBatchSize, setGenerationBatchSize, steadyInfo, setSteadyInfo
@@ -105,9 +132,14 @@ function GameOfLifeApp() {
   const userNotifiedRef = useRef(false);
   const isRunningRef = useRef(false);
   const snapshotsRef = useRef([]);
-  const gameRef = useRef(null);
+  // (removed duplicate declaration of gameRef)
   const pendingLoadRef = useRef(null);
-  const toolStateRef = useRef({});
+  // Ensure toolStateRef is always defined and never undefined
+  const toolStateRef = React.useRef({});
+  // Defensive: if toolStateRef is ever undefined, re-initialize
+  if (!toolStateRef.current) toolStateRef.current = {};
+  // Always set toolStateRef in DAO for all consumers
+  useToolDao.getState().setToolStateRef(toolStateRef);
   const popHistoryRef = useRef([]);
   const canvasRef = useRef(null);
 
@@ -472,17 +504,27 @@ function GameOfLifeApp() {
 
   // Sync random rectangle percent into controller tool state as a probability (0..1)
   useEffect(() => {
-    try {
-      const n = Number(randomRectPercent);
-      const p = Number.isFinite(n) ? Math.max(0, Math.min(1, n / 100)) : 0;
-      const ctrl = gameRef.current?.controller;
-      if (ctrl && typeof ctrl._setToolState === 'function') {
-        ctrl._setToolState({ prob: p });
+    const applyProb = () => {
+      try {
+        const n = Number(randomRectPercent);
+        const p = Number.isFinite(n) ? Math.max(0, Math.min(1, n / 100)) : 0;
+        const ctrl = gameRef.current?.controller;
+        if (ctrl && typeof ctrl._setToolState === 'function') {
+          ctrl._setToolState({ prob: p });
+        }
+      } catch (e) {
+        // swallow
       }
-    } catch (e) {
-      // swallow
+    };
+
+    if (gameRef.current?.controller && typeof gameRef.current.controller._setToolState === 'function') {
+      applyProb();
+      return undefined;
     }
-  }, [randomRectPercent, gameRef]);
+
+    const timer = setTimeout(applyProb, 0);
+    return () => clearTimeout(timer);
+  }, [randomRectPercent]);
 
   useEffect(() => {
     if (!detectStablePopulation) {
@@ -1039,6 +1081,7 @@ function GameOfLifeApp() {
   }, [drawWithOverlay, gameRef, shapeManager]);
   const step = useCallback(async () => { 
     try {
+      console.debug('[GameOfLifeApp] step() called');
       await gameRef.current?.step?.();
     } catch (error) {
       console.error('Step failed:', error);
@@ -1216,6 +1259,20 @@ function GameOfLifeApp() {
       const mvc = new GameMVC(canvasEl, {});
       gameRef.current = mvc;
 
+      try {
+        const pct = Number(randomRectPercent);
+        const prob = Number.isFinite(pct) ? Math.max(0, Math.min(1, pct / 100)) : 0;
+        mvc.controller?._setToolState?.({ prob });
+      } catch (seedErr) {
+        console.warn?.('Failed to seed randomRect prob on init:', seedErr);
+      }
+
+      // Inject controller methods into useGameDao for model-driven imperative actions
+      setupGameDaoFromMVC(mvc);
+
+      // Inject toolMap into useToolDao for global tool/overlay access
+      setupToolDaoFromMVC(mvc);
+
       // Setup running state synchronization
       const syncRunningState = (event, data) => {
         if (event === 'runningStateChanged') {
@@ -1357,9 +1414,9 @@ function GameOfLifeApp() {
         gameRef.current = null;
       }
     };
-  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme, preloadStrategy, shapesLoading, shapesError, updateViewportSnapshot, setPerformanceCaps, setIsRunning, setPopulationHistory, setSelectedShape, setSelectedTool]);
-  const setSelectedToolLocal = useCallback((tool) => {
-    setSelectedTool(tool);
+  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme, preloadStrategy, shapesLoading, shapesError, updateViewportSnapshot, setPerformanceCaps, setIsRunning, setPopulationHistory, setSelectedShape, setSelectedTool, randomRectPercent]);
+  // UI callback to request a tool change. This always goes through the controller/model.
+  const requestToolChange = React.useCallback((tool) => {
     try {
       gameRef.current?.setSelectedTool?.(tool);
     } catch (e) {
@@ -1368,7 +1425,7 @@ function GameOfLifeApp() {
     if (tool === 'shapes') {
       setPaletteOpen(true);
     }
-  }, [setPaletteOpen, setSelectedTool]);
+  }, [setPaletteOpen]);
 
   // --- Controls props ---
   const colorScheme = getColorSchemeFromKey(useUiDao.getState().colorSchemeKey || 'bio');
@@ -1376,7 +1433,7 @@ function GameOfLifeApp() {
   const getLiveCells = useGameDao(state => state.getLiveCells);
   const controlsProps = useMemo(() => ({
     selectedTool,
-    setSelectedTool: setSelectedToolLocal,
+    // setSelectedTool: setSelectedToolLocal, // removed, now handled by context
     onCenterViewport: () => gameRef.current?.centerOnLiveCells?.(),
     model: gameRef.current ? gameRef.current.model : null,
     colorSchemeKey: useUiDao.getState().colorSchemeKey || 'bio',
@@ -1446,7 +1503,7 @@ function GameOfLifeApp() {
     useWebWorker,
     setUseWebWorker: setUseWebWorkerPreference
   }), [
-    setSteadyInfo,selectedTool, setSelectedToolLocal, setColorSchemeKey, isRunning, setIsRunningCombined,
+    setSteadyInfo,selectedTool, setColorSchemeKey, isRunning, setIsRunningCombined,
     step, drawWithOverlay, clear, viewportSnapshot, setCellAlive, setShowChart, getLiveCells, popWindowSize,
     setPopWindowSize, popTolerance, setPopTolerance, handleSelectShape, setPaletteOpen, steadyInfo, handleLoadGrid,
     setShowSpeedGauge, detectStablePopulation, setDetectStablePopulationPreference, maxChartGenerations,
@@ -1465,6 +1522,8 @@ function GameOfLifeApp() {
       drawWithOverlay={drawWithOverlay}
       gameRef={gameRef}
       controlsProps={controlsProps}
+      selectedTool={selectedTool}
+      requestToolChange={requestToolChange}
     >
       <LoadingShapesOverlay loading={shapesLoading} progress={shapesProgress} error={shapesError} onRetry={shapesStart} />
       <GameUILayout
@@ -1518,6 +1577,11 @@ function GameOfLifeApp() {
         isSmall={isSmall}
         onToggleChrome={() => setShowUIControls(!showUIControls)}
         enableAdaCompliance={enableAdaCompliance}
+        step={step}
+        draw={drawWithOverlay}
+        clear={clear}
+        snapshotsRef={snapshotsRef}
+        setSteadyInfo={setSteadyInfo}
       />
       <Snackbar open={shapesNotifOpen} autoHideDuration={4000} onClose={() => setShapesNotifOpen(false)}>
         <Alert severity="success" onClose={() => setShapesNotifOpen(false)} sx={{ width: '100%' }}>

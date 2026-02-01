@@ -47,7 +47,10 @@
   "jest": {
     "collectCoverageFrom": [
       "src/**/*.{js,jsx,ts,tsx}"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^jsonwebtoken$": "<rootDir>/src/__mocks__/jsonwebtoken.js"
+    }
   },
   "browserslist": {
     "production": [

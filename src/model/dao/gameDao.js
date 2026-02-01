@@ -6,6 +6,10 @@ export const useGameDao = create((set) => ({
   setGameModel: (model) => set({ gameModel: model }),
   getLiveCells: () => new Map(),
   setGetLiveCells: (fn) => set({ getLiveCells: fn }),
+  setCellAlive: (x, y, alive) => {
+    console.log('[gameDao] setCellAlive called', { x, y, alive });
+  },
+  setSetCellAlive: (fn) => set({ setCellAlive: fn }),
   isRunning: false,
   setIsRunning: (isRunning) => set({ isRunning }),
   engineMode: 'default',

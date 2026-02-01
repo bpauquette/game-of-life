@@ -32,7 +32,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import PropTypes from 'prop-types';
 
-import { useAuth } from '../auth/AuthProvider.jsx';
+import { useAuth } from '../auth/AuthProvider.js';
 import { getBackendApiBase } from '../utils/backendApi.js';
 import languageDefinition from './languageDefinition.js';
 

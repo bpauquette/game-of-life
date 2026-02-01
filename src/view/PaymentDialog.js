@@ -9,7 +9,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
-import { useAuth } from '../auth/AuthProvider.jsx';
+import { useAuth } from '../auth/AuthProvider.js';
 PaymentDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
@@ -166,7 +166,8 @@ export default function PaymentDialog({ open, onClose }) {
   };
 
   // Check if Stripe is enabled via environment variable
-  const stripeEnabled = process.env.REACT_APP_STRIPE_ENABLED === 'true';
+  const stripeFeatureEnabled = process.env.REACT_APP_STRIPE_ENABLED === 'true';
+  const stripeEnabled = stripeFeatureEnabled && paymentConfig.stripe?.enabled;
 
   return (
     <Dialog open={!!open} onClose={onClose} maxWidth="sm" fullWidth>

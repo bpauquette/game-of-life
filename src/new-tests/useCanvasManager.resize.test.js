@@ -5,7 +5,8 @@ import useCanvasManager from '../../src/view/hooks/useCanvasManager.js';
 function TestCanvas() {
   const offsetRef = React.useRef({ x: 0, y: 0 });
   const toolStateRef = React.useRef({});
-  const { canvasRef } = useCanvasManager({
+  const canvasRef = React.useRef(null);
+  useCanvasManager({
     getLiveCells: () => new Map(),
     cellSize: 8,
     offsetRef,
@@ -17,7 +18,8 @@ function TestCanvas() {
     scheduleCursorUpdate: () => {},
     selectedShape: null,
     placeShape: () => {},
-    logger: console
+    logger: console,
+    canvasRef
   });
 
   return (

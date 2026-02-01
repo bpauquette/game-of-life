@@ -117,5 +117,8 @@ class HashlifeAdapter {
 
 const hashlifeAdapter = new HashlifeAdapter();
 export { hashlifeAdapter };
+export const run = (...args) => hashlifeAdapter.run(...args);
+export const cancel = (...args) => hashlifeAdapter.cancel(...args);
+export const clearCache = (...args) => hashlifeAdapter.clearCache(...args);
 export default hashlifeAdapter;
 

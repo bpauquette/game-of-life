@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useGameContext } from '../../context/GameContext.js';
 import PropTypes from 'prop-types';
 import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
@@ -10,7 +11,8 @@ import OvalIcon from '../components/OvalIcon.js';
 import { Widgets as WidgetsIcon, Edit as EditIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Colorize as ColorizeIcon, HorizontalRule as HorizontalRuleIcon } from '@mui/icons-material';
 
 // ToolGroup groups the primary tools into a single, reusable control
-export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = false }) {
+export default function ToolGroup({ isSmall = false }) {
+  const { selectedTool, requestToolChange } = useGameContext();
   // On small screens (mobile portrait) hide less-essential tools to
   // preserve space and avoid accidental taps. When the device is rotated
   // sideways (landscape) show them again.
@@ -49,7 +51,7 @@ export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = fal
       exclusive
       size={isSmall ? 'medium' : 'small'}
       color="primary"
-      onChange={(_, v) => v && setSelectedTool(v)}
+      onChange={(_, v) => v && requestToolChange(v)}
       sx={{
         '& .MuiToggleButton-root': {
           minWidth: 44,
@@ -69,7 +71,7 @@ export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = fal
       }}
     >
       {/* Shapes tool first, to the left of Draw */}
-  <ToggleButton value="shapes" aria-label="shapes" onClick={() => { if (selectedTool === 'shapes') setSelectedTool('shapes'); }}>
+  <ToggleButton value="shapes" aria-label="shapes" onClick={() => { if (selectedTool === 'shapes') requestToolChange('shapes'); }}>
     <Tooltip title={TOOL_DESCRIPTIONS.shapes}>
       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
         <WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} />
@@ -96,8 +98,5 @@ export default function ToolGroup({ selectedTool, setSelectedTool, isSmall = fal
 }
 
 ToolGroup.propTypes = {
-  selectedTool: PropTypes.string,
-  setSelectedTool: PropTypes.func.isRequired,
-  isSmall: PropTypes.bool,
-  shapesEnabled: PropTypes.bool
+  isSmall: PropTypes.bool
 };

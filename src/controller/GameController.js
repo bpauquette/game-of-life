@@ -1,6 +1,6 @@
 import { eraserTool } from './tools/eraserTool.js';
-import logger from './utils/logger.js';
 import StepScheduler from './StepScheduler.js';
+import { isTestEnvironment } from '../utils/runtimeEnv.js';
 const CONST_SHAPES = 'shapes';
 // GameController.js - Controller layer for Conway's Game of Life
 // Handles user interactions, game loop, and coordination between Model and View
@@ -261,17 +261,13 @@ export class GameController {
 
   setSelectedTool(toolName) {
     if (!this.toolMap[toolName]) return;
-    // Temporary instrumentation: record tool selection into the on-page
-    // debug buffer so it's visible when diagnosing rendering regressions.
+    console.log('[GameController] setSelectedTool called with:', toolName);
     const before = this.model && typeof this.model.getSelectedTool === 'function' ? this.model.getSelectedTool() : null;
-    const info = { event: 'controller.setSelectedTool.before', toolName, before, ts: Date.now() };
-    if (globalThis.__GOL_PUSH_CANVAS_LOG__) globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info));
-    logger.debug(`[GameController] setSelectedTool: toolName=${toolName}`);
+    console.log('[GameController] setSelectedTool before:', before);
     const prevTool = this.model.getSelectedTool();
     this.model.setSelectedToolModel(toolName);
 
     // If switching away from the shapes tool, clear the selected shape
-    // so overlays and selection state tied to shapes are removed.
     if (prevTool === CONST_SHAPES && toolName !== CONST_SHAPES) {
       this.setSelectedShape(null);
     }
@@ -283,12 +279,13 @@ export class GameController {
     this.updateToolOverlay();
 
     const after = this.model && typeof this.model.getSelectedTool === 'function' ? this.model.getSelectedTool() : null;
-    const info2 = { event: 'controller.setSelectedTool.after', toolName, after, ts: Date.now() };
-    if (globalThis.__GOL_PUSH_CANVAS_LOG__) globalThis.__GOL_PUSH_CANVAS_LOG__(JSON.stringify(info2));
+    console.log('[GameController] setSelectedTool after:', after);
   }
 
   getSelectedTool() {
-    return this.model.getSelectedTool();
+    const tool = this.model.getSelectedTool();
+    console.log('[GameController] getSelectedTool returns:', tool);
+    return tool;
   }
 
   // Shape management
@@ -779,6 +776,7 @@ export class GameController {
 
   // Game control methods
   async step() {
+    console.debug('[GameController] step() called');
     await this.model.step();
   }
 
@@ -954,8 +952,7 @@ export class GameController {
   _getScheduler() {
     if (!this.scheduler) {
       console.debug('[GameController] creating StepScheduler', { maxFPS: this.performanceCaps.maxFPS, maxGPS: this.performanceCaps.maxGPS, useWebWorker: this.performanceCaps.useWebWorker });
-      const preferWorker = !!this.performanceCaps.useWebWorker || (typeof Worker !== 'undefined' && !(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.MODE === 'test'));
-      // In browser, import.meta.env.MODE is the correct way to check mode
+      const preferWorker = !!this.performanceCaps.useWebWorker || (typeof Worker !== 'undefined' && !isTestEnvironment());
       this.scheduler = new StepScheduler(() => this.model.step(), {
         maxFPS: this.performanceCaps.maxFPS,
         maxGPS: this.performanceCaps.maxGPS,
@@ -988,7 +985,7 @@ export class GameController {
     const doRender = () => {
       this.renderScheduled = false;
       const renderStart = performance.now();
-
+      console.debug('[GameController] requestRender: doRender called');
       const liveCells = this.model.getLiveCells();
       const modelViewport = this.model.getViewport();
       const cellSize = this.view.renderer.viewport.cellSize || 8;

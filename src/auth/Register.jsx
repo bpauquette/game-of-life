@@ -2,7 +2,7 @@
 import React from 'react';
 import { useState } from "react";
 import { post } from "./api.js";
-import { useAuth } from "./AuthProvider.jsx";
+import { useAuth } from "./AuthProvider.js";
 import validator from "validator";
 import IconButton from "@mui/material/IconButton";
 import Visibility from "@mui/icons-material/Visibility";

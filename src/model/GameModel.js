@@ -240,13 +240,16 @@ export class GameModel {
   }
 
   setSelectedToolModel(tool) {
+    console.log('[GameModel] setSelectedToolModel called with:', tool, 'current:', this.selectedTool);
     if (this.selectedTool !== tool) {
       this.selectedTool = tool;
       this.notifyObservers('selectedToolChanged', tool);
+      console.log('[GameModel] selectedTool updated to:', tool);
     }
   }
 
   getSelectedTool() {
+    console.log('[GameModel] getSelectedTool returns:', this.selectedTool);
     return this.selectedTool;
   }
 
@@ -364,6 +367,7 @@ export class GameModel {
 
   // Game evolution  
   async step(n = 1) {
+    console.debug('[GameModel] step() called');
     const generations = Math.max(1, Number(n) || 1);
     if (this.engineMode === 'hashlife') {
       await this._stepHashlife(generations);

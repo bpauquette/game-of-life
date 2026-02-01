@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import logger from '../../controller/utils/logger.js';
 import { createNamesWorker, createFauxNamesWorker } from '../../utils/workerFactories.js';
 import { fetchShapeById, deleteShapeById, createShape, getBackendApiBase, fetchShapeNames } from '../../utils/backendApi.js';
+import { isTestEnvironment } from '../../utils/runtimeEnv.js';
 
 const DEFAULT_LIMIT = 50;
 
@@ -112,7 +113,7 @@ export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT
     setTotal(0);
     // getBackendApiBase is statically imported
     const base = getBackendApiBase();
-    const isTest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.JEST_WORKER_ID;
+    const isTest = isTestEnvironment();
     // In Jest test environments, avoid async worker scheduling issues by
     // directly fetching the first page so tests can observe results immediately.
     if (isTest) {
