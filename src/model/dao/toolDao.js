@@ -17,4 +17,12 @@ export const useToolDao = create((set) => ({
   onSelectShape: (shape) => set({ selectedShape: shape }),
   onRotateShape: (shape) => set({ selectedShape: shape }),
   onSwitchToShapesTool: () => set({ selectedTool: 'shapes' }),
+  // Tool map for useCanvasManager
+  toolMap: {},
+  setToolMap: (toolMap) => set({ toolMap }),
+  // toolStateRef for overlay and tool hooks
+  toolStateRef: { current: {} },
+  setToolStateRef: (ref) => set({ toolStateRef: ref }),
+  randomRectPercent: 50,
+  setRandomRectPercent: (randomRectPercent) => set({ randomRectPercent }),
 }));

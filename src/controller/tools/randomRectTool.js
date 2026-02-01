@@ -1,5 +1,6 @@
 import logger from '../utils/logger.js';
 import { makeCellsHighlightOverlay } from '../../overlays/overlayTypes.js';
+import { isTestEnvironment } from '../../utils/runtimeEnv.js';
 let createRandomRectWorker;
 if (globalThis.globalThis !== undefined && globalThis.Worker !== undefined) {
   // In browser, use a static string for the worker URL
@@ -117,7 +118,7 @@ function drawSynchronous(pts, p, setCellAlive, state, setCellsAliveBulk) {
 }
 
 function drawInWorker(state, x, y, p, pts, setCellAlive) {
-  let isJest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.JEST_WORKER_ID !== undefined;
+  const isJest = isTestEnvironment();
   try {
     let worker;
     if (isJest) {

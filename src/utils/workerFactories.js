@@ -2,6 +2,7 @@
    fallback for environments without Worker support (tests/node).
 */
 import { fetchShapeNames, fetchShapeById, getBackendApiBase } from './backendApi.js';
+import { isTestEnvironment } from './runtimeEnv.js';
 function createFauxNamesWorker() {
   const faux = {
     _aborted: false,
@@ -66,7 +67,7 @@ async function fetchNamesPage(base, qVal, limitVal, offset) {
 }
 
 export function createNamesWorker() {
-  const isTest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.JEST_WORKER_ID;
+  const isTest = isTestEnvironment();
   const supportsWorker = typeof Worker === 'function' && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function';
   if (!supportsWorker || isTest) return createFauxNamesWorker();
   try {
@@ -136,7 +137,7 @@ function buildPreviewFromShape(s) {
 }
 
 export function createHoverWorker() {
-  const isTest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.JEST_WORKER_ID;
+  const isTest = isTestEnvironment();
   const supportsWorker = typeof Worker === 'function' && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function';
   if (!supportsWorker || isTest) return createFauxHoverWorker();
   try {

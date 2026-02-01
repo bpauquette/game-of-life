@@ -7,33 +7,19 @@
 > node ./scripts/write-version.cjs
 
 Wrote version 0.1.0 to public/version.txt
-node.exe : (node:58500) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+node.exe : (node:102920) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
 At line:1 char:1
 + & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: ((node:58500) [D...ts.F_OK instead:String) [], RemoteException
+    + CategoryInfo          : NotSpecified: ((node:102920) [...ts.F_OK instead:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
  
 (Use `node --trace-deprecation ...` to show where the warning was created)
 Creating an optimized production build...
-Compiled successfully.
+Failed to compile.
 
-File sizes after gzip:
+[eslint] 
+src\view\GameUILayout.js
+Syntax error: 'import' and 'export' may only appear at the top level. (187:0) (187:undefined)
 
-  347.63 kB (-51 B)  build\static\js\main.a7663e5e.js
-  2.36 kB            build\static\css\main.79f53d5a.css
-  485 B              build\static\js\469.51489fb1.chunk.js
-  163 B              build\static\js\488.d7b0de71.chunk.js
-
-The project was built assuming it is hosted at /.
-You can control this with the homepage field in your package.json.
-
-The build folder is ready to be deployed.
-You may serve it with a static server:
-
-  serve -s build
-
-Find out more about deployment here:
-
-  https://cra.link/deployment
 

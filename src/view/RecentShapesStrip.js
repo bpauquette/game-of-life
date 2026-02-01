@@ -2,18 +2,20 @@ import React, { useEffect, useCallback, useRef, useState, useMemo, useLayoutEffe
 import PropTypes from 'prop-types';
 import ShapeSlot from './components/ShapeSlot.js';
 
+import { useGameContext } from '../context/GameContext.js';
+
 const thumbnailSize = 64;
 
 const RecentShapesStrip = ({
   recentShapes = [],
   selectShape,
-  drawWithOverlay,
   colorScheme = {},
   selectedShape = null,
   onRotateShape,
   onSwitchToShapesTool,
   startPaletteDrag,
 }) => {
+  const { drawWithOverlay } = useGameContext();
   const getShapeTitle = (shape, index) => {
     return shape?.name || shape?.meta?.name || shape?.id || `shape ${index}`;
   };
@@ -488,7 +490,6 @@ const RecentShapesStrip = ({
 RecentShapesStrip.propTypes = {
   recentShapes: PropTypes.array,
   selectShape: PropTypes.func.isRequired,
-  drawWithOverlay: PropTypes.func.isRequired,
   colorScheme: PropTypes.object,
   selectedShape: PropTypes.object,
   onRotateShape: PropTypes.func,

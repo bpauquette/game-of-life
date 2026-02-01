@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useAuth } from './AuthProvider.jsx';
+import { useAuth } from './AuthProvider.js';
 import Login from './Login.jsx';
 import Register from './Register.jsx';
 import Dialog from '@mui/material/Dialog';
@@ -18,7 +18,7 @@ import React from 'react';
  * @param {Function} action - The action to perform when authenticated
  * @returns {Object} - { wrappedAction, renderDialog }
  */
-export default function useProtectedAction(action) {
+export function useProtectedAction(action) {
   const [showDialog, setShowDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState('login');
   const { token } = useAuth();
@@ -107,3 +107,5 @@ export default function useProtectedAction(action) {
 
   return { wrappedAction, renderDialog };
 }
+
+export default useProtectedAction;

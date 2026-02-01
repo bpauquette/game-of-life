@@ -7,7 +7,8 @@ import logger from '../controller/utils/logger.js';
 import ShapesDao from '../model/dao/ShapesDao.js';
 import { useShapePaletteSearch } from './hooks/useShapePaletteSearch.js';
 import ShapePaletteView from './ShapePaletteView.js';
-import { useAuth } from '../auth/AuthProvider.jsx';
+import { useAuth } from '../auth/AuthProvider.js';
+import { fetchShapeById } from '../utils/backendApi.js';
 
 const LARGE_CATALOG_THRESHOLD = 1000;
 
@@ -81,9 +82,11 @@ export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRe
         if (!s?.id || hasShapeCells(s)) return s;
         logger.debug('[ShapePaletteDialog] safeAddRecent: fetching shape by id', { id: s.id, base: backendBase });
         try {
-          const data = await ShapesDao.getShape(s.id);
-          logger.debug('[ShapePaletteDialog] safeAddRecent: fetch result', { id: s.id, hasData: !!data, cellsLen: Array.isArray(data?.cells) ? data.cells.length : null });
-          return (data && hasShapeCells(data)) ? data : null;
+          const response = await fetchShapeById(s.id, backendBase);
+          const data = response?.data || null;
+          logger.debug('[ShapePaletteDialog] safeAddRecent: fetch result', { id: s.id, ok: response?.ok, hasData: !!data, cellsLen: Array.isArray(data?.cells) ? data.cells.length : null });
+          if (response?.ok && data && hasShapeCells(data)) return data;
+          return null;
         } catch (err) {
           logger.warn('[ShapePaletteDialog] safeAddRecent: fetch failed', err);
           return null;
@@ -131,9 +134,11 @@ export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRe
         if (!s?.id) return null;
         logger.debug('[ShapePaletteDialog] handleShapeSelect: fetching shape by id', { id: s.id, base: backendBase });
         try {
-          const data = await ShapesDao.getShape(s.id);
-          logger.debug('[ShapePaletteDialog] handleShapeSelect: fetch result', { id: s.id, hasData: !!data, cellsLen: Array.isArray(data?.cells) ? data.cells.length : null });
-          return (data && hasShapeCells(data)) ? data : null;
+          const response = await fetchShapeById(s.id, backendBase);
+          const data = response?.data || null;
+          logger.debug('[ShapePaletteDialog] handleShapeSelect: fetch result', { id: s.id, ok: response?.ok, hasData: !!data, cellsLen: Array.isArray(data?.cells) ? data.cells.length : null });
+          if (response?.ok && data && hasShapeCells(data)) return data;
+          return null;
         } catch (err) {
           logger.warn('[ShapePaletteDialog] handleShapeSelect: fetch failed', err);
           return null;

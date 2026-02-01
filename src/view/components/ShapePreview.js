@@ -88,6 +88,12 @@ function getGlobalKey(schemeName, idKey, time) {
   return `${schemeName}::${idKey}::${Math.floor(time / 1000)}`;
 }
 
+function getTestIdPrefix(shape) {
+  const raw = shape?.id ?? shape?.name ?? '';
+  if (!raw) return 'shape';
+  return String(raw).replace(/\s+/g, '-');
+}
+
 function logColorMatchOrMismatch(prev, color, idKey, schemeName, source) {
   if (prev.color === color) {
     console.debug('[ShapePreview] color match', { shape: idKey, scheme: schemeName, source });
@@ -141,17 +147,17 @@ function renderGridLines(w, h, borderOpacity) {
   );
 }
 
-function renderCells(normalized, cells, colorScheme, time, defaultCellColor) {
+function renderCells(normalized, cells, colorScheme, defaultCellColor, testIdPrefix = 'shape') {
   return normalized.map((cell, i) => {
     const original = cells[i];
     const origX = Array.isArray(original) ? original[0] : (original.x ?? 0);
     const origY = Array.isArray(original) ? original[1] : (original.y ?? 0);
     const x = cell.x;
     const y = cell.y;
-    const fillColor = colorScheme?.getCellColor?.(origX, origY, time) ?? defaultCellColor;
+    const fillColor = colorScheme?.getCellColor?.(origX, origY) ?? defaultCellColor;
     // Use original coordinates for key to avoid array index
     const key = `c-${origX},${origY}`;
-    return <rect key={key} x={x} y={y} width={1} height={1} fill={fillColor} />;
+    return <rect key={key} x={x} y={y} width={1} height={1} fill={fillColor} data-testid={`${testIdPrefix}-rect`} />;
   });
 }
 
@@ -178,6 +184,7 @@ export default function ShapePreview({
   const effectiveColorScheme = validateColorScheme(colorScheme, shape);
   const hasCells = normalized.length > 0;
   debugShapePreview({ cells, colorScheme: effectiveColorScheme, shape, defaultCellColor, source });
+  const testIdPrefix = getTestIdPrefix(shape);
 
   return (
     <svg
@@ -201,7 +208,7 @@ export default function ShapePreview({
     >
       {!hasCells
         ? renderGridLines(w, h, borderOpacity)
-        : renderCells(normalized, cells, effectiveColorScheme, defaultCellColor)
+        : renderCells(normalized, cells, effectiveColorScheme, defaultCellColor, testIdPrefix)
       }
     </svg>
   );

@@ -1,8 +1,25 @@
- 
 // src/controller/StepScheduler.js
 // Unified scheduler for stepping via RAF or Web Worker
 // Abstracts away the choice of loop mechanism so controller never manages
 // both RAF and Worker loops directly.
+
+let resolveWorkerUrlMemo;
+
+function resolveGameWorkerUrl() {
+  if (typeof globalThis !== 'undefined' && typeof globalThis.__GOL_GAME_WORKER_URL__ === 'string') {
+    return globalThis.__GOL_GAME_WORKER_URL__;
+  }
+  if (resolveWorkerUrlMemo !== undefined) {
+    return resolveWorkerUrlMemo;
+  }
+  try {
+    const getter = new Function('try { return new URL("../workers/gameWorker.js", import.meta.url); } catch (e) { return null; }');
+    resolveWorkerUrlMemo = getter();
+  } catch (e) {
+    resolveWorkerUrlMemo = null;
+  }
+  return resolveWorkerUrlMemo;
+}
 
 export class StepScheduler {
   constructor(stepFn, options = {}) {
@@ -97,8 +114,14 @@ export class StepScheduler {
       this._startRAFLoop();
       return;
     }
+    const workerUrl = resolveGameWorkerUrl();
+    if (!workerUrl) {
+      this.useWorker = false;
+      this._startRAFLoop();
+      return;
+    }
     try {
-      this.worker = new Worker(new URL('../workers/gameWorker.js', import.meta.url));
+      this.worker = new Worker(workerUrl, { type: 'module' });
     } catch (error_) {
       console.warn('[StepScheduler] Worker creation failed, falling back to RAF:', error_);
       this.useWorker = false;

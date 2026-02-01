@@ -49,6 +49,7 @@ export const squareTool = {
     for (const p of pts) {
       const px = p[ARRAY_FIRST_ELEMENT];
       const py = p[ARRAY_SECOND_ELEMENT];
+      console.log('[squareTool] onMouseUp calling setCellAlive', { px, py });
       setCellAlive(px, py, true);
     }
     state.start = null;

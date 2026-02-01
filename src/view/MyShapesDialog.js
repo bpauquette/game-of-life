@@ -18,7 +18,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import { Delete as DeleteIcon, Public as PublicIcon, Lock as LockIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
-import { useAuth } from '../auth/AuthProvider.jsx';
+import { useAuth } from '../auth/AuthProvider.js';
 import { getBackendApiBase } from '../utils/backendApi.js';
 
 const baseUrl = getBackendApiBase();

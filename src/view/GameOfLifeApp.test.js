@@ -2,7 +2,7 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 import GameOfLifeApp from './GameOfLifeApp.js';
-import { AuthProvider } from '../auth/AuthProvider.jsx';
+import { AuthProvider } from '../auth/AuthProvider.js';
 
 jest.mock('../controller/StepScheduler', () => ({
   __esModule: true,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { AuthProvider } from './AuthProvider.jsx';
+import { AuthProvider } from './AuthProvider.js';
 import Login from './Login.jsx';
 
 import { post } from './api.js';

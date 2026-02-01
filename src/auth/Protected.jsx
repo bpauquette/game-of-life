@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { useAuth } from './AuthProvider.jsx';
+import { useAuth } from './AuthProvider.js';
 
 /**
  * A wrapper component that always renders its children.

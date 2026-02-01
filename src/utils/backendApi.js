@@ -1,5 +1,6 @@
 // Update shape public/private status
 import logger from '../controller/utils/logger.js';
+import { getEnvValue } from './runtimeEnv.js';
 export async function updateShapePublic(id, isPublic) {
   const url = `${getBackendApiBase()}/v1/shapes/${encodeURIComponent(id)}/public`;
   const token = getAuthToken();
@@ -22,11 +23,9 @@ export async function updateShapePublic(id, isPublic) {
 
 
 export function getBackendApiBase() {
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.REACT_APP_API_BASE) {
-    return import.meta.env.REACT_APP_API_BASE;
-  }
-  if (typeof globalThis !== 'undefined' && globalThis.env?.REACT_APP_API_BASE) {
-    return globalThis.env.REACT_APP_API_BASE;
+  const envBase = getEnvValue('REACT_APP_API_BASE');
+  if (typeof envBase === 'string' && envBase.trim().length > 0) {
+    return envBase;
   }
   if (typeof globalThis !== 'undefined' && globalThis.location?.origin) {
     return `${globalThis.location.origin}/api`;

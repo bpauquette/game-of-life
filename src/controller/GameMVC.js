@@ -19,6 +19,7 @@ import logger from './utils/logger.js';
 
 export class GameMVC {
   setSelectedTool(toolName) {
+    console.log('[GameMVC] setSelectedTool called with:', toolName);
     if (this.controller && typeof this.controller.setSelectedTool === 'function') {
       this.controller.setSelectedTool(toolName);
     }
@@ -31,7 +32,12 @@ export class GameMVC {
   }
   // Game step
   async step() {
-    return await this.model.step();
+    if (this.controller && typeof this.controller.step === 'function') {
+      return await this.controller.step();
+    } else {
+      // Fallback: call model.step directly (should not happen in production)
+      return await this.model.step();
+    }
   }
 
   // Population history
@@ -377,7 +383,9 @@ export class GameMVC {
 
   // Tool selection
   getSelectedTool() {
-    return this.model.getSelectedTool();
+    const tool = this.model.getSelectedTool();
+    console.log('[GameMVC] getSelectedTool returns:', tool);
+    return tool;
   }
 
   getSelectedShape() {

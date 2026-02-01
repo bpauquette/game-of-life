@@ -42,12 +42,19 @@ export const useCanvasManager = ({
   offsetRef,
   canvasRef
 }) => {
+  // Log selectedTool and toolMap on every render
+  const selectedTool = useToolDao(state => state.selectedTool);
+  const toolMap = useToolDao(state => state.toolMap);
+  console.log('[useCanvasManager] render', { selectedTool, toolMapKeys: toolMap ? Object.keys(toolMap) : [] });
   // DAO state selectors
   const colorScheme = useUiDao(state => state.colorScheme);
   const cellSize = useUiDao(state => state.cellSize);
-  const selectedTool = useToolDao(state => state.selectedTool);
-  const toolMap = useToolDao(state => state.toolMap);
-  const toolStateRef = useToolDao(state => state.toolStateRef);
+  let toolStateRef = useToolDao(state => state.toolStateRef);
+  const setToolState = useToolDao(state => state.setToolState);
+  // Defensive: always provide a valid ref object
+  if (!toolStateRef || typeof toolStateRef !== 'object' || !('current' in toolStateRef)) {
+    toolStateRef = { current: {} };
+  }
   const getLiveCells = useGameDao(state => state.getLiveCells);
   const setCellAlive = useGameDao(state => state.setCellAlive);
   const scheduleCursorUpdate = useUiDao(state => state.scheduleCursorUpdate);
@@ -156,13 +163,14 @@ export const useCanvasManager = ({
     let logicalWidth = DEFAULT_WINDOW_WIDTH;
     let logicalHeight = DEFAULT_WINDOW_HEIGHT;
     try {
+      const observed = observedSizeRef.current;
       const rect = canvas.getBoundingClientRect();
-      if (rect && rect.width && rect.height) {
+      if (observed && observed.width && observed.height) {
+        logicalWidth = observed.width;
+        logicalHeight = observed.height;
+      } else if (rect && rect.width && rect.height) {
         logicalWidth = Math.max(1, Math.floor(rect.width));
         logicalHeight = Math.max(1, Math.floor(rect.height));
-      } else if (observedSizeRef.current) {
-        logicalWidth = observedSizeRef.current.width;
-        logicalHeight = observedSizeRef.current.height;
       } else {
         logicalWidth = globalThis.globalThis?.innerWidth || DEFAULT_WINDOW_WIDTH;
         logicalHeight = globalThis.globalThis?.innerHeight || DEFAULT_WINDOW_HEIGHT;
@@ -318,8 +326,15 @@ export const useCanvasManager = ({
 
     // Ensure toolState carries fractional coords so overlays can render
     // crosshairs even if the pointer leaves the canvas or stops moving.
-    toolStateRef.current.last = { x: pt.x, y: pt.y, fx: pt.fx, fy: pt.fy };
-    tool.onMouseDown?.(toolStateRef.current, pt.x, pt.y);
+    // Instead of mutating ref, update toolState via DAO setter
+    setToolState({
+      ...toolStateRef.current,
+      last: { x: pt.x, y: pt.y, fx: pt.fx, fy: pt.fy }
+    });
+    tool.onMouseDown?.({
+      ...toolStateRef.current,
+      last: { x: pt.x, y: pt.y, fx: pt.fx, fy: pt.fy }
+    }, pt.x, pt.y);
     
     // Special handling for capture tool which needs getLiveCells
     if (selectedTool === CONST_CAPTURE) {
@@ -330,11 +345,14 @@ export const useCanvasManager = ({
     
     drawWithOverlay();
    
-  }, [toolMap, selectedTool, eventToCell, scheduleCursorUpdate, setCellAlive, getLiveCells, drawWithOverlay, toolStateRef]);
+  }, [toolMap, selectedTool, eventToCell, scheduleCursorUpdate, setCellAlive, getLiveCells, drawWithOverlay, toolStateRef, setToolState]);
 
   const handleShapeToolMove = useCallback((e, tool, pt) => {
     if (!pt) return;
-    toolStateRef.current.last = { x: pt.x, y: pt.y, fx: pt.fx, fy: pt.fy };
+    setToolState({
+      ...toolStateRef.current,
+      last: { x: pt.x, y: pt.y, fx: pt.fx, fy: pt.fy }
+    });
     
     // Special handling for capture tool which needs getLiveCells
     if (selectedTool === CONST_CAPTURE) {
@@ -345,7 +363,7 @@ export const useCanvasManager = ({
     
     drawWithOverlay();
     
-  }, [selectedTool, setCellAlive, getLiveCells, drawWithOverlay, toolStateRef]);
+  }, [selectedTool, setCellAlive, getLiveCells, drawWithOverlay, toolStateRef, setToolState]);
 
   const shouldToolMove = useCallback((e) => {
     return (e.buttons & 1) || toolStateRef.current.last || toolStateRef.current.start;
@@ -380,11 +398,14 @@ export const useCanvasManager = ({
     if (shouldToolMove(e)) {
       handleShapeToolMove(e, tool, pt);
     } else if (toolStateRef.current.last && pt) {
-      toolStateRef.current.last = { x: pt.x, y: pt.y, fx: pt.fx, fy: pt.fy };
+      setToolState({
+        ...toolStateRef.current,
+        last: { x: pt.x, y: pt.y, fx: pt.fx, fy: pt.fy }
+      });
       drawWithOverlay();
     }
     
-  }, [eventToCell, scheduleCursorUpdate, toolMap, selectedTool, shouldToolMove, handleShapeToolMove, drawWithOverlay, updatePanning, toolStateRef]);
+  }, [eventToCell, scheduleCursorUpdate, toolMap, selectedTool, shouldToolMove, handleShapeToolMove, drawWithOverlay, updatePanning, toolStateRef, setToolState]);
 
   const handleMouseUp = useCallback((e) => {
     if (!dragActiveRef.current) return;
@@ -398,8 +419,9 @@ export const useCanvasManager = ({
     }
 
     const tool = toolMap[selectedTool];
+    console.log('[useCanvasManager] handleMouseUp: tool lookup', { selectedTool, tool, toolMapKeys: Object.keys(toolMap) });
     if (!tool) {
-      console.warn('[useCanvasManager] handleMouseUp: no tool found for', selectedTool);
+      console.warn('[useCanvasManager] handleMouseUp: no tool found for', selectedTool, { toolMapKeys: Object.keys(toolMap) });
       return;
     }
 
@@ -434,8 +456,7 @@ export const useCanvasManager = ({
 
   // Initial setup and resize handling
   useEffect(() => {
-    // mark ready after first render so draw exists for resizeCanvas
-    Promise.resolve().then(() => setReady(true));
+    setReady(true);
   }, []);
 
   useEffect(() => {
@@ -465,7 +486,10 @@ export const useCanvasManager = ({
             // Use requestAnimationFrame to ensure layout has stabilized in the
             // browser before reading bounding rects. Some browsers (Chrome)
             // may schedule RO callbacks before final layout is committed.
-            requestAnimationFrame(() => {
+            const schedule = typeof globalThis.requestAnimationFrame === 'function'
+              ? globalThis.requestAnimationFrame.bind(globalThis)
+              : (fn) => setTimeout(fn, 0);
+            schedule(() => {
               const entry = entries && entries[0];
               let width = 0; let height = 0;
               if (entry && entry.contentRect) {
@@ -473,17 +497,22 @@ export const useCanvasManager = ({
                 height = entry.contentRect.height || 0;
               }
               // If contentRect isn't available (some RO implementations), prefer
-              // to read the canvas's own boundingClientRect which reflects the
-              // visual size we care about.
-              const canvas = canvasRef.current;
-              if ((!width || !height) && canvas) {
-                const b = canvas.getBoundingClientRect();
+              // to read the observed element's boundingClientRect which reflects the
+              // visual size we care about. Fall back to the canvas element itself.
+              const observedElement = entry?.target || canvasRef.current?.parentElement || canvasRef.current;
+              if ((!width || !height) && observedElement && observedElement.getBoundingClientRect) {
+                const b = observedElement.getBoundingClientRect();
                 width = b.width || width;
                 height = b.height || height;
               }
               if (width && height) {
                 observedSizeRef.current = { width: Math.max(1, Math.floor(width)), height: Math.max(1, Math.floor(height)) };
                 if (globalThis.__GOL_DEBUG_CANVAS__ || globalThis.GOL_DEBUG_CANVAS) pushDebug && pushDebug('[useCanvasManager] ResizeObserver observed size ' + JSON.stringify(observedSizeRef.current));
+                const canvasEl = canvasRef.current;
+                if (canvasEl) {
+                  canvasEl.style.width = `${observedSizeRef.current.width}px`;
+                  canvasEl.style.height = `${observedSizeRef.current.height}px`;
+                }
                 resizeCanvas();
               } else {
                 try {
@@ -503,7 +532,8 @@ export const useCanvasManager = ({
           }
         });
         const canvas = canvasRef.current || null;
-        if (canvas) ro.observe(canvas);
+        const target = canvas?.parentElement || canvas;
+        if (target) ro.observe(target);
       }
     } catch (err) {
       // ignore

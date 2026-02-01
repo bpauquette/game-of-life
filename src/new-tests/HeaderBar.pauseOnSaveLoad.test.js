@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import HeaderBar from '../view/HeaderBar.js';
-import { AuthProvider } from '../auth/AuthProvider.jsx';
+import { AuthProvider } from '../auth/AuthProvider.js';
 import useGridFileManager from '../view/hooks/useGridFileManager.js';
 // Mock the grid file manager hook to avoid network and heavy UI
 jest.mock('../view/hooks/useGridFileManager', () => ({ __esModule: true, default: jest.fn() }));
@@ -83,7 +83,7 @@ describe('HeaderBar - pause on Save/Load click', () => {
     render(<AuthProvider><HeaderBar {...props} /></AuthProvider>);
 
     const saveButton = screen.getByRole('button', { name: 'Save current grid state' });
-    userEvent.click(saveButton);
+    await userEvent.click(saveButton);
 
     expect(props.setIsRunning).toHaveBeenCalledWith(false);
   });
@@ -93,7 +93,7 @@ describe('HeaderBar - pause on Save/Load click', () => {
     render(<AuthProvider><HeaderBar {...props} /></AuthProvider>);
 
     const loadButton = screen.getByRole('button', { name: 'Load saved grid state' });
-    userEvent.click(loadButton);
+    await userEvent.click(loadButton);
 
     expect(props.setIsRunning).toHaveBeenCalledWith(false);
   });

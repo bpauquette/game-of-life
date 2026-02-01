@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import useGridFileManager from '../view/hooks/useGridFileManager.js';
 import HeaderBar from '../view/HeaderBar.js';
-import { AuthProvider } from '../auth/AuthProvider.jsx';
+import { AuthProvider } from '../auth/AuthProvider.js';
 
 // Mock grid file manager used by HeaderBar so we don't open dialogs or hit network
 jest.mock('../view/hooks/useGridFileManager', () => ({ __esModule: true, default: jest.fn() }));
@@ -70,7 +70,7 @@ describe('RunControlGroup - clear confirmation', () => {
 
     // Open confirm dialog via clear button
     const clearButton = screen.getByLabelText(/clear/i);
-  userEvent.click(clearButton);
+    await userEvent.click(clearButton);
 
     // Dialog appears
     const dialogTitle = await screen.findByText(/clear grid\?/i);
@@ -81,7 +81,7 @@ describe('RunControlGroup - clear confirmation', () => {
 
     // Confirm clear
     const confirmBtn = screen.getByRole('button', { name: /^Clear$/i });
-  userEvent.click(confirmBtn);
+    await userEvent.click(confirmBtn);
 
     expect(props.clear).toHaveBeenCalledTimes(1);
     expect(props.draw).toHaveBeenCalled();

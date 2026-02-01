@@ -107,6 +107,7 @@ export default function RunControlGroup({
                 disabled={false}
                 onClick={async () => { 
                   try {
+                    console.debug('[RunControlGroup] Step button clicked');
                     await step(); 
                     draw(); 
                   } catch (error) {
