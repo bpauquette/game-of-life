@@ -181,10 +181,11 @@ export default function ShapePreview({
   const h = (shape && (shape.height || shape.h || shape.meta?.height)) || Math.max(1, (maxY - minY + 1));
   const normalized = cells && cells.length > 0 ? normalizeCellsForDisplay(cells) : [];
   // Removed time: ShapePreview is now fully pure and deterministic.
-  const effectiveColorScheme = validateColorScheme(colorScheme, shape);
+  const effectiveColorScheme = validateColorScheme(colorScheme ?? {}, shape) || {};
   const hasCells = normalized.length > 0;
   debugShapePreview({ cells, colorScheme: effectiveColorScheme, shape, defaultCellColor, source });
   const testIdPrefix = getTestIdPrefix(shape);
+  const backgroundColor = effectiveColorScheme.background || '#1a1a1a';
 
   return (
     <svg
@@ -196,8 +197,8 @@ export default function ShapePreview({
       data-preview-source={source}
       style={{
         background: selected
-          ? `linear-gradient(${selectedBackgroundOverlay}, ${selectedBackgroundOverlay}), ${colorScheme.background || '#1a1a1a'}`
-          : colorScheme.background || '#1a1a1a',
+          ? `linear-gradient(${selectedBackgroundOverlay}, ${selectedBackgroundOverlay}), ${backgroundColor}`
+          : backgroundColor,
         border: selected
           ? `${selectedBorderWidth} solid ${selectedBorderColor}`
           : `1px solid rgba(0,0,0,${borderOpacity})`,

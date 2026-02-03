@@ -57,10 +57,13 @@ function GameUILayout({
   draw,
   clear,
   snapshotsRef,
-  setSteadyInfo
+  setSteadyInfo,
+  offsetRef: providedOffsetRef
 }) {
   const { canvasRef, drawWithOverlay } = useGameContext();
-  const offsetRef = useRef({ x: 0, y: 0 });
+  // Always create a local ref, then prefer the provided model-synced ref.
+  const localOffsetRef = useRef({ x: 0, y: 0 });
+  const offsetRef = providedOffsetRef || localOffsetRef;
   const {
     handleMouseDown,
     handleMouseMove,
@@ -68,7 +71,8 @@ function GameUILayout({
     resizeCanvas
   } = useCanvasManager({
     offsetRef,
-    canvasRef
+    canvasRef,
+    gameRef
   });
 
   const showUIControls = useUiDao(state => state.showUIControls ?? true);
@@ -232,10 +236,10 @@ function GameUILayout({
                   bottom: 0,
                   cursor: 'default',
                   display: 'block',
-                  width: enableAdaCompliance ? '160px' : '100%',
-                  height: enableAdaCompliance ? '160px' : '100%',
-                  maxWidth: enableAdaCompliance ? '160px' : 'none',
-                  maxHeight: enableAdaCompliance ? '160px' : 'none',
+                  width: '100%',
+                  height: '100%',
+                  maxWidth: 'none',
+                  maxHeight: 'none',
                   backgroundColor: '#000',
                   touchAction: 'none',
                   WebkitUserSelect: 'none',
@@ -250,10 +254,10 @@ function GameUILayout({
                   bottom: 0,
                   cursor: 'default',
                   display: 'block',
-                  width: enableAdaCompliance ? '160px' : '100vw',
-                  height: enableAdaCompliance ? '160px' : '100vh',
-                  maxWidth: enableAdaCompliance ? '160px' : 'none',
-                  maxHeight: enableAdaCompliance ? '160px' : 'none',
+                  width: '100vw',
+                  height: '100vh',
+                  maxWidth: 'none',
+                  maxHeight: 'none',
                   backgroundColor: '#000',
                   touchAction: 'none',
                   WebkitUserSelect: 'none',
@@ -317,7 +321,8 @@ GameUILayout.propTypes = {
   draw: PropTypes.func.isRequired,
   clear: PropTypes.func.isRequired,
   snapshotsRef: PropTypes.object,
-  setSteadyInfo: PropTypes.func
+  setSteadyInfo: PropTypes.func,
+  offsetRef: PropTypes.object,
 };
 
 export default GameUILayout;

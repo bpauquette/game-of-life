@@ -161,7 +161,8 @@ export class GameController {
           if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape()) {
             this.updateToolOverlay();
           }
-          this.requestRender();
+          // Throttle viewport-driven renders to reduce flashing during rapid zoom/pan
+          this.requestRender(Date.now(), 350);
           break;
         case 'selectedToolChanged':
         case 'selectedShapeChanged':
@@ -261,9 +262,6 @@ export class GameController {
 
   setSelectedTool(toolName) {
     if (!this.toolMap[toolName]) return;
-    console.log('[GameController] setSelectedTool called with:', toolName);
-    const before = this.model && typeof this.model.getSelectedTool === 'function' ? this.model.getSelectedTool() : null;
-    console.log('[GameController] setSelectedTool before:', before);
     const prevTool = this.model.getSelectedTool();
     this.model.setSelectedToolModel(toolName);
 
@@ -278,14 +276,10 @@ export class GameController {
     // Always update overlay after tool change
     this.updateToolOverlay();
 
-    const after = this.model && typeof this.model.getSelectedTool === 'function' ? this.model.getSelectedTool() : null;
-    console.log('[GameController] setSelectedTool after:', after);
   }
 
   getSelectedTool() {
-    const tool = this.model.getSelectedTool();
-    console.log('[GameController] getSelectedTool returns:', tool);
-    return tool;
+    return this.model.getSelectedTool();
   }
 
   // Shape management
@@ -776,7 +770,6 @@ export class GameController {
 
   // Game control methods
   async step() {
-    console.debug('[GameController] step() called');
     await this.model.step();
   }
 
@@ -816,7 +809,6 @@ export class GameController {
   }
 
   handleRunningStateChange(isRunning) {
-    console.debug('[GameController] handleRunningStateChange:', isRunning);
     const scheduler = this._getScheduler();
     // Defensive check: ensure scheduler has expected methods
     if (!scheduler || typeof scheduler !== 'object') {
@@ -899,7 +891,6 @@ export class GameController {
 
   applyPerformanceSettings(settings = {}) {
     if (!settings || typeof settings !== 'object') return;
-    console.debug(`[GameController.applyPerformanceSettings] Called with:`, settings);
 
     let capsChanged = false;
 
@@ -943,19 +934,23 @@ export class GameController {
     }
 
     if (capsChanged && this.scheduler) {
-      this.scheduler.setMaxFPS(this.performanceCaps.maxFPS);
-      this.scheduler.setMaxGPS(this.performanceCaps.maxGPS);
-      console.debug(`[GameController] Caps updated via scheduler`);
+      this.scheduler.setCaps({
+        maxFPS: this.performanceCaps.maxFPS,
+        maxGPS: this.performanceCaps.maxGPS,
+        enableFPSCap: this.performanceCaps.enableFPSCap,
+        enableGPSCap: this.performanceCaps.enableGPSCap,
+      });
     }
   }
 
   _getScheduler() {
     if (!this.scheduler) {
-      console.debug('[GameController] creating StepScheduler', { maxFPS: this.performanceCaps.maxFPS, maxGPS: this.performanceCaps.maxGPS, useWebWorker: this.performanceCaps.useWebWorker });
       const preferWorker = !!this.performanceCaps.useWebWorker || (typeof Worker !== 'undefined' && !isTestEnvironment());
       this.scheduler = new StepScheduler(() => this.model.step(), {
         maxFPS: this.performanceCaps.maxFPS,
         maxGPS: this.performanceCaps.maxGPS,
+        enableFPSCap: this.performanceCaps.enableFPSCap,
+        enableGPSCap: this.performanceCaps.enableGPSCap,
         useWorker: preferWorker,
         onPerformance: (frameTime) => {
           if (globalThis.speedGaugeTracker) {
@@ -985,7 +980,6 @@ export class GameController {
     const doRender = () => {
       this.renderScheduled = false;
       const renderStart = performance.now();
-      console.debug('[GameController] requestRender: doRender called');
       const liveCells = this.model.getLiveCells();
       const modelViewport = this.model.getViewport();
       const cellSize = this.view.renderer.viewport.cellSize || 8;
@@ -1028,7 +1022,8 @@ export class GameController {
     } else {
       this.model.setOverlay(null);
     }
-    this.requestRender();
+    // Mild throttle to avoid rapid overlay flashes when zooming/scrolling
+    this.requestRender(Date.now(), 350);
   }
 
   // Performance monitoring

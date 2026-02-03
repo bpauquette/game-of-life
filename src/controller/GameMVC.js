@@ -19,7 +19,6 @@ import logger from './utils/logger.js';
 
 export class GameMVC {
   setSelectedTool(toolName) {
-    console.log('[GameMVC] setSelectedTool called with:', toolName);
     if (this.controller && typeof this.controller.setSelectedTool === 'function') {
       this.controller.setSelectedTool(toolName);
     }
@@ -125,9 +124,7 @@ export class GameMVC {
     this.controller.registerTool('capture', enhancedCaptureTool);
 
     // Debug: log all registered tools
-    if (typeof console !== 'undefined') {
-      console.log('[GameMVC] Registered tools:', Object.keys(this.controller.toolMap));
-    }
+    // Avoid noisy startup logging; use logger at debug level if needed
     this.toolsLoaded = true;
   } catch (error) {
     logger.error('GameMVC: ❌ Error registering default tools:', error);

@@ -41,6 +41,9 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomp
       // Compute both exact (fractional) and floored cell coords so renderers
       // can draw precise crosshairs while still exposing integer cell indices.
       const rect = canvas.getBoundingClientRect() || { left: 0, top: 0, width: 0, height: 0 };
+      const inside = ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom;
+      // Avoid cursor churn when outside the canvas; keep last position instead of clearing.
+      if (!inside && !ev.buttons) return;
       const centerX = (rect.width || 0) / 2;
       const centerY = (rect.height || 0) / 2;
       const eff = getEffectiveCellSize();
@@ -71,14 +74,12 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomp
       }
       recomputeFromLastClient();
     };
-    const handleLeave = () => setGridPosition(null);
     // Listen to pointer events as well so dragging (pointermove) updates the
     // grid position while a pointer capture is active. Keep mousemove for
     // environments that don't use pointer events.
     globalThis.addEventListener('pointermove', handleMove);
     globalThis.addEventListener('mousemove', handleMove);
     globalThis.addEventListener('wheel', handleWheel, { passive: true });
-    canvas.addEventListener('mouseleave', handleLeave);
 
     // Expose recompute so callers can refresh cursor on shape/zoom changes
     if (recomputeRef && typeof recomputeRef === 'object') {
@@ -105,7 +106,6 @@ const useGridMousePosition = ({ canvasRef, cellSize, offsetRef, onCursor, recomp
       globalThis.removeEventListener('pointermove', handleMove);
       globalThis.removeEventListener('mousemove', handleMove);
       globalThis.removeEventListener('wheel', handleWheel);
-      canvas.removeEventListener('mouseleave', handleLeave);
       if (recomputeRef && typeof recomputeRef === 'object') {
         recomputeRef.current = null;
       }

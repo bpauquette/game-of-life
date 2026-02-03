@@ -25,8 +25,15 @@ export async function updateShapePublic(id, isPublic) {
 export function getBackendApiBase() {
   const envBase = getEnvValue('REACT_APP_API_BASE');
   if (typeof envBase === 'string' && envBase.trim().length > 0) {
-    return envBase;
+    return envBase.replace(/\/$/, '');
   }
+  // Dev heuristic: when running CRA on localhost:3000 with no env override,
+  // talk directly to the backend on port 55000 (no /api prefix — the backend
+  // routes are rooted at /v1 and /auth).
+  if (typeof globalThis !== 'undefined' && globalThis.location?.host === 'localhost:3000') {
+    return 'http://localhost:55000';
+  }
+  // Default: assume backend is mounted under /api behind a reverse proxy.
   if (typeof globalThis !== 'undefined' && globalThis.location?.origin) {
     return `${globalThis.location.origin}/api`;
   }
@@ -108,8 +115,13 @@ export async function saveCapturedShapeToBackend(shapeData, logout) {
 }
 
 // Fetch shapes list
-export async function fetchShapes(q) {
-  const url = `${getBackendApiBase()}/v1/shapes?q=${encodeURIComponent(q)}`;
+export async function fetchShapes(q, backendBase = null, page = 1, pageSize = 100) {
+  const base = (typeof backendBase === 'string' && backendBase.trim().length) ? backendBase : getBackendApiBase();
+  const params = new URLSearchParams();
+  if (q) params.set('searchTerm', q);
+  params.set('page', page);
+  params.set('pageSize', pageSize);
+  const url = `${base}/v1/shapes?${params.toString()}`;
   const res = await fetch(url);
   if (!res.ok) {
     return { ok: false, status: res.status, items: [], total: 0 };
@@ -127,14 +139,35 @@ export async function fetchShapes(q) {
 
 // Fetch only shape names (id + name) in a single call when supported by the backend.
 // Falls back to fetching a large page of shapes and mapping to minimal metadata.
-export async function fetchShapeNames(q = '', signal = null) {
-     
+// Support legacy signature (q, signal) and new signature (base, q, limit, offset, signal).
+export async function fetchShapeNames(baseOrQ = '', qMaybe = '', limitMaybe = 50, offsetMaybe = 0, signalMaybe = null) {
+  const usingOldSignature = typeof qMaybe === 'object' || (typeof limitMaybe === 'undefined' && typeof offsetMaybe === 'undefined');
+  const q = usingOldSignature ? baseOrQ : qMaybe;
+  const base = usingOldSignature ? null : baseOrQ;
+  const limit = Number(usingOldSignature ? 50 : limitMaybe) || 50;
+  const offset = Number(usingOldSignature ? 0 : offsetMaybe) || 0;
+  const signal = usingOldSignature ? (qMaybe || null) : signalMaybe;
+
   try {
-    const url = `${getBackendApiBase()}/v1/shapes/names?q=${encodeURIComponent(q || '')}`;
+    const apiBase = (typeof base === 'string' && base.trim().length) ? base : getBackendApiBase();
+    const params = new URLSearchParams();
+    params.set('q', q || '');
+    params.set('limit', limit);
+    params.set('offset', offset);
+    const url = `${apiBase}/v1/shapes/names?${params.toString()}`;
     const res = await fetch(url, { signal });
     if (!res.ok) return { ok: false, items: [], total: 0 };
-    const items = await res.json().catch(() => []);
-    return { ok: true, items, total: items.length };
+    const data = await res.json().catch(() => null);
+    let items = [];
+    let totalCount = 0;
+    if (Array.isArray(data)) {
+      items = data;
+      totalCount = data.length;
+    } else if (data && Array.isArray(data.items)) {
+      items = data.items;
+      totalCount = Number(data.total) || data.items.length;
+    }
+    return { ok: true, items, total: totalCount };
   } catch (err) {
     logger.warn('fetchShapeNames failed:', err);
     return { ok: false, items: [], total: 0 };
@@ -142,9 +175,9 @@ export async function fetchShapeNames(q = '', signal = null) {
 }
 
 // Fetch shape by ID
-export async function fetchShapeById(id) {
-     
-  const url = `${getBackendApiBase()}/v1/shapes/${encodeURIComponent(id)}`;
+export async function fetchShapeById(id, backendBase = null) {
+  const base = (typeof backendBase === 'string' && backendBase.trim().length) ? backendBase : getBackendApiBase();
+  const url = `${base}/v1/shapes/${encodeURIComponent(id)}`;
   const res = await fetch(url);
   if (!res.ok) return { ok: false };
   try {
@@ -157,8 +190,9 @@ export async function fetchShapeById(id) {
 }
 
 // Delete shape by ID
-export async function deleteShapeById(id) {
-  const url = `${getBackendApiBase()}/v1/shapes/${encodeURIComponent(id)}`;
+export async function deleteShapeById(id, backendBase = null) {
+  const base = (typeof backendBase === 'string' && backendBase.trim().length) ? backendBase : getBackendApiBase();
+  const url = `${base}/v1/shapes/${encodeURIComponent(id)}`;
   const res = await fetch(url, { method: 'DELETE' });
   let bodyText = '';
   try { bodyText = await res.text(); } catch (e) { /* ignore error */ }
@@ -170,9 +204,9 @@ export async function deleteShapeById(id) {
 }
 
 // Create shape
-export async function createShape(shape) {
-     
-  const url = `${getBackendApiBase()}/v1/shapes`;
+export async function createShape(shape, backendBase = null) {
+  const base = (typeof backendBase === 'string' && backendBase.trim().length) ? backendBase : getBackendApiBase();
+  const url = `${base}/v1/shapes`;
   const token = getAuthToken();
   const headers = {
     'Content-Type': 'application/json',

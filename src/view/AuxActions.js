@@ -8,7 +8,7 @@ import Tooltip from '@mui/material/Tooltip';
 import PropTypes from 'prop-types';
 import { FRONTEND_TIMESTAMP, FRONTEND_VERSION } from '../version.js';
 
-function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, onOpenImport, onOpenDonate, onOpenPhotoTest, loggedIn }) {
+function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, onOpenImport, onOpenDonate, onOpenPhotoTest, onOpenScript, loggedIn }) {
   const openLifeWiki = () => {
     globalThis.open('https://conwaylife.com/wiki/Main_Page', '_blank');
   };
@@ -16,7 +16,7 @@ function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpe
   return (
     <Stack direction="row" spacing={1} alignItems="center">
       <Tooltip title="Script Playground">
-        <IconButton size="small" onClick={() => globalThis.dispatchEvent(new CustomEvent('openScriptPanel'))} aria-label="script-playground"><CodeIcon fontSize="small" /></IconButton>
+        <IconButton size="small" onClick={onOpenScript} aria-label="script-playground"><CodeIcon fontSize="small" /></IconButton>
       </Tooltip>
       <Tooltip title="Photosensitivity Test">
         <IconButton size="small" onClick={onOpenPhotoTest} aria-label="photosensitivity-test"><BugReportIcon fontSize="small" /></IconButton>
@@ -46,6 +46,7 @@ AuxActions.propTypes = {
   onOpenHelp: PropTypes.func.isRequired,
   onOpenAbout: PropTypes.func.isRequired,
   onOpenOptions: PropTypes.func.isRequired,
+  onOpenScript: PropTypes.func.isRequired,
   onOpenDonate: PropTypes.func,
   onOpenUser: PropTypes.func,
   onOpenPhotoTest: PropTypes.func,

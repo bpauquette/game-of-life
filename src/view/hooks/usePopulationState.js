@@ -8,6 +8,8 @@ export function usePopulationState() {
     setPopulationHistory: usePopulationDao(state => state.setPopulationHistory),
     popWindowSize: usePopulationDao(state => state.popWindowSize),
     setPopWindowSize: usePopulationDao(state => state.setPopWindowSize),
+    popTolerance: usePopulationDao(state => state.popTolerance),
+    setPopTolerance: usePopulationDao(state => state.setPopTolerance),
     generation: usePopulationDao(state => state.generation),
     setGeneration: usePopulationDao(state => state.setGeneration),
     maxChartGenerations: usePopulationDao(state => state.maxChartGenerations),

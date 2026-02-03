@@ -19,6 +19,8 @@ export default function Register({ onSuccess, onError, onSwitchToLogin }) {
   const [aboutMe, setAboutMe] = useState("");
   const [msg, setMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorId] = useState(() => `register-error-${Math.random().toString(36).slice(2)}`);
 
   function validatePassword(pw) {
     if (pw.length < 8) return "Password must be at least 8 characters.";
@@ -32,6 +34,8 @@ export default function Register({ onSuccess, onError, onSwitchToLogin }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setMsg("");
+    if (submitting) return;
+    setSubmitting(true);
 
     if (!firstName.trim()) {
       const error = "First name is required";
@@ -133,55 +137,84 @@ export default function Register({ onSuccess, onError, onSwitchToLogin }) {
             // ignore
           }
         }
+    } finally {
+      setSubmitting(false);
     }
   }
 
   return (
     <div style={{ maxWidth: 300 }}>
       <h2>Register</h2>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} aria-busy={submitting} noValidate>
+        <label htmlFor="register-first-name">First Name (required)</label><br/>
         <input
+          id="register-first-name"
+          name="firstName"
           placeholder="First Name (required)"
           value={firstName}
           onChange={e => setFirstName(e.target.value)}
           required
+          autoComplete="given-name"
+          disabled={submitting}
         /><br/>
+        <label htmlFor="register-last-name">Last Name (required)</label><br/>
         <input
+          id="register-last-name"
+          name="lastName"
           placeholder="Last Name (required)"
           value={lastName}
           onChange={e => setLastName(e.target.value)}
           required
+          autoComplete="family-name"
+          disabled={submitting}
         /><br/>
+        <label htmlFor="register-about-me">About Me (optional)</label><br/>
         <input
+          id="register-about-me"
+          name="aboutMe"
           placeholder="About Me (optional)"
           value={aboutMe}
           onChange={e => setAboutMe(e.target.value)}
+          autoComplete="off"
+          disabled={submitting}
         /><br/>
+        <label htmlFor="register-email">Email (required)</label><br/>
         <input
+          id="register-email"
+          name="email"
           placeholder="Email (required)"
           value={email}
           onChange={e => setEmail(e.target.value)}
           required
+          type="email"
+          autoComplete="email"
+          disabled={submitting}
         /><br/>
         <div style={{ position: 'relative' }}>
+          <label className="sr-only" htmlFor="register-password">Password (required)</label>
           <input
+            id="register-password"
+            name="password"
             type={showPassword ? "text" : "password"}
             placeholder="Password (required)"
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
             style={{ paddingRight: 40 }}
+            autoComplete="new-password"
+            disabled={submitting}
           />
           <IconButton
             onClick={() => setShowPassword(!showPassword)}
             style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}
+            type="button"
           >
             {showPassword ? <VisibilityOff /> : <Visibility />}
           </IconButton>
         </div><br/>
-        <button type="submit">Register</button>
+        <button type="submit" disabled={submitting} aria-describedby={msg ? errorId : undefined}>Register</button>
       </form>
-      <div>{msg}</div>
+      <div aria-live="polite" id={errorId}>{msg}</div>
     </div>
   );
 }

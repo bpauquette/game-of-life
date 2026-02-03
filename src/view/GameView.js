@@ -68,7 +68,6 @@ export class GameView {
   // Rendering methods
   render(liveCells, viewport) {
     if (!this.isVisible) return;
-    console.debug('[GameView] render() called');
     // Track render timestamp for performance metrics
     if (this.model?.trackRender) {
       this.model.trackRender();
@@ -429,6 +428,9 @@ export class GameView {
         const detail = ev && ev.detail ? ev.detail : {};
         const cells = detail.cells || detail;
         if (this.model && typeof this.model.setCellsAliveBulk === 'function' && Array.isArray(cells)) {
+          if (typeof this.model.clearModel === 'function') {
+            try { this.model.clearModel(); } catch (e) { console.error('GameView: clearModel failed on script step', e); }
+          }
           // Accept [{x, y}, ...] or [[x, y], ...]
           this.model.setCellsAliveBulk(cells);
         }

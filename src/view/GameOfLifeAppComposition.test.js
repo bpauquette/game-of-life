@@ -1,8 +1,11 @@
-// Mock StepScheduler to bypass ESM/worker errors in Jest
+// GameOfLifeApp Composition Tests
+// Tests the component composition and integration behavior  
+// The runtime hook logic is tested separately in hook-specific test files
+
 import React from 'react';
 import { render } from '@testing-library/react';
-import GameOfLifeApp from './GameOfLifeApp.js';
 import { AuthProvider } from '../auth/AuthProvider.js';
+import GameOfLifeApp from './GameOfLifeApp.js';
 
 jest.mock('../controller/StepScheduler', () => ({
   __esModule: true,
@@ -97,7 +100,7 @@ beforeAll(() => {
   });
 });
 
-describe('GameOfLifeApp', () => {
+describe('GameOfLifeApp Composition', () => {
   function renderWithAuthProvider(ui) {
     return render(<AuthProvider>{ui}</AuthProvider>);
   }

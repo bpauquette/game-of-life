@@ -5,7 +5,6 @@ import { useUiDao } from '../../model/dao/uiDao.js';
 // Place this hook in your top-level UI shell (e.g., HeaderBar.js)
 // Add new shortcuts here and update the Architecture doc if you add more
 export default function useGlobalShortcuts() {
-  console.log('[useGlobalShortcuts] hook mounted');
   const setPaletteOpen = useUiDao(state => state.setPaletteOpen);
   const setShowChart = useUiDao(state => state.setShowChart);
   const setShowUIControls = useUiDao(state => state.setShowUIControls);
@@ -13,9 +12,7 @@ export default function useGlobalShortcuts() {
   const showUIControls = useUiDao(state => state.showUIControls);
 
   useEffect(() => {
-    console.log('[useGlobalShortcuts] useEffect running');
     const handleGlobalKeyDown = (e) => {
-      console.log('[useGlobalShortcuts] keydown event', e.key, e);
       const target = e.target;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return;
@@ -36,14 +33,11 @@ export default function useGlobalShortcuts() {
       }
       if (handled) {
         e.preventDefault();
-        console.log('[useGlobalShortcuts] handled shortcut:', key, e);
       }
     };
     document.addEventListener('keydown', handleGlobalKeyDown);
-    console.log('[useGlobalShortcuts] keydown listener added');
     return () => {
       document.removeEventListener('keydown', handleGlobalKeyDown);
-      console.log('[useGlobalShortcuts] useEffect cleanup (unmount)');
     };
   }, [setPaletteOpen, setShowChart, setShowUIControls, showChart, showUIControls]);
 }

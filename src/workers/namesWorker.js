@@ -1,7 +1,20 @@
  
 // namesWorker.js - module worker for incremental names loading
-// Hardcode API base to always use proxy
-const API_BASE = '/api';
+// Allow caller to provide API base; default heuristics route localhost:3000 to backend on 55000
+
+function resolveApiBase(msgBase) {
+  if (typeof msgBase === 'string' && msgBase.trim().length) {
+    return msgBase.replace(/\/$/, '');
+  }
+  // When served by CRA on 3000, talk to backend on 55000 to avoid 404s on the dev server
+  if (typeof self !== 'undefined' && self.location?.host === 'localhost:3000') {
+    return 'http://localhost:55000';
+  }
+  if (typeof self !== 'undefined' && self.location?.origin) {
+    return `${self.location.origin}/api`;
+  }
+  return '/api';
+}
 
 addEventListener('message', async (ev) => {
   const msg = ev.data || {};
@@ -22,10 +35,11 @@ addEventListener('message', async (ev) => {
 });
 
 async function runNamesWorkerLoop(msg) {
-  const base = API_BASE;
+  const base = resolveApiBase(msg.base);
   const q = msg.q || '';
   const limit = Number(msg.limit) || 50;
-  let offset = 0;
+  let offset = Math.max(0, Number(msg.offsetStart) || 0);
+  const stopAfterFirstPage = !!msg.stopAfterFirstPage;
   while (true) {
     const url = `${base}/v1/shapes/names?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`;
     try {
@@ -42,6 +56,7 @@ async function runNamesWorkerLoop(msg) {
       postMessage({ type: 'page', items, total, offset });
     }
     offset += items.length;
+    if (stopAfterFirstPage) break;
     if (!items.length || (total && offset >= total)) break;
     await new Promise(r => setTimeout(r, 30));
   }

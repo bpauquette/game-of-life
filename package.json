@@ -36,6 +36,7 @@
     "build:dev": "npm run build:version && BUILD_WITHOUT_MINIFICATION=true react-scripts build",
     "build:hashlife-worker": "npx esbuild src/model/hashlife/worker.esm.js --bundle --platform=browser --format=esm --outfile=public/model/hashlife/worker.thread.js",
     "test": "npm run build:version && cross-env CI=true NODE_OPTIONS='--no-deprecation=DEP0040' react-scripts test --watchAll=false",
+    "test:coverage": "npm run build:version && cross-env CI=true NODE_OPTIONS='--no-deprecation=DEP0040' react-scripts test --watchAll=false --coverage",
     "frontend:start": "node ./scripts/manage.js start",
     "frontend:stop": "node ./scripts/manage.js stop",
     "frontend:status": "node ./scripts/manage.js status",
@@ -64,14 +65,17 @@
       "last 1 safari version"
     ]
   },
+  "proxy": "http://localhost:55000",
   "lint-staged": {
     "src/**/*.{js,jsx}": "eslint --fix --max-warnings=0"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.28.6",
+    "@babel/preset-env": "^7.26.0",
     "@babel/preset-react": "^7.28.5",
     "@eslint/js": "^9.39.2",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "babel-jest": "^29.7.0",
     "cross-env": "^10.1.0",
     "crypto-browserify": "^3.12.1",
     "eslint": "^9.39.2",

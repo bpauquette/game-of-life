@@ -37,11 +37,19 @@ function normalizeLiveCells(liveCells) {
 }
 
 
-export function loadGridIntoGame(gameRef, liveCells) {
+export function loadGridIntoGame(gameRef, liveCells, options = {}) {
   if (!gameRef?.current || !liveCells) return;
   const model = gameRef.current.model;
   if (!model || typeof model.setCellsAliveBulk !== 'function') return;
+  const { replace = true } = options;
   const updates = normalizeLiveCells(liveCells);
+  if (replace && typeof model.clearModel === 'function') {
+    try {
+      model.clearModel();
+    } catch (e) {
+      console.error('loadGridIntoGame: clearModel failed', e);
+    }
+  }
   if (updates.length > 0) {
     model.setCellsAliveBulk(updates);
   }

@@ -3,6 +3,21 @@
 */
  
 console.log('[namesWorker] Initialized');
+
+function resolveApiBase(msgBase) {
+  if (typeof msgBase === 'string' && msgBase.trim().length) {
+    return msgBase.replace(/\/$/, '');
+  }
+  // When running under CRA on localhost:3000, default to backend port 55000
+  if (typeof self !== 'undefined' && self.location?.host === 'localhost:3000') {
+    return 'http://localhost:55000';
+  }
+  if (typeof self !== 'undefined' && self.location?.origin) {
+    return `${self.location.origin}/api`;
+  }
+  return '/api';
+}
+
 addEventListener('message', async (ev) => {
   const msg = ev.data || {};
   console.log('[namesWorker] Received message:', msg);
@@ -17,11 +32,13 @@ addEventListener('message', async (ev) => {
 });
 
 async function runNamesWorkerLoop(msg) {
+  const base = resolveApiBase(msg.base);
   const q = msg.q || '';
   const limit = Number(msg.limit) || 50;
-  let offset = 0;
+  let offset = Math.max(0, Number(msg.offsetStart) || 0);
+  const stopAfterFirstPage = !!msg.stopAfterFirstPage;
   while (true) {
-    const url = `/api/v1/shapes/names?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`;
+    const url = `${base}/v1/shapes/names?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`;
     console.log('[namesWorker] Fetching:', url);
     const res = await fetch(url);
     if (!res.ok) { 
@@ -37,6 +54,7 @@ async function runNamesWorkerLoop(msg) {
       postMessage({ type: 'page', items, total, offset });
     }
     offset += items.length;
+    if (stopAfterFirstPage) break;
     if (!items.length || (total && offset >= total)) break;
     await new Promise(r => setTimeout(r, 30));
   }

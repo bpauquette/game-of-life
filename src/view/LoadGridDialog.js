@@ -275,7 +275,11 @@ LoadGridDialog.propTypes = {
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
     description: PropTypes.string,
-    liveCells: PropTypes.number.isRequired,
+    liveCells: PropTypes.oneOfType([
+      PropTypes.number,
+      PropTypes.array,
+      PropTypes.object
+    ]),
     generation: PropTypes.number.isRequired,
     createdAt: PropTypes.string.isRequired
   })),

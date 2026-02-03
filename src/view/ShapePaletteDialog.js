@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useDeferredValue, useMemo } from 'react';
+import React, { useState, useCallback, useDeferredValue, useMemo, useRef, useEffect } from 'react';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import PropTypes from 'prop-types';
@@ -11,6 +11,7 @@ import { useAuth } from '../auth/AuthProvider.js';
 import { fetchShapeById } from '../utils/backendApi.js';
 
 const LARGE_CATALOG_THRESHOLD = 1000;
+const PAGE_SIZE = 10;
 
 const hasShapeCells = (shape) => {
   if (!shape) return false;
@@ -27,6 +28,8 @@ export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRe
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useAuth();
+  const [page, setPage] = useState(0);
+  const [paging, setPaging] = useState(false);
   const {
     inputValue,
     setInputValue,
@@ -41,12 +44,29 @@ export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRe
     setShowBackendDialog,
     retry,
     hydrateShape,
-    deleteShape,
-    createShapeInBackend
-  } = useShapePaletteSearch({ open, backendBase, prefetchOnMount, fetchShapes: fetchShapesFn, checkBackendHealth });
+    deleteShape
+  } = useShapePaletteSearch({ open, backendBase, limit: PAGE_SIZE, page, prefetchOnMount, fetchShapes: fetchShapesFn, checkBackendHealth });
 
-    // Local preview state for selected shape
-    const [selectedShape, setSelectedShape] = useState(null);
+  // Track first successful load to avoid repeated loading overlays
+  const hasLoadedOnceRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      hasLoadedOnceRef.current = false;
+    }
+  }, [open]);
+  useEffect(() => {
+    if (results.length > 0 || !loading) {
+      hasLoadedOnceRef.current = true;
+    }
+  }, [results, loading]);
+
+  const handleSearchChange = useCallback((val) => {
+    setPage(0);
+    setInputValue(val);
+  }, [setInputValue]);
+
+  // Local preview state for selected shape
+  const [selectedShape, setSelectedShape] = useState(null);
 
 
   const shapesForRender = useDeferredValue(
@@ -63,7 +83,7 @@ export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRe
       return sorted;
     }, [displayedResults, user])
   );
-  const isInitialMobileLoad = loading && results.length === 0;
+  const isInitialMobileLoad = loading && !hasLoadedOnceRef.current;
 
   const [backendStarting, setBackendStarting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -180,8 +200,7 @@ export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRe
     const shape = snackUndoShape;
     if (!shape) return;
     try {
-      const createCb = createShapeInBackend || (async (s) => ShapesDao.saveShape(s));
-      const created = await createCb(shape);
+      const created = await ShapesDao.saveShape(shape);
       const toInsert = created && created.id ? created : shape;
       setResults(prev => [toInsert, ...prev]);
       setSnackMsg('Restored');
@@ -190,13 +209,33 @@ export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRe
       logger.error('Restore error:', err);
       setSnackMsg('Restore error');
     }
-  }, [snackUndoShape, createShapeInBackend, setResults]);
+  }, [snackUndoShape, setResults]);
 
   const handleSnackClose = useCallback(() => {
     setSnackOpen(false);
     setSnackMsg('');
     setSnackUndoShape(null);
   }, []);
+
+  const canPagePrev = page > 0;
+  const canPageNext = ((page + 1) * PAGE_SIZE) < total;
+
+  const goPrevPage = useCallback(() => {
+    if (paging || loading || !canPagePrev) return;
+    setPaging(true);
+    setPage(p => Math.max(0, p - 1));
+  }, [paging, loading, canPagePrev]);
+
+  const goNextPage = useCallback(() => {
+    if (paging || loading || !canPageNext) return;
+    setPaging(true);
+    setPage(p => p + 1);
+  }, [paging, loading, canPageNext]);
+
+  // Release paging lock once a load finishes
+  useEffect(() => {
+    if (!loading) setPaging(false);
+  }, [loading]);
 
   const startBackendServer = async () => {
     setBackendStarting(true);
@@ -241,7 +280,7 @@ The backend will start on the configured port.`);
       onClose={onClose}
       isMobile={isMobile}
       inputValue={inputValue}
-      setInputValue={setInputValue}
+      setInputValue={handleSearchChange}
       selectedShape={selectedShape}
       onSelectShape={handleShapeSelect}
       onAddRecent={safeAddRecent}
@@ -255,7 +294,13 @@ The backend will start on the configured port.`);
       onDeleteConfirm={handleDelete}
       total={total}
       threshold={LARGE_CATALOG_THRESHOLD}
-      onLoadMore={() => {}}
+      page={page}
+      limit={PAGE_SIZE}
+      canPagePrev={canPagePrev}
+      canPageNext={canPageNext}
+      onPrevPage={goPrevPage}
+      onNextPage={goNextPage}
+      paging={paging}
       snackOpen={snackOpen}
       snackMsg={snackMsg}
       snackDetails={snackDetails}
@@ -268,6 +313,7 @@ The backend will start on the configured port.`);
       onRetryBackend={retryBackendConnection}
       onBackendClose={() => setShowBackendDialog(false)}
       onShowBackendInstructions={startBackendServer}
+      backendBase={backendBase}
       colorScheme={colorScheme}
       colorSchemeKey={colorSchemeKey}
       user={user}

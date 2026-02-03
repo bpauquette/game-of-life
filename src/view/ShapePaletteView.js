@@ -36,7 +36,13 @@ export default function ShapePaletteView({
   onDeleteConfirm,
   total,
   threshold,
-  onLoadMore,
+  page,
+  limit,
+  canPagePrev,
+  canPageNext,
+  onPrevPage,
+  onNextPage,
+  paging,
   snackOpen,
   snackMsg,
   snackDetails,
@@ -48,6 +54,7 @@ export default function ShapePaletteView({
   backendStarting,
   onRetryBackend,
   onShowBackendInstructions,
+  backendBase,
   colorScheme,
   colorSchemeKey,
   user,
@@ -58,17 +65,26 @@ export default function ShapePaletteView({
         open={open}
         onClose={onClose}
         disableEscapeKeyDown={false}
-        maxWidth={isMobile ? 'xs' : 'md'}
+        maxWidth={isMobile ? 'xs' : 'xl'}
         fullWidth
         fullScreen={isMobile}
+        PaperProps={!isMobile ? { sx: { height: 'auto', maxHeight: '80vh' } } : undefined}
         data-testid="shapes-palette"
       >
         <DialogTitle>Insert shape from catalog</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 2, maxHeight: '80vh', overflowX: 'hidden' }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 2, overflowX: 'hidden', overflowY: 'visible' }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             <SearchBar value={inputValue} onChange={setInputValue} onClose={onClose} />
             <Box sx={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 1, p: 0 }}>
-              <PreviewPanel preview={selectedShape} colorScheme={colorScheme} colorSchemeKey={colorSchemeKey} onAddRecent={onAddRecent} compact={true} maxSvgSize={80} />
+              <PreviewPanel
+                key={selectedShape?.id || selectedShape?.name || 'preview'}
+                preview={selectedShape}
+                colorScheme={colorScheme}
+                colorSchemeKey={colorSchemeKey}
+                onAddRecent={onAddRecent}
+                compact={true}
+                maxSvgSize={80}
+              />
             </Box>
           </Box>
 
@@ -91,9 +107,10 @@ export default function ShapePaletteView({
               shapeSize={isMobile ? 64 : 40}
               showShapeNames={isMobile}
               user={user}
+              backendBase={backendBase}
             />
 
-            {isInitialMobileLoad && (
+            {isMobile && isInitialMobileLoad && (
               <Box
                 sx={{
                   position: 'absolute',
@@ -103,7 +120,7 @@ export default function ShapePaletteView({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 0.5,
-                  bgcolor: 'rgba(0,0,0,0.35)',
+                  bgcolor: 'rgba(0,0,0,0.22)',
                   borderRadius: 1,
                   textAlign: 'center',
                   px: 2
@@ -112,10 +129,7 @@ export default function ShapePaletteView({
               >
                 <CircularProgress size={32} thickness={4} />
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  Loading shapes catalog…
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  This may take a few seconds on mobile networks. The list will populate automatically.
+                  Loading shapes…
                 </Typography>
               </Box>
             )}
@@ -124,9 +138,14 @@ export default function ShapePaletteView({
           <FooterControls
             total={total}
             threshold={threshold}
-            canLoadMore={false}
-            onLoadMore={onLoadMore}
+            page={page}
+            limit={limit}
+            canPagePrev={canPagePrev}
+            canPageNext={canPageNext}
+            onPrevPage={onPrevPage}
+            onNextPage={onNextPage}
             loading={loading}
+            busy={paging}
           />
 
           <DeleteConfirmDialog
@@ -178,7 +197,13 @@ ShapePaletteView.propTypes = {
   onDeleteConfirm: PropTypes.func,
   total: PropTypes.number,
   threshold: PropTypes.number,
-  onLoadMore: PropTypes.func,
+  page: PropTypes.number,
+  limit: PropTypes.number,
+  canPagePrev: PropTypes.bool,
+  canPageNext: PropTypes.bool,
+  onPrevPage: PropTypes.func,
+  onNextPage: PropTypes.func,
+  paging: PropTypes.bool,
   snackOpen: PropTypes.bool,
   snackMsg: PropTypes.string,
   snackDetails: PropTypes.string,
@@ -191,6 +216,7 @@ ShapePaletteView.propTypes = {
   onRetryBackend: PropTypes.func,
   onShowBackendInstructions: PropTypes.func,
   onBackendClose: PropTypes.func,
+  backendBase: PropTypes.string,
   colorScheme: PropTypes.object,
   colorSchemeKey: PropTypes.string,
   user: PropTypes.object,

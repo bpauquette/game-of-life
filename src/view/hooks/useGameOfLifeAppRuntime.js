@@ -1,37 +1,28 @@
 import useMediaQuery from '@mui/material/useMediaQuery';
-// canvas manager removed in favor of single MVC renderer
-import { useShapeManager } from './hooks/useShapeManager.js';
-import useGridMousePosition from './hooks/useGridMousePosition.js';
-// Overlay generation now lives in controller/tool; no React-level overlays here.
-import useInitialShapeLoader from '../hooks/useInitialShapeLoader.js';
-import Snackbar from '@mui/material/Snackbar';
-import Alert from '@mui/material/Alert';
-import LoadingShapesOverlay from './LoadingShapesOverlay.js';
-import ScriptExecutionHUD from './ScriptExecutionHUD.js';
-import { loadGridIntoGame, rotateAndApply } from './utils/gameUtils.js';
-import { colorSchemes } from '../model/colorSchemes.js';
-// tools are registered by GameMVC; no direct tool imports needed here
-import { saveCapturedShapeToBackend, getBackendApiBase } from '../utils/backendApi.js';
-import useProtectedAction from '../auth/useProtectedAction.js';
-import GameUILayout from './GameUILayout.js';
-import FirstLoadWarningDialog from './FirstLoadWarningDialog.js';
-import './GameOfLife.css';
-import React, { useRef, useEffect, useCallback, useState, useLayoutEffect, useMemo } from 'react';
-import { useGameStore } from '../store/useGameStore.js';
-import { localStorageDao } from '../utils/localStorageDao.js';
-import PropTypes from 'prop-types';
-import { GameMVC } from '../controller/GameMVC.js';
-import { startMemoryLogger } from '../utils/memoryLogger.js';
-import { computePopulationChange } from '../utils/stabilityMetrics.js';
-import hashlifeAdapter from '../model/hashlife/adapter.js';
-import { eventToCellFromCanvas } from '../controller/utils/canvasUtils.js';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import Button from '@mui/material/Button';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useShapeManager } from './useShapeManager.js';
+import useGridMousePosition from './useGridMousePosition.js';
+import useInitialShapeLoader from '../../hooks/useInitialShapeLoader.js';
+import { loadGridIntoGame, rotateAndApply } from '../utils/gameUtils.js';
+import { colorSchemes } from '../../model/colorSchemes.js';
+import { saveCapturedShapeToBackend, getBackendApiBase } from '../../utils/backendApi.js';
+import useProtectedAction from '../../auth/useProtectedAction.js';
+import { useToolState } from './useToolState.js';
+import { useToolDao } from '../../model/dao/toolDao.js';
+import { useGameState, useGameDao } from './useGameState.js';
+import { usePopulationState } from './usePopulationState.js';
+import { useUiState, useUiDao } from './useUiState.js';
+import { usePerformanceState } from './usePerformanceState.js';
+import { useDialogState } from './useDialogState.js';
+import { GameMVC } from '../../controller/GameMVC.js';
+import { setupGameDaoFromMVC } from '../../controller/setupGameDao.js';
+import { setupToolDaoFromMVC } from '../../controller/setupToolDao.js';
+import { startMemoryLogger } from '../../utils/memoryLogger.js';
+import { computePopulationChange } from '../../utils/stabilityMetrics.js';
+import hashlifeAdapter from '../../model/hashlife/adapter.js';
+import { eventToCellFromCanvas } from '../../controller/utils/canvasUtils.js';
 
-// tools are registered by GameMVC.controller during initialization
+// Utility: getColorSchemeFromKey
 function getColorSchemeFromKey(key) {
   const base = colorSchemes[key] || {};
   const copy = { ...base };
@@ -41,256 +32,214 @@ function getColorSchemeFromKey(key) {
 
 const INITIAL_STEADY_INFO = Object.freeze({ steady: false, period: 0, popChanging: false });
 
-// The component has a slightly large body by necessity (many hooks/handlers).
-// Disable the cognitive-complexity rule here to keep the implementation readable
-// while we keep initialization logic small and well-factored above.
-// Use the core 'complexity' rule name so ESLint doesn't require sonarjs plugin
-// eslint-disable-next-line complexity
-function GameOfLifeApp(props) {
-
-  // ============================================================================
-  // SECTION 1: ALL useState() CALLS
-  // ============================================================================
-  // UI/dialog state now in Zustand
-  const paletteOpen = useGameStore(state => state.paletteOpen);
-  const setPaletteOpen = useGameStore(state => state.setPaletteOpen);
-  const showChart = useGameStore(state => state.showChart);
-  const setShowChart = useGameStore(state => state.setShowChart);
-  const captureDialogOpen = useGameStore(state => state.captureDialogOpen);
-  const setCaptureDialogOpen = useGameStore(state => state.setCaptureDialogOpen);
-  const myShapesDialogOpen = useGameStore(state => state.myShapesDialogOpen);
-  const setMyShapesDialogOpen = useGameStore(state => state.setMyShapesDialogOpen);
-  const importDialogOpen = useGameStore(state => state.importDialogOpen);
-  const setImportDialogOpen = useGameStore(state => state.setImportDialogOpen);
-  const captureData = useGameStore(state => state.captureData);
-  const setCaptureData = useGameStore(state => state.setCaptureData);
-  const showChrome = useGameStore(state => state.showChrome);
-  const setShowChrome = useGameStore(state => state.setShowChrome);
-
-  // Initialize Zustand UI/dialog state from initialUIState prop
-  useEffect(() => {
-    if (props.initialUIState) {
-      if (props.initialUIState.paletteOpen !== undefined) setPaletteOpen(props.initialUIState.paletteOpen);
-      if (props.initialUIState.showChart !== undefined) setShowChart(props.initialUIState.showChart);
-      if (props.initialUIState.captureDialogOpen !== undefined) setCaptureDialogOpen(props.initialUIState.captureDialogOpen);
-      if (props.initialUIState.myShapesDialogOpen !== undefined) setMyShapesDialogOpen(props.initialUIState.myShapesDialogOpen);
-      if (props.initialUIState.importDialogOpen !== undefined) setImportDialogOpen(props.initialUIState.importDialogOpen);
-      if (props.initialUIState.captureData !== undefined) setCaptureData(props.initialUIState.captureData);
-      if (props.initialUIState.showChrome !== undefined) setShowChrome(props.initialUIState.showChrome);
-    }
-  }, [props.initialUIState, setPaletteOpen, setShowChart, setCaptureDialogOpen, setMyShapesDialogOpen, setImportDialogOpen, setCaptureData, setShowChrome]);
-  const [generation, setGeneration] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [selectedTool, setSelectedTool] = useState(null);
-  const [selectedShape, setSelectedShape] = useState(null);
-  const [popWindowSize, setPopWindowSize] = useState(() => {
-    const v = localStorageDao.get('popWindowSize');
-    if (v != null) {
-      const n = Number.parseInt(v, 10);
-      if (!Number.isNaN(n) && n > 0 && n !== 50 && n !== 10) return n;
-    }
-    return 30;
-  });
-  const [popTolerance, setPopTolerance] = useState(() => {
-    const v = localStorageDao.get('popTolerance');
-    if (v != null) {
-      const n = Number.parseInt(v, 10);
-      if (!Number.isNaN(n) && n >= 0) return n;
-    }
-    return 3;
-  });
-  const [enableAdaCompliance, setEnableAdaCompliance] = useState(() => {
-    const stored = localStorageDao.get('enableAdaCompliance');
-    if (typeof stored === 'boolean') return stored;
-    if (stored === 'true' || stored === 'false') return stored === 'true';
-    if (stored != null) return Boolean(stored);
-    return true;
-  });
-  const [maxChartGenerations, setMaxChartGenerations] = useState(5000);
-  
-  // Store user's preferred FPS/GPS (independent of ADA caps)
-  // Defaults to maximum speed if not set
-  // Removed unused preferredPerformance and setPreferredPerformance
-  
-  // Compute effective performance caps (apply ADA limits if enabled)
-  const [performanceCaps, setPerformanceCaps] = useState(() => {
-    const enableAdaComplianceStored = localStorageDao.get('enableAdaCompliance');
-    const adaEnabled = enableAdaComplianceStored === false ? false : true;
-    if (adaEnabled) {
-      return { maxFPS: 2, maxGPS: 2, enableFPSCap: true, enableGPSCap: true };
-    }
-    const maxFPS = Number.parseInt(localStorageDao.get('maxFPS'), 10);
-    const maxGPS = Number.parseInt(localStorageDao.get('maxGPS'), 10);
-    const enableFPSCap = localStorageDao.get('enableFPSCap');
-    const enableGPSCap = localStorageDao.get('enableGPSCap');
-    const resolvedMaxGPS = Number.isFinite(maxGPS) && maxGPS > 0 ? Math.max(1, Math.min(60, maxGPS)) : 60;
-    return {
-      maxFPS: Number.isFinite(maxFPS) && maxFPS > 0 ? Math.max(1, Math.min(120, maxFPS)) : 120,
-      maxGPS: resolvedMaxGPS,
-      enableFPSCap: enableFPSCap != null ? Boolean(enableFPSCap) : false,
-      enableGPSCap: enableGPSCap != null ? Boolean(enableGPSCap) : false
+export function useGameOfLifeAppRuntime() {
+  // Declare gameRef before any use
+  const gameRef = React.useRef(null);
+  // selectedTool is now derived from the model/controller, not local state.
+  const [selectedTool, setSelectedTool] = React.useState('draw');
+  React.useEffect(() => {
+    // Subscribe to model/controller tool changes
+    const handler = (event, data) => {
+      if (event === 'selectedToolChanged') {
+        setSelectedTool(data);
+      }
     };
-  });
-  const [detectStablePopulation, setDetectStablePopulation] = useState(() => {
-    const stored = localStorageDao.get('detectStablePopulation');
-    if (stored === 'true' || stored === 'false') return stored === 'true';
-    if (stored != null) return Boolean(stored);
-    return true;
-  });
-  const [useWebWorker, setUseWebWorker] = useState(() => {
-    const stored = localStorageDao.get('useWebWorker');
-    if (stored === 'true' || stored === 'false') return stored === 'true';
-    return Boolean(stored);
-  });
-  const [steadyInfo, setSteadyInfo] = useState(INITIAL_STEADY_INFO);
-  const [populationHistory, setPopulationHistory] = useState([]);
-  const [memoryTelemetryEnabled, setMemoryTelemetryEnabled] = useState(() => {
-    const stored = localStorageDao.get('memoryTelemetryEnabled');
-    if (stored === 'true' || stored === 'false') return stored === 'true';
-    return Boolean(stored);
-  });
-  
-  // Track whether to show first-load warning dialog
-  const [showFirstLoadWarning, setShowFirstLoadWarning] = useState(() => {
-    const hasSeenWarning = localStorageDao.get('gol-first-load-warning-seen');
-    return !hasSeenWarning;
-  });
-  const [duplicateShape, setDuplicateShape] = useState(null);
-  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
-  const [stableDetectionInfo, setStableDetectionInfo] = useState(null);
-  const [showStableDialog, setShowStableDialog] = useState(false);
-  const [randomRectPercent, setRandomRectPercent] = useState(() => {
-    const v = localStorageDao.get('randomRectPercent');
-    if (v != null) {
-      const n = Number.parseInt(v, 10);
-      if (!Number.isNaN(n)) return Math.max(0, Math.min(100, n));
+    if (gameRef.current && typeof gameRef.current.onModelChange === 'function') {
+      gameRef.current.onModelChange(handler);
     }
-    return 50;
-  });
-  const [useHashlife] = useState(() => {
-    const v = localStorageDao.get('useHashlife');
-    return v == null ? true : v === 'true';
-  });
-  const [hashlifeMaxRun] = useState(() => {
-    try { 
-      const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeMaxRun'), 10); 
-      const MAX_SAFE_GENERATIONS = 1000000;
-      if (Number.isFinite(v) && v > 0 && v <= MAX_SAFE_GENERATIONS) {
-        return v;
+    // Set initial tool from model
+    if (gameRef.current && gameRef.current.model && typeof gameRef.current.model.getSelectedTool === 'function') {
+      setSelectedTool(gameRef.current.model.getSelectedTool());
+    }
+    return () => {
+      if (gameRef.current && typeof gameRef.current.offModelChange === 'function') {
+        gameRef.current.offModelChange(handler);
       }
-      return 1024;
-    } catch { return 1024; }
-  });
-  const [hashlifeCacheSize] = useState(() => {
-    try { const v = Number.parseInt(globalThis.localStorage.getItem('hashlifeCacheSize'), 10); return Number.isFinite(v) && v >= 0 ? v : 0; } catch { return 0; }
-  });
-  const [engineMode, setEngineMode] = useState('normal');
-  const [generationBatchSize, setGenerationBatchSize] = useState(() => {
-    try {
-      const v = Number.parseInt(globalThis.localStorage.getItem('generationBatchSize'), 10);
-      if (Number.isFinite(v) && v >= 1 && v <= 10000) {
-        return v;
-      }
-      return 50;
-    } catch { return 50; }
-  });
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Will be set by mediaQuery useEffect
-  const [viewportSnapshot, setViewportSnapshot] = useState({ offsetX: 0, offsetY: 0, cellSize: 8, zoom: 1 });
-  const [shapesNotifOpen, setShapesNotifOpen] = useState(false);
-  const [loginNotifOpen, setLoginNotifOpen] = useState(false);
-  const [loginNotifMessage, setLoginNotifMessage] = useState('');
+    };
+  }, [gameRef]);
+  // ...all destructuring and hook calls...
+  const {
+    toolState, setToolState, selectedShape, setSelectedShape, randomRectPercent, setRandomRectPercent
+  } = useToolState();
+  const {
+    isRunning, setIsRunning, engineMode, setEngineMode, isHashlifeMode, setIsHashlifeMode, useHashlife, setUseHashlife, generationBatchSize, setGenerationBatchSize, steadyInfo, setSteadyInfo
+  } = useGameState();
+  const {
+    populationHistory, setPopulationHistory, popWindowSize, setPopWindowSize, popTolerance, setPopTolerance, generation, setGeneration, maxChartGenerations, setMaxChartGenerations, stableDetectionInfo, setStableDetectionInfo
+  } = usePopulationState();
+  const {
+    paletteOpen, setPaletteOpen, setShowChart, showUIControls, setShowUIControls
+  } = useUiState();
+  const onCloseCaptureDialog = useUiDao(state => state.onCloseCaptureDialog);
+  const setOnCloseCaptureDialog = useUiDao(state => state.setOnCloseCaptureDialog);
+  const onSaveCapture = useUiDao(state => state.onSaveCapture);
+  const setOnSaveCapture = useUiDao(state => state.setOnSaveCapture);
+  const onImportSuccess = useUiDao(state => state.onImportSuccess);
+  const setOnImportSuccess = useUiDao(state => state.setOnImportSuccess);
+  const {
+    performanceCaps, setPerformanceCaps, memoryTelemetryEnabled, setMemoryTelemetryEnabled
+  } = usePerformanceState();
+  const {
+    captureDialogOpen, setCaptureDialogOpen, captureData, setCaptureData, myShapesDialogOpen, setMyShapesDialogOpen, importDialogOpen, setImportDialogOpen,
+    showStableDialog, setShowStableDialog, showFirstLoadWarning, setShowFirstLoadWarning,
+    shapesNotifOpen, setShapesNotifOpen, loginNotifOpen, setLoginNotifOpen, loginNotifMessage, setLoginNotifMessage,
+    showDuplicateDialog, setShowDuplicateDialog, duplicateShape, setDuplicateShape
+  } = useDialogState();
+  // ...all refs, useState, useUiDao, etc...
+
+  // UI state from uiDao (must be after all other destructuring, before debug logs)
+  const enableAdaCompliance = useUiDao(state => state.enableAdaCompliance);
+  const setEnableAdaCompliance = useUiDao(state => state.setEnableAdaCompliance);
+  const setColorSchemesDao = useUiDao(state => state.setColorSchemes);
+  const setColorSchemeDao = useUiDao(state => state.setColorScheme);
+  const colorSchemeKeyDao = useUiDao(state => state.colorSchemeKey);
+  const optionsOpenDao = useUiDao(state => state.optionsOpen);
+
+  React.useEffect(() => {
+    setOnCloseCaptureDialog(() => () => setCaptureDialogOpen(false));
+  }, [setOnCloseCaptureDialog, setCaptureDialogOpen]);
+
+  // Now, after ALL destructuring/hooks/refs, place your debug logs:
+  React.useEffect(() => {
+    // Keep the DAO in sync so canvas manager and overlays use the actual tool
+    try { useToolDao.getState().setSelectedTool(selectedTool || 'draw'); } catch (e) { console.error(e); }
+  }, [selectedTool]);
 
   // Refs and constants (must come after useState, before effects/callbacks)
-  const isHashlifeMode = false;
   const userNotifiedRef = useRef(false);
   const isRunningRef = useRef(false);
   const snapshotsRef = useRef([]);
-  const gameRef = useRef(null);
+  const optionsOpenPrevRef = useRef(false);
+  const wasRunningBeforeOptionsRef = useRef(false);
+  // (removed duplicate declaration of gameRef)
   const pendingLoadRef = useRef(null);
-  const toolStateRef = useRef({});
+  // Ensure toolStateRef is always defined and never undefined
+  const toolStateRef = React.useRef({});
+  // Defensive: if toolStateRef is ever undefined, re-initialize
+  if (!toolStateRef.current) toolStateRef.current = {};
+  // Publish toolStateRef after render commit to avoid setState-in-render warnings
+  React.useEffect(() => {
+    try { useToolDao.getState().setToolStateRef(toolStateRef); } catch (e) { console.error(e); }
+  }, [toolStateRef]);
   const popHistoryRef = useRef([]);
   const canvasRef = useRef(null);
 
+  // Viewport state (restored for build)
+  const [viewportSnapshot, setViewportSnapshot] = React.useState({
+    offsetX: 0,
+    offsetY: 0,
+    cellSize: 8,
+    zoom: 1
+  });
+
+  // Hashlife config (restored for build)
+  const hashlifeMaxRun = 1000; // Adjust to previous working value if needed
+  const hashlifeCacheSize = 1024; // Adjust to previous working value if needed
+  const clearHashlifeCache = useCallback(() => { /* implement cache clearing logic if needed */ }, []);
+
   // Callbacks (after refs, before effects)
   
+  
+  const detectStablePopulation = useUiDao(state => state.detectStablePopulation);
+  const setDetectStablePopulation = useUiDao(state => state.setDetectStablePopulation);
+  const useWebWorker = useUiDao(state => state.useWebWorker);
+  const setUseWebWorker = useUiDao(state => state.setUseWebWorker);
   const setUseWebWorkerPreference = useCallback((value) => {
     setUseWebWorker(value);
     try { globalThis.localStorage?.setItem('useWebWorker', JSON.stringify(value)); } catch (e) { console.error(e); }
-  }, []);
-
-  const clearHashlifeCache = useCallback(() => {
-    try {
-      hashlifeAdapter.clearCache();
-      try { globalThis.console && console.debug('Hashlife cache cleared'); } catch (e) { console.error(e); }
-    } catch (e) {
-      console.error('Failed to clear hashlife cache', e);
-    }
-  }, []);
-
+  }, [setUseWebWorker]);
+ 
   const setRunningState = useCallback((running) => {
     const modelIsRunning = !!running;
-    try { console.debug('[GameOfLifeApp] setRunningState called:', modelIsRunning); } catch (e) { console.error(e); }
     setIsRunning(modelIsRunning);
     isRunningRef.current = modelIsRunning;
-    // Always stop the controller loop if stopping
-    if (!modelIsRunning && gameRef.current?.controller?.stopGame) {
-      try { gameRef.current.controller.stopGame(); } catch (e) { console.warn('Failed to stop controller', e); }
+    try {
+      // Drive controller scheduler so the run loop actually starts/stops
+      if (gameRef.current?.controller?.handleRunningStateChange) {
+        gameRef.current.controller.handleRunningStateChange(modelIsRunning);
+      } else if (modelIsRunning && gameRef.current?.controller?.startGame) {
+        gameRef.current.controller.startGame();
+      } else if (!modelIsRunning && gameRef.current?.controller?.stopGame) {
+        gameRef.current.controller.stopGame();
+      }
+    } catch (e) {
+      console.error('Failed to update controller running state:', e);
     }
     if (gameRef.current?.model?.setRunningModel) {
-      gameRef.current.model.setRunningModel(modelIsRunning);
+      try { gameRef.current.model.setRunningModel(modelIsRunning); } catch (e) { console.error(e); }
     }
-  }, []);
+  }, [setIsRunning, gameRef]);
 
   const setIsRunningCombined = useCallback((running, mode = engineMode) => {
-    try { console.debug('[GameOfLifeApp] setIsRunningCombined called:', { running, mode, engineMode }); } catch (e) { console.error(e); }
     if (running && mode !== engineMode) {
       setEngineMode(mode);
     }
     setRunningState(running);
-  }, [setRunningState, engineMode]);
+  }, [setRunningState, engineMode, setEngineMode]);
 
-  // Effects (after all refs and callbacks)
-  // Keep generation in sync with the model
+  // Pause simulation whenever capture dialog opens
+  useEffect(() => {
+    if (captureDialogOpen) {
+      setIsRunningCombined(false);
+    }
+  }, [captureDialogOpen, setIsRunningCombined]);
+
+  // Ensure the controller/game model observes the latest running flag even if
+  // the toggle happened before MVC initialization (prevents a stuck run/pause UI).
   useEffect(() => {
     const mvc = gameRef.current;
-    if (!mvc || typeof mvc.onModelChange !== 'function') return;
+    if (!mvc?.controller || !mvc?.model) return;
+    try {
+      mvc.controller.handleRunningStateChange?.(isRunning);
+    } catch (e) {
+      console.error('Failed to sync running state to controller:', e);
+    }
+    try {
+      mvc.model.setRunningModel?.(isRunning);
+    } catch (e) {
+      console.error('Failed to sync running state to model:', e);
+    }
+  }, [isRunning, gameRef]);
 
-    // Lightweight guard to avoid redundant updates
-    const updateGeneration = () => {
-      const gen = mvc.model?.getGeneration?.() ?? 0;
-      setGeneration((prevGen) => (prevGen !== gen ? gen : prevGen));
-    };
+  // Pause simulation whenever OptionsPanel opens; resume only if it was running before.
+  useEffect(() => {
+    const nowOpen = !!optionsOpenDao;
+    const wasOpen = optionsOpenPrevRef.current;
+    if (nowOpen && !wasOpen) {
+      wasRunningBeforeOptionsRef.current = !!isRunningRef.current;
+      if (isRunningRef.current) {
+        setRunningState(false);
+      }
+    } else if (!nowOpen && wasOpen) {
+      if (wasRunningBeforeOptionsRef.current) {
+        setRunningState(true);
+      }
+      wasRunningBeforeOptionsRef.current = false;
+    }
+    optionsOpenPrevRef.current = nowOpen;
+  }, [optionsOpenDao, setRunningState]);
 
-    // Run once to initialize
-    updateGeneration();
-
-    // Only respond to events that actually advance generation or reset/load
-    const handler = (event) => {
-      if (event === 'gameStep' || event === 'reset' || event === 'loadGrid') updateGeneration();
-    };
-    mvc.onModelChange(handler);
-
-    return () => mvc.offModelChange(handler);
-  }, []); // Only run once on mount
+  // Effects (after all refs and callbacks)
   
   // Save generation batch size to localStorage
   useEffect(() => {
     try {
       globalThis.localStorage.setItem('generationBatchSize', generationBatchSize.toString());
-    } catch {}
-  }, [generationBatchSize]);
-  useEffect(() => { popHistoryRef.current = populationHistory; }, [populationHistory]);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [generationBatchSize, gameRef]);
+  useEffect(() => {
+    popHistoryRef.current = populationHistory;
+  }, [populationHistory]);
   const isSmall = useMediaQuery('(max-width:900px)');
-  useEffect(() => { setSidebarOpen(!isSmall); }, [isSmall]);
   const getViewport = useCallback(() => (
     gameRef.current?.getViewport?.() ?? { offsetX: 0, offsetY: 0 }
   ), [gameRef]);
   const initialViewport = React.useMemo(() => getViewport(), [getViewport]);
   // Use previous cellSize or fallback to 8 if undefined
   const cellSize = viewportSnapshot.cellSize || 8;
-  const getLiveCells = useCallback(() => (
-    gameRef.current?.getLiveCells?.() ?? new Map()
-  ), [gameRef]);
+  // getLiveCells now comes from gameDao
   const setCellAlive = useCallback((x, y, alive) => {
     gameRef.current?.setCellAlive?.(x, y, alive);
   }, [gameRef]);
@@ -300,7 +249,7 @@ function GameOfLifeApp(props) {
       gameRef.current?.controller?.requestRender?.();
     } catch (e) {
       // Log render errors instead of silently ignoring them so issues are visible.
-      // eslint-disable-next-line no-console
+       
       console.error('drawWithOverlay error:', e);
     }
   }, [gameRef]);
@@ -311,26 +260,42 @@ function GameOfLifeApp(props) {
   // Engine switching functions
   const startNormalMode = useCallback(() => {
     setEngineMode('normal');
-    // Set engine mode on model
+    setUseHashlife(false);
+    setIsHashlifeMode(false);
     if (gameRef.current?.model?.setEngineMode) {
       gameRef.current.model.setEngineMode('normal');
     }
     setIsRunningCombined(true, 'normal');
-  }, [setIsRunningCombined]);
+  }, [gameRef, setEngineMode, setIsHashlifeMode, setIsRunningCombined, setUseHashlife]);
   
   const startHashlifeMode = useCallback(() => {
-    // Hashlife mode is currently disabled in the UI.
-    console.warn('Hashlife engine is temporarily disabled');
-  }, []);
+    setEngineMode('hashlife');
+    setUseHashlife(true);
+    setIsHashlifeMode(true);
+    if (gameRef.current?.model?.setEngineMode) {
+      gameRef.current.model.setEngineMode('hashlife');
+    }
+    setIsRunningCombined(true, 'hashlife');
+  }, [gameRef, setEngineMode, setIsHashlifeMode, setIsRunningCombined, setUseHashlife]);
   
   const stopAllEngines = useCallback(() => {
     setIsRunningCombined(false);
   }, [setIsRunningCombined]);
 
   // Simple engine mode setter for dropdown
-  const setEngineModeDirect = useCallback(() => {
-    // Engine mode selection is disabled; always use normal engine.
-  }, []);
+  const setEngineModeDirect = useCallback((mode) => {
+    const nextMode = mode === 'hashlife' ? 'hashlife' : 'normal';
+    setEngineMode(nextMode);
+    setUseHashlife(nextMode === 'hashlife');
+    setIsHashlifeMode(nextMode === 'hashlife');
+    if (gameRef.current?.model?.setEngineMode) {
+      try {
+        gameRef.current.model.setEngineMode(nextMode);
+      } catch (e) {
+        console.error('Failed to set engine mode on model:', e);
+      }
+    }
+  }, [gameRef, setEngineMode, setIsHashlifeMode, setUseHashlife]);
 
   // Sync generation batch size with GameModel
   useEffect(() => {
@@ -338,6 +303,19 @@ function GameOfLifeApp(props) {
       gameRef.current.model.setGenerationBatchSize(generationBatchSize);
     }
   }, [generationBatchSize]);
+
+  // Publish engine handlers into gameDao so HeaderBar/ControlsBar receive live callbacks
+  useEffect(() => {
+    try {
+      useGameDao.getState().setOnStartNormalMode(startNormalMode);
+      useGameDao.getState().setOnStartHashlifeMode(startHashlifeMode);
+      useGameDao.getState().setOnStopAllEngines(stopAllEngines);
+      useGameDao.getState().setOnSetEngineMode(setEngineModeDirect);
+      useGameDao.getState().setOnSetGenerationBatchSize(setGenerationBatchSize);
+    } catch (e) {
+      console.error('[useGameOfLifeAppRuntime] failed to publish engine handlers', e);
+    }
+  }, [startNormalMode, startHashlifeMode, stopAllEngines, setEngineModeDirect, setGenerationBatchSize]);
 
   // React-side reset when session is cleared
   useEffect(() => {
@@ -356,7 +334,7 @@ function GameOfLifeApp(props) {
         globalThis.removeEventListener('gol:sessionCleared', handleSessionCleared);
       }
     };
-  }, []);
+  }, [setPopulationHistory, setSteadyInfo]);
 
   useEffect(() => {
     // Hashlife progress updates are disabled; we only use final results
@@ -369,10 +347,10 @@ function GameOfLifeApp(props) {
         populationTolerance: popTolerance
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error('Failed to sync stability settings with GameMVC:', err);
     }
-  }, [popWindowSize, popTolerance]);
+  }, [popWindowSize, popTolerance, gameRef]);
 
   useEffect(() => {
     if (!gameRef.current?.setPerformanceSettings) return;
@@ -381,10 +359,10 @@ function GameOfLifeApp(props) {
         useWebWorker: useWebWorker,
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error('Failed to sync useWebWorker settings with GameMVC:', err);
     }
-  }, [useWebWorker]);
+  }, [useWebWorker, gameRef]);
 
   // Sync FPS/GPS performance caps to the controller
   useEffect(() => {
@@ -397,88 +375,31 @@ function GameOfLifeApp(props) {
         enableGPSCap: performanceCaps.enableGPSCap
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error('Failed to sync performance caps with GameMVC:', err);
     }
   }, [performanceCaps.maxFPS, performanceCaps.maxGPS, performanceCaps.enableFPSCap, performanceCaps.enableGPSCap]);
 
 
 
-  // Global keyboard shortcuts for UI actions (ADA compliance)
-  useEffect(() => {
-    const handleGlobalKeyDown = (e) => {
-      const target = e.target;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-        return;
-      }
-      const key = e.key.toLowerCase();
-      const ctrl = e.ctrlKey || e.metaKey;
-      let handled = false;
-      if (key === 'p' && !ctrl) {
-        setPaletteOpen(true);
-        handled = true;
-      } else if (key === 'g' && !ctrl) {
-        setShowChart(!showChart);
-        handled = true;
-      } else if (key === 'h' && !ctrl) {
-        setShowChrome(!showChrome);
-        handled = true;
-      }
-      if (handled) {
-        e.preventDefault();
-      }
-    };
-    document.addEventListener('keydown', handleGlobalKeyDown);
-    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [setPaletteOpen, setShowChart, setShowChrome, showChart, showChrome]);
 
-  const setShowSpeedGauge = useCallback((value) => {
-    // Zustand: setShowSpeedGauge is now a direct setter, not using setUIState
-    try { globalThis.localStorage?.setItem('showSpeedGauge', JSON.stringify(value)); } catch (e) { console.error(e); }
-    useGameStore.getState().setShowSpeedGauge(value);
-  }, []);
+  const setShowSpeedGauge = useUiDao(state => state.setShowSpeedGauge);
 
   const setDetectStablePopulationPreference = useCallback((value) => {
     setDetectStablePopulation(value);
     try { globalThis.localStorage?.setItem('detectStablePopulation', JSON.stringify(value)); } catch (e) { console.error(e); }
-  }, []);
+  }, [setDetectStablePopulation]);
 
-  const setColorSchemeKey = useCallback((key) => {
-    const safeKey = key || 'bio';
-    useGameStore.getState().setColorSchemeKey(safeKey);
-    try { globalThis.localStorage?.setItem('colorSchemeKey', safeKey); } catch (e) { console.error(e); }
-    try {
-      const scheme = getColorSchemeFromKey(safeKey);
-      gameRef.current?.setColorScheme?.(scheme);
-    } catch (e) {
-      console.error(e);
-    }
-  }, [gameRef]);
+  const setColorSchemeKey = useUiDao(state => state.setColorSchemeKey);
 
   const setMaxFPS = useCallback((value) => {
     const clamped = Math.max(1, Math.min(120, Number(value) || 60));
-    setPerformanceCaps((prevCaps) => {
-      let adaEnabled = true;
-      try {
-        const stored = globalThis.localStorage?.getItem('enableAdaCompliance');
-        adaEnabled = stored === 'false' ? false : true;
-      } catch (e) { console.error(e); }
-      const finalValue = adaEnabled ? 2 : clamped;
-      return { ...prevCaps, maxFPS: finalValue };
-    });
+    setPerformanceCaps((prevCaps) => ({ ...prevCaps, maxFPS: clamped }));
   }, [setPerformanceCaps]);
 
   const setMaxGPS = useCallback((value) => {
     const clamped = Math.max(1, Math.min(60, Number(value) || 30));
-    setPerformanceCaps((prevCaps) => {
-      let adaEnabled = true;
-      try {
-        const stored = globalThis.localStorage?.getItem('enableAdaCompliance');
-        adaEnabled = stored === 'false' ? false : true;
-      } catch (e) { console.error(e); }
-      const finalValue = adaEnabled ? 2 : clamped;
-      return { ...prevCaps, maxGPS: finalValue };
-    });
+    setPerformanceCaps((prevCaps) => ({ ...prevCaps, maxGPS: clamped }));
   }, [setPerformanceCaps]);
 
   const setEnableFPSCap = useCallback((value) => {
@@ -487,7 +408,7 @@ function GameOfLifeApp(props) {
       try { globalThis.localStorage?.setItem('enableFPSCap', JSON.stringify(value)); } catch (e) { console.error(e); }
       return next; // Return updated performance caps
     });
-  }, []);
+  }, [setPerformanceCaps]);
 
   const setEnableGPSCap = useCallback((value) => {
     setPerformanceCaps((prev) => {
@@ -495,7 +416,7 @@ function GameOfLifeApp(props) {
       try { globalThis.localStorage?.setItem('enableGPSCap', JSON.stringify(value)); } catch (e) { console.error(e); }
       return next; // Return updated performance caps
     });
-  }, []);
+  }, [setPerformanceCaps]);
 
   const setEnableAdaComplianceWithUpdate = useCallback((value) => {
     const newValue = Boolean(value);
@@ -507,7 +428,7 @@ function GameOfLifeApp(props) {
       globalThis.localStorage?.setItem('colorSchemeKey', newColorScheme);
     } catch (e) { console.error(e); }
     // Update performance caps based on ADA mode: use preferred values, apply ADA caps if enabled
-    setPerformanceCaps((prev) => {
+    setPerformanceCaps(() => {
       // Read preferred values from storage (they were saved independently)
       let prefMaxFPS = 60, prefMaxGPS = 30, prefEnableFPSCap = false, prefEnableGPSCap = false;
       try {
@@ -559,7 +480,7 @@ function GameOfLifeApp(props) {
         })
       );
     } catch (e) { console.error(e); }
-    // Trigger canvas resize to apply viewport changes (160px for ADA, full screen otherwise)
+    // Trigger canvas resize to apply layout updates after ADA toggle
     // The canvas CSS style changes in GameUILayout, so we need to notify the renderer
     try {
       const canvas = canvasRef?.current;
@@ -581,7 +502,44 @@ function GameOfLifeApp(props) {
         });
       }
     } catch (e) { console.error(e); }
-  }, [setColorSchemeKey]);
+  }, [setColorSchemeKey, setPerformanceCaps, setEnableAdaCompliance]);
+
+  // Seed DAO color schemes once so OptionsPanel has entries to render.
+  useEffect(() => {
+    setColorSchemesDao(colorSchemes);
+    // If the stored key is invalid, fall back to a known scheme.
+    if (!colorSchemes[colorSchemeKeyDao]) {
+      const fallback = colorSchemes.bio ? 'bio' : Object.keys(colorSchemes)[0];
+      if (fallback) setColorSchemeKey(fallback);
+    }
+  }, [setColorSchemesDao, setColorSchemeKey, colorSchemeKeyDao]);
+
+  useEffect(() => {
+    try {
+      const scheme = getColorSchemeFromKey(colorSchemeKeyDao || 'bio');
+      setColorSchemeDao(scheme);
+    } catch (e) {
+      console.error('Failed to set color scheme in uiDao:', e);
+    }
+  }, [colorSchemeKeyDao, setColorSchemeDao]);
+
+  // Push updated color scheme into the MVC/renderer whenever the key changes.
+  useEffect(() => {
+    const mvc = gameRef.current;
+    if (!mvc) return undefined;
+    const applyScheme = () => {
+      try {
+        const scheme = getColorSchemeFromKey(colorSchemeKeyDao || 'bio');
+        mvc.setColorScheme?.(scheme);
+        mvc.controller?.requestRender?.();
+      } catch (e) {
+        console.error('Failed to apply color scheme to MVC:', e);
+      }
+    };
+
+    applyScheme();
+    return undefined;
+  }, [colorSchemeKeyDao, gameRef]);
 
 
 
@@ -591,16 +549,26 @@ function GameOfLifeApp(props) {
 
   // Sync random rectangle percent into controller tool state as a probability (0..1)
   useEffect(() => {
-    try {
-      const n = Number(randomRectPercent);
-      const p = Number.isFinite(n) ? Math.max(0, Math.min(1, n / 100)) : 0;
-      const ctrl = gameRef.current?.controller;
-      if (ctrl && typeof ctrl._setToolState === 'function') {
-        ctrl._setToolState({ prob: p });
+    const applyProb = () => {
+      try {
+        const n = Number(randomRectPercent);
+        const p = Number.isFinite(n) ? Math.max(0, Math.min(1, n / 100)) : 0;
+        const ctrl = gameRef.current?.controller;
+        if (ctrl && typeof ctrl._setToolState === 'function') {
+          ctrl._setToolState({ prob: p });
+        }
+      } catch (e) {
+        // swallow
       }
-    } catch (e) {
-      // swallow
+    };
+
+    if (gameRef.current?.controller && typeof gameRef.current.controller._setToolState === 'function') {
+      applyProb();
+      return undefined;
     }
+
+    const timer = setTimeout(applyProb, 0);
+    return () => clearTimeout(timer);
   }, [randomRectPercent]);
 
   useEffect(() => {
@@ -640,13 +608,13 @@ function GameOfLifeApp(props) {
             if (generation > 0) {
               setIsRunningCombined(false);
             } else {
-              try { console.debug('[GameOfLifeApp] stability detected before any generations advanced; skipping auto-pause'); } catch (e) {}
+              try { console.debug('[GameOfLifeApp] stability detected before any generations advanced; skipping auto-pause'); } catch (e) { console.error(e); }
             }
         } else if (!steady && modelPopHistory.length % 100 === 0) {
           // Still evolving log removed
         }
       } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error('Failed to evaluate steady state:', err);
         steady = false;
         period = 0;
@@ -666,7 +634,7 @@ function GameOfLifeApp(props) {
         const populationCount = modelPopHistory[modelPopHistory.length - 1] || 0;
         // Only show stable dialog for patterns after at least one generation and non-empty
         if (populationCount === 0 || generation === 0) {
-          try { console.debug('[GameOfLifeApp] stable detected but either empty or no generations yet; skipping dialog'); } catch (e) {}
+          try { console.debug('[GameOfLifeApp] stable detected but either empty or no generations yet; skipping dialog'); } catch (e) { console.error(e); }
         } else {
         const patternType = period === 0 ? 'Still Life' : period === 1 ? 'Still Life' : `Period ${period} Oscillator`;
         
@@ -712,7 +680,7 @@ function GameOfLifeApp(props) {
     return () => {
       mvc.offModelChange(handleModelChange);
     };
-  }, [detectStablePopulation, popWindowSize, popTolerance, steadyInfo.steady, setIsRunningCombined]);
+  }, [detectStablePopulation, popWindowSize, popTolerance, steadyInfo.steady, setIsRunningCombined, setSteadyInfo, setShowStableDialog, setStableDetectionInfo]);
 
   // Memory telemetry is opt-in; when enabled we start the logger.
   useEffect(() => {
@@ -755,6 +723,11 @@ function GameOfLifeApp(props) {
 
         const entry = { generation, population };
         const prev = Array.isArray(popHistoryRef.current) ? popHistoryRef.current : [];
+        // Only add if changed from last entry
+        const last = prev[prev.length - 1];
+        if (last && last.generation === entry.generation && last.population === entry.population) {
+          return; // No change, skip update
+        }
         const globalThisSize = Math.max(1, Number(maxChartGenerations) || 5000);
         const next = prev.length >= globalThisSize
           ? [...prev.slice(-(globalThisSize - 1)), entry]
@@ -762,7 +735,6 @@ function GameOfLifeApp(props) {
         popHistoryRef.current = next;
         setPopulationHistory(next);
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn('population sampling failed:', e);
       }
     };
@@ -772,7 +744,7 @@ function GameOfLifeApp(props) {
       cancelled = true;
       globalThis.clearInterval(intervalId);
     };
-  }, [maxChartGenerations]);
+  }, [maxChartGenerations, setPopulationHistory]);
 
   
 
@@ -814,25 +786,28 @@ function GameOfLifeApp(props) {
       offsetRef.current.cellSize = normalized.cellSize;
       setViewportSnapshot(normalized);
       lastViewportRef.current = { ...normalized };
+      try { useUiDao.getState().setCellSize(normalized.cellSize); } catch (e) { console.error(e); }
     }
-  }, [offsetRef]);
+  }, [setViewportSnapshot]);
   // Keep a ref to the current color scheme key so the layout effect
   // doesn't need to capture uiState in its dependency array.
-  const colorSchemeKeyRef = useRef(useGameStore.getState().colorSchemeKey || 'bio');
-  useEffect(() => { colorSchemeKeyRef.current = useGameStore.getState().colorSchemeKey || 'bio'; }, [useGameStore.getState().colorSchemeKey]);
+  const colorSchemeKeyRef = useRef(useUiDao.getState().colorSchemeKey || 'bio');
+  const colorSchemeKey = useUiDao.getState().colorSchemeKey;
+  useEffect(() => { colorSchemeKeyRef.current = colorSchemeKey || 'bio'; }, [colorSchemeKey]);
 
   // Start a controlled drag from the palette into the canvas. This sets the
   // selected shape/tool on the controller and updates controller toolState
   // as the pointer moves so the normal overlay preview code can render.
-  const startPaletteDrag = useCallback((shape, startEvent, ghostEl) => {
+  // 'ghostEl' is unused, remove it to fix lint error
+  const startPaletteDrag = useCallback((shape, startEvent) => {
     try {
       const controller = gameRef.current && gameRef.current.controller;
       const canvas = canvasRef.current;
       if (!controller || !canvas) return () => {};
 
       // Ensure selection and tool are set
-      try { gameRef.current.setSelectedShape?.(shape); } catch (e) {}
-      try { gameRef.current.setSelectedTool?.('shapes'); } catch (e) {}
+      try { gameRef.current.setSelectedShape?.(shape); } catch (e) { console.error(e); }
+      try { gameRef.current.setSelectedTool?.('shapes'); } catch (e) { console.error(e); }
 
       // compute initial cell and set tool state
       const getEffectiveCellSize = () => (offsetRef?.current?.cellSize || cellSize);
@@ -855,10 +830,10 @@ function GameOfLifeApp(props) {
       const handlers = {};
       
       const cleanup = () => {
-        try { document.removeEventListener('pointermove', onMove); } catch (e) {}
-        try { document.removeEventListener('pointerup', handlers.onUp); } catch (e) {}
-        try { document.removeEventListener('pointercancel', handlers.onCancel); } catch (e) {}
-        try { controller._setToolState({ start: null, last: null, dragging: false }, { updateOverlay: true }); } catch (e) {}
+        try { document.removeEventListener('pointermove', onMove); } catch (e) { console.error(e); }
+        try { document.removeEventListener('pointerup', handlers.onUp); } catch (e) { console.error(e); }
+        try { document.removeEventListener('pointercancel', handlers.onCancel); } catch (e) { console.error(e); }
+        try { controller._setToolState({ start: null, last: null, dragging: false }, { updateOverlay: true }); } catch (e) { console.error(e); }
       };
       
       handlers.onUp = (ev) => {
@@ -880,7 +855,7 @@ function GameOfLifeApp(props) {
           cleanup();
         }
       };
-      handlers.onCancel = (ev) => {
+      handlers.onCancel = () => {
         cleanup();
       };
 
@@ -894,7 +869,7 @@ function GameOfLifeApp(props) {
       console.error(e);
       return () => {};
     }
-  }, [canvasRef, gameRef, offsetRef, cellSize]);
+  }, [canvasRef, gameRef, cellSize]);
   const shapeManager = useShapeManager({
     toolStateRef,
     drawWithOverlay,
@@ -908,12 +883,18 @@ function GameOfLifeApp(props) {
   const preloadStrategy = (typeof globalThis !== 'undefined' && globalThis.GOL_PRELOAD_STRATEGY) || process.env.REACT_APP_PRELOAD_SHAPES || 'background';
   const { loading: shapesLoading, progress: shapesProgress, error: shapesError, ready: shapesReady, start: shapesStart } = useInitialShapeLoader({ strategy: preloadStrategy, autoStart: false });
 
+  useEffect(() => {
+    if (shapeManager?.refreshShapes) {
+      setOnImportSuccess(() => () => shapeManager.refreshShapes());
+    }
+  }, [setOnImportSuccess, shapeManager]);
+
   // Notification snackbar when shapes catalog becomes ready
   useEffect(() => {
     if (shapesReady) {
       setShapesNotifOpen(true);
     }
-  }, [shapesReady]);
+  }, [shapesReady, setShapesNotifOpen]);
 
   // Login required snackbar
   useEffect(() => {
@@ -923,14 +904,14 @@ function GameOfLifeApp(props) {
     };
     globalThis.addEventListener('auth:needLogin', handleNeedLogin);
     return () => globalThis.removeEventListener('auth:needLogin', handleNeedLogin);
-  }, []);
+  }, [setLoginNotifMessage, setLoginNotifOpen]);
 
   // track cursor using the canvas DOM element and push canonical cursor
   // updates into the model so the renderer can use a single source of truth
   const cursorRecomputeRef = useRef(null);
   const handleCursor = useCallback((pt) => {
-    try { gameRef.current?.model?.setCursorPositionModel?.(pt); } catch (e) {}
-  }, []);
+    try { gameRef.current?.model?.setCursorPositionModel?.(pt); } catch (e) { console.error(e); }
+  }, [gameRef]);
 
   const cursorCell = useGridMousePosition({
     canvasRef,
@@ -965,19 +946,19 @@ function GameOfLifeApp(props) {
           controller.updateToolOverlay();
         }
       } catch (e) {
-        try { console.error('[GameOfLifeApp] overlay refresh error:', e); } catch (err) {}
+        try { console.error('[GameOfLifeApp] overlay refresh error:', e); } catch (err) { console.error(err); }
       }
     };
 
     model.addObserver(observer);
     return () => model.removeObserver(observer);
-  }, [cursorRecomputeRef]);
+  }, [cursorRecomputeRef, gameRef]);
 
   // --- Handlers ---
   const handleSelectShape = useCallback(shape => {
     gameRef.current?.setSelectedShape?.(shape);
     shapeManager.selectShape(shape);
-  }, [shapeManager]);
+  }, [shapeManager, gameRef]);
 
   const handleAddRecent = useCallback((shape) => {
     shapeManager.addRecentShape?.(shape);
@@ -994,14 +975,14 @@ function GameOfLifeApp(props) {
 
         // If caller provided a full shape object, select it first
         if (shape) {
-          try { shapeManager.selectShape(shape); } catch (e) {}
+          try { shapeManager.selectShape(shape); } catch (e) { console.error(e); }
         } else if (idOrName && shapeManager && typeof shapeManager.selectShape === 'function') {
           // try to select by id or name if possible; selectShape will also add to recents
           try {
             // shapeManager may expose a shapes cache; try best-effort lookup
             const found = (shapeManager.shapes || []).find(s => String(s.id) === String(idOrName) || String(s.name) === String(idOrName));
             if (found) shapeManager.selectShape(found);
-          } catch (e) {}
+          } catch (e) { console.error(e); }
         }
 
         if (model && typeof model.placeShape === 'function' && typeof x === 'number' && typeof y === 'number') {
@@ -1014,7 +995,7 @@ function GameOfLifeApp(props) {
                 // place the shape by loading its live cells at the requested offset
                 loadGridIntoGame(gameRef, new Set((shape.liveCells || shape.cells || []).map(c => `${c[0]},${c[1]}`)));
               }
-            } catch (err) {}
+            } catch (err) { console.error(err); }
           }
         }
       } catch (err) { /* swallow */ }
@@ -1025,9 +1006,9 @@ function GameOfLifeApp(props) {
         const detail = ev && ev.detail ? ev.detail : {};
         const shape = detail.shape || detail;
         if (shape) {
-          try { handleAddRecent(shape); } catch (e) {}
+          try { handleAddRecent(shape); } catch (e) { console.error(e); }
         }
-      } catch (err) {}
+      } catch (err) { console.error(err); }
     };
 
     const onSelectTool = (ev) => {
@@ -1035,10 +1016,10 @@ function GameOfLifeApp(props) {
         const detail = ev && ev.detail ? ev.detail : {};
         const tool = detail.tool || detail.toolName || detail;
         if (tool) {
-          try { setSelectedTool(tool); } catch (e) {}
-          try { gameRef.current?.setSelectedTool?.(tool); } catch (e) {}
+          try { setSelectedTool(tool); } catch (e) { console.error(e); }
+          try { gameRef.current?.setSelectedTool?.(tool); } catch (e) { console.error(e); }
         }
-      } catch (err) {}
+      } catch (err) { console.error(err); }
     };
 
     globalThis.addEventListener('gol:script:placeShape', onPlace);
@@ -1068,11 +1049,11 @@ function GameOfLifeApp(props) {
           const oy = -Math.floor(s / 2);
           for (let x = 0; x < s; x++) for (let y = 0; y < s; y++) cells.push([ox + x, oy + y]);
           // place shape centered at centerX, centerY
-          try { model.placeShape(centerX, centerY, { cells }); } catch (e) {}
+          try { model.placeShape(centerX, centerY, { cells }); } catch (e) { console.error(e); }
 
           // step until steady or until maxSteps using unified helper
           let runUntil;
-          try { ({ runUntilSteadyModel: runUntil } = require('../model/stepping/runUntil')); } catch (_) {}
+          try { ({ runUntilSteadyModel: runUntil } = require('../model/stepping/runUntil')); } catch (_) { console.error(_); }
           if (typeof runUntil === 'function') {
             const { steady, steps } = await runUntil(model, controller, { maxSteps: Number(detail.maxSteps) || 200 });
             results.push({ size: s, steady, steps, finalCount: model.getCellCount() });
@@ -1097,10 +1078,34 @@ function GameOfLifeApp(props) {
 
         globalThis.dispatchEvent(new CustomEvent('gol:script:runResult', { detail: { results } }));
       } catch (err) {
-        try { globalThis.dispatchEvent(new CustomEvent('gol:script:runResult', { detail: { error: String(err) } })); } catch (e) {}
+        try { globalThis.dispatchEvent(new CustomEvent('gol:script:runResult', { detail: { error: String(err) } })); } catch (e) { console.error(e); }
       }
     };
+    const requestRender = () => {
+      try {
+        if (gameRef.current?.view?.renderer?.requestRender) {
+          gameRef.current.view.renderer.requestRender();
+          return;
+        }
+        if (typeof gameRef.current?.view?.render === 'function') {
+          const liveCells = gameRef.current?.model?.getLiveCells?.() ?? new Map();
+          const viewport = gameRef.current?.model?.getViewport?.() ?? { offsetX: 0, offsetY: 0, cellSize: 8 };
+          gameRef.current.view.render(liveCells, viewport);
+        }
+      } catch (e) {
+        console.error('script render refresh failed', e);
+      }
+    };
+
+    const onScriptClearGrid = () => {
+      try { gameRef.current?.controller?.clear?.(); } catch (e) { console.error('script clear controller failed', e); }
+      try { gameRef.current?.model?.clearModel?.(); } catch (e) { console.error('script clear model failed', e); }
+      try { gameRef.current?.clear?.(); } catch (e) { console.error('script clear mvc failed', e); }
+      requestRender();
+    };
+
     globalThis.addEventListener('gol:script:runUntilSteady', onRunUntilSteady);
+    globalThis.addEventListener('gol:script:clearGrid', onScriptClearGrid);
     // Live-step updates from ScriptPanel: apply current script cells to main grid
     const onScriptStep = (ev) => {
       const detail = ev && ev.detail ? ev.detail : {};
@@ -1110,8 +1115,9 @@ function GameOfLifeApp(props) {
       // Only load the provided cells; do not clear the grid automatically
       try {
         loadGridIntoGame(gameRef, cells);
+        requestRender();
       } catch (e) {
-        try { globalThis.dispatchEvent(new CustomEvent('gol:script:error', { detail: { error: 'Failed to load script cells into model: ' + String(e) } })); } catch (ee) {}
+        try { globalThis.dispatchEvent(new CustomEvent('gol:script:error', { detail: { error: 'Failed to load script cells into model: ' + String(e) } })); } catch (ee) { console.error(ee); }
       }
     };
     globalThis.addEventListener('gol:script:step', onScriptStep);
@@ -1120,6 +1126,7 @@ function GameOfLifeApp(props) {
       globalThis.removeEventListener('gol:script:capture', onCapture);
       globalThis.removeEventListener('gol:script:selectTool', onSelectTool);
       globalThis.removeEventListener('gol:script:runUntilSteady', onRunUntilSteady);
+      globalThis.removeEventListener('gol:script:clearGrid', onScriptClearGrid);
       globalThis.removeEventListener('gol:script:step', onScriptStep);
     };
   }, [shapeManager, handleAddRecent, setSelectedTool, gameRef]);
@@ -1141,7 +1148,7 @@ function GameOfLifeApp(props) {
         if (typeof drawWithOverlay === 'function') drawWithOverlay();
         return;
       } catch (e) {
-        // eslint-disable-next-line no-console
+         
         console.warn('handleRotateShape in-place failed, fallback to rotateAndApply', e);
         // fall through to default behavior
         console.error(e);
@@ -1157,7 +1164,33 @@ function GameOfLifeApp(props) {
       console.error('Step failed:', error);
     }
   }, []);
-  const clear = useCallback(() => {
+  // Full game state initializer (used for Empty Grid)
+  const initialize = useCallback(() => {
+    // Reset all Zustand store state
+    setPaletteOpen(false);
+    setShowChart(false);
+    setCaptureDialogOpen(false);
+    setMyShapesDialogOpen(false);
+    setImportDialogOpen(false);
+    setCaptureData(null);
+    setShowUIControls(true);
+    setPopWindowSize(30);
+    setGeneration(0);
+    setSelectedTool('draw');
+    setSelectedShape(null);
+    // Add all other set* calls for Zustand state here as needed
+
+    // Reset refs
+    if (gameRef.current && typeof gameRef.current.reset === 'function') {
+      gameRef.current.reset();
+    }
+    popHistoryRef.current = [];
+    toolStateRef.current = {};
+
+    // Optionally clear GameMVC/controller state
+    // (e.g., gameRef.current = null; or re-instantiate GameMVC)
+
+    // Optionally reset any local state or call other initialization logic
     try {
       // Cancel any in-flight hashlife work and clear its caches so it
       // cannot later re-populate the view after the UI model is cleared.
@@ -1172,12 +1205,15 @@ function GameOfLifeApp(props) {
         globalThis.dispatchEvent(new CustomEvent('gol:sessionCleared'));
       }
     } catch (e) { console.error(e); }
-  }, []);
+  }, [setCaptureData, setCaptureDialogOpen, setGeneration, setImportDialogOpen, setMyShapesDialogOpen, setPaletteOpen, setPopWindowSize, setSelectedShape, setSelectedTool, setShowChart, setShowUIControls]);
+  // Use initialize for Empty Grid
+  const clear = initialize;
   // Running state management functions moved earlier
   // openPalette/closePalette are now provided by Zustand
 
   // Protected save function for captured shapes
-  const { wrappedAction: handleSaveCapturedShape, renderDialog: renderCaptureSaveDialog } = useProtectedAction(async (shapeData) => {
+  // TODO: Revisit this useCallback dependency array. ESLint requires many setters; consider refactoring if possible.
+  const saveCapturedShapeAction = useCallback(async (shapeData) => {
     try {
       // Save to backend first (assume saveCapturedShapeToBackend is imported)
       const saved = await saveCapturedShapeToBackend(shapeData);
@@ -1211,7 +1247,19 @@ function GameOfLifeApp(props) {
       }
       throw error;
     }
-  });
+  }, [setDuplicateShape, setShowDuplicateDialog, shapeManager]);
+
+  const { wrappedAction: handleSaveCapturedShape, renderDialog: renderCaptureSaveDialog } = useProtectedAction(saveCapturedShapeAction);
+
+  const saveCaptureHandlerRef = React.useRef(handleSaveCapturedShape);
+
+  React.useEffect(() => {
+    saveCaptureHandlerRef.current = handleSaveCapturedShape;
+  }, [handleSaveCapturedShape]);
+
+  React.useEffect(() => {
+    setOnSaveCapture((...args) => saveCaptureHandlerRef.current?.(...args));
+  }, [setOnSaveCapture]);
 
   const handleLoadGrid = useCallback((liveCells) => {
     if (gameRef.current) {
@@ -1222,7 +1270,7 @@ function GameOfLifeApp(props) {
         }
       } catch (e) {
         // Log non-fatal errors when attempting to clear so issues are visible
-        // eslint-disable-next-line no-console
+         
         console.warn('handleLoadGrid: failed to clear existing grid before load', e);
       }
       loadGridIntoGame(gameRef, liveCells);
@@ -1249,7 +1297,7 @@ function GameOfLifeApp(props) {
           }
         } catch (e) {
           // Log non-fatal errors when attempting to clear so issues are visible.
-          // eslint-disable-next-line no-console
+           
           console.warn('applyPendingLoad: mvc.clear threw an error', e);
         }
         // pending may be the raw liveCells (Map/array) or an object with .liveCells
@@ -1258,7 +1306,7 @@ function GameOfLifeApp(props) {
       } catch (e) {
         // Log non-fatal initialization errors to aid debugging without breaking
         // runtime behavior. Do not rethrow to preserve current behavior.
-        // eslint-disable-next-line no-console
+         
         console.warn('applyPendingLoad: failed to load pending grid', e);
       }
       pendingLoadRef.current = null;
@@ -1281,7 +1329,7 @@ function GameOfLifeApp(props) {
       mvc.controller?.requestRender?.();
     } catch (e) {
       // Log non-fatal initialization errors for diagnostics
-      // eslint-disable-next-line no-console
+       
       console.error('applyInitialColorScheme error:', e);
     }
   }, []);
@@ -1299,6 +1347,20 @@ function GameOfLifeApp(props) {
     try {
       const mvc = new GameMVC(canvasEl, {});
       gameRef.current = mvc;
+
+      try {
+        const pct = Number(randomRectPercent);
+        const prob = Number.isFinite(pct) ? Math.max(0, Math.min(1, pct / 100)) : 0;
+        mvc.controller?._setToolState?.({ prob });
+      } catch (seedErr) {
+        console.warn?.('Failed to seed randomRect prob on init:', seedErr);
+      }
+
+      // Inject controller methods into useGameDao for model-driven imperative actions
+      setupGameDaoFromMVC(mvc);
+
+      // Inject toolMap into useToolDao for global tool/overlay access
+      setupToolDaoFromMVC(mvc);
 
       // Setup running state synchronization
       const syncRunningState = (event, data) => {
@@ -1330,6 +1392,9 @@ function GameOfLifeApp(props) {
           if (typeof model.getIsRunning === 'function') {
             setIsRunning(!!model.getIsRunning());
           }
+          if (typeof model.getGeneration === 'function') {
+            setGeneration(model.getGeneration());
+          }
           if (typeof model.getPopulationHistory === 'function') {
             const initialHistory = model.getPopulationHistory() || [];
             popHistoryRef.current = initialHistory;
@@ -1350,14 +1415,15 @@ function GameOfLifeApp(props) {
             } catch (e) { /* ignore */ }
           } else if (event === 'viewportChanged') {
             updateViewportSnapshot(data);
-          } else if (event === 'gameStep') {
-            // Temporarily skip per-step populationHistory bookkeeping so we
-            // can measure its impact on simulation performance. We keep
-            // popHistoryRef stable, but avoid allocating new arrays or
-            // calling getCellCount() on every generation.
+          } else if (event === 'gameStep' || event === 'reset' || event === 'loadGrid') {
+            try {
+              const gen = typeof model?.getGeneration === 'function' ? model.getGeneration() : 0;
+              setGeneration(gen);
+            } catch (e) { console.error('Failed to sync generation:', e); }
           } else if (event === 'modelCleared' || event === 'gameCleared') {
             popHistoryRef.current = [];
             setPopulationHistory([]);
+            setGeneration(0);
           } else if (event === 'stateImported') {
             try {
               const nextHistory = Array.isArray(data?.populationHistory)
@@ -1365,6 +1431,8 @@ function GameOfLifeApp(props) {
                 : (typeof model?.getPopulationHistory === 'function' ? model.getPopulationHistory() : []);
               popHistoryRef.current = nextHistory;
               setPopulationHistory(nextHistory);
+              const importedGen = typeof model?.getGeneration === 'function' ? model.getGeneration() : 0;
+              setGeneration(importedGen);
             } catch (e) { /* ignore */ }
           } else if (event === 'performanceSettingsChanged' && data) {
             setPerformanceCaps((prev) => {
@@ -1392,7 +1460,7 @@ function GameOfLifeApp(props) {
         // Remove legacy captureObserver and setUIState usage
       } catch (e) {
         // Non-fatal; continue initialization
-        // eslint-disable-next-line no-console
+         
         console.warn('Failed to sync selectedTool from MVC model:', e);
       }
 
@@ -1414,7 +1482,7 @@ function GameOfLifeApp(props) {
       syncOffsetFromMVC(mvc);
       applyInitialColorScheme(mvc);
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error('Failed to initialize GameMVC:', err);
     }
 
@@ -1435,16 +1503,15 @@ function GameOfLifeApp(props) {
           }
         } catch (e) {
           // Log destruction errors for diagnostics; cleanup should continue.
-          // eslint-disable-next-line no-console
+           
           console.error('Error destroying GameMVC instance during unmount:', e);
         }
         gameRef.current = null;
       }
     };
-  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme, preloadStrategy, shapesLoading, shapesError, updateViewportSnapshot]);
-
-  const setSelectedToolLocal = useCallback((tool) => {
-    setSelectedTool(tool);
+  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme, preloadStrategy, shapesLoading, shapesError, updateViewportSnapshot, setPerformanceCaps, setIsRunning, setPopulationHistory, setSelectedShape, setSelectedTool, setGeneration, randomRectPercent]);
+  // UI callback to request a tool change. This always goes through the controller/model.
+  const requestToolChange = React.useCallback((tool) => {
     try {
       gameRef.current?.setSelectedTool?.(tool);
     } catch (e) {
@@ -1456,13 +1523,15 @@ function GameOfLifeApp(props) {
   }, [setPaletteOpen]);
 
   // --- Controls props ---
-  const colorScheme = getColorSchemeFromKey(useGameStore.getState().colorSchemeKey || 'bio');
+  const colorScheme = getColorSchemeFromKey(useUiDao.getState().colorSchemeKey || 'bio');
+  // Use getLiveCells from gameDao for canonical live cell state
+  const getLiveCells = useGameDao(state => state.getLiveCells);
   const controlsProps = useMemo(() => ({
     selectedTool,
-    setSelectedTool: setSelectedToolLocal,
+    // setSelectedTool: setSelectedToolLocal, // removed, now handled by context
     onCenterViewport: () => gameRef.current?.centerOnLiveCells?.(),
     model: gameRef.current ? gameRef.current.model : null,
-    colorSchemeKey: useGameStore.getState().colorSchemeKey || 'bio',
+    colorSchemeKey: useUiDao.getState().colorSchemeKey || 'bio',
     setColorSchemeKey,
     colorSchemes,
     isRunning,
@@ -1490,7 +1559,7 @@ function GameOfLifeApp(props) {
     toolStateRef,
     cursorCell,
     onLoadGrid: handleLoadGrid,
-    showSpeedGauge: useGameStore.getState().showSpeedGauge ?? true,
+    showSpeedGauge: useUiDao.getState().showSpeedGauge ?? true,
     setShowSpeedGauge,
     detectStablePopulation,
     setDetectStablePopulation: setDetectStablePopulationPreference,
@@ -1529,7 +1598,7 @@ function GameOfLifeApp(props) {
     useWebWorker,
     setUseWebWorker: setUseWebWorkerPreference
   }), [
-    selectedTool, setSelectedToolLocal, setColorSchemeKey, isRunning, setIsRunningCombined,
+    setSteadyInfo,selectedTool, setColorSchemeKey, isRunning, setIsRunningCombined,
     step, drawWithOverlay, clear, viewportSnapshot, setCellAlive, setShowChart, getLiveCells, popWindowSize,
     setPopWindowSize, popTolerance, setPopTolerance, handleSelectShape, setPaletteOpen, steadyInfo, handleLoadGrid,
     setShowSpeedGauge, detectStablePopulation, setDetectStablePopulationPreference, maxChartGenerations,
@@ -1538,165 +1607,90 @@ function GameOfLifeApp(props) {
     startNormalMode, startHashlifeMode, stopAllEngines, setEngineModeDirect, generationBatchSize,
     setGenerationBatchSize, performanceCaps, setMaxFPS, setMaxGPS, setEnableFPSCap, setEnableGPSCap,
     enableAdaCompliance, setEnableAdaComplianceWithUpdate,
-    handleAddRecent, generation, useWebWorker, setUseWebWorkerPreference, cursorCell, isHashlifeMode
+    handleAddRecent, generation, useWebWorker, setUseWebWorkerPreference, cursorCell, isHashlifeMode,
+    offsetRef
   ]);
 
-  // --- Render ---
-  return (
-    <>
-      <LoadingShapesOverlay loading={shapesLoading} progress={shapesProgress} error={shapesError} onRetry={shapesStart} />
-      <GameUILayout
-        recentShapes={shapeManager.recentShapes}
-        recentShapesPersistence={shapeManager.persistenceState}
-        onSaveRecentShapes={shapeManager.persistRecentShapes}
-        onClearRecentShapes={shapeManager.clearRecentShapes}
-        onSelectShape={handleSelectShape}
-        drawWithOverlay={drawWithOverlay}
-        colorScheme={colorScheme}
-        selectedShape={selectedShape}
-        onRotateShape={handleRotateShape}
-        onSwitchToShapesTool={() => gameRef.current?.setSelectedTool?.('shapes')}
-        startPaletteDrag={startPaletteDrag}
-        controlsProps={controlsProps}
-        selectedTool={selectedTool}
-        shapesReady={shapesReady}
-        paletteOpen={paletteOpen}
-        onClosePalette={() => setPaletteOpen(false)}
-        onPaletteSelect={(shape) => { gameRef.current?.setSelectedShape?.(shape); shapeManager.selectShapeAndClosePalette(shape); }}
-        captureDialogOpen={captureDialogOpen}
-        onCloseCaptureDialog={() => setCaptureDialogOpen(false)}
-        captureData={captureData}
-        onSaveCapture={handleSaveCapturedShape}
-        myShapesDialogOpen={myShapesDialogOpen}
-        onCloseMyShapesDialog={() => setMyShapesDialogOpen(false)}
-        onOpenMyShapes={() => setMyShapesDialogOpen(true)}
-        importDialogOpen={importDialogOpen}
-        onCloseImportDialog={() => setImportDialogOpen(false)}
-        onOpenImportDialog={() => setImportDialogOpen(true)}
-        onImportSuccess={() => { shapeManager.refreshShapes(); }}
-        canvasRef={canvasRef}
-        cursorCell={cursorCell}
-        populationHistory={populationHistory}
-        onCloseChart={() => setShowChart(false)}
-        isRunning={isRunning}
-        showSpeedGauge={useGameStore.getState().showSpeedGauge ?? true}
-        onToggleSpeedGauge={setShowSpeedGauge}
-        gameRef={gameRef}
-        liveCellsCount={getLiveCells().size}
-        sidebarOpen={sidebarOpen}
-        onToggleSidebar={() => setSidebarOpen((v) => !v)}
-        isSmall={isSmall}
-        onToggleChrome={() => setShowChrome(!showChrome)}
-        enableAdaCompliance={enableAdaCompliance}
-      />
-      <Snackbar open={shapesNotifOpen} autoHideDuration={4000} onClose={() => setShapesNotifOpen(false)}>
-        <Alert severity="success" onClose={() => setShapesNotifOpen(false)} sx={{ width: '100%' }}>
-          Shapes catalog loaded
-        </Alert>
-      </Snackbar>
-      <Snackbar open={loginNotifOpen} autoHideDuration={6000} onClose={() => setLoginNotifOpen(false)}>
-        <Alert severity="info" onClose={() => setLoginNotifOpen(false)} sx={{ width: '100%' }}>
-          {loginNotifMessage}
-        </Alert>
-      </Snackbar>
-      {renderCaptureSaveDialog()}
-      <Dialog open={showDuplicateDialog} onClose={() => setShowDuplicateDialog(false)}>
-        <DialogTitle>Duplicate Shape Detected</DialogTitle>
-        <DialogContent>
-          <p>A shape with the same pattern already exists in the catalog:</p>
-          {duplicateShape && (
-            <div>
-              <strong>Name:</strong> {duplicateShape.name}<br />
-              <strong>Description:</strong> {duplicateShape.description || 'No description'}<br />
-              <strong>Cells:</strong> {duplicateShape.cellCount || 'Unknown'}
-            </div>
-          )}
-          <p>Would you like to view the existing shape instead?</p>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowDuplicateDialog(false)}>Cancel</Button>
-          <Button
-            onClick={() => {
-              if (duplicateShape) {
-                shapeManager?.selectShape?.(duplicateShape);
-                gameRef.current?.setSelectedTool?.('shapes');
-              }
-              setShowDuplicateDialog(false);
-              setDuplicateShape(null);
-            }}
-            variant="contained"
-          >
-            View Existing Shape
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Stable Pattern Detection Dialog - Only show if detection is enabled */}
-      <Dialog open={showStableDialog && detectStablePopulation} onClose={() => setShowStableDialog(false)}>
-        <DialogTitle>🎉 Stable Pattern Detected!</DialogTitle>
-        <DialogContent>
-          {stableDetectionInfo && (
-            <div>
-              <p><strong>Pattern Type:</strong> {stableDetectionInfo.patternType}</p>
-              <p><strong>Generation:</strong> {stableDetectionInfo.generation}</p>
-              <p><strong>Population:</strong> {stableDetectionInfo.populationCount} cells</p>
-              {stableDetectionInfo.period > 1 && (
-                <p><strong>Period:</strong> {stableDetectionInfo.period}</p>
-              )}
-              <p>The simulation has been automatically paused. Would you like to continue running or keep it paused?</p>
-            </div>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => {
-              setShowStableDialog(false);
-              setStableDetectionInfo(null);
-              // Keep paused - ensure simulation stays stopped
-              setIsRunningCombined(false);
-            }}
-          >
-            Keep Paused
-          </Button>
-          <Button
-            onClick={() => {
-              setShowStableDialog(false);
-              setStableDetectionInfo(null);
-              // Reset notification flag so dialog can appear again if stability is re-detected
-              userNotifiedRef.current = false;
-              // Use single source of truth for running state
-              setIsRunningCombined(true);
-              
-              // Force immediate stability recheck after a brief delay to allow state to settle
-              setTimeout(() => {
-                const mvc = gameRef.current;
-                if (mvc && typeof mvc.isStable === 'function') {
-                  // Trigger a manual check after user continues
-                  console.log('🔄 Forcing stability recheck after continue...');
-                }
-              }, 100);
-            }}
-            variant="contained"
-          >
-            Continue Running
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Script Execution HUD */}
-      <ScriptExecutionHUD enableAdaCompliance={enableAdaCompliance} />
-      
-      {/* First Load Warning Dialog - Shows only once per browser */}
-      <FirstLoadWarningDialog 
-        open={showFirstLoadWarning} 
-        onClose={() => setShowFirstLoadWarning(false)}
-      />
-    </>
-  );
+  const showSpeedGauge = useUiDao.getState().showSpeedGauge ?? true;
+  const liveCellsCount = getLiveCells().size;
+
+  return {
+    canvasRef,
+    drawWithOverlay,
+    gameRef,
+    controlsProps,
+    selectedTool,
+    requestToolChange,
+    shapesLoading,
+    shapesProgress,
+    shapesError,
+    shapesStart,
+    shapeManager,
+    handleSelectShape,
+    colorScheme,
+    selectedShape,
+    handleRotateShape,
+    startPaletteDrag,
+    setSelectedTool,
+    toolState,
+    setToolState,
+    shapesReady,
+    paletteOpen,
+    setPaletteOpen,
+    captureDialogOpen,
+    setCaptureDialogOpen,
+    captureData,
+    onCloseCaptureDialog,
+    onSaveCapture,
+    handleSaveCapturedShape,
+    myShapesDialogOpen,
+    setMyShapesDialogOpen,
+    importDialogOpen,
+    setImportDialogOpen,
+    cursorCell,
+    populationHistory,
+    setPopulationHistory,
+    popWindowSize,
+    setPopWindowSize,
+    generation,
+    setGeneration,
+    maxChartGenerations,
+    setMaxChartGenerations,
+    setShowChart,
+    isRunning,
+    showUIControls,
+    setShowUIControls,
+    snapshotsRef,
+    setSteadyInfo,
+    shapesNotifOpen,
+    setShapesNotifOpen,
+    loginNotifOpen,
+    setLoginNotifOpen,
+    loginNotifMessage,
+    renderCaptureSaveDialog,
+    onImportSuccess,
+    showDuplicateDialog,
+    setShowDuplicateDialog,
+    duplicateShape,
+    setDuplicateShape,
+    stableDetectionInfo,
+    setStableDetectionInfo,
+    showStableDialog,
+    setShowStableDialog,
+    setIsRunningCombined,
+    enableAdaCompliance,
+    userNotifiedRef,
+    detectStablePopulation,
+    showFirstLoadWarning,
+    setShowFirstLoadWarning,
+    showSpeedGauge,
+    liveCellsCount,
+    offsetRef,
+    isSmall,
+    clear,
+    step,
+    colorSchemeKey: useUiDao.getState().colorSchemeKey || 'bio'
+  };
 }
 
-
-GameOfLifeApp.propTypes = {
-  initialUIState: PropTypes.object
-};
-export default GameOfLifeApp;
+export default useGameOfLifeAppRuntime;

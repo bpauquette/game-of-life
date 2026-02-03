@@ -23,6 +23,7 @@ This application uses a strict MVC + Hooks architecture.
 - Domain logic must never live in React components
 - Side effects must be isolated in hooks or controllers
 - All game behavior flows downward from the Model
+- Avoid prop drilling for shared state; prefer DAOs + hooks or context so cross-cutting settings (e.g., tool options) are read/written from a single source of truth.
 
 ## Layer Responsibilities
 

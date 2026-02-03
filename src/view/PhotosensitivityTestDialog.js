@@ -101,7 +101,7 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
       const downsampleCanvas = document.createElement('canvas');
       downsampleCanvas.width = downsampleWidth;
       downsampleCanvas.height = downsampleHeight;
-      const downsampleCtx = downsampleCanvas.getContext('2d');
+      const downsampleCtx = downsampleCanvas.getContext('2d', { willReadFrequently: true }) || downsampleCanvas.getContext('2d');
       
       const frames = [];
       const flashEvents = [];

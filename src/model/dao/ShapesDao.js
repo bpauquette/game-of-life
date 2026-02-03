@@ -6,14 +6,20 @@
  * All methods return Promises.
  */
 
-const API_BASE = '/api/v1/shapes';
+import { getBackendApiBase } from '../../utils/backendApi.js';
+
+const getShapesApiBase = () => `${getBackendApiBase()}/v1/shapes`;
 
 const ShapesDao = {
   /**
    * Fetch all shapes (returns array of shape objects)
    */
   async listShapes() {
-    const res = await fetch(`${API_BASE}`);
+    const params = new URLSearchParams();
+    params.set('searchTerm', '');
+    params.set('page', 1);
+    params.set('pageSize', 200);
+    const res = await fetch(`${getShapesApiBase()}?${params.toString()}`);
     if (!res.ok) throw new Error(`Failed to fetch shapes: ${res.status}`);
     const data = await res.json();
     // Unwrap .items if present (backend contract)
@@ -24,7 +30,7 @@ const ShapesDao = {
    * Fetch a single shape by ID
    */
   async getShape(id) {
-    const res = await fetch(`${API_BASE}/${encodeURIComponent(id)}`);
+    const res = await fetch(`${getShapesApiBase()}/${encodeURIComponent(id)}`);
     if (!res.ok) throw new Error(`Failed to fetch shape: ${res.status}`);
     return await res.json();
   },
@@ -33,7 +39,7 @@ const ShapesDao = {
    * Save a new shape (POST)
    */
   async saveShape(shape) {
-    const res = await fetch(`${API_BASE}` , {
+    const res = await fetch(getShapesApiBase(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(shape)
@@ -46,7 +52,7 @@ const ShapesDao = {
    * Delete a shape by ID
    */
   async deleteShape(id) {
-    const res = await fetch(`${API_BASE}/${encodeURIComponent(id)}`, {
+    const res = await fetch(`${getShapesApiBase()}/${encodeURIComponent(id)}`, {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error(`Failed to delete shape: ${res.status}`);

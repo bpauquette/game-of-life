@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -113,15 +113,18 @@ function PreviewPanel(props) {
   const { preview, maxSvgSize = 200, colorScheme, colorSchemeKey, onAddRecent } = props;
   const canvasRef = useRef(null);
   const transforms = ['identity', 'flipH', 'flipV', 'diag1', 'diag2'];
-  // Use controlled props for transformIndex, rotationAngle, and imgError
-  const {
-    transformIndex = 0,
-    rotationAngle = 0,
-    imgError = false,
-    setTransformIndex,
-    setRotationAngle,
-    setImgError
-  } = props;
+  // Controlled props with safe fallbacks to local state
+  const [localTransformIndex, setLocalTransformIndex] = useState(0);
+  const [localRotationAngle, setLocalRotationAngle] = useState(0);
+  const [localImgError, setLocalImgError] = useState(false);
+
+  const transformIndex = props.transformIndex ?? localTransformIndex;
+  const rotationAngle = props.rotationAngle ?? localRotationAngle;
+  const imgError = props.imgError ?? localImgError;
+  const setTransformIndex = props.setTransformIndex || setLocalTransformIndex;
+  const setRotationAngle = props.setRotationAngle || setLocalRotationAngle;
+  const setImgError = props.setImgError || setLocalImgError;
+
   const currentTransform = transforms[transformIndex];
 
   // Derive cells from preview and transform/rotation
@@ -152,6 +155,7 @@ function PreviewPanel(props) {
     const thumbnailUrl = nameSlug ? `/thumbnails/${size}/${scheme}/${nameSlug}.png` : null;
     return thumbnailUrl;
   }, [preview, colorSchemeKey]);
+
 
   // Draw shape preview in canvas if needed
   React.useEffect(() => {
