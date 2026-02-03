@@ -1,14 +1,9 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo } from 'react';
 import PropTypes from 'prop-types';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
-import { AutoSizer } from 'react-virtualized-auto-sizer';
-import { List as VirtualizedList } from 'react-window';
 import ShapeListItem from './ShapeListItem.js';
-
-const ROW_HEIGHT = 32; // Match ListItem minHeight + padding
-const MIN_RENDER_HEIGHT = ROW_HEIGHT * 4;
 
 const VirtualRow = memo(({ index, style, data }) => {
   const { items, colorScheme, onSelect, onDeleteRequest, onAddRecent, onHover, user, backendBase } = data;
@@ -59,17 +54,6 @@ const ShapesList = memo(function ShapesList({
   user,
   backendBase,
 }) {
-  const itemData = useMemo(() => ({ items, colorScheme, onSelect, onDeleteRequest, onAddRecent, onHover, user, backendBase }), [
-    items,
-    colorScheme,
-    onSelect,
-    onDeleteRequest,
-    onAddRecent,
-    onHover,
-    user,
-    backendBase,
-  ]);
-
   if (!loading && items.length === 0) {
     return (
       <List dense>
@@ -80,49 +64,24 @@ const ShapesList = memo(function ShapesList({
     );
   }
 
-  const hasResizeObserver = typeof globalThis !== 'undefined' && typeof globalThis.ResizeObserver === 'function';
-  const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
-
-  if (!hasResizeObserver || isTestEnv) {
-    return (
-      <List dense sx={{ pl: 1.5 }}>
-        {items.map((shape, idx) => (
-          <ShapeListItem
-            key={`${shape.id || 'shape'}-${idx}`}
-            shape={shape}
-            idx={idx}
-            colorScheme={colorScheme}
-            onSelect={onSelect}
-            onRequestDelete={onDeleteRequest}
-            onAddRecent={onAddRecent}
-            onHover={onHover}
-            user={user}
-          />
-        ))}
-      </List>
-    );
-  }
-
+  // Simpler non-virtualized list for reliability
   return (
-    <AutoSizer>
-      {({ height, width }) => {
-        const listHeight = Math.max(height || 0, MIN_RENDER_HEIGHT);
-        const listWidth = width || 300; // Use available width, fallback to reasonable default
-        return (
-          <VirtualizedList
-            height={listHeight}
-            width={listWidth}
-            itemCount={items.length}
-            itemSize={ROW_HEIGHT}
-            itemData={itemData}
-            overscanCount={4}
-            style={{ overflowX: 'hidden' }}
-          >
-            {VirtualRow}
-          </VirtualizedList>
-        );
-      }}
-    </AutoSizer>
+    <List dense sx={{ pl: 1.5, pr: 1, overflowY: 'visible' }}>
+      {items.map((shape, idx) => (
+        <ShapeListItem
+          key={`${shape.id || 'shape'}-${idx}`}
+          shape={shape}
+          idx={idx}
+          colorScheme={colorScheme}
+          onSelect={onSelect}
+          onRequestDelete={onDeleteRequest}
+          onAddRecent={onAddRecent}
+          onHover={onHover}
+          user={user}
+          backendBase={backendBase}
+        />
+      ))}
+    </List>
   );
 });
 

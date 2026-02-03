@@ -29,7 +29,8 @@ function fauxNamesPostMessage(msg, faux) {
 }
 
 async function runNamesLoop(msg, faux) {
-  let offset = 0;
+  let offset = Math.max(0, Number(msg.offsetStart) || 0);
+  const stopAfterFirstPage = !!msg.stopAfterFirstPage;
   const qVal = msg.q || '';
   const limitVal = Number(msg.limit) || 50;
   for (;;) {
@@ -38,6 +39,7 @@ async function runNamesLoop(msg, faux) {
     if (!page.ok) { postError(faux, page.error); return; }
     if (page.items.length > 0) postPage(faux, page.items, page.total, offset);
     offset += page.items.length;
+    if (stopAfterFirstPage) break;
     if (!page.items.length || (page.total && offset >= page.total)) break;
     await new Promise(r => setTimeout(r, 30));
   }

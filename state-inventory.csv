@@ -1,0 +1,110 @@
+dao,state_key,description,wired,testing_status,propdrilled,notes
+uiDao,showUIControls,Toggle main UI chrome,yes,unit,no,
+uiDao,helpOpen,Help dialog visibility,yes,unit,no,OptionsPanel/HelpDialog toggles via uiDao
+uiDao,setHelpOpen,Setter for help dialog visibility,yes,unit,no,Used by HeaderBar and HelpDialog
+uiDao,paletteOpen,Shape palette drawer visibility,yes,unit,no,Controlled via palette UI
+uiDao,showChart,Population chart visibility,yes,unit,no,
+uiDao,showSpeedGauge,Speed gauge visibility,yes,unit,no,Option in OptionsPanel
+uiDao,detectStablePopulation,Toggle stable-pop detection,yes,unit,no,dao-state.test.js
+uiDao,memoryTelemetryEnabled,Enable memory telemetry,no,removed,no,Removed duplicate; use performanceDao
+dialogDao,showStableDialog,Stable population modal,yes,unit,no,Used by runtime stable detection dialog
+dialogDao,showFirstLoadWarning,First-load warning flag,yes,unit,no,
+dialogDao,shapesNotifOpen,Shapes notification toast,yes,unit,no,Shown after shapes load
+dialogDao,loginNotifOpen,Login notification toast,yes,unit,no,Auth prompts from runtime events
+dialogDao,loginNotifMessage,Login notification message,yes,unit,no,
+dialogDao,showDuplicateDialog,Duplicate-shape dialog visibility,yes,unit,no,Triggered on duplicate import
+dialogDao,duplicateShape,Selected duplicate shape payload,yes,unit,no,
+dialogDao,captureDialogOpen,Grid capture dialog visibility,yes,unit,no,
+dialogDao,captureData,Captured grid payload,yes,unit,no,
+dialogDao,myShapesDialogOpen,My Shapes dialog visibility,yes,unit,no,
+dialogDao,importDialogOpen,Import dialog visibility,yes,unit,no,
+uiDao,onClosePalette,Palette close handler,yes,unit,no,Setter stored; usage light
+uiDao,onPaletteSelect,Palette select handler,yes,unit,no,
+uiDao,onCloseCaptureDialog,Capture dialog close handler,yes,unit,no,
+uiDao,onSaveCapture,Capture save handler,yes,unit,no,
+uiDao,onImportSuccess,Import success hook,yes,unit,no,Stored in DAO; runtime injects shape refresh handler
+uiDao,onCloseChart,Chart close handler,yes,unit,no,
+uiDao,optionsOpen,Options modal visibility,yes,unit,no,
+uiDao,scriptOpen,Script dialog visibility,yes,unit,no,
+uiDao,setScriptOpen,Setter for script dialog visibility,yes,unit,no,HeaderBar toggles script panel
+uiDao,aboutOpen,About dialog visibility,yes,unit,no,
+uiDao,donateOpen,Donate dialog visibility,yes,unit,no,
+uiDao,photoTestOpen,Photosensitivity test dialog visibility,yes,unit,no,
+uiDao,userDialogOpen,Auth dialog visibility,yes,unit,no,
+uiDao,showRegister,Auth dialog register toggle,yes,unit,no,
+uiDao,confirmOnClear,Confirm before clear toggle,yes,unit,no,OptionsPanel uses DAO directly
+uiDao,cellSize,Renderer cell size,yes,unit,no,
+uiDao,scheduleCursorUpdate,Renderer cursor updater fn,yes,unit,no,Updated by canvas manager
+uiDao,useWebWorker,Use web worker for sim,yes,unit,no,Option in OptionsPanel
+uiDao,enableAdaCompliance,ADA compliance flag,yes,unit,no,Integration tests exist for ADA limits
+uiDao,colorScheme,Active color scheme object,yes,unit,no,
+uiDao,colorSchemes,Color scheme registry,yes,unit,no,Seeded from runtime; validated via setter
+uiDao,colorSchemeKey,Active color scheme key,yes,unit,no,Changed via OptionsPanel; ADA tests touch
+uiDao,setColorScheme,Set color scheme object,yes,unit,no,
+uiDao,setColorSchemes,Set registry,yes,unit,no,
+toolDao,selectedTool,Active tool id,yes,unit,no,Used by ToolGroup
+toolDao,toolState,Per-tool scratch state,yes,unit,no,
+toolDao,recentShapes,Recent shapes list,yes,unit,no,RecentShapesStrip uses
+toolDao,recentShapesPersistence,Recent shapes persistence status,yes,unit,no,
+toolDao,onSaveRecentShapes,Save recent shapes handler,yes,unit,no,
+toolDao,onClearRecentShapes,Clear recent shapes handler,yes,unit,no,
+toolDao,setSelectedShape,Set selected shape,yes,unit,no,
+toolDao,onSelectShape,Select shape handler,yes,unit,no,
+toolDao,onRotateShape,Rotate shape handler,yes,unit,no,
+toolDao,onSwitchToShapesTool,Switch to shapes tool,yes,unit,no,
+toolDao,toolMap,Registered tool implementations,yes,unit,no,
+toolDao,toolStateRef,Mutable ref for tool state,yes,unit,no,
+toolDao,randomRectPercent,Random rectangle fill percent,yes,unit,no,OptionsPanel uses DAO; runtime seeded
+gameDao,gameModel,Active GameModel instance,yes,unit,no,
+gameDao,getLiveCells,Getter for live cells,yes,unit,no,
+gameDao,setGetLiveCells,Setter for live cells getter,yes,unit,no,Injected via setupGameDaoFromMVC
+gameDao,setCellAlive,Mutator for a cell,yes,unit,no,Injected via setupGameDao
+gameDao,setSetCellAlive,Setter for setCellAlive impl,yes,unit,no,
+gameDao,isRunning,Simulation running flag,yes,unit,no,Run controls and runtime
+gameDao,setIsRunning,Setter for running flag,yes,unit,no,
+gameDao,engineMode,Engine mode id,yes,unit,no,
+gameDao,setEngineMode,Setter for engine mode,yes,unit,no,
+gameDao,isHashlifeMode,Hashlife mode flag,yes,unit,no,
+gameDao,useHashlife,Use hashlife engine,yes,unit,no,
+gameDao,generationBatchSize,Batch size for stepping,yes,unit,no,
+gameDao,setGenerationBatchSize,Setter for generation batch,yes,unit,no,
+uiDao,wasRunningBeforeOptions,Tracks running state before opening options,yes,unit,no,Covered in dao-state.test
+uiDao,setWasRunningBeforeOptions,Setter for wasRunningBeforeOptions,yes,unit,no,Covered in dao-state.test
+gameDao,onStartNormalMode,Handler to switch to normal engine mode,yes,unit,no,Runtime publishes handler to dao
+gameDao,onStartHashlifeMode,Handler to switch to hashlife engine mode,yes,unit,no,Runtime publishes handler to dao
+gameDao,onStopAllEngines,Handler to stop all engines,yes,unit,no,Runtime publishes handler to dao
+gameDao,onSetEngineMode,Handler to set engine mode from dropdown,yes,unit,no,Runtime publishes handler to dao
+gameDao,onSetGenerationBatchSize,Handler to set generation batch size,yes,unit,no,Published by useGameOfLifeAppRuntime
+gameDao,steadyInfo,Steady-state info object,yes,unit,no,
+gameDao,setSteadyInfo,Setter for steady info,yes,unit,no,
+populationDao,populationHistory,Population history buffer,yes,unit,no,Runtime buffers for stats/stability
+populationDao,setPopulationHistory,Setter for history,yes,unit,no,
+populationDao,popWindowSize,Stability window generations,yes,unit,no,OptionsPanel DAO-sourced
+populationDao,setPopWindowSize,Setter for window,yes,unit,no,
+populationDao,popTolerance,Stability tolerance threshold,yes,unit,no,OptionsPanel DAO-sourced
+populationDao,setPopTolerance,Setter for tolerance,yes,unit,no,
+populationDao,generation,Current generation count,yes,unit,no,Core sim uses
+populationDao,setGeneration,Setter for generation,yes,unit,no,
+populationDao,maxChartGenerations,Max points in chart,yes,unit,no,OptionsPanel DAO-sourced
+populationDao,setMaxChartGenerations,Setter for chart cap,yes,unit,no,
+populationDao,stableDetectionInfo,Last stability analysis info,yes,unit,no,Shown in stable dialog
+populationDao,setStableDetectionInfo,Setter for stability info,yes,unit,no,
+performanceDao,performanceCaps.maxFPS,Frame cap,yes,unit,no,
+performanceDao,performanceCaps.maxGPS,Generation cap,yes,unit,no,
+performanceDao,performanceCaps.enableFPSCap,Enable FPS cap,yes,unit,no,
+performanceDao,performanceCaps.enableGPSCap,Enable GPS cap,yes,unit,no,
+performanceDao,setPerformanceCaps,Setter for performance caps,yes,unit,no,
+performanceDao,memoryTelemetryEnabled,Memory telemetry flag,yes,unit,no,
+performanceDao,setMemoryTelemetryEnabled,Setter for memory telemetry,yes,unit,no,
+scriptPanel,script,Current editor content,no,not-covered,no,Local state; autosaved (cloud or localStorage)
+scriptPanel,selectedTemplate,Template dropdown selection,no,not-covered,no,Local state
+scriptPanel,scriptRunning,Script execution running flag,no,not-covered,no,Local state controls Run/Cancel
+scriptPanel,executionProgress,Execution progress object,no,not-covered,no,Drives HUD/progress bar
+scriptPanel,debugLog,Collected debug lines,no,not-covered,no,Local state
+scriptPanel,saveDialogOpen,Cloud save dialog visibility,no,not-covered,no,Local state
+scriptPanel,scriptName,Cloud save script name,no,not-covered,no,Local state
+scriptPanel,isPublic,Cloud save visibility flag,no,not-covered,no,Local state
+scriptPanel,cloudScripts,Cached cloud script list,no,not-covered,no,Local state populated on open
+scriptPanel,loadingScripts,Loading flag for cloud scripts,no,not-covered,no,Local state
+scriptPanel,message,User-facing status/error message,no,not-covered,no,Local state
+scriptPanel,activeTab,Current tab index in script panel,no,not-covered,no,Local state

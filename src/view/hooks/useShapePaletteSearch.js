@@ -1,10 +1,8 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, startTransition } from 'react';
 import logger from '../../controller/utils/logger.js';
-import { createNamesWorker, createFauxNamesWorker } from '../../utils/workerFactories.js';
-import { fetchShapeById, deleteShapeById, createShape, getBackendApiBase, fetchShapeNames } from '../../utils/backendApi.js';
-import { isTestEnvironment } from '../../utils/runtimeEnv.js';
+import { fetchShapeById, deleteShapeById, getBackendApiBase, fetchShapeNames } from '../../utils/backendApi.js';
 
-const DEFAULT_LIMIT = 50;
+const DEFAULT_LIMIT = 50; // Default limit for pagination
 
 function useDebouncedValue(value, delay) {
   const [debounced, setDebounced] = useState(value);
@@ -15,7 +13,7 @@ function useDebouncedValue(value, delay) {
   return debounced;
 }
 
-export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT, prefetchOnMount = false, fetchShapes }) {
+export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT, page = 0, prefetchOnMount = false }) {
   const [inputValue, setInputValue] = useState('');
   const debouncedFilter = useDebouncedValue(inputValue || '', 200);
   const [results, setResults] = useState([]);
@@ -89,145 +87,39 @@ export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT
     }
   }, [backendBase]);
 
-  const createShapeInBackend = useCallback(async (shape) => {
-    try {
-      const created = await createShape(shape, backendBase);
-      return created;
-    } catch (err) {
-      logger.error('[useShapePaletteSearch] createShapeInBackend error', err);
-      throw err;
-    }
-  }, [backendBase]);
-
-  const handleWorkerFailure = useCallback((message) => {
-    stopWorker();
-    setLoading(false);
-    setBackendError(message || 'Shapes catalog worker error');
-    setShowBackendDialog(true);
-  }, [stopWorker]);
-
   const startWorker = useCallback(() => {
     stopWorker();
     setLoading(true);
-    setResults([]);
-    setTotal(0);
-    // getBackendApiBase is statically imported
-    const base = getBackendApiBase();
-    const isTest = isTestEnvironment();
-    // In Jest test environments, avoid async worker scheduling issues by
-    // directly fetching the first page so tests can observe results immediately.
-    if (isTest) {
-      (async () => {
-        try {
-          let page;
-          if (typeof fetchShapes === 'function') {
-            page = await fetchShapes();
-          } else {
-            // fetchShapeNames is statically imported
-            page = await fetchShapeNames(base, '', limit, 0);
-          }
-          if (page && page.ok) {
-            setResults(page.items || []);
-            setTotal(Number(page.total) || (page.items || []).length);
-          } else {
-            throw new Error('Shapes catalog error');
-          }
-        } catch (err) {
-          logger.warn('[useShapePaletteSearch] test-mode fetch failed', err);
+
+    const base = (typeof backendBase === 'string' && backendBase.trim().length) ? backendBase : getBackendApiBase();
+    const offsetStart = Math.max(0, page) * limit;
+    const query = (debouncedFilter || '').trim();
+
+    // Fetch the current page directly (first 50) to avoid worker issues
+    (async () => {
+      try {
+        const pageResult = await fetchShapeNames(base, query, limit, offsetStart);
+        if (pageResult && pageResult.ok) {
+          const items = Array.isArray(pageResult.items) ? pageResult.items : [];
+          logger.debug('[useShapePaletteSearch] fetched names page', { itemsLen: items.length, total: pageResult.total, offsetStart, query });
+          startTransition(() => {
+            setResults(items);
+            setTotal(Number(pageResult.total) || items.length);
+            setLoading(false);
+          });
+        } else {
+          throw new Error('Shapes catalog error');
+        }
+      } catch (err) {
+        logger.warn('[useShapePaletteSearch] direct fetch failed', err);
+        startTransition(() => {
           setBackendError('Shapes catalog error');
           setShowBackendDialog(true);
-        } finally {
           setLoading(false);
-        }
-      })();
-      return;
-    }
-    let worker;
-    try {
-      worker = createNamesWorker(base, '', limit);
-    } catch (err) {
-      logger.warn('[useShapePaletteSearch] createNamesWorker failed, using faux worker', err);
-      worker = createFauxNamesWorker();
-    }
-    workerRef.current = worker;
-
-    worker.onmessage = (event) => {
-      const payload = event.data || {};
-      if (payload.type === 'page') {
-        const items = Array.isArray(payload.items) ? payload.items : [];
-        logger.debug('[useShapePaletteSearch] worker page received', { itemsLen: items.length, offset: payload.offset, total: payload.total });
-        setResults(prev => {
-          const next = [...prev, ...items];
-          logger.debug('[useShapePaletteSearch] results length now', { nextLen: next.length });
-          return next;
         });
-        // BUGFIX: Hydrate missing shapes from this page in background (batched)
-        // Previously the names worker populated items but did not trigger
-        // hydration for items lacking cell data, so previews and selection
-        // couldn't render full shapes. This block performs safe, batched
-        // hydration and merges full-shape data into `results`.
-        (async () => {
-          try {
-            const toHydrate = (items || []).filter(it => it && !(it.cells || it.pattern || it.liveCells));
-            if (!toHydrate.length) return;
-            logger.debug('[useShapePaletteSearch] scheduling hydration for page', { offset: payload.offset, count: toHydrate.length });
-            const BATCH = 10;
-            for (let i = 0; i < toHydrate.length; i += BATCH) {
-              const batch = toHydrate.slice(i, i + BATCH);
-              await Promise.all(batch.map(async (item) => {
-                try {
-                  const full = await hydrateShape(item.id || item);
-                  if (full) {
-                    setResults(prev => prev.map(r => (r.id === (full.id || item.id) ? { ...r, ...full } : r)));
-                    logger.debug('[useShapePaletteSearch] hydrated shape updated in results', { id: full.id });
-                  }
-                } catch (err) {
-                  logger.warn('[useShapePaletteSearch] hydrate batch item failed', err);
-                }
-              }));
-              // small delay to let UI breathe
-              await new Promise(res => setTimeout(res, 50));
-            }
-          } catch (err) {
-            logger.warn('[useShapePaletteSearch] hydration worker failed', err);
-          }
-        })();
-        setTotal(prevTotal => (typeof payload.total === 'number' ? payload.total : prevTotal + items.length));
-      } else if (payload.type === 'error') {
-        handleWorkerFailure(payload.message || 'Shapes catalog error');
-      } else if (payload.type === 'done') {
-        logger.debug('[useShapePaletteSearch] worker done');
-        setLoading(false);
-        stopWorker();
       }
-    };
-
-    worker.onerror = (err) => {
-      logger.warn('[useShapePaletteSearch] worker runtime error', err);
-      try {
-        const fallback = createFauxNamesWorker();
-        workerRef.current = fallback;
-        fallback.onmessage = worker.onmessage;
-        fallback.onerror = () => handleWorkerFailure('Shapes catalog worker error');
-        fallback.onmessageerror = () => handleWorkerFailure('Shapes catalog worker message error');
-        fallback.postMessage({ type: 'start', base, q: '', limit });
-        return;
-      } catch (fallbackErr) {
-        logger.error('[useShapePaletteSearch] faux worker creation failed', fallbackErr);
-        handleWorkerFailure(err?.message || 'Shapes catalog worker error');
-      }
-    };
-
-    worker.onmessageerror = () => handleWorkerFailure('Shapes catalog worker message error');
-
-    try {
-      worker.postMessage({ type: 'start', base, q: '', limit });
-    } catch (postErr) {
-      logger.error('[useShapePaletteSearch] worker.postMessage failed', postErr);
-      handleWorkerFailure(postErr?.message || 'Shapes catalog worker error');
-    }
-  } // <-- close useCallback function
-  , [limit, handleWorkerFailure, stopWorker, fetchShapes, hydrateShape]);
+    })();
+  }, [backendBase, debouncedFilter, limit, page, stopWorker]);
 
   const shouldStartWorker = open || prefetchOnMount;
 
@@ -270,7 +162,6 @@ export function useShapePaletteSearch({ open, backendBase, limit = DEFAULT_LIMIT
     setShowBackendDialog,
     retry: startWorker,
     hydrateShape,
-    deleteShape,
-    createShapeInBackend
+    deleteShape
   };
 }

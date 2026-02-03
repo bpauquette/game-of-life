@@ -56,7 +56,12 @@ export default function ToolGroup({ isSmall = false }) {
         '& .MuiToggleButton-root': {
           minWidth: 44,
           minHeight: 44,
-          borderColor: 'rgba(255,255,255,0.25)'
+          borderColor: 'rgba(255,255,255,0.25)',
+          transition: 'background-color 120ms ease-out, transform 120ms ease-out',
+          backgroundColor: 'rgba(0,0,0,0.25)'
+        },
+        '& .MuiToggleButton-root:hover': {
+          backgroundColor: 'rgba(255,255,255,0.08)'
         },
         '& .MuiToggleButton-root.Mui-selected': {
           bgcolor: 'primary.main',
@@ -71,28 +76,28 @@ export default function ToolGroup({ isSmall = false }) {
       }}
     >
       {/* Shapes tool first, to the left of Draw */}
-  <ToggleButton value="shapes" aria-label="shapes" onClick={() => { if (selectedTool === 'shapes') requestToolChange('shapes'); }}>
+  <ToggleButton value="shapes" aria-label="shapes" disableRipple onClick={() => { if (selectedTool === 'shapes') requestToolChange('shapes'); }}>
     <Tooltip title={TOOL_DESCRIPTIONS.shapes}>
       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
         <WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} />
       </span>
     </Tooltip>
   </ToggleButton>
-  <ToggleButton value="draw" aria-label="draw"><Tooltip title={TOOL_DESCRIPTIONS.draw}><EditIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+  <ToggleButton value="draw" aria-label="draw" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.draw}><EditIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
     {!hideOptionalTools && (
-      <ToggleButton value="eraser" aria-label="eraser">
+      <ToggleButton value="eraser" aria-label="eraser" disableRipple>
         <Tooltip title={TOOL_DESCRIPTIONS.eraser}>
           <RubberEraserIcon fontSize={isSmall ? 'medium' : 'small'} />
         </Tooltip>
       </ToggleButton>
     )}
-      <ToggleButton value="line" aria-label="line"><Tooltip title={TOOL_DESCRIPTIONS.line}><HorizontalRuleIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  <ToggleButton value="rect" aria-label="rect"><Tooltip title={TOOL_DESCRIPTIONS.rect}><CropSquareIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  <ToggleButton value="square" aria-label="square"><Tooltip title={TOOL_DESCRIPTIONS.square}><CropSquareIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  <ToggleButton value="circle" aria-label="circle"><Tooltip title={TOOL_DESCRIPTIONS.circle}><RadioButtonUncheckedIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  <ToggleButton value="oval" aria-label="oval"><Tooltip title={TOOL_DESCRIPTIONS.oval}><OvalIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  {!hideOptionalTools && <ToggleButton value="randomRect" aria-label="randomRect"><Tooltip title={TOOL_DESCRIPTIONS.randomRect}><CasinoIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>}
-  <ToggleButton value="capture" aria-label="capture"><Tooltip title={TOOL_DESCRIPTIONS.capture}><ColorizeIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+      <ToggleButton value="line" aria-label="line" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.line}><HorizontalRuleIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+  <ToggleButton value="rect" aria-label="rect" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.rect}><CropSquareIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+  <ToggleButton value="square" aria-label="square" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.square}><CropSquareIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+  <ToggleButton value="circle" aria-label="circle" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.circle}><RadioButtonUncheckedIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+  <ToggleButton value="oval" aria-label="oval" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.oval}><OvalIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+  {!hideOptionalTools && <ToggleButton value="randomRect" aria-label="randomRect" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.randomRect}><CasinoIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>}
+  <ToggleButton value="capture" aria-label="capture" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.capture}><ColorizeIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
     </ToggleButtonGroup>
   );
 }

@@ -1,24 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import PropTypes from 'prop-types';
 // Removed unused alpha import
 
 /**
  * ScriptExecutionHUD - Semi-transparent overlay showing real-time script execution status
  * Displays: current command, variables, progress, loop context
  */
-function ScriptExecutionHUD({ enableAdaCompliance = false }) {
-    // Add a function to dispatch a stop event
-    const handleClose = () => {
-      if (typeof globalThis.globalThis !== 'undefined') {
-        const event = new CustomEvent('gol:script:stop', { detail: { reason: 'user' } });
-        globalThis.globalThis.dispatchEvent(event);
-      }
-      setHudData(prev => ({ ...prev, visible: false }));
-    };
+function ScriptExecutionHUD() {
+  const dismissedRef = useRef(false);
+
   const [hudData, setHudData] = useState({
     visible: false,
+    dismissedUntilNextStart: false,
     currentLine: '',
     variables: {},
     context: '', // Loop/block context
@@ -27,11 +21,21 @@ function ScriptExecutionHUD({ enableAdaCompliance = false }) {
     log: [] // rolling command log
   });
 
+  const handleClose = () => {
+    if (typeof globalThis !== 'undefined') {
+      const event = new CustomEvent('gol:script:stop', { detail: { reason: 'user' } });
+      globalThis.dispatchEvent(event);
+    }
+    dismissedRef.current = true;
+    setHudData(prev => ({ ...prev, visible: false, dismissedUntilNextStart: true }));
+  };
+
   useEffect(() => {
     function onScriptDebug(event) {
       const detail = event.detail;
       
       if (detail.type === 'command') {
+        if (dismissedRef.current) return;
         // Command starting (e.g., UNTIL_STEADY)
         setHudData(prev => ({
           ...prev,
@@ -40,6 +44,7 @@ function ScriptExecutionHUD({ enableAdaCompliance = false }) {
           log: [...prev.log, detail.line || detail.command || detail.msg || ''].slice(-200)
         }));
       } else if (detail.type === 'state') {
+        if (dismissedRef.current) return;
         // State change (CLEAR, START, STOP)
         setHudData(prev => ({
           ...prev,
@@ -48,6 +53,7 @@ function ScriptExecutionHUD({ enableAdaCompliance = false }) {
           log: [...prev.log, detail.msg || 'state change'].slice(-200)
         }));
       } else if (detail.type === 'progress') {
+        if (dismissedRef.current) return;
         // Progress update (UNTIL_STEADY steps)
         setHudData(prev => ({
           ...prev,
@@ -60,6 +66,7 @@ function ScriptExecutionHUD({ enableAdaCompliance = false }) {
           log: [...prev.log, detail.msg || `Progress ${detail.current}/${detail.total}`].slice(-200)
         }));
       } else if (detail.type === 'complete') {
+        if (dismissedRef.current) return;
         // Command completed
         setHudData(prev => ({
           ...prev,
@@ -72,9 +79,11 @@ function ScriptExecutionHUD({ enableAdaCompliance = false }) {
 
     function onScriptStart(event) {
       const detail = event.detail;
+      dismissedRef.current = false;
       setHudData(prev => ({ 
         ...prev, 
         visible: true,
+        dismissedUntilNextStart: false,
         context: 'Script started...',
         currentLine: detail.script ? detail.script.substring(0, 40) + '...' : 'Running script',
         log: detail.script ? [...prev.log, `Start: ${detail.script.substring(0, 120)}`].slice(-200) : prev.log
@@ -93,20 +102,20 @@ function ScriptExecutionHUD({ enableAdaCompliance = false }) {
       }, 500);
     }
 
-    if (typeof globalThis.globalThis !== 'undefined') {
-      globalThis.globalThis.addEventListener('gol:script:debug', onScriptDebug);
-      globalThis.globalThis.addEventListener('gol:script:start', onScriptStart);
-      globalThis.globalThis.addEventListener('gol:script:end', onScriptEnd);
+    if (typeof globalThis === 'undefined') return undefined;
 
-      return () => {
-        globalThis.globalThis.removeEventListener('gol:script:debug', onScriptDebug);
-        globalThis.globalThis.removeEventListener('gol:script:start', onScriptStart);
-        globalThis.globalThis.removeEventListener('gol:script:end', onScriptEnd);
-      };
-    }
+    globalThis.addEventListener('gol:script:debug', onScriptDebug);
+    globalThis.addEventListener('gol:script:start', onScriptStart);
+    globalThis.addEventListener('gol:script:end', onScriptEnd);
+
+    return () => {
+      globalThis.removeEventListener('gol:script:debug', onScriptDebug);
+      globalThis.removeEventListener('gol:script:start', onScriptStart);
+      globalThis.removeEventListener('gol:script:end', onScriptEnd);
+    };
   }, []);
 
-  if (!hudData.visible || enableAdaCompliance) return null;
+  if (!hudData.visible) return null;
 
   return (
     <Box
@@ -257,7 +266,3 @@ function ScriptExecutionHUD({ enableAdaCompliance = false }) {
 }
 
 export default ScriptExecutionHUD;
-
-ScriptExecutionHUD.propTypes = {
-    enableAdaCompliance: PropTypes.bool,
-};

@@ -27,6 +27,8 @@ export class StepScheduler {
     this.step = stepFn;
     this.maxFPS = Math.max(1, Math.min(Number(options.maxFPS) || 60, 120));
     this.maxGPS = Math.max(1, Math.min(Number(options.maxGPS) || 30, 60));
+    this.enableFPSCap = options.enableFPSCap !== undefined ? !!options.enableFPSCap : true;
+    this.enableGPSCap = options.enableGPSCap !== undefined ? !!options.enableGPSCap : true;
     this.useWorker = !!options.useWorker;
     this.onPerformance = typeof options.onPerformance === 'function' ? options.onPerformance : null;
     this.isRunning = false;
@@ -37,8 +39,8 @@ export class StepScheduler {
   }
 
   _calculateFrameInterval() {
-    const fps = this.maxFPS || Infinity;
-    const gps = this.maxGPS || Infinity;
+    const fps = this.enableFPSCap ? (this.maxFPS || Infinity) : Infinity;
+    const gps = this.enableGPSCap ? (this.maxGPS || Infinity) : Infinity;
     const rate = Math.min(fps, gps);
     this.frameInterval = Number.isFinite(rate) && rate > 0 ? 1000 / rate : 0;
   }
@@ -56,6 +58,18 @@ export class StepScheduler {
     this.maxGPS = Math.max(1, Math.min(Number(gps) || 30, 60));
     this._calculateFrameInterval();
     this._updateWorkerInterval();
+  }
+
+  setCaps({ maxFPS, maxGPS, enableFPSCap, enableGPSCap }) {
+    if (maxFPS !== undefined) this.maxFPS = Math.max(1, Math.min(Number(maxFPS) || 60, 120));
+    if (maxGPS !== undefined) this.maxGPS = Math.max(1, Math.min(Number(maxGPS) || 30, 60));
+    if (enableFPSCap !== undefined) this.enableFPSCap = !!enableFPSCap;
+    if (enableGPSCap !== undefined) this.enableGPSCap = !!enableGPSCap;
+    this._calculateFrameInterval();
+    this._updateWorkerInterval();
+    if (this.worker && this.isRunning) {
+      this.worker.postMessage({ command: 'start' });
+    }
   }
 
   setUseWorker(use) {

@@ -13,5 +13,4 @@ export function setupToolDaoFromMVC(mvc) {
     return;
   }
   useToolDao.getState().setToolMap({ ...mvc.controller.toolMap });
-  console.log('[setupToolDaoFromMVC] setToolMap called with:', Object.keys(mvc.controller.toolMap));
 }

@@ -56,23 +56,8 @@ function ControlsDialogs({
   optionsOpen,
   handleOk,
   handleCancel,
-  colorSchemes,
-  colorSchemeKey,
-  setColorSchemeKey,
-  popWindowSize,
-  setPopWindowSize,
-  popTolerance,
-  setPopTolerance,
-  showSpeedGauge,
-  setShowSpeedGauge,
-  maxFPS,
-  setMaxFPS,
-  maxGPS,
-  setMaxGPS,
-  randomRectPercent,
-  setRandomRectPercent,
-  enableAdaCompliance,
-  setEnableAdaCompliance,
+  photosensitivityTesterEnabled,
+  setPhotosensitivityTesterEnabled,
   helpOpen,
   closeHelp,
   aboutOpen,
@@ -89,37 +74,14 @@ function ControlsDialogs({
   onLoadGrid,
   onDeleteGrid,
   grids,
-  loadingGrids,
-  setUseHashlife,
-  setHashlifeMaxRun,
-  setHashlifeCacheSize,
-  clearHashlifeCache
+  loadingGrids
 }) {
   return (
     <>
       {optionsOpen && (
         <OptionsPanel
-          colorSchemes={colorSchemes}
-          colorSchemeKey={colorSchemeKey}
-          setColorSchemeKey={setColorSchemeKey}
-          popWindowSize={popWindowSize}
-          setPopWindowSize={setPopWindowSize}
-          popTolerance={popTolerance}
-          setPopTolerance={setPopTolerance}
-          showSpeedGauge={showSpeedGauge}
-          setShowSpeedGauge={setShowSpeedGauge}
-          maxFPS={maxFPS}
-          setMaxFPS={setMaxFPS}
-          maxGPS={maxGPS}
-          setMaxGPS={setMaxGPS}
-          setUseHashlife={setUseHashlife}
-          setHashlifeMaxRun={setHashlifeMaxRun}
-          setHashlifeCacheSize={setHashlifeCacheSize}
-          clearHashlifeCache={clearHashlifeCache}
-          randomRectPercent={randomRectPercent}
-          setRandomRectPercent={setRandomRectPercent}
-          enableAdaCompliance={enableAdaCompliance}
-          setEnableAdaCompliance={setEnableAdaCompliance}
+          photosensitivityTesterEnabled={photosensitivityTesterEnabled}
+          setPhotosensitivityTesterEnabled={setPhotosensitivityTesterEnabled}
           onOk={handleOk}
           onCancel={handleCancel}
           data-testid-ok="options-ok-button"
@@ -157,23 +119,8 @@ ControlsDialogs.propTypes = {
   optionsOpen: PropTypes.bool.isRequired,
   handleOk: PropTypes.func.isRequired,
   handleCancel: PropTypes.func.isRequired,
-  colorSchemes: PropTypes.object.isRequired,
-  colorSchemeKey: PropTypes.string.isRequired,
-  setColorSchemeKey: PropTypes.func.isRequired,
-  popWindowSize: PropTypes.number.isRequired,
-  setPopWindowSize: PropTypes.func.isRequired,
-  popTolerance: PropTypes.number.isRequired,
-  setPopTolerance: PropTypes.func.isRequired,
-  showSpeedGauge: PropTypes.bool,
-  setShowSpeedGauge: PropTypes.func,
-  maxFPS: PropTypes.number,
-  setMaxFPS: PropTypes.func,
-  maxGPS: PropTypes.number,
-  setMaxGPS: PropTypes.func,
-  randomRectPercent: PropTypes.number,
-  setRandomRectPercent: PropTypes.func,
-  enableAdaCompliance: PropTypes.bool,
-  setEnableAdaCompliance: PropTypes.func,
+  photosensitivityTesterEnabled: PropTypes.bool,
+  setPhotosensitivityTesterEnabled: PropTypes.func,
   helpOpen: PropTypes.bool.isRequired,
   closeHelp: PropTypes.func.isRequired,
   aboutOpen: PropTypes.bool.isRequired,
@@ -190,11 +137,7 @@ ControlsDialogs.propTypes = {
   onLoadGrid: PropTypes.func.isRequired,
   onDeleteGrid: PropTypes.func.isRequired,
   grids: PropTypes.array,
-  loadingGrids: PropTypes.bool,
-  setUseHashlife: PropTypes.func,
-  setHashlifeMaxRun: PropTypes.func,
-  setHashlifeCacheSize: PropTypes.func,
-  clearHashlifeCache: PropTypes.func
+  loadingGrids: PropTypes.bool
 };
 
 // Minimal, correct ControlsBar composed of smaller pieces
@@ -223,26 +166,8 @@ const ControlsBar = ({
   onLoadGrid,
   // Viewport helpers
   onCenterViewport,
-  // Options-related props (must be forwarded to OptionsPanel)
-  colorSchemes,
-  colorSchemeKey,
-  setColorSchemeKey,
-  randomRectPercent,
-  setRandomRectPercent,
-  popWindowSize,
-  setPopWindowSize,
-  popTolerance,
-  setPopTolerance,
-  // Performance props
-  showSpeedGauge,
-  setShowSpeedGauge,
-  maxFPS,
-  setMaxFPS,
-  maxGPS,
-  setMaxGPS,
-  // ADA compliance props
-  enableAdaCompliance,
-  setEnableAdaCompliance,
+  photosensitivityTesterEnabled,
+  setPhotosensitivityTesterEnabled,
 
   // Optional model to drive ToolStatus observer
   model,
@@ -393,23 +318,8 @@ const ControlsBar = ({
         optionsOpen={optionsOpen}
         handleOk={handleOk}
         handleCancel={handleCancel}
-        colorSchemes={colorSchemes}
-        colorSchemeKey={colorSchemeKey}
-        setColorSchemeKey={setColorSchemeKey}
-        popWindowSize={popWindowSize}
-        setPopWindowSize={setPopWindowSize}
-        popTolerance={popTolerance}
-        setPopTolerance={setPopTolerance}
-        showSpeedGauge={showSpeedGauge}
-        setShowSpeedGauge={setShowSpeedGauge}
-        maxFPS={maxFPS}
-        setMaxFPS={setMaxFPS}
-        maxGPS={maxGPS}
-        setMaxGPS={setMaxGPS}
-        randomRectPercent={randomRectPercent}
-        setRandomRectPercent={setRandomRectPercent}
-        enableAdaCompliance={enableAdaCompliance}
-        setEnableAdaCompliance={setEnableAdaCompliance}
+        photosensitivityTesterEnabled={photosensitivityTesterEnabled}
+        setPhotosensitivityTesterEnabled={setPhotosensitivityTesterEnabled}
         helpOpen={helpOpen}
         closeHelp={closeHelp}
         aboutOpen={aboutOpen}
@@ -427,7 +337,6 @@ const ControlsBar = ({
         onDeleteGrid={deleteGrid}
         grids={grids}
         loadingGrids={loadingGrids}
-
       />
     </div>
   );
@@ -460,21 +369,8 @@ ControlsBar.propTypes = {
   generation: PropTypes.number.isRequired,
   onLoadGrid: PropTypes.func.isRequired,
   onCenterViewport: PropTypes.func,
-  colorSchemes: PropTypes.object.isRequired,
-  colorSchemeKey: PropTypes.string.isRequired,
-  setColorSchemeKey: PropTypes.func.isRequired,
-  randomRectPercent: PropTypes.number,
-  setRandomRectPercent: PropTypes.func,
-  // Performance props
-  showSpeedGauge: PropTypes.bool,
-  setShowSpeedGauge: PropTypes.func,
-  maxFPS: PropTypes.number,
-  setMaxFPS: PropTypes.func,
-  maxGPS: PropTypes.number,
-  setMaxGPS: PropTypes.func,
-  // ADA compliance props
-  enableAdaCompliance: PropTypes.bool,
-  setEnableAdaCompliance: PropTypes.func,
+  photosensitivityTesterEnabled: PropTypes.bool,
+  setPhotosensitivityTesterEnabled: PropTypes.func,
   // Engine control callbacks
   onStartNormalMode: PropTypes.func,
   onStartHashlifeMode: PropTypes.func,
@@ -483,10 +379,6 @@ ControlsBar.propTypes = {
   useHashlife: PropTypes.bool,
   generationBatchSize: PropTypes.number,
   onSetGenerationBatchSize: PropTypes.func,
-  popWindowSize: PropTypes.number.isRequired,
-  setPopWindowSize: PropTypes.func.isRequired,
-  popTolerance: PropTypes.number.isRequired,
-  setPopTolerance: PropTypes.func.isRequired,
 
   // Optional model for tool state observation
   model: PropTypes.object,

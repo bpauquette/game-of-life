@@ -95,12 +95,17 @@ export default function PaymentDialog({ open, onClose }) {
   }, [recordPayPalDonation]);
 
   const loadPayPalSDK = useCallback((clientId) => {
+    if (!clientId) {
+      setError('PayPal is not configured.');
+      return;
+    }
     if (globalThis.paypal) {
       initializePayPalButtons();
       return;
     }
+    const encodedId = encodeURIComponent(clientId);
     const script = document.createElement('script');
-    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD`;
+    script.src = `https://www.paypal.com/sdk/js?client-id=${encodedId}&currency=USD`;
     script.async = true;
     script.onload = () => {
       initializePayPalButtons();
@@ -121,8 +126,14 @@ export default function PaymentDialog({ open, onClose }) {
           const config = await response.json();
           setPaymentConfig(config);
 
-          if (config.paypal?.enabled && config.paypal?.clientId) {
-            loadPayPalSDK(config.paypal.clientId);
+          const envClientId = process.env.REACT_APP_PAYPAL_CLIENT_ID;
+          const clientId = config.paypal?.clientId || envClientId;
+          const paypalEnabled = config.paypal?.enabled && !!clientId;
+          if (paypalEnabled) {
+            loadPayPalSDK(clientId);
+          }
+          if (config.paypal?.enabled && !clientId) {
+            setError('PayPal is enabled but not configured. Add REACT_APP_PAYPAL_CLIENT_ID to your .env.');
           }
         }
       } catch (err) {

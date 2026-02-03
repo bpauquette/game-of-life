@@ -61,6 +61,10 @@ export class GameModel {
   constructor() {
     // Game state
     this.liveCells = new Map();
+    this.liveCellsVersion = 0;
+    // Expose a version marker on the map so downstream consumers can detect
+    // mutations even when the Map reference is reused.
+    this.liveCells.version = this.liveCellsVersion;
     this.generation = 0;
     this.isRunning = false;
     this.engineMode = 'normal'; // 'normal' or 'hashlife'
@@ -74,6 +78,7 @@ export class GameModel {
     this.populationHistory = [];
     this.stateHashHistory = []; // Track actual cell states for proper oscillator detection
     this.maxPopulationHistory = 1000;
+    this.generationBatchSize = 1;
     // Timestamp tracking for FPS and Gen/s calculation
     this.lastRenderTime = performance.now();
     this.lastGenerationTime = performance.now();
@@ -106,6 +111,12 @@ export class GameModel {
       enableGPSCap: false,
       useWebWorker: false
     };
+  }
+
+  _bumpLiveCellsVersion(delta = 1) {
+    this.liveCellsVersion += Number.isFinite(delta) ? delta : 1;
+    this.liveCells.version = this.liveCellsVersion;
+    return this.liveCellsVersion;
   }
 
   addObserver(observer) {
@@ -143,9 +154,11 @@ export class GameModel {
     const wasAlive = this.liveCells.has(key);
     if (alive && !wasAlive) {
       this.liveCells.set(key, true);
+      this._bumpLiveCellsVersion();
       this.notifyObservers('cellChanged', { x, y, alive: true });
     } else if (!alive && wasAlive) {
       this.liveCells.delete(key);
+      this._bumpLiveCellsVersion();
       this.notifyObservers('cellChanged', { x, y, alive: false });
     }
   }
@@ -170,7 +183,10 @@ export class GameModel {
       removed += res.rem;
     }
     const changed = added + removed;
-    if (changed > 0) this.notifyObservers('cellsChangedBulk', { added, removed, changed });
+    if (changed > 0) {
+      this._bumpLiveCellsVersion(changed);
+      this.notifyObservers('cellsChangedBulk', { added, removed, changed });
+    }
     return { added, removed, changed };
   }
 
@@ -240,16 +256,13 @@ export class GameModel {
   }
 
   setSelectedToolModel(tool) {
-    console.log('[GameModel] setSelectedToolModel called with:', tool, 'current:', this.selectedTool);
     if (this.selectedTool !== tool) {
       this.selectedTool = tool;
       this.notifyObservers('selectedToolChanged', tool);
-      console.log('[GameModel] selectedTool updated to:', tool);
     }
   }
 
   getSelectedTool() {
-    console.log('[GameModel] getSelectedTool returns:', this.selectedTool);
     return this.selectedTool;
   }
 
@@ -367,8 +380,10 @@ export class GameModel {
 
   // Game evolution  
   async step(n = 1) {
-    console.debug('[GameModel] step() called');
-    const generations = Math.max(1, Number(n) || 1);
+    // Debug log removed to reduce console noise during normal stepping
+    const requested = Number(n);
+    const useBatch = (this.engineMode === 'hashlife') && (n === undefined || requested === 1 || Number.isNaN(requested));
+    const generations = Math.max(1, useBatch ? Number(this.generationBatchSize) || 1 : requested || 1);
     if (this.engineMode === 'hashlife') {
       await this._stepHashlife(generations);
     } else {
@@ -455,6 +470,7 @@ export class GameModel {
 
   _applyStepResult(nextLiveCells, generationDelta = 1) {
     this.liveCells = nextLiveCells;
+    this._bumpLiveCellsVersion();
     this.generation += generationDelta;
     this.trackGeneration();
 
@@ -823,6 +839,7 @@ export class GameModel {
   // Convenience methods for common UI operations
   clearModel() {
     this.liveCells.clear();
+    this._bumpLiveCellsVersion();
     this.generation = 0;
     this.populationHistory = [];
     this.stateHashHistory = [];

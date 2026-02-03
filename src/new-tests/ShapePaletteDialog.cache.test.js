@@ -55,16 +55,14 @@ describe('ShapePaletteDialog caching behavior', () => {
   });
 
   it('queries backend when typing a search and displays results', async () => {
-    // Mock backend search response for 'Alpha'
+    // Mock backend search response for initial load and for typed search
+  fetchShapeNames.mockResolvedValueOnce({ ok: true, items: [{ id: 's1', name: 'Alpha' }], total: 1 });
   fetchShapeNames.mockResolvedValueOnce({ ok: true, items: [{ id: 's1', name: 'Alpha' }], total: 1 });
 
     const fetchShapesStub = jest.fn(() => fetchShapeNames('/api', '', 50, 0));
     render(
       <ShapePaletteDialog open={true} onClose={() => {}} onSelectShape={() => {}} backendBase="/api" fetchShapes={fetchShapesStub} />
     );
-
-    // Clear any calls that may happen on mount, then type — filtering is client-side
-  fetchShapeNames.mockClear();
 
     // Type a search string into the search input
 
@@ -73,7 +71,10 @@ describe('ShapePaletteDialog caching behavior', () => {
 
   // Wait for the debounced filter to run and the result to appear
   expect(await screen.findByText(/Alpha/)).toBeInTheDocument();
-    // Ensure no additional backend call was made (names loaded once on open)
-    expect(fetchShapeNames).not.toHaveBeenCalled();
+    // Backend is queried for search terms
+    await waitFor(() => {
+      const calls = fetchShapeNames.mock.calls.map((c) => c[1]);
+      expect(calls.some((term) => (term || '').toLowerCase().includes('alp'))).toBe(true);
+    });
   });
 });

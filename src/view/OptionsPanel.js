@@ -15,52 +15,48 @@ import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import { Info as InfoIcon } from '@mui/icons-material';
 import { useTheme } from './context/ThemeContext.js';
+import { useToolDao } from '../model/dao/toolDao.js';
+import { useUiDao } from '../model/dao/uiDao.js';
+import { usePopulationDao } from '../model/dao/populationDao.js';
+import { usePerformanceDao } from '../model/dao/performanceDao.js';
 
 const OptionsPanel = ({
-  // ...existing props...
-  setConfirmOnClear,
-  colorSchemes,
-  colorSchemeKey,
-  setColorSchemeKey,
-  popWindowSize,
-  setPopWindowSize,
-  popTolerance,
-  setPopTolerance,
-  // Performance settings
-  showSpeedGauge,
-  setShowSpeedGauge,
-  maxFPS,
-  setMaxFPS,
-  maxGPS,
-  setMaxGPS,
-  enableFPSCap = false,
-  setEnableFPSCap,
-  enableGPSCap = false,
-  setEnableGPSCap,
-  useWebWorker = false,
-  setUseWebWorker,
-  // UX settings
-  confirmOnClear = true,
-  maxChartGenerations = 5000,
-  setMaxChartGenerations,
-  detectStablePopulation = true,
-  setDetectStablePopulation,
-  memoryTelemetryEnabled = false,
-  setMemoryTelemetryEnabled,
-  photosensitivityTesterEnabled = false,
-  setPhotosensitivityTesterEnabled,
-  // Random rectangle fill percent (0-100)
-  randomRectPercent = 50,
-  setRandomRectPercent,
-  // ADA compliance settings
-  enableAdaCompliance = true,
-  setEnableAdaCompliance,
-
+  // Backend toggle (still managed by parent/runtime)
   backendType = 'node',
   setBackendType,
+
+  // Photosensitivity tester toggle (prop-managed until we add a DAO)
+  photosensitivityTesterEnabled = false,
+  setPhotosensitivityTesterEnabled,
+
   onOk,
   onCancel
 }) => {
+  const randomRectPercentDao = useToolDao(state => state.randomRectPercent);
+  const setRandomRectPercentDao = useToolDao(state => state.setRandomRectPercent);
+  const colorSchemes = useUiDao(state => state.colorSchemes);
+  const colorSchemeKey = useUiDao(state => state.colorSchemeKey);
+  const setColorSchemeKey = useUiDao(state => state.setColorSchemeKey);
+  const popWindowSize = usePopulationDao(state => state.popWindowSize);
+  const setPopWindowSize = usePopulationDao(state => state.setPopWindowSize);
+  const popTolerance = usePopulationDao(state => state.popTolerance);
+  const setPopTolerance = usePopulationDao(state => state.setPopTolerance);
+  const showSpeedGauge = useUiDao(state => state.showSpeedGauge);
+  const setShowSpeedGauge = useUiDao(state => state.setShowSpeedGauge);
+  const confirmOnClear = useUiDao(state => state.confirmOnClear);
+  const setConfirmOnClear = useUiDao(state => state.setConfirmOnClear);
+  const detectStablePopulation = useUiDao(state => state.detectStablePopulation);
+  const setDetectStablePopulation = useUiDao(state => state.setDetectStablePopulation);
+  const performanceCaps = usePerformanceDao(state => state.performanceCaps);
+  const setPerformanceCaps = usePerformanceDao(state => state.setPerformanceCaps);
+  const memoryTelemetryEnabled = usePerformanceDao(state => state.memoryTelemetryEnabled);
+  const setMemoryTelemetryEnabled = usePerformanceDao(state => state.setMemoryTelemetryEnabled);
+  const enableAdaCompliance = useUiDao(state => state.enableAdaCompliance);
+  const setEnableAdaCompliance = useUiDao(state => state.setEnableAdaCompliance);
+  const useWebWorker = useUiDao(state => state.useWebWorker);
+  const setUseWebWorker = useUiDao(state => state.setUseWebWorker);
+  const maxChartGenerations = usePopulationDao(state => state.maxChartGenerations);
+  const setMaxChartGenerations = usePopulationDao(state => state.setMaxChartGenerations);
   const [localScheme, setLocalScheme] = useState(colorSchemeKey || 'bio');
   const [localBackendType, setLocalBackendType] = useState(() => {
   const stored = globalThis.localStorage.getItem('backendType');
@@ -70,10 +66,30 @@ const OptionsPanel = ({
   const [localWindow, setLocalWindow] = useState(popWindowSize);
   const [localTolerance, setLocalTolerance] = useState(popTolerance);
   const [localShowSpeedGauge, setLocalShowSpeedGauge] = useState(showSpeedGauge);
-  const [localMaxFPS, setLocalMaxFPS] = useState(maxFPS);
-  const [localMaxGPS, setLocalMaxGPS] = useState(maxGPS);
-  const [localEnableFPSCap, setLocalEnableFPSCap] = useState(enableFPSCap);
-  const [localEnableGPSCap, setLocalEnableGPSCap] = useState(enableGPSCap);
+  const [localMaxFPS, setLocalMaxFPS] = useState(() => {
+    const stored = Number.parseInt(globalThis.localStorage.getItem('maxFPS'), 10);
+    if (Number.isFinite(stored)) return Math.max(1, Math.min(120, stored));
+    const current = Number(performanceCaps?.maxFPS);
+    if (Number.isFinite(current)) return Math.max(1, Math.min(120, current));
+    return 60;
+  });
+  const [localMaxGPS, setLocalMaxGPS] = useState(() => {
+    const stored = Number.parseInt(globalThis.localStorage.getItem('maxGPS'), 10);
+    if (Number.isFinite(stored)) return Math.max(1, Math.min(60, stored));
+    const current = Number(performanceCaps?.maxGPS);
+    if (Number.isFinite(current)) return Math.max(1, Math.min(60, current));
+    return 30;
+  });
+  const [localEnableFPSCap, setLocalEnableFPSCap] = useState(() => {
+    const stored = globalThis.localStorage.getItem('enableFPSCap');
+    if (stored === 'true' || stored === 'false') return stored === 'true';
+    return !!performanceCaps?.enableFPSCap;
+  });
+  const [localEnableGPSCap, setLocalEnableGPSCap] = useState(() => {
+    const stored = globalThis.localStorage.getItem('enableGPSCap');
+    if (stored === 'true' || stored === 'false') return stored === 'true';
+    return !!performanceCaps?.enableGPSCap;
+  });
   const [localUseWebWorker, setLocalUseWebWorker] = useState(useWebWorker);
   const [localConfirmOnClear, setLocalConfirmOnClear] = useState(confirmOnClear);
   const [localDrawToggleMode, setLocalDrawToggleMode] = useState(false); // default to off
@@ -101,7 +117,7 @@ const OptionsPanel = ({
     const s = Number.parseInt(stored, 10);
     if (!Number.isNaN(s)) return Math.max(0, Math.min(100, s));
   }
-  const n = Number(randomRectPercent);
+  const n = Number(randomRectPercentDao);
   if (!Number.isFinite(n)) return 50;
   return Math.max(0, Math.min(100, Math.round(n)));
 });
@@ -142,17 +158,20 @@ const OptionsPanel = ({
   // If ADA compliance is on, force maxFPS to 2 and enable FPS cap
   const finalMaxFPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(120, Number(localMaxFPS) || 60));
   const finalMaxGPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(60, Number(localMaxGPS) || 30));
-  setMaxFPS?.(finalMaxFPS);
-  setMaxGPS?.(finalMaxGPS);
   // When ADA compliance is on, always enable FPS/GPS caps
   const finalEnableFPSCap = localEnableAdaCompliance ? true : !!localEnableFPSCap;
   const finalEnableGPSCap = localEnableAdaCompliance ? true : !!localEnableGPSCap;
-  setEnableFPSCap?.(finalEnableFPSCap);
-  setEnableGPSCap?.(finalEnableGPSCap);
+  setPerformanceCaps?.((prev) => ({
+    ...prev,
+    maxFPS: finalMaxFPS,
+    maxGPS: finalMaxGPS,
+    enableFPSCap: finalEnableFPSCap,
+    enableGPSCap: finalEnableGPSCap
+  }));
   setUseWebWorker?.(!!localUseWebWorker);
   setConfirmOnClear?.(!!localConfirmOnClear);
   setMaxChartGenerations?.(Number(localMaxChartGenerations) || 5000);
-  setRandomRectPercent?.(Math.max(0, Math.min(100, Number(localRandomRectPercent))));
+  setRandomRectPercentDao?.(Math.max(0, Math.min(100, Number(localRandomRectPercent))));
   setEnableAdaCompliance?.(!!localEnableAdaCompliance);
   setPhotosensitivityTesterEnabled?.(!!localPhotosensitivityTesterEnabled);
   // Persist all options so they are remembered across sessions
@@ -583,7 +602,7 @@ const OptionsPanel = ({
                   onChange={(e, v) => {
                     const clamped = Math.max(0, Math.min(100, Number(v)));
                     setLocalRandomRectPercent(clamped);
-                    setRandomRectPercent?.(clamped);
+                    setRandomRectPercentDao?.(clamped);
                   }}
                   aria-labelledby="random-rect-percent-input"
                   min={0}
@@ -603,7 +622,7 @@ const OptionsPanel = ({
                     if (v < 0) v = 0;
                     if (v > 100) v = 100;
                     setLocalRandomRectPercent(v);
-                    setRandomRectPercent?.(v);
+                      setRandomRectPercentDao?.(v);
                   }}
                   style={{ width: 72 }}
                 />
@@ -622,42 +641,10 @@ const OptionsPanel = ({
 };
 
 OptionsPanel.propTypes = {
-    backendType: PropTypes.string,
-    setBackendType: PropTypes.func,
-  colorSchemes: PropTypes.object.isRequired,
-  colorSchemeKey: PropTypes.string.isRequired,
-  setColorSchemeKey: PropTypes.func.isRequired,
-  popWindowSize: PropTypes.number.isRequired,
-  setPopWindowSize: PropTypes.func.isRequired,
-  popTolerance: PropTypes.number.isRequired,
-  setPopTolerance: PropTypes.func.isRequired,
-  showSpeedGauge: PropTypes.bool.isRequired,
-  setShowSpeedGauge: PropTypes.func.isRequired,
-  maxFPS: PropTypes.number.isRequired,
-  setMaxFPS: PropTypes.func.isRequired,
-  maxGPS: PropTypes.number.isRequired,
-  setMaxGPS: PropTypes.func.isRequired,
-  useWebWorker: PropTypes.bool,
-  setUseWebWorker: PropTypes.func,
-  confirmOnClear: PropTypes.bool,
-  detectStablePopulation: PropTypes.bool,
-  setDetectStablePopulation: PropTypes.func,
-  memoryTelemetryEnabled: PropTypes.bool,
-  setMemoryTelemetryEnabled: PropTypes.func,
+  backendType: PropTypes.string,
+  setBackendType: PropTypes.func,
   photosensitivityTesterEnabled: PropTypes.bool,
   setPhotosensitivityTesterEnabled: PropTypes.func,
-  randomRectPercent: PropTypes.number,
-  setRandomRectPercent: PropTypes.func,
-  enableAdaCompliance: PropTypes.bool,
-  setEnableAdaCompliance: PropTypes.func,
-      setConfirmOnClear: PropTypes.func,
-      enableFPSCap: PropTypes.bool,
-      setEnableFPSCap: PropTypes.func,
-      enableGPSCap: PropTypes.bool,
-      setEnableGPSCap: PropTypes.func,
-      maxChartGenerations: PropTypes.number,
-      setMaxChartGenerations: PropTypes.func,
-
   onOk: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired
 };

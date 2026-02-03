@@ -35,6 +35,7 @@ import PropTypes from 'prop-types';
 import { useAuth } from '../auth/AuthProvider.js';
 import { getBackendApiBase } from '../utils/backendApi.js';
 import languageDefinition from './languageDefinition.js';
+import { parseBlocks, execBlock } from './scriptingInterpreter.js';
 
 const API_BASE = getBackendApiBase();
 
@@ -80,6 +81,8 @@ function SimpleScriptPanel({
   const cancelRequested = React.useRef(false);
   const [debugLog, setDebugLog] = useState([]);
   const [executionProgress, setExecutionProgress] = useState({ current: 0, total: 0 });
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [scriptRunning, setScriptRunning] = useState(false);
   // Script save/load state
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [scriptName, setScriptName] = useState('');
@@ -89,10 +92,57 @@ function SimpleScriptPanel({
   const [activeTab, setActiveTab] = useState(0); // Added for tab selection
   const { token } = useAuth();
   const isAuthenticated = !!token;
-    // Stub for handleRun to fix undefined error
-    const handleRun = () => {
-      setMessage({ type: 'info', text: 'Run script feature not yet implemented.' });
+
+  // Simple Conway step used for script execution (runs in worker-free mode)
+  const lifeStep = useCallback((liveCells) => {
+    const neighborCounts = new Map();
+    const current = new Set();
+
+    const markNeighbor = (x, y) => {
+      const key = `${x},${y}`;
+      neighborCounts.set(key, (neighborCounts.get(key) || 0) + 1);
     };
+
+    liveCells.forEach((cell) => {
+      const x = Number(cell.x ?? (Array.isArray(cell) ? cell[0] : 0));
+      const y = Number(cell.y ?? (Array.isArray(cell) ? cell[1] : 0));
+      current.add(`${x},${y}`);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          if (dx === 0 && dy === 0) continue;
+          markNeighbor(x + dx, y + dy);
+        }
+      }
+    });
+
+    const next = new Set();
+    for (const [key, count] of neighborCounts.entries()) {
+      if (count === 3 || (count === 2 && current.has(key))) {
+        next.add(key);
+      }
+    }
+    return next;
+  }, []);
+
+  const dispatchEventSafe = useCallback((type, detail = {}) => {
+    try {
+      if (typeof globalThis?.dispatchEvent === 'function') {
+        globalThis.dispatchEvent(new CustomEvent(type, { detail }));
+      }
+    } catch (e) {
+      console.error('dispatchEvent failed', e);
+    }
+  }, []);
+
+  // Stop running and clear the grid whenever the panel opens
+  useEffect(() => {
+    if (!open) return;
+    cancelRequested.current = false;
+    if (typeof setIsRunning === 'function') {
+      setIsRunning(false);
+    }
+    dispatchEventSafe('gol:script:clearGrid');
+  }, [dispatchEventSafe, open, setIsRunning]);
   
   // Load cloud scripts when panel opens
   const loadCloudScripts = useCallback(async () => {
@@ -155,15 +205,13 @@ function SimpleScriptPanel({
 
 
   const handleCancel = useCallback(() => {
-    if (isRunning) {
-      cancelRequested.current = true;
-      // Stop the animation immediately
-      if (typeof setIsRunning === 'function') {
-        setIsRunning(false);
-      }
-      setMessage({ type: 'info', text: 'Cancel requested. Script will stop after the current operation.' });
+    cancelRequested.current = true;
+    dispatchEventSafe('gol:script:stop', { reason: 'user' });
+    if (typeof setIsRunning === 'function') {
+      setIsRunning(false);
     }
-  }, [setIsRunning, isRunning]);
+    setMessage({ type: 'info', text: 'Cancel requested. Script will stop after the current operation.' });
+  }, [dispatchEventSafe, setIsRunning]);
 
   const handleSaveScript = useCallback(async () => {
     if (!isAuthenticated) {
@@ -238,6 +286,114 @@ function SimpleScriptPanel({
     }
   }, [onClose]);
 
+  const persistDraftLocally = useCallback((content) => {
+    try {
+      globalThis?.localStorage?.setItem('gol_script_autosave', content);
+    } catch (e) {
+      console.error('Failed to persist script draft to localStorage', e);
+    }
+  }, []);
+
+  const autoSaveIfNeeded = useCallback(async (content) => {
+    if (isAuthenticated) {
+      // Auto-save to cloud with fallback name
+      const name = scriptName?.trim() || 'Autosave Script';
+      try {
+        const url = API_BASE.endsWith('/') ? API_BASE + 'v1/scripts' : API_BASE + '/v1/scripts';
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name,
+            content,
+            public: isPublic,
+            meta: { autosave: true }
+          })
+        });
+        if (!res.ok) {
+          const error = await res.json().catch(() => ({}));
+          console.error('Autosave failed', error);
+        }
+      } catch (error) {
+        console.error('Autosave error', error);
+      }
+    } else {
+      persistDraftLocally(content);
+    }
+  }, [isAuthenticated, isPublic, persistDraftLocally, scriptName, token]);
+
+  const handleRun = useCallback(async () => {
+    cancelRequested.current = false;
+    setMessage(null);
+    setExecutionProgress({ current: 0, total: 0 });
+    setScriptRunning(true);
+
+    const lines = script.split('\n').map(l => l.trim()).filter(Boolean);
+    let blocks;
+    try {
+      blocks = parseBlocks(lines);
+    } catch (error) {
+      setScriptRunning(false);
+      setMessage({ type: 'error', text: error.message || 'Failed to parse script' });
+      return;
+    }
+
+    dispatchEventSafe('gol:script:clearGrid');
+    dispatchEventSafe('gol:script:start', { script });
+    if (typeof onClose === 'function') {
+      onClose();
+    }
+    setExecutionProgress({ current: 0, total: blocks.length });
+
+    const state = {
+      cells: new Set(),
+      vars: {},
+      outputLabels: [],
+      x: 0,
+      y: 0,
+      penDown: false
+    };
+
+    const onStep = (cellsSet) => {
+      const cellsArr = Array.from(cellsSet).map((key) => {
+        const [x, y] = String(key).split(',').map(Number);
+        return { x, y };
+      });
+      dispatchEventSafe('gol:script:step', { cells: cellsArr });
+    };
+
+    const ticks = (liveCells) => lifeStep(liveCells || []);
+
+    try {
+      await execBlock(
+        blocks,
+        state,
+        onStep,
+        null,
+        null,
+        ticks,
+        null,
+        null,
+        () => cancelRequested.current
+      );
+
+      // Final world push and progress completion
+      onStep(state.cells);
+      setExecutionProgress({ current: blocks.length, total: blocks.length });
+      dispatchEventSafe('gol:script:end', { status: 'ok' });
+      setMessage({ type: 'success', text: 'Script finished.' });
+      await autoSaveIfNeeded(script);
+    } catch (error) {
+      dispatchEventSafe('gol:script:end', { status: 'error', error: String(error) });
+      setMessage({ type: 'error', text: error.message || 'Script execution failed' });
+    } finally {
+      setScriptRunning(false);
+    }
+  }, [autoSaveIfNeeded, dispatchEventSafe, lifeStep, onClose, script]);
+
   return (
     
       <Dialog 
@@ -261,7 +417,7 @@ function SimpleScriptPanel({
       >
         <DialogTitle id="script-panel-title">
           Enhanced Script Playground
-          {isRunning && (
+          {scriptRunning && (
             <Chip 
               icon={<StopIcon />}
               label="Running..." 
@@ -286,7 +442,7 @@ function SimpleScriptPanel({
               <Tab label="Language Reference" id="script-tab-3" aria-controls="script-tabpanel-3" />
             </Tabs>
             {/* Execution Progress */}
-            {isRunning && executionProgress.total > 0 && (
+            {scriptRunning && executionProgress.total > 0 && (
               <Box sx={{ width: '100%' }}>
                 <Typography variant="body2" color="text.secondary">
                   Executing command {executionProgress.current} of {executionProgress.total}
@@ -308,17 +464,20 @@ function SimpleScriptPanel({
             <TabPanel value={activeTab} index={0}>
               <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <FormControl size="small" sx={{ minWidth: 220 }}>
-                  <InputLabel id="script-template-label">Script Template</InputLabel>
+                  <InputLabel id="script-template-label" shrink>Script Template</InputLabel>
                   <Select
                     labelId="script-template-label"
                     id="script-template-select"
-                    value=""
+                    value={selectedTemplate}
                     label="Script Template"
                     onChange={e => {
-                      const template = SCRIPT_TEMPLATES[e.target.value];
+                      const templateKey = e.target.value;
+                      setSelectedTemplate(templateKey);
+                      const template = SCRIPT_TEMPLATES[templateKey];
                       if (template) setScript(template);
                     }}
                     displayEmpty
+                    renderValue={(value) => (value && SCRIPT_TEMPLATES[value] ? value : 'Select a template...')}
                   >
                     <MenuItem value="" disabled>Select a template...</MenuItem>
                     {Object.keys(SCRIPT_TEMPLATES).map(key => (
@@ -327,8 +486,7 @@ function SimpleScriptPanel({
                   </Select>
                 </FormControl>
               </Box>
-              {/* Script editor UI would go here */}
-              {/* ...existing code for script editing... */}
+              {/* Script editor UI goes here */}
             </TabPanel>
             <TabPanel value={activeTab} index={1}>
               <Box sx={{ height: 300, overflow: 'auto' }}>
@@ -417,7 +575,7 @@ function SimpleScriptPanel({
             onClick={handleCancel}
             color="error"
             variant="outlined"
-            disabled={!isRunning}
+            disabled={!scriptRunning}
             startIcon={<StopIcon />}
           >
             Cancel Script
@@ -434,10 +592,10 @@ function SimpleScriptPanel({
           <Button 
             variant="contained" 
             onClick={handleRun}
-            disabled={isRunning}
-            startIcon={isRunning ? <StopIcon /> : <PlayArrowIcon />}
+            disabled={scriptRunning}
+            startIcon={scriptRunning ? <StopIcon /> : <PlayArrowIcon />}
           >
-            {isRunning ? 'Running...' : 'Run Script'}
+            {scriptRunning ? 'Running...' : 'Run Script'}
           </Button>
         </DialogActions>
       

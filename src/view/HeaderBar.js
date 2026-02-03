@@ -8,13 +8,13 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import PropTypes from 'prop-types';
-// import { useToolDao } from '../model/dao/toolDao.js';
 import { useUiDao } from '../model/dao/uiDao.js';
 import { useGameDao } from '../model/dao/gameDao.js';
 import { usePopulationDao } from '../model/dao/populationDao.js';
+import { useToolDao } from '../model/dao/toolDao.js';
 import { useAuth } from '../auth/AuthProvider.js';
-import Login from '../auth/Login.js';
-import Register from '../auth/Register.js';
+import Login from '../auth/Login.jsx';
+import Register from '../auth/Register.jsx';
 import AboutDialog from './AboutDialog.js';
 import AuxActions from './AuxActions.js';
 import RunControlGroup from './components/RunControlGroup.js';
@@ -57,13 +57,13 @@ export default function HeaderBar({
   setIsRunning: setIsRunningProp
 }) {
 
-  console.log('[HeaderBar] mounted');
-
-
   useGlobalShortcuts();
   // const { drawWithOverlay } = useGameContext();
 
   // Zustand selectors (including all UI/dialog state)
+
+  // Auth and user info (must come before callbacks that depend on logout)
+  const { token, email, logout } = useAuth();
 
   // UI state from uiDao (helpOpen and setHelpOpen must come first for hook order)
   const helpOpen = useUiDao(state => state.helpOpen);
@@ -72,18 +72,11 @@ export default function HeaderBar({
   // Memoized handler for HelpDialog onClose
   const handleHelpClose = useCallback(() => setHelpOpen(false), [setHelpOpen]);
 
-  // Fix for missing setShowChart, handleUserIconClick, handleLogout
-  const setShowChart = () => {};
-  const handleUserIconClick = () => {};
-  const handleLogout = () => {};
+  // UI actions (wired via DAO)
+  const setShowChart = useUiDao(state => state.setShowChart);
 
   // UI state from uiDao
   const colorScheme = useUiDao(state => state.colorScheme);
-  const colorSchemes = useUiDao(state => state.colorSchemes);
-  const colorSchemeKey = useUiDao(state => state.colorSchemeKey);
-  const setColorSchemeKey = useUiDao(state => state.setColorSchemeKey);
-  const showSpeedGauge = useUiDao(state => state.showSpeedGauge);
-  const setShowSpeedGauge = useUiDao(state => state.setShowSpeedGauge);
   const scriptOpen = useUiDao(state => state.scriptOpen);
   const setScriptOpen = useUiDao(state => state.setScriptOpen);
   const optionsOpen = useUiDao(state => state.optionsOpen);
@@ -101,11 +94,19 @@ export default function HeaderBar({
   const showRegister = useUiDao(state => state.showRegister);
   const setShowRegister = useUiDao(state => state.setShowRegister);
   const confirmOnClear = useUiDao(state => state.confirmOnClear);
-  const setConfirmOnClear = useUiDao(state => state.setConfirmOnClear);
-  const detectStablePopulation = useUiDao(state => state.detectStablePopulation);
-  const setDetectStablePopulation = useUiDao(state => state.setDetectStablePopulation);
-  const memoryTelemetryEnabled = useUiDao(state => state.memoryTelemetryEnabled);
-  const setMemoryTelemetryEnabled = useUiDao(state => state.setMemoryTelemetryEnabled);
+
+  const handleUserIconClick = useCallback(() => {
+    try { setShowRegister(false); } catch (e) { console.error('[HeaderBar] failed to reset register flag', e); }
+    setUserDialogOpen(true);
+  }, [setShowRegister, setUserDialogOpen]);
+  const handleLogout = useCallback(() => {
+    try {
+      logout?.();
+      setUserDialogOpen(false);
+    } catch (e) {
+      console.error('[HeaderBar] logout failed', e);
+    }
+  }, [logout, setUserDialogOpen]);
 
   // Tool state from toolDao
   // Tool selection is now handled via context in ToolGroup
@@ -127,23 +128,36 @@ export default function HeaderBar({
 
   // Population state from populationDao
   const generation = usePopulationDao(state => state.generation);
-  const popWindowSize = usePopulationDao(state => state.popWindowSize);
-  const setPopWindowSize = usePopulationDao(state => state.setPopWindowSize);
-  const popTolerance = usePopulationDao(state => state.popTolerance);
-  const setPopTolerance = usePopulationDao(state => state.setPopTolerance);
-  const maxFPS = usePopulationDao(state => state.maxFPS);
-  const setMaxFPS = usePopulationDao(state => state.setMaxFPS);
-  const maxGPS = usePopulationDao(state => state.maxGPS);
-  const setMaxGPS = usePopulationDao(state => state.setMaxGPS);
-
-  // Auth and user info
-  const { token, email } = useAuth();
 
   // Placeholder refs and handlers for missing logic
   // snapshotsRef is now passed as a prop from GameUILayout/GameOfLifeApp
   const getLiveCells = useCallback(() => new Set(), []); // TODO: Replace with real logic
   // step, draw, clear, snapshotsRef, setSteadyInfo are now passed from props (from GameOfLifeApp)
-  const onRotateShape = useCallback(() => {}, []); // TODO: Replace with real logic
+  const onRotateShape = useCallback((rotatedShape) => {
+    try {
+      // Prefer toolDao to keep selected shape in sync
+      useToolDao.getState().setSelectedShape?.(rotatedShape);
+    } catch (e) {
+      console.error('[HeaderBar] failed to set rotated shape on toolDao', e);
+    }
+    try {
+      // Also publish to uiDao recentShapes if available
+      const setRecentShapes = useUiDao.getState().setRecentShapes;
+      if (typeof setRecentShapes === 'function') {
+        setRecentShapes((prev = []) => {
+          const next = [...prev];
+          // replace first occurrence of matching id/name
+          const idx = next.findIndex(s => (s?.id && rotatedShape?.id && s.id === rotatedShape.id) || (s?.name && rotatedShape?.name && s.name === rotatedShape.name));
+          if (idx >= 0) {
+            next[idx] = rotatedShape;
+          }
+          return next;
+        });
+      }
+    } catch (e) {
+      console.error('[HeaderBar] failed to update recent shapes with rotated shape', e);
+    }
+  }, []);
   const onSwitchToShapesTool = useCallback(() => {}, []); // TODO: Replace with real logic
   const onLoadGrid = useCallback(() => {}, []); // TODO: Replace with real logic
 
@@ -244,6 +258,7 @@ export default function HeaderBar({
               onOpenHelp={() => setHelpOpen(true)}
               onOpenAbout={() => setAboutOpen(true)}
               onOpenOptions={openOptions}
+              onOpenScript={() => setScriptOpen(true)}
               onOpenDonate={() => setDonateOpen(true)}
               onOpenPhotoTest={() => setPhotoTestOpen(true)}
               onOpenUser={handleUserIconClick}
@@ -356,26 +371,6 @@ export default function HeaderBar({
 
       {optionsOpen && (
         <OptionsPanel
-          colorSchemes={colorSchemes}
-          colorSchemeKey={colorSchemeKey}
-          setColorSchemeKey={setColorSchemeKey}
-          popWindowSize={popWindowSize}
-          setPopWindowSize={setPopWindowSize}
-          popTolerance={popTolerance}
-          setPopTolerance={setPopTolerance}
-          showSpeedGauge={showSpeedGauge}
-          setShowSpeedGauge={setShowSpeedGauge}
-          maxFPS={maxFPS}
-          setMaxFPS={setMaxFPS}
-          maxGPS={maxGPS}
-          setMaxGPS={setMaxGPS}
-          confirmOnClear={confirmOnClear}
-          setConfirmOnClear={setConfirmOnClear}
-          detectStablePopulation={detectStablePopulation}
-          setDetectStablePopulation={setDetectStablePopulation}
-          memoryTelemetryEnabled={memoryTelemetryEnabled}
-          setMemoryTelemetryEnabled={setMemoryTelemetryEnabled}
-
           onOk={handleOk}
           onCancel={handleCancel}
           data-testid-ok="options-ok-button"

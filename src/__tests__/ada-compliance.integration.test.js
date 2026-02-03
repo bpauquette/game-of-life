@@ -134,14 +134,14 @@ describe('ADA Compliance Integration Tests', () => {
       expect(gpsCapsCheckDisabled).toBe(true);
     });
 
-    test('ScriptExecutionHUD hides when ADA enabled', () => {
+    test('ScriptExecutionHUD still renders when ADA enabled', () => {
       const enableAdaCompliance = true;
       const hudVisible = true;
-      
-      // In ScriptExecutionHUD.js: if (!hudData.visible || enableAdaCompliance) return null;
-      const shouldRender = !(hudVisible && enableAdaCompliance);
-      
-      expect(shouldRender).toBe(false);
+
+      // HUD should render based solely on visibility, ignoring ADA mode
+      const shouldRender = hudVisible;
+
+      expect(shouldRender).toBe(true);
     });
   });
 

@@ -179,45 +179,5 @@ function parseComparison(expr, state) {
   return val !== 0 && val !== '' && val !== false;
 }
 
-// Split expression by operator, respecting nesting
- 
-function splitByOperator(expr, operator, depth) {
-  const result = [];
-  let current = '';
-  let i = 0;
-  const opRegex = new RegExp(`\\s+${operator}\\s+`, 'i');
-  
-  while (i < expr.length) {
-    const remaining = expr.substring(i);
-    const match = remaining.match(opRegex);
-    
-    if (!match) {
-      current += remaining;
-      break;
-    }
-    
-    // Check if this operator is at depth 0 (not inside NOT)
-    const beforeOp = remaining.substring(0, match.index);
-    let beforeNotCount = (beforeOp.match(/\bNOT\b/gi) || []).length;
-    
-    if (beforeNotCount % 2 === 0) {
-      // This operator is at our depth level
-      result.push(current + beforeOp);
-      current = '';
-      i += match.index + match[0].length;
-    } else {
-      // This operator is inside a NOT, skip it
-      current += remaining.substring(0, match.index + match[0].length);
-      i += match.index + match[0].length;
-    }
-  }
-  
-  if (current) {
-    result.push(current);
-  }
-  
-  return result.length > 0 ? result : [expr];
-}
-
 // Export all helpers for use in ScriptPanel
 export { parseValue, evalExpr, evalCond, evalCondCompound };

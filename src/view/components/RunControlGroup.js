@@ -170,26 +170,6 @@ export default function RunControlGroup({
           />
         </Tooltip>
         
-        {/* Engine mode indicator */}
-        {isRunning && (
-          <Tooltip title="Engine: normal">
-            <Box sx={{ 
-              px: 0.5, 
-              py: 0.25, 
-              borderRadius: 0.5, 
-              backgroundColor: 
-                'rgba(255, 193, 7, 0.3)',
-              fontSize: '0.6rem',
-              fontWeight: 'bold',
-              color: 'white',
-              textTransform: 'uppercase',
-              letterSpacing: 0.5
-            }}>
-              NORM
-            </Box>
-          </Tooltip>
-        )}
-
         <Tooltip title="Clear grid">
           <IconButton
             size="small"
