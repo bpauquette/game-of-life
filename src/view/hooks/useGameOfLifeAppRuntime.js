@@ -150,6 +150,16 @@ export function useGameOfLifeAppRuntime() {
   }, [setUseWebWorker]);
  
   const setRunningState = useCallback((running) => {
+    // Enforce ADA compliance: never allow starting if ADA mode is enabled
+    if (running && enableAdaCompliance) {
+      console.warn('[ADA] Attempt to start simulation blocked by ADA compliance mode.');
+      setIsRunning(false);
+      isRunningRef.current = false;
+      if (gameRef.current?.model?.setRunningModel) {
+        try { gameRef.current.model.setRunningModel(false); } catch (e) { console.error(e); }
+      }
+      return;
+    }
     const modelIsRunning = !!running;
     setIsRunning(modelIsRunning);
     isRunningRef.current = modelIsRunning;
@@ -168,14 +178,20 @@ export function useGameOfLifeAppRuntime() {
     if (gameRef.current?.model?.setRunningModel) {
       try { gameRef.current.model.setRunningModel(modelIsRunning); } catch (e) { console.error(e); }
     }
-  }, [setIsRunning, gameRef]);
+  }, [setIsRunning, gameRef, enableAdaCompliance]);
 
   const setIsRunningCombined = useCallback((running, mode = engineMode) => {
+    // Enforce ADA compliance: never allow starting if ADA mode is enabled
+    if (running && enableAdaCompliance) {
+      console.warn('[ADA] Attempt to start simulation blocked by ADA compliance mode.');
+      setRunningState(false);
+      return;
+    }
     if (running && mode !== engineMode) {
       setEngineMode(mode);
     }
     setRunningState(running);
-  }, [setRunningState, engineMode, setEngineMode]);
+  }, [setRunningState, engineMode, setEngineMode, enableAdaCompliance]);
 
   // Pause simulation whenever capture dialog opens
   useEffect(() => {

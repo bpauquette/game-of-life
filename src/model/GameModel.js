@@ -1,4 +1,5 @@
 import hashlifeAdapter from './hashlife/adapter.js';
+import { getEnableAdaCompliance } from './dao/uiDao.js';
 // GameModel.js - Model layer for Conway's Game of Life
 // Handles all game state, rules, and data operations
 
@@ -212,10 +213,10 @@ export class GameModel {
   }
 
   setRunningModel(isRunning) {
-    logger.debug('[GameModel] setRunningModel called:', isRunning);
-    // include short stack to help identify caller
-    const stack = new Error().stack;
-    if (stack) console.debug('[GameModel] setRunningModel stack:', stack.split('\n').slice(1, 4));
+    const ada = getEnableAdaCompliance();
+    if (isRunning === true && ada) {
+      return; // no-op
+    }
     this.isRunning = isRunning;
     this.notifyObservers('runningStateChanged', { isRunning });
   }

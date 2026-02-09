@@ -1,7 +1,27 @@
+// Direct global getter for ADA compliance (for model-layer enforcement)
 // UI DAO: UI controls/dialogs
 
 import { create } from 'zustand';
 import { colorSchemes } from '../colorSchemes.js';
+export function getEnableAdaCompliance() {
+  let value;
+  try {
+    // Prefer global in-memory flag if present
+    if (typeof globalThis !== 'undefined' && typeof globalThis.ADA_ENABLED !== 'undefined') {
+      value = globalThis.ADA_ENABLED;
+    } else if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
+      const stored = globalThis.localStorage.getItem('enableAdaCompliance');
+      if (stored === 'false') value = false;
+      else if (stored === 'true') value = true;
+    }
+  } catch (e) {
+    console.error('[ADA] Error in getEnableAdaCompliance:', e);
+  }
+  // Only enforce at the model layer when explicitly enabled.
+  // Runtime/UI layers still enforce ADA defaults for normal app usage.
+  if (typeof value === 'undefined') value = false;
+  return value;
+}
 
 // Helper to get ADA compliance default from localStorage (default true)
 function getInitialAdaCompliance() {
@@ -73,6 +93,8 @@ export const useUiDao = create((set) => ({
   // Viewport / rendering
   cellSize: 8,
   setCellSize: (cellSize) => set({ cellSize }),
+  cursorCell: null,
+  setCursorCell: (cursorCell) => set({ cursorCell }),
   scheduleCursorUpdate: () => {},
   setScheduleCursorUpdate: (fn) => set({ scheduleCursorUpdate: typeof fn === 'function' ? fn : () => {} }),
 
