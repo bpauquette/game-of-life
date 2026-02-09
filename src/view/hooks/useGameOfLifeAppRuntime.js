@@ -150,14 +150,12 @@ export function useGameOfLifeAppRuntime() {
   }, [setUseWebWorker]);
  
   const setRunningState = useCallback((running) => {
-    // Enforce ADA compliance: never allow starting if ADA mode is enabled
     if (running && enableAdaCompliance) {
-      console.warn('[ADA] Attempt to start simulation blocked by ADA compliance mode.');
+      // Angular parity: ADA mode blocks autoplay/start and keeps simulation paused.
       setIsRunning(false);
       isRunningRef.current = false;
-      if (gameRef.current?.model?.setRunningModel) {
-        try { gameRef.current.model.setRunningModel(false); } catch (e) { console.error(e); }
-      }
+      try { gameRef.current?.controller?.handleRunningStateChange?.(false); } catch (e) { console.error(e); }
+      try { gameRef.current?.model?.setRunningModel?.(false); } catch (e) { console.error(e); }
       return;
     }
     const modelIsRunning = !!running;
@@ -181,17 +179,11 @@ export function useGameOfLifeAppRuntime() {
   }, [setIsRunning, gameRef, enableAdaCompliance]);
 
   const setIsRunningCombined = useCallback((running, mode = engineMode) => {
-    // Enforce ADA compliance: never allow starting if ADA mode is enabled
-    if (running && enableAdaCompliance) {
-      console.warn('[ADA] Attempt to start simulation blocked by ADA compliance mode.');
-      setRunningState(false);
-      return;
-    }
     if (running && mode !== engineMode) {
       setEngineMode(mode);
     }
     setRunningState(running);
-  }, [setRunningState, engineMode, setEngineMode, enableAdaCompliance]);
+  }, [setRunningState, engineMode, setEngineMode]);
 
   // Pause simulation whenever capture dialog opens
   useEffect(() => {
@@ -437,6 +429,9 @@ export function useGameOfLifeAppRuntime() {
   const setEnableAdaComplianceWithUpdate = useCallback((value) => {
     const newValue = Boolean(value);
     setEnableAdaCompliance(newValue);
+    if (newValue) {
+      setRunningState(false);
+    }
     // Update colorSchemeKey based on ADA mode
     const newColorScheme = newValue ? 'adaSafe' : 'bio';
     setColorSchemeKey(newColorScheme);
@@ -518,7 +513,7 @@ export function useGameOfLifeAppRuntime() {
         });
       }
     } catch (e) { console.error(e); }
-  }, [setColorSchemeKey, setPerformanceCaps, setEnableAdaCompliance]);
+  }, [setColorSchemeKey, setPerformanceCaps, setEnableAdaCompliance, setRunningState]);
 
   // Seed DAO color schemes once so OptionsPanel has entries to render.
   useEffect(() => {
@@ -1173,13 +1168,17 @@ export function useGameOfLifeAppRuntime() {
     rotateAndApply(gameRef, shapeManager, rotatedShape, index);
     if (typeof drawWithOverlay === 'function') drawWithOverlay();
   }, [drawWithOverlay, gameRef, shapeManager]);
-  const step = useCallback(async () => { 
+  const step = useCallback(async () => {
     try {
-      await gameRef.current?.step?.();
+      if (enableAdaCompliance) {
+        await gameRef.current?.step?.(1, { forceExactGenerations: true });
+      } else {
+        await gameRef.current?.step?.();
+      }
     } catch (error) {
       console.error('Step failed:', error);
     }
-  }, []);
+  }, [enableAdaCompliance, gameRef]);
   // Full game state initializer (used for Empty Grid)
   const initialize = useCallback(() => {
     // Reset all Zustand store state

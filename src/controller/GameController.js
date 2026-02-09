@@ -769,8 +769,8 @@ export class GameController {
   }
 
   // Game control methods
-  async step() {
-    await this.model.step();
+  async step(generations, options) {
+    await this.model.step(generations, options);
   }
 
   clear() {

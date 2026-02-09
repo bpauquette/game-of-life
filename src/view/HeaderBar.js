@@ -28,6 +28,7 @@ import OptionsPanel from './OptionsPanel.js';
 import PaymentDialog from './PaymentDialog.js';
 import PhotosensitivityTestDialog from './PhotosensitivityTestDialog.js';
 import RecentShapesStrip from './RecentShapesStrip.js';
+import { getBackendApiBase } from '../utils/backendApi.js';
 // import { useGameContext } from '../context/GameContext.js';
 import SaveGridDialog from './SaveGridDialog.js';
 import ScriptPanel from './ScriptPanel.js';
@@ -94,6 +95,7 @@ export default function HeaderBar({
   const showRegister = useUiDao(state => state.showRegister);
   const setShowRegister = useUiDao(state => state.setShowRegister);
   const confirmOnClear = useUiDao(state => state.confirmOnClear);
+  const enableAdaCompliance = useUiDao(state => state.enableAdaCompliance);
 
   const handleUserIconClick = useCallback(() => {
     try { setShowRegister(false); } catch (e) { console.error('[HeaderBar] failed to reset register flag', e); }
@@ -198,6 +200,27 @@ export default function HeaderBar({
     if (isRunning) setIsRunning(false);
     setOptionsOpen(true);
   };
+  const getDonateUrl = useCallback(() => {
+    const apiBase = getBackendApiBase();
+    if (apiBase.endsWith('/api')) return `${apiBase.slice(0, -4)}/donate`;
+    return `${apiBase.replace(/\/+$/, '')}/donate`;
+  }, []);
+  const openDonate = useCallback(() => {
+    const donateUrl = getDonateUrl();
+    let popup = null;
+    try {
+      popup = globalThis.open?.(donateUrl, '_blank', 'noopener,noreferrer') ?? null;
+    } catch (e) {
+      console.error('[HeaderBar] failed to open donate popup', e);
+    }
+    if (!popup) {
+      try {
+        globalThis.location?.assign?.(donateUrl);
+      } catch (e) {
+        console.error('[HeaderBar] failed to navigate to donate URL', e);
+      }
+    }
+  }, [getDonateUrl]);
   const handleOk = () => { setOptionsOpen(false); if (wasRunningBeforeOptions) setIsRunning(true); };
   const handleCancel = () => { setOptionsOpen(false); if (wasRunningBeforeOptions) setIsRunning(true); };
 
@@ -240,6 +263,7 @@ export default function HeaderBar({
               snapshotsRef={snapshotsRef}
               setSteadyInfo={setSteadyInfo}
               confirmOnClear={confirmOnClear}
+              enableAdaCompliance={enableAdaCompliance}
               engineMode={engineMode}
               isHashlifeMode={isHashlifeMode}
               onStartNormalMode={onStartNormalMode}
@@ -259,7 +283,7 @@ export default function HeaderBar({
               onOpenAbout={() => setAboutOpen(true)}
               onOpenOptions={openOptions}
               onOpenScript={() => setScriptOpen(true)}
-              onOpenDonate={() => setDonateOpen(true)}
+              onOpenDonate={openDonate}
               onOpenPhotoTest={() => setPhotoTestOpen(true)}
               onOpenUser={handleUserIconClick}
               loggedIn={!!token}

@@ -1,5 +1,4 @@
 import hashlifeAdapter from './hashlife/adapter.js';
-import { getEnableAdaCompliance } from './dao/uiDao.js';
 // GameModel.js - Model layer for Conway's Game of Life
 // Handles all game state, rules, and data operations
 
@@ -213,10 +212,6 @@ export class GameModel {
   }
 
   setRunningModel(isRunning) {
-    const ada = getEnableAdaCompliance();
-    if (isRunning === true && ada) {
-      return; // no-op
-    }
     this.isRunning = isRunning;
     this.notifyObservers('runningStateChanged', { isRunning });
   }
@@ -380,10 +375,13 @@ export class GameModel {
   }
 
   // Game evolution  
-  async step(n = 1) {
+  async step(n = 1, options = {}) {
     // Debug log removed to reduce console noise during normal stepping
     const requested = Number(n);
-    const useBatch = (this.engineMode === 'hashlife') && (n === undefined || requested === 1 || Number.isNaN(requested));
+    const forceExactGenerations = !!options?.forceExactGenerations;
+    const useBatch = !forceExactGenerations
+      && (this.engineMode === 'hashlife')
+      && (n === undefined || requested === 1 || Number.isNaN(requested));
     const generations = Math.max(1, useBatch ? Number(this.generationBatchSize) || 1 : requested || 1);
     if (this.engineMode === 'hashlife') {
       await this._stepHashlife(generations);

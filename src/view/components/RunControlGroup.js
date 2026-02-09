@@ -22,6 +22,7 @@ export default function RunControlGroup({
   snapshotsRef,
   setSteadyInfo,
   confirmOnClear = true,
+  enableAdaCompliance = false,
   // Engine mode props
   engineMode = 'normal',
   onStartNormalMode,
@@ -123,12 +124,13 @@ export default function RunControlGroup({
 
         {/* Universal Play/Pause button */}
         <Tooltip title={
-          isRunning ? 'Stop normal' : 'Start normal simulation'
+          enableAdaCompliance ? 'Disabled in ADA mode' : (isRunning ? 'Stop normal' : 'Start normal simulation')
         }>
           <IconButton
             size="small"
             aria-label={isRunning ? 'stop' : 'start'}
             color={isRunning ? 'error' : 'primary'}
+            disabled={!!enableAdaCompliance}
             onClick={() => {
               try { console.debug('[RunControlGroup] play button clicked', { isRunning, hasStart: !!onStartNormalMode, hasStop: !!onStopAllEngines }); } catch (e) { console.warn('Debug log failed:', e); }
               if (isRunning) {
@@ -243,5 +245,6 @@ RunControlGroup.propTypes = {
   // Hashlife batch size
   generationBatchSize: PropTypes.number,
   onSetGenerationBatchSize: PropTypes.func,
-  confirmOnClear: PropTypes.bool
+  confirmOnClear: PropTypes.bool,
+  enableAdaCompliance: PropTypes.bool
 };
