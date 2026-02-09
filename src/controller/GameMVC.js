@@ -30,12 +30,12 @@ export class GameMVC {
     }
   }
   // Game step
-  async step() {
+  async step(generations, options) {
     if (this.controller && typeof this.controller.step === 'function') {
-      return await this.controller.step();
+      return await this.controller.step(generations, options);
     } else {
       // Fallback: call model.step directly (should not happen in production)
-      return await this.model.step();
+      return await this.model.step(generations, options);
     }
   }
 

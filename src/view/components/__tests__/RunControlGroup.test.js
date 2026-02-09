@@ -41,4 +41,26 @@ describe('RunControlGroup engine controls', () => {
     await userEvent.click(stopButton);
     expect(onStopAllEngines).toHaveBeenCalledTimes(1);
   });
+
+  test('ADA mode disables start while step remains available', async () => {
+    const onStartNormalMode = jest.fn();
+    const step = jest.fn();
+
+    render(
+      <RunControlGroup
+        isRunning={false}
+        enableAdaCompliance={true}
+        onStartNormalMode={onStartNormalMode}
+        step={step}
+      />
+    );
+
+    const startButton = screen.getByLabelText(/start/i);
+    expect(startButton).toBeDisabled();
+    expect(onStartNormalMode).not.toHaveBeenCalled();
+
+    const stepButton = screen.getByRole('button', { name: /step/i });
+    await userEvent.click(stepButton);
+    expect(step).toHaveBeenCalledTimes(1);
+  });
 });

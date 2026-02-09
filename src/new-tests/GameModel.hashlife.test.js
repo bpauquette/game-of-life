@@ -30,4 +30,23 @@ describe('GameModel hashlife batching', () => {
     expect(model.generation).toBe(4);
     expect(model.isCellAlive(1, 1)).toBe(true);
   });
+
+  test('supports exact single-step override in hashlife mode', async () => {
+    const { default: hashlifeAdapter } = await import('../model/hashlife/adapter.js');
+    const { GameModel } = await import('../model/GameModel.js');
+    hashlifeAdapter.run.mockResolvedValue({ cells: [{ x: 2, y: 2 }], generations: 1 });
+
+    const model = new GameModel();
+    model.setCellAliveModel(0, 0, true);
+    model.setEngineMode('hashlife');
+    model.setGenerationBatchSize(8);
+
+    await model.step(1, { forceExactGenerations: true });
+
+    expect(hashlifeAdapter.run).toHaveBeenCalled();
+    const [, gensArg] = hashlifeAdapter.run.mock.calls[hashlifeAdapter.run.mock.calls.length - 1];
+    expect(gensArg).toBe(1);
+    expect(model.generation).toBe(1);
+    expect(model.isCellAlive(2, 2)).toBe(true);
+  });
 });
