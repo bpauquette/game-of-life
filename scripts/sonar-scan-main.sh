@@ -15,31 +15,20 @@ echo "📋 Commit: $COMMIT_HASH"
 # Clean any previous scan cache
 rm -rf .scannerwork
 
-# Set default token for local analysis if not set
-SONAR_TOKEN="${SONAR_TOKEN:-sqa_default_local_token}"
+TOKEN="${1:-${SONAR_TOKEN:-}}"
+if [ -z "$TOKEN" ]; then
+  echo "❌ Error: SONAR_TOKEN is not set"
+  echo "Set SONAR_TOKEN or pass token as first argument."
+  exit 1
+fi
 
 echo "🚀 Starting SonarQube analysis for $CURRENT_BRANCH branch..."
 # Generate coverage report for Sonar (Jest/CRA produces coverage/lcov.info)
 echo "🧪 Running test coverage to generate coverage/lcov.info"
 npm run test:coverage || true
 
-# Run SonarQube scan (Community Edition - no branch support) with fresh analysis
-docker run --rm \
-    -v "$(pwd):/usr/src" \
-    --network game-of-life_default \
-    sonarsource/sonar-scanner-cli \
-    -Dsonar.projectKey=game-of-life \
-    -Dsonar.projectName="Game of Life" \
-    -Dsonar.sources=/usr/src/src,/usr/src/backend \
-    -Dsonar.tests=/usr/src/src \
-    -Dsonar.test.inclusions="**/*.test.js" \
-    -Dsonar.exclusions="**/node_modules/**,**/build/**,**/public/**,**/coverage/**,**/.scannerwork/**" \
-    -Dsonar.javascript.lcov.reportPaths=/usr/src/coverage/lcov.info \
-    -Dsonar.host.url=http://sonarqube:9000 \
-    -Dsonar.token="$SONAR_TOKEN" \
-    -Dsonar.scm.provider=git \
-    -Dsonar.scm.forceReloadAll=true \
-    -Dsonar.projectVersion="$COMMIT_HASH"
+# Run SonarQube scan via the shared local scanner wrapper.
+./scripts/sonar-local.sh "$TOKEN"
 
 echo "✅ SonarQube analysis complete for $CURRENT_BRANCH branch"
 echo "🌐 View results at: http://localhost:9000/dashboard?id=game-of-life"

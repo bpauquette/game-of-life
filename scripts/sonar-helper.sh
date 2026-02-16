@@ -7,25 +7,38 @@ set -euo pipefail
 COMPOSE_FILE="docker-compose.sonarqube.yml"
 SONAR_URL="http://localhost:9000"
 
+compose() {
+  if [ -f "$COMPOSE_FILE" ]; then
+    if command -v docker-compose >/dev/null 2>&1; then
+      docker-compose -f "$COMPOSE_FILE" "$@"
+    else
+      docker compose -f "$COMPOSE_FILE" "$@"
+    fi
+  else
+    echo "Missing $COMPOSE_FILE in repository root"
+    exit 1
+  fi
+}
+
 case "${1:-help}" in
   start)
     echo "Starting SonarQube..."
-    docker-compose -f "$COMPOSE_FILE" up -d
+    compose up -d
     echo "Waiting for SonarQube to be ready..."
-    for i in {1..30}; do
+    for i in {1..90}; do
       if curl -s --connect-timeout 2 "$SONAR_URL/api/system/status" > /dev/null 2>&1; then
         echo "SonarQube is ready at $SONAR_URL"
         exit 0
       fi
       echo -n "."
-      sleep 2
+      sleep 3
     done
     echo "SonarQube may still be starting. Check manually at $SONAR_URL"
     ;;
     
   stop)
     echo "Stopping SonarQube..."
-    docker-compose -f "$COMPOSE_FILE" down
+    compose down
     ;;
     
   status)
@@ -35,13 +48,13 @@ case "${1:-help}" in
     else
       echo "SonarQube is not accessible at $SONAR_URL"
       echo "Check if containers are running:"
-      docker-compose -f "$COMPOSE_FILE" ps
+      compose ps
     fi
     ;;
     
   logs)
     echo "Showing SonarQube logs..."
-    docker-compose -f "$COMPOSE_FILE" logs -f sonarqube
+    compose logs -f sonarqube
     ;;
     
   scan)

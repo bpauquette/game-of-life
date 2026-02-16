@@ -46,6 +46,37 @@ npm install
 - `npm run frontend:start` / `npm run frontend:stop` wrap the shell helpers and enforce the port checks mentioned above.
 - `start-backend.sh` / `start-frontend.sh` (and their `.py` variants) are cross-platform launchers used by CI and Windows automation. Prefer these when integrating with OS services.
 
+### GitHub workflow (no Copilot required)
+
+Use Codex for code changes and GitHub Desktop or `gh` for source control. No GitHub Copilot dependency is required.
+
+1. Verify GitHub CLI auth once:
+
+    ```bash
+    gh auth status
+    ```
+
+2. Create/switch to a feature branch (in GitHub Desktop or terminal).
+3. Let Codex make edits and run checks.
+4. Open a PR from the current branch:
+
+    ```bash
+    ./scripts/gh-pr.sh
+    ```
+
+    On Windows PowerShell:
+
+    ```powershell
+    ./scripts/windows/gh-pr.ps1
+    ```
+
+Optional examples:
+
+```bash
+./scripts/gh-pr.sh --draft
+./scripts/gh-pr.sh --base main --title "Fix Sonar issues" --body "Summary of changes"
+```
+
 ### Reverse proxy stack (optional)
 
 If you need the Dockerized proxy + services for local QA:
