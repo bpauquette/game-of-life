@@ -1449,6 +1449,13 @@ export function useGameOfLifeAppRuntime() {
               const importedGen = typeof model?.getGeneration === 'function' ? model.getGeneration() : 0;
               setGeneration(importedGen);
             } catch (e) { /* ignore */ }
+          } else if (event === 'captureCompleted') {
+            try {
+              setCaptureData(data || null);
+              setCaptureDialogOpen(true);
+            } catch (e) {
+              console.error('Failed to open capture dialog from captureCompleted event:', e);
+            }
           } else if (event === 'performanceSettingsChanged' && data) {
             setPerformanceCaps((prev) => {
               const nextFps = Number.isFinite(Number(data.maxFPS)) ? Number(data.maxFPS) : prev.maxFPS;
@@ -1524,7 +1531,7 @@ export function useGameOfLifeAppRuntime() {
         gameRef.current = null;
       }
     };
-  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme, preloadStrategy, shapesLoading, shapesError, updateViewportSnapshot, setPerformanceCaps, setIsRunning, setPopulationHistory, setSelectedShape, setSelectedTool, setGeneration, randomRectPercent]);
+  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme, preloadStrategy, shapesLoading, shapesError, updateViewportSnapshot, setPerformanceCaps, setIsRunning, setPopulationHistory, setSelectedShape, setSelectedTool, setGeneration, randomRectPercent, setCaptureData, setCaptureDialogOpen]);
   // UI callback to request a tool change. This always goes through the controller/model.
   const requestToolChange = React.useCallback((tool) => {
     try {

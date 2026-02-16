@@ -185,8 +185,8 @@ export class GameController {
       if (!cellCoords) return;
       this.handleMouseMove(cellCoords, event);
     });
-    this.view.on('mouseUp', () => {
-      this.handleToolMouseUp();
+    this.view.on('mouseUp', ({ cellCoords }) => {
+      this.handleMouseUp(cellCoords || null);
     });
     this.view.on('click', ({ cellCoords, event }) => {
       if (!cellCoords) return;
@@ -215,8 +215,11 @@ export class GameController {
     // Global mouse up to handle mouse leaving canvas
     document.addEventListener('mouseup', () => {
       if (this.mouseState.isDown) {
-        this.mouseState.isDown = false;
-        this.handleToolMouseUp();
+        const last = this.toolState?.last;
+        const fallbackCoords = (last && typeof last.x === 'number' && typeof last.y === 'number')
+          ? { x: last.x, y: last.y }
+          : null;
+        this.handleMouseUp(fallbackCoords);
       }
     });
 
