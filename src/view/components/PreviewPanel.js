@@ -8,8 +8,8 @@ import Link from '@mui/material/Link';
 import {
   Refresh as ResetIcon
 } from '@mui/icons-material';
-import { transformShape } from '../../model/shapeTransforms.js';
-import { rotateShape } from '../../model/shapeTransforms.js';
+import { transformShape, rotateShape } from '../../model/shapeTransforms.js';
+
 const tokenOr = (name, fallback) => {
   try {
     const root = globalThis.document?.documentElement;
@@ -25,56 +25,143 @@ const CTA_COLOR_HOVER = tokenOr('--accent-cta-strong', '#00ffff');
 const CTA_SHADOW = tokenOr('--accent-cta', '#00e6ff');
 const PREVIEW_BORDER_COLOR = tokenOr('--border-faint', 'rgba(0,0,0,0.06)');
 
-// Function to parse text and convert URLs to clickable links
-function renderTextWithLinks(text, sx) {
-  // URL regex pattern
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = text.split(urlRegex);
+function toPoint(cell) {
+  if (Array.isArray(cell)) {
+    return { x: Number(cell[0]) || 0, y: Number(cell[1]) || 0 };
+  }
+  if (cell && typeof cell === 'object') {
+    return { x: Number(cell.x) || 0, y: Number(cell.y) || 0 };
+  }
+  return { x: 0, y: 0 };
+}
 
-  return parts.map((part, index) => {
-    if (urlRegex.test(part)) {
+function toMathRotation(angle) {
+  if (angle === 90) return 270;
+  if (angle === 270) return 90;
+  return angle;
+}
+
+function isAlphaNumericChar(ch) {
+  return (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9');
+}
+
+function trimTrailingHyphens(value) {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '-') {
+    end -= 1;
+  }
+  return value.slice(0, end);
+}
+
+function toSlug(value, maxLength = 200) {
+  if (!value) return '';
+  const src = String(value).toLowerCase();
+  let out = '';
+  let previousWasHyphen = true;
+  for (const ch of src) {
+    if (out.length >= maxLength) break;
+    if (isAlphaNumericChar(ch)) {
+      out += ch;
+      previousWasHyphen = false;
+    } else if (!previousWasHyphen) {
+      out += '-';
+      previousWasHyphen = true;
+    }
+  }
+  return trimTrailingHyphens(out);
+}
+
+function buildTransformedName(baseName, transformName, rotation) {
+  const safeBase = baseName || 'unnamed';
+  const rotationSuffix = rotation ? ` rot${rotation}` : '';
+  return `${safeBase} (${transformName}${rotationSuffix})`.trim();
+}
+
+function findNextUrlStart(value, fromIndex) {
+  const httpIndex = value.indexOf('http://', fromIndex);
+  const httpsIndex = value.indexOf('https://', fromIndex);
+  if (httpIndex === -1) return httpsIndex;
+  if (httpsIndex === -1) return httpIndex;
+  return Math.min(httpIndex, httpsIndex);
+}
+
+function isWhitespace(ch) {
+  return ch === ' ' || ch === '\n' || ch === '\r' || ch === '\t';
+}
+
+function findUrlEnd(value, fromIndex) {
+  let end = fromIndex;
+  while (end < value.length && !isWhitespace(value[end])) {
+    end += 1;
+  }
+  return end;
+}
+
+function splitTextIntoSegments(text) {
+  const value = typeof text === 'string' ? text : '';
+  const segments = [];
+  let start = 0;
+  while (start < value.length) {
+    const urlStart = findNextUrlStart(value, start);
+    if (urlStart === -1) {
+      segments.push({ type: 'text', key: `text-${start}`, value: value.slice(start) });
+      break;
+    }
+    if (urlStart > start) {
+      segments.push({ type: 'text', key: `text-${start}`, value: value.slice(start, urlStart) });
+    }
+    const urlEnd = findUrlEnd(value, urlStart);
+    segments.push({ type: 'link', key: `link-${urlStart}`, value: value.slice(urlStart, urlEnd) });
+    start = urlEnd;
+  }
+  if (segments.length === 0) {
+    segments.push({ type: 'text', key: 'text-0', value });
+  }
+  return segments;
+}
+
+function renderTextWithLinks(text, sx) {
+  return splitTextIntoSegments(text).map((segment) => {
+    if (segment.type === 'link') {
       return (
         <Link
-          key={index}
-          href={part}
+          key={segment.key}
+          href={segment.value}
           target="_blank"
           rel="noopener noreferrer"
           sx={{
             ...sx,
-                color: CTA_COLOR,
+            color: CTA_COLOR,
             textDecoration: 'underline',
             '&:hover': {
-                  color: CTA_COLOR_HOVER,
+              color: CTA_COLOR_HOVER,
             }
           }}
         >
-          {part}
+          {segment.value}
         </Link>
       );
     }
     return (
       <Typography
-        key={index}
+        key={segment.key}
         component="span"
         sx={sx}
       >
-        {part}
+        {segment.value}
       </Typography>
     );
   });
 }
 
 function computeBounds(cells = []) {
-  // Simple, low-complexity version: compute min/max with fewer branches
   if (!cells || cells.length === 0) return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 1, height: 1 };
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  for (let i = 0; i < cells.length; i++) {
-    const c = cells[i];
-    const x = (typeof c.x !== 'undefined') ? c.x : (Array.isArray(c) ? c[0] : 0);
-    const y = (typeof c.y !== 'undefined') ? c.y : (Array.isArray(c) ? c[1] : 0);
+  for (const cell of cells) {
+    const { x, y } = toPoint(cell);
     if (x < minX) minX = x;
     if (y < minY) minY = y;
     if (x > maxX) maxX = x;
@@ -85,29 +172,6 @@ function computeBounds(cells = []) {
   const height = (maxY - minY + 1) || 1;
   return { minX, minY, maxX, maxY, width, height };
 }
-
-// small LRU cache for generated preview images (data URLs)
-// const PREVIEW_CACHE = new Map();
-// const PREVIEW_CACHE_LIMIT = 200;
-
-// function cacheGet(id) {
-//   if (!id) return null;
-//   const v = PREVIEW_CACHE.get(id);
-//   if (!v) return null;
-//   // mark as recently used
-//   PREVIEW_CACHE.delete(id);
-//   PREVIEW_CACHE.set(id, v);
-//   return v;
-// }
-
-// function cacheSet(id, dataUrl) {
-//   if (!id || !dataUrl) return;
-//   PREVIEW_CACHE.set(id, dataUrl);
-//   if (PREVIEW_CACHE.size > PREVIEW_CACHE_LIMIT) {
-//     const firstKey = PREVIEW_CACHE.keys().next().value;
-//     PREVIEW_CACHE.delete(firstKey);
-//   }
-// }
 
 function PreviewPanel(props) {
   const { preview, maxSvgSize = 200, colorScheme, colorSchemeKey, onAddRecent } = props;
@@ -129,12 +193,12 @@ function PreviewPanel(props) {
 
   // Derive cells from preview and transform/rotation
   const cells = useMemo(() => {
-    let c = (preview && Array.isArray(preview.cells) ? preview.cells : []);
+    let c = (preview && Array.isArray(preview.cells)) ? preview.cells : [];
     if (transformIndex !== 0) {
       c = transformShape(c, currentTransform);
     }
     if (rotationAngle !== 0) {
-      const mathAngle = rotationAngle === 90 ? 270 : rotationAngle === 270 ? 90 : rotationAngle;
+      const mathAngle = toMathRotation(rotationAngle);
       c = rotateShape(c, mathAngle);
     }
     return c;
@@ -151,7 +215,7 @@ function PreviewPanel(props) {
     if (!preview) return null;
     const scheme = colorSchemeKey || 'default';
     const size = 128;
-    const nameSlug = preview.name ? (String(preview.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0,200)) : '';
+    const nameSlug = toSlug(preview.name);
     const thumbnailUrl = nameSlug ? `/thumbnails/${size}/${scheme}/${nameSlug}.png` : null;
     return thumbnailUrl;
   }, [preview, colorSchemeKey]);
@@ -164,8 +228,7 @@ function PreviewPanel(props) {
     ctx.clearRect(0, 0, drawW, drawH);
     const cellColor = colorScheme?.cellColor || tokenOr('--accent-primary', '#1976d2');
     for (const cell of cells) {
-      const x = (typeof cell.x !== 'undefined') ? cell.x : (Array.isArray(cell) ? cell[0] : 0);
-      const y = (typeof cell.y !== 'undefined') ? cell.y : (Array.isArray(cell) ? cell[1] : 0);
+      const { x, y } = toPoint(cell);
       ctx.fillStyle = cellColor;
       ctx.fillRect((x - bounds.minX) * cellSize + 4, (y - bounds.minY) * cellSize + 4, cellSize, cellSize);
     }
@@ -395,7 +458,7 @@ function PreviewPanel(props) {
                 const transformedShape = {
                   ...preview,
                   cells,
-                  name: `${preview.name || 'unnamed'} (${currentTransform}${rotationAngle ? ` rot${rotationAngle}` : ''})`.trim()
+                  name: buildTransformedName(preview.name, currentTransform, rotationAngle)
                 };
                 onAddRecent?.(transformedShape);
               }

@@ -413,7 +413,16 @@ export class GameController {
   handleMouseUp(cellCoords) {
     this.mouseState.isDown = false;
     this.mouseState.button = undefined;
-    this.handleToolMouseUp(cellCoords);
+    const resolvedCoords = (cellCoords && typeof cellCoords.x === 'number' && typeof cellCoords.y === 'number')
+      ? cellCoords
+      : (() => {
+          const last = this.toolState?.last;
+          if (last && typeof last.x === 'number' && typeof last.y === 'number') {
+            return { x: last.x, y: last.y };
+          }
+          return null;
+        })();
+    this.handleToolMouseUp(resolvedCoords);
     this.emitToolStateChanged();
   }
 
