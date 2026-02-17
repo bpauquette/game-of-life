@@ -20,27 +20,43 @@ function extractCells(shape) {
   return [];
 }
 
-function normalizeRecentShape(shape) {
-  if (!shape) return shape;
-  const sourceCells = extractCells(shape);
-  if (!sourceCells.length) return shape;
+function toCellPoint(cell) {
+  if (Array.isArray(cell)) {
+    return { x: cell[0] ?? 0, y: cell[1] ?? 0 };
+  }
+  return { x: cell?.x ?? 0, y: cell?.y ?? 0 };
+}
+
+function buildAbsoluteCells(sourceCells) {
   let minX = Infinity;
   let minY = Infinity;
   const absoluteCells = sourceCells.map((cell) => {
-    const x = Array.isArray(cell) ? cell[0] : (cell?.x ?? 0);
-    const y = Array.isArray(cell) ? cell[1] : (cell?.y ?? 0);
+    const { x, y } = toCellPoint(cell);
     if (x < minX) minX = x;
     if (y < minY) minY = y;
     return { x, y };
   });
-  if (!Number.isFinite(minX)) minX = 0;
-  if (!Number.isFinite(minY)) minY = 0;
-  const normalized = absoluteCells.map(({ x, y }) => [x - minX, y - minY]);
-  if (!normalized.length) return shape;
+  return {
+    absoluteCells,
+    minX: Number.isFinite(minX) ? minX : 0,
+    minY: Number.isFinite(minY) ? minY : 0
+  };
+}
+
+function normalizeCells(absoluteCells, minX, minY) {
+  return absoluteCells.map(({ x, y }) => [x - minX, y - minY]);
+}
+
+function computeBoundsFromNormalized(normalized) {
   const xs = normalized.map(([x]) => x);
   const ys = normalized.map(([, y]) => y);
-  const width = Math.max(...xs) - Math.min(...xs) + 1;
-  const height = Math.max(...ys) - Math.min(...ys) + 1;
+  return {
+    width: Math.max(...xs) - Math.min(...xs) + 1,
+    height: Math.max(...ys) - Math.min(...ys) + 1
+  };
+}
+
+function buildNormalizedShape(shape, normalized, width, height, sourceCellCount) {
   return {
     ...shape,
     cells: normalized,
@@ -50,31 +66,52 @@ function normalizeRecentShape(shape) {
       ...shape.meta,
       width: width || shape.meta?.width,
       height: height || shape.meta?.height,
-      cellCount: sourceCells.length
+      cellCount: sourceCellCount
     }
   };
+}
+
+function normalizeRecentShape(shape) {
+  if (!shape) return shape;
+  const sourceCells = extractCells(shape);
+  if (!sourceCells.length) return shape;
+  const { absoluteCells, minX, minY } = buildAbsoluteCells(sourceCells);
+  const normalized = normalizeCells(absoluteCells, minX, minY);
+  if (!normalized.length) return shape;
+  const { width, height } = computeBoundsFromNormalized(normalized);
+  return buildNormalizedShape(shape, normalized, width, height, sourceCells.length);
+}
+
+function appendNamePart(keyParts, shape) {
+  if (shape?.name) keyParts.push(`n:${String(shape.name)}`);
+}
+
+function appendMetaParts(keyParts, shape) {
+  if (!shape?.meta) return;
+  const { width, height, cellCount } = shape.meta;
+  if (!width && !height && !cellCount) return;
+  if (width) keyParts.push(`w:${width}`);
+  if (height) keyParts.push(`h:${height}`);
+  if (cellCount) keyParts.push(`c:${cellCount}`);
+}
+
+function appendCellSampleParts(keyParts, shape) {
+  const cells = extractCells(shape);
+  if (!Array.isArray(cells) || cells.length === 0) return;
+  keyParts.push(`len:${cells.length}`);
+  const sampleCount = Math.min(4, cells.length);
+  for (let i = 0; i < sampleCount; i += 1) {
+    const { x, y } = toCellPoint(cells[i]);
+    keyParts.push(`${x},${y}`);
+  }
 }
 
 function generateShapeKey(shape) {
   if (shape?.id) return String(shape.id);
   if (typeof shape === 'string') return shape;
-  let keyParts = [];
-  if (shape?.name) keyParts.push(`n:${String(shape.name)}`);
-  if (shape?.meta && (shape.meta.width || shape.meta.height || shape.meta.cellCount)) {
-    if (shape.meta.width) keyParts.push(`w:${shape.meta.width}`);
-    if (shape.meta.height) keyParts.push(`h:${shape.meta.height}`);
-    if (shape.meta.cellCount) keyParts.push(`c:${shape.meta.cellCount}`);
-  }
-  const cells = extractCells(shape);
-  if (Array.isArray(cells) && cells.length > 0) {
-    keyParts.push(`len:${cells.length}`);
-    const sampleCount = Math.min(4, cells.length);
-    for (let i = 0; i < sampleCount; i++) {
-      const c = cells[i];
-      const x = Array.isArray(c) ? c[0] : (c?.x ?? 0);
-      const y = Array.isArray(c) ? c[1] : (c?.y ?? 0);
-      keyParts.push(`${x},${y}`);
-    }
-  }
+  const keyParts = [];
+  appendNamePart(keyParts, shape);
+  appendMetaParts(keyParts, shape);
+  appendCellSampleParts(keyParts, shape);
   return keyParts.join('|');
 }
