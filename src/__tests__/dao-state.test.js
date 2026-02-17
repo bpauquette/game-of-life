@@ -13,6 +13,16 @@ beforeEach(() => {
 });
 
 describe('uiDao', () => {
+  test('getEnableAdaCompliance prefers global and local storage fallbacks', async () => {
+    const { getEnableAdaCompliance } = await import('../model/dao/uiDao.js');
+    globalThis.ADA_ENABLED = true;
+    expect(getEnableAdaCompliance()).toBe(true);
+
+    delete globalThis.ADA_ENABLED;
+    localStorage.setItem('enableAdaCompliance', 'false');
+    expect(getEnableAdaCompliance()).toBe(false);
+  });
+
   test('uses ADA compliance default true unless stored', async () => {
     localStorage.setItem('enableAdaCompliance', 'false');
     const useUiDao = await loadUiDao();
@@ -24,6 +34,51 @@ describe('uiDao', () => {
     useUiDao.getState().setUseWebWorker(true);
     expect(useUiDao.getState().useWebWorker).toBe(true);
     expect(localStorage.getItem('useWebWorker')).toBe('true');
+  });
+
+  test('persists ADA compliance preference and uiState payload', async () => {
+    const useUiDao = await loadUiDao();
+    useUiDao.getState().setEnableAdaCompliance(false);
+    useUiDao.getState().setUiState({ panel: 'open' });
+    expect(useUiDao.getState().enableAdaCompliance).toBe(false);
+    expect(localStorage.getItem('enableAdaCompliance')).toBe('false');
+    expect(useUiDao.getState().uiState).toEqual({ panel: 'open' });
+  });
+
+  test('updates help, assistant and cursor state', async () => {
+    const useUiDao = await loadUiDao();
+    useUiDao.getState().setHelpOpen(true);
+    useUiDao.getState().setAssistantOpen(true);
+    useUiDao.getState().setCursorCell({ x: 1, y: 2 });
+    expect(useUiDao.getState().helpOpen).toBe(true);
+    expect(useUiDao.getState().assistantOpen).toBe(true);
+    expect(useUiDao.getState().cursorCell).toEqual({ x: 1, y: 2 });
+  });
+
+  test('handles storage failures when reading/writing preferences', async () => {
+    const originalStorage = globalThis.localStorage;
+    const throwingStorage = {
+      getItem: () => {
+        throw new Error('read-fail');
+      },
+      setItem: () => {
+        throw new Error('write-fail');
+      },
+      removeItem: () => {},
+      clear: () => {},
+    };
+    Object.defineProperty(globalThis, 'localStorage', { value: throwingStorage, configurable: true });
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const uiModule = await import('../model/dao/uiDao.js');
+    const useUiDao = uiModule.useUiDao;
+    useUiDao.getState().setUseWebWorker(true);
+    useUiDao.getState().setEnableAdaCompliance(false);
+
+    expect(typeof uiModule.getEnableAdaCompliance()).toBe('boolean');
+
+    errorSpy.mockRestore();
+    Object.defineProperty(globalThis, 'localStorage', { value: originalStorage, configurable: true });
   });
 
   test('toggles showUIControls and confirmOnClear', async () => {

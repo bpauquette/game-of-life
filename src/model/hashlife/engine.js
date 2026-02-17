@@ -10,24 +10,56 @@ import { makeLeaf, makeNode, clearMemo } from './node.js';
 import { resultMemo } from './node.js';
 // Only use makeLeaf and makeNode where needed, do not leave unused
 
+function addSetEntryFromKnownPoint(target, point) {
+    if (typeof point === 'string') {
+        target.add(point);
+        return;
+    }
+    if (point && typeof point.x === 'number' && typeof point.y === 'number') {
+        target.add(`${point.x},${point.y}`);
+        return;
+    }
+    if (Array.isArray(point) && point.length >= 2) {
+        target.add(`${point[0]},${point[1]}`);
+    }
+}
+
+function addFlatPairs(target, cells) {
+    for (let i = 0; i < cells.length; i += 2) {
+        target.add(`${cells[i]},${cells[i + 1]}`);
+    }
+}
+
+function addObjectLikeEntries(target, cells) {
+    for (const point of cells) {
+        target.add(`${point.x},${point.y}`);
+    }
+}
+
+function pointToKey(point) {
+    if (!point) return null;
+    return `${point.x},${point.y}`;
+}
+
+function keyToPoint(key) {
+    const [x, y] = key.split(',').map(Number);
+    return { x, y };
+}
+
 // Helper: convert flat cell array or array of {x,y} into Set of "x,y" strings
 function cellsToSet(cells) {
     const s = new Set();
     if (!cells) return s;
     // Accept Set inputs directly (common in internal code paths)
     if (cells instanceof Set) {
-        for (const p of cells) {
-            if (typeof p === 'string') s.add(p);
-            else if (p && typeof p.x === 'number' && typeof p.y === 'number') s.add(`${p.x},${p.y}`);
-            else if (Array.isArray(p) && p.length >= 2) s.add(`${p[0]},${p[1]}`);
-        }
+        for (const point of cells) addSetEntryFromKnownPoint(s, point);
         return s;
     }
     if (Array.isArray(cells) && cells.length && typeof cells[0] === 'number') {
-        for (let i = 0; i < cells.length; i += 2) s.add(`${cells[i]},${cells[i + 1]}`);
+        addFlatPairs(s, cells);
         return s;
     }
-    for (const p of cells) s.add(`${p.x},${p.y}`);
+    addObjectLikeEntries(s, cells);
     return s;
 }
 
@@ -105,22 +137,35 @@ function nodeToCells(node, ox = 0, oy = 0) {
     return out;
 }
 
+function forEachNeighbor(x, y, callback) {
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            if (dx === 0 && dy === 0) continue;
+            callback(x + dx, y + dy);
+        }
+    }
+}
+
+function incrementNeighbor(map, key) {
+    map.set(key, (map.get(key) || 0) + 1);
+}
+
+function shouldCellLive(alive, count) {
+    if (alive) return count === 2 || count === 3;
+    return count === 3;
+}
+
 // Brute-force life step for a set of live cells
 function bruteStepSet(set) {
     const neighbors = new Map();
-    for (const s of set) {
-        const [x, y] = s.split(',').map(Number);
-        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-            if (dx === 0 && dy === 0) continue;
-            const key = `${x + dx},${y + dy}`;
-            neighbors.set(key, (neighbors.get(key) || 0) + 1);
-        }
+    for (const point of set) {
+        const { x, y } = keyToPoint(point);
+        forEachNeighbor(x, y, (nx, ny) => incrementNeighbor(neighbors, `${nx},${ny}`));
     }
     const out = new Set();
     for (const [cell, cnt] of neighbors.entries()) {
         const alive = set.has(cell);
-        if (alive && (cnt === 2 || cnt === 3)) out.add(cell);
-        if (!alive && cnt === 3) out.add(cell);
+        if (shouldCellLive(alive, cnt)) out.add(cell);
     }
     return out;
 }
@@ -133,15 +178,25 @@ function advanceBrute(cells, n, onProgress) {
         s = bruteStepSet(s);
         if (onProgress && (i + 1 === total || (i + 1) % 10 === 0)) {
             // Emit occasional progress snapshots to keep UI responsive
-            const out = [];
-            for (const c of s) {
-                const [x, y] = c.split(',').map(Number);
-                out.push({ x, y });
-            }
-            onProgress({ generation: i + 1, cells: out });
+            onProgress({ generation: i + 1, cells: setToPointArray(s) });
         }
     }
     return s; // return Set<string> of "x,y"
+}
+
+function setToPointArray(set) {
+    const out = [];
+    for (const key of set) out.push(keyToPoint(key));
+    return out;
+}
+
+function arrayPointsToSet(points) {
+    return new Set(points.map(point => pointToKey(point)));
+}
+
+function normalizeInputCells(cells) {
+    if (Array.isArray(cells)) return cells;
+    return Array.from(cells).map(keyToPoint);
 }
 
 // Public API
@@ -318,55 +373,68 @@ function nodeStepPow2(nodeObj) {
     return final;
 }
 
+function emitProgress(progressCb, generation, cells) {
+    if (!progressCb) return;
+    try { progressCb({ generation, cells }); } catch (e) { /* no-op */ }
+}
+
+function createBruteProgressReporter(progressCb, baseProgress) {
+    if (!progressCb) return null;
+    return (progress) => {
+        if (!progress) return;
+        const generation = typeof progress.generation === 'number' ? baseProgress + progress.generation : baseProgress;
+        emitProgress(progressCb, generation, progress.cells || []);
+    };
+}
+
+function attemptTreeStep(currentCells, remaining) {
+    const treeObj = buildTreeFromCells(currentCells);
+    const { node, originX, originY } = treeObj;
+    const topStep = 1 << node.level;
+    if (topStep > remaining) return null;
+
+    const resObj = nodeStepPow2({ node, originX, originY });
+    return {
+        currentCells: nodeToCells(resObj.node, resObj.originX || 0, resObj.originY || 0),
+        stepSize: topStep
+    };
+}
+
+function runBruteFallback(currentCells, remaining, progressed, progressCb) {
+    const nextSet = advanceBrute(
+        arrayPointsToSet(currentCells),
+        remaining,
+        createBruteProgressReporter(progressCb, progressed)
+    );
+    return {
+        currentCells: setToPointArray(nextSet),
+        progressed: progressed + remaining
+    };
+}
+
 // Advance N generations using a decomposition into powers-of-two and
 // memoized node stepping where possible. Optionally accepts onProgress
 // callback which may receive occasional snapshots { generation, cells }.
 async function advance(cells, n, onProgress) {
-    let currentCells = Array.isArray(cells) ? cells : Array.from(cells).map(s => { const [x, y] = s.split(',').map(Number); return { x, y }; });
+    let currentCells = normalizeInputCells(cells);
     let remaining = n;
     let progressed = 0;
     const progressCb = typeof onProgress === 'function' ? onProgress : null;
 
     while (remaining > 0) {
-        // Build the smallest tree to contain current cells
-        const treeObj = buildTreeFromCells(currentCells);
-        const { node, originX, originY } = treeObj;
-        const topStep = 1 << node.level;
-        if (topStep <= remaining) {
-            // We can step by the node's full power-of-two and benefit from caching
-            const resObj = nodeStepPow2({ node, originX, originY });
-            currentCells = nodeToCells(resObj.node, resObj.originX || 0, resObj.originY || 0);
-            progressed += topStep;
-            remaining -= topStep;
-            if (progressCb) {
-                try { progressCb({ generation: progressed, cells: currentCells }); } catch (e) { /* no-op */ }
-            }
-        } else {
-            // The node is larger than the remaining steps; fall back to brute force.
-            // Capture the current progressed value in a stable local so the
-            // progress callback doesn't close over a mutating loop variable.
-            const baseProgress = progressed;
-            const progressCbLocal = progressCb;
-            const nextSet = advanceBrute(
-                new Set(currentCells.map(p => `${p.x},${p.y}`)),
-                remaining,
-                progressCbLocal
-                    ? (p) => {
-                        if (!p) return;
-                        const gen = typeof p.generation === 'number' ? baseProgress + p.generation : baseProgress;
-                        try { progressCbLocal({ generation: gen, cells: p.cells || [] }); } catch (e) { /* no-op */ }
-                    }
-                    : null
-            );
-            const nextArr = [];
-            for (const c of nextSet) {
-                const [x, y] = c.split(',').map(Number);
-                nextArr.push({ x, y });
-            }
-            currentCells = nextArr;
-            progressed += remaining;
-            remaining = 0;
+        const treeStep = attemptTreeStep(currentCells, remaining);
+        if (treeStep) {
+            currentCells = treeStep.currentCells;
+            progressed += treeStep.stepSize;
+            remaining -= treeStep.stepSize;
+            emitProgress(progressCb, progressed, currentCells);
+            continue;
         }
+
+        const bruteStep = runBruteFallback(currentCells, remaining, progressed, progressCb);
+        currentCells = bruteStep.currentCells;
+        progressed = bruteStep.progressed;
+        remaining = 0;
     }
     const finalTreeObj = buildTreeFromCells(currentCells);
     return { tree: finalTreeObj.node, originX: finalTreeObj.originX, originY: finalTreeObj.originY, cells: currentCells, generations: progressed };

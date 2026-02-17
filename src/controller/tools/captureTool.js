@@ -20,6 +20,80 @@ const CAPTURED_CELL_COLOR = tokenOr('--accent-warning', 'rgba(255, 255, 0, 0.6)'
 const SELECTION_LINE_WIDTH = 2;
 const DASH_PATTERN = [5, 5];
 
+const getBounds = (start, x, y) => ({
+  minX: Math.min(start.x, x),
+  maxX: Math.max(start.x, x),
+  minY: Math.min(start.y, y),
+  maxY: Math.max(start.y, y),
+});
+
+const buildPreviewPerimeter = ({ minX, maxX, minY, maxY }) => {
+  const preview = [];
+  for (let px = minX; px <= maxX; px++) {
+    preview.push([px, minY], [px, maxY]);
+  }
+  for (let py = minY + 1; py < maxY; py++) {
+    preview.push([minX, py], [maxX, py]);
+  }
+  return preview;
+};
+
+const forEachLiveCell = (liveCells, callback) => {
+  if (typeof liveCells?.forEachCell === 'function') {
+    liveCells.forEachCell(callback);
+    return;
+  }
+  if (typeof liveCells?.entries === 'function') {
+    for (const [key] of liveCells.entries()) {
+      const [cellX, cellY] = String(key).split(',').map(Number);
+      if (Number.isFinite(cellX) && Number.isFinite(cellY)) {
+        callback(cellX, cellY);
+      }
+    }
+  }
+};
+
+const isWithinBounds = (cellX, cellY, bounds) =>
+  cellX >= bounds.minX && cellX <= bounds.maxX && cellY >= bounds.minY && cellY <= bounds.maxY;
+
+const collectCapturedCells = (liveCells, bounds) => {
+  const captured = [];
+  forEachLiveCell(liveCells, (cellX, cellY) => {
+    if (isWithinBounds(cellX, cellY, bounds)) {
+      captured.push([cellX, cellY]);
+    }
+  });
+  return captured;
+};
+
+const collectNormalizedCells = (liveCells, bounds) => {
+  const normalized = [];
+  forEachLiveCell(liveCells, (cellX, cellY) => {
+    if (isWithinBounds(cellX, cellY, bounds)) {
+      normalized.push({
+        x: cellX - bounds.minX,
+        y: cellY - bounds.minY,
+      });
+    }
+  });
+  return normalized;
+};
+
+const resetSelectionState = (toolState) => {
+  toolState.start = null;
+  toolState.end = null;
+  toolState.preview = [];
+  toolState.capturedCells = [];
+};
+
+const buildCaptureData = (capturedCells, bounds) => ({
+  cells: capturedCells,
+  width: bounds.maxX - bounds.minX + 1,
+  height: bounds.maxY - bounds.minY + 1,
+  originalBounds: bounds,
+  cellCount: capturedCells.length,
+});
+
 export const captureTool = {
   getOverlay(toolState /*, cellSize */) {
     // Provide a descriptor overlay so GameRenderer can draw it during main render
@@ -38,111 +112,29 @@ export const captureTool = {
 
   onMouseMove(toolState, x, y, setCellAlive, getLiveCells) {
     if (!toolState.start) return;
-    
-    // Update end position
+
     toolState.end = { x, y };
-    
-    // Generate preview rectangle outline
-    const minX = Math.min(toolState.start.x, x);
-    const maxX = Math.max(toolState.start.x, x);
-    const minY = Math.min(toolState.start.y, y);
-    const maxY = Math.max(toolState.start.y, y);
-    
-  // Create rectangle perimeter for preview (absolute cell coords)
-  toolState.preview = [];
-    
-  // Add top and bottom edges
-    const topBottomEdges = [];
-    for (let px = minX; px <= maxX; px++) {
-      topBottomEdges.push([px, minY], [px, maxY]);
-    }
-    toolState.preview.push(...topBottomEdges);
-    
-  // Add left and right edges
-    const leftRightEdges = [];
-    for (let py = minY + 1; py < maxY; py++) {
-      leftRightEdges.push([minX, py], [maxX, py]);
-    }
-    toolState.preview.push(...leftRightEdges);
-    
-    // Capture live cells within the selection area
+    const bounds = getBounds(toolState.start, x, y);
+    toolState.preview = buildPreviewPerimeter(bounds);
+
     if (getLiveCells) {
-      const liveCells = getLiveCells();
-      toolState.capturedCells = [];
-
-      const collectIfWithin = (cellX, cellY) => {
-        if (cellX >= minX && cellX <= maxX && cellY >= minY && cellY <= maxY) {
-          toolState.capturedCells.push([cellX, cellY]);
-        }
-      };
-
-      if (typeof liveCells?.forEachCell === 'function') {
-        liveCells.forEachCell(collectIfWithin);
-      } else if (typeof liveCells?.entries === 'function') {
-        for (const [key] of liveCells.entries()) {
-          const [cellX, cellY] = key.split(',').map(Number);
-          if (Number.isFinite(cellX) && Number.isFinite(cellY)) {
-            collectIfWithin(cellX, cellY);
-          }
-        }
-      }
+      toolState.capturedCells = collectCapturedCells(getLiveCells(), bounds);
     }
   },
 
   onMouseUp(toolState, x, y, setCellAlive, getLiveCells, tool) {
     if (!toolState.start) return;
-    
-    // Final capture of the selected area
-    const minX = Math.min(toolState.start.x, x);
-    const maxX = Math.max(toolState.start.x, x);
-    const minY = Math.min(toolState.start.y, y);
-    const maxY = Math.max(toolState.start.y, y);
-    
-    // Extract live cells and normalize coordinates
+
+    const bounds = getBounds(toolState.start, x, y);
     let capturedCells = [];
-    
     if (getLiveCells) {
-      const liveCells = getLiveCells();
-
-      const normalizeIfWithin = (cellX, cellY) => {
-        if (cellX >= minX && cellX <= maxX && cellY >= minY && cellY <= maxY) {
-          capturedCells.push({
-            x: cellX - minX,
-            y: cellY - minY
-          });
-        }
-      };
-
-      if (typeof liveCells?.forEachCell === 'function') {
-        liveCells.forEachCell(normalizeIfWithin);
-      } else if (typeof liveCells?.entries === 'function') {
-        for (const [key] of liveCells.entries()) {
-          const [cellX, cellY] = key.split(',').map(Number);
-          if (Number.isFinite(cellX) && Number.isFinite(cellY)) {
-            normalizeIfWithin(cellX, cellY);
-          }
-        }
-      }
+      capturedCells = collectNormalizedCells(getLiveCells(), bounds);
     }
-    
-    // Store capture data for dialog
-    const captureData = {
-      cells: capturedCells,
-      width: maxX - minX + 1,
-      height: maxY - minY + 1,
-      originalBounds: { minX, maxX, minY, maxY },
-      cellCount: capturedCells.length
-    };
-    
-  logger.debug('Capture tool generated data:', captureData);
-    
-    // Reset selection state
-    toolState.start = null;
-    toolState.end = null;
-    toolState.preview = [];
-    toolState.capturedCells = [];
-    
-    // Trigger capture dialog if callback is available
+
+    const captureData = buildCaptureData(capturedCells, bounds);
+    logger.debug('Capture tool generated data:', captureData);
+    resetSelectionState(toolState);
+
     if (tool?.onCaptureComplete) {
       try {
         tool.onCaptureComplete(captureData);
@@ -157,20 +149,20 @@ export const captureTool = {
 
   drawOverlay(ctx, toolState, cellSize, offset) {
     if (!toolState.start || !toolState.end) return;
-    
+
     const minX = Math.min(toolState.start.x, toolState.end.x);
     const maxX = Math.max(toolState.start.x, toolState.end.x);
     const minY = Math.min(toolState.start.y, toolState.end.y);
     const maxY = Math.max(toolState.start.y, toolState.end.y);
-    
+
     // Calculate screen coordinates
     const screenMinX = minX * cellSize - offset.x;
     const screenMinY = minY * cellSize - offset.y;
     const screenMaxX = (maxX + 1) * cellSize - offset.x;
     const screenMaxY = (maxY + 1) * cellSize - offset.y;
-    
+
     ctx.save();
-    
+
     // Draw selection rectangle with dashed border
     ctx.strokeStyle = SELECTION_STROKE_COLOR;
     ctx.lineWidth = SELECTION_LINE_WIDTH;
@@ -178,19 +170,19 @@ export const captureTool = {
     ctx.strokeRect(
       screenMinX, 
       screenMinY, 
-      screenMaxX - screenMinX, 
+      screenMaxX - screenMinX,
       screenMaxY - screenMinY
     );
-    
+
     // Fill selection area with semi-transparent overlay
     ctx.fillStyle = SELECTION_FILL_COLOR;
     ctx.fillRect(
       screenMinX, 
       screenMinY, 
-      screenMaxX - screenMinX, 
+      screenMaxX - screenMinX,
       screenMaxY - screenMinY
     );
-    
+
     // Highlight captured cells
     if (toolState.capturedCells && toolState.capturedCells.length > 0) {
       ctx.fillStyle = CAPTURED_CELL_COLOR;
@@ -200,25 +192,25 @@ export const captureTool = {
         ctx.fillRect(screenX, screenY, cellSize, cellSize);
       }
     }
-    
+
     // Draw cell count indicator
     if (toolState.capturedCells) {
       const cellCount = toolState.capturedCells.length;
       const text = `${cellCount} cells`;
-      
+
       ctx.font = '12px Arial';
       ctx.fillStyle = '#ffffff';
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 3;
-      
+
       // Position text near the selection
       const textX = screenMinX;
       const textY = screenMinY - 8;
-      
+
       ctx.strokeText(text, textX, textY);
       ctx.fillText(text, textX, textY);
     }
-    
+
     ctx.restore();
   }
 };
