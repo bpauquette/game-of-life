@@ -5,44 +5,6 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import ShapeListItem from './ShapeListItem.js';
 
-const VirtualRow = memo(({ index, style, data }) => {
-  const { items, colorScheme, onSelect, onDeleteRequest, onAddRecent, onHover, user, backendBase } = data;
-  const shape = items[index];
-  if (!shape) return null;
-  return (
-    <div style={{ ...style, margin: 0, padding: 0, paddingLeft: 12 }}>
-      <ShapeListItem
-        shape={shape}
-        idx={index}
-        colorScheme={colorScheme}
-        onSelect={onSelect}
-        onRequestDelete={onDeleteRequest}
-        onAddRecent={onAddRecent}
-        onHover={onHover}
-        user={user}
-        backendBase={backendBase}
-      />
-    </div>
-  );
-});
-
-VirtualRow.displayName = 'VirtualRow';
-
-VirtualRow.propTypes = {
-  index: PropTypes.number.isRequired,
-  style: PropTypes.object.isRequired,
-  data: PropTypes.shape({
-    items: PropTypes.array.isRequired,
-    colorScheme: PropTypes.object,
-    onSelect: PropTypes.func,
-    onDeleteRequest: PropTypes.func,
-    onAddRecent: PropTypes.func.isRequired,
-    onHover: PropTypes.func,
-    user: PropTypes.object,
-    backendBase: PropTypes.string,
-  }).isRequired,
-};
-
 const ShapesList = memo(function ShapesList({
   items,
   colorScheme,
@@ -50,7 +12,6 @@ const ShapesList = memo(function ShapesList({
   onSelect,
   onDeleteRequest,
   onAddRecent,
-  onHover,
   user,
   backendBase,
 }) {
@@ -69,14 +30,13 @@ const ShapesList = memo(function ShapesList({
     <List dense sx={{ pl: 1.5, pr: 1, overflowY: 'visible' }}>
       {items.map((shape, idx) => (
         <ShapeListItem
-          key={`${shape.id || 'shape'}-${idx}`}
+          key={shape.id || `${shape.name || 'shape'}-${shape.userId || 'unknown'}`}
           shape={shape}
           idx={idx}
           colorScheme={colorScheme}
           onSelect={onSelect}
           onRequestDelete={onDeleteRequest}
           onAddRecent={onAddRecent}
-          onHover={onHover}
           user={user}
           backendBase={backendBase}
         />
@@ -92,7 +52,6 @@ ShapesList.propTypes = {
   onSelect: PropTypes.func,
   onDeleteRequest: PropTypes.func,
   onAddRecent: PropTypes.func.isRequired,
-  onHover: PropTypes.func,
   user: PropTypes.object,
   backendBase: PropTypes.string,
 };

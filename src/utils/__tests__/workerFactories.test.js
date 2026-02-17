@@ -1,64 +1,134 @@
-
-// Use real timers so faux worker setTimeout/setInterval work as expected
 jest.useRealTimers();
-// Mock backendApi so faux-workers call the mocked functions. Must mock before
-// requiring the module under test so the module picks up the mocked helpers.
+
 jest.mock('../backendApi', () => ({
   fetchShapeNames: jest.fn(),
-  fetchShapeById: jest.fn()
+  getBackendApiBase: jest.fn(() => '/api')
 }));
 
+const { createNamesWorker, createFauxNamesWorker } = require('../workerFactories.js');
+const { fetchShapeNames } = require('../backendApi.js');
 
-const { createNamesWorker, createHoverWorker } = require('../workerFactories.js');
-const { fetchShapeNames, fetchShapeById } = require('../backendApi.js');
+const wait = (ms = 30) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('workerFactories (faux worker behavior)', () => {
   beforeAll(() => {
     jest.setTimeout(15000);
   });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('createHoverWorker returns preview data', async () => {
-    fetchShapeById.mockResolvedValue({ ok: true, data: { id: 'x', name: 'X', description: 'desc', cells: [[0, 0]] } });
+  test('createNamesWorker returns error event when backend reports !ok', async () => {
+    fetchShapeNames.mockResolvedValueOnce({ ok: false, items: [], total: 0 });
+    const worker = createNamesWorker();
+    const events = [];
+    worker.onmessage = (ev) => events.push(ev.data);
+    worker.postMessage({ type: 'start', base: '/api', q: '', limit: 1 });
+    await wait(60);
+    expect(events.some((e) => e.type === 'error')).toBe(true);
+  });
 
-    const worker = createHoverWorker('');
+  test('createNamesWorker handles malformed backend response as backend error', async () => {
+    fetchShapeNames.mockResolvedValueOnce(null);
+    const worker = createNamesWorker();
+    const events = [];
+    worker.onmessage = (ev) => events.push(ev.data);
+    worker.postMessage({ type: 'start', base: '/api', q: '', limit: 1 });
+    await wait(60);
+    expect(events.some((e) => e.type === 'error')).toBe(true);
+  });
 
-    const preview = await new Promise((resolve) => {
-      worker.onmessage = (ev) => {
-        if (ev.data.type === 'preview') resolve(ev.data.data);
-        if (ev.data.type === 'error') resolve({ error: ev.data.message });
-      };
-      worker.postMessage({ type: 'start', id: 'x', base: '' });
+  test('createNamesWorker handles thrown fetch error', async () => {
+    fetchShapeNames.mockRejectedValueOnce(new Error('network down'));
+    const worker = createNamesWorker();
+    const events = [];
+    worker.onmessage = (ev) => events.push(ev.data);
+    worker.postMessage({ type: 'start', base: '/api', q: '', limit: 1 });
+    await wait(60);
+    expect(events.some((e) => e.type === 'error' && String(e.message).includes('network down'))).toBe(true);
+  });
+
+  test('faux worker emits page and done with stopAfterFirstPage', async () => {
+    fetchShapeNames.mockResolvedValueOnce({ ok: true, items: [{ id: 'a', name: 'A' }], total: 50 });
+    const worker = createFauxNamesWorker();
+    const events = [];
+    worker.onmessage = (ev) => events.push(ev.data);
+    worker.postMessage({ type: 'start', base: '/api', q: 'A', limit: 1, offsetStart: 0, stopAfterFirstPage: true });
+    await wait(80);
+
+    const pageEvents = events.filter((e) => e.type === 'page');
+    expect(pageEvents).toHaveLength(1);
+    expect(pageEvents[0]).toMatchObject({ total: 50, offset: 0 });
+    expect(events.some((e) => e.type === 'done')).toBe(true);
+  });
+
+  test('faux worker can be aborted by terminate', async () => {
+    fetchShapeNames.mockResolvedValue({ ok: true, items: [{ id: 'a', name: 'A' }], total: 100 });
+    const worker = createNamesWorker();
+    const events = [];
+    worker.onmessage = (ev) => events.push(ev.data);
+    worker.postMessage({ type: 'start', base: '/api', q: '', limit: 1 });
+    worker.terminate();
+    await wait(80);
+    expect(events.filter((e) => e.type === 'page').length).toBeLessThanOrEqual(1);
+  });
+
+  test('faux worker supports explicit stop messages', () => {
+    const worker = createFauxNamesWorker();
+    expect(worker._aborted).toBe(false);
+    worker.postMessage({ type: 'stop' });
+    expect(worker._aborted).toBe(true);
+    worker.postMessage(null);
+  });
+});
+
+describe('createNamesWorker (real Worker path)', () => {
+  const originalWorker = global.Worker;
+
+  afterEach(() => {
+    global.Worker = originalWorker;
+    jest.resetModules();
+    jest.restoreAllMocks();
+    delete global.__GOL_TEST_MODE__;
+  });
+
+  test('uses module Worker when environment is not test and Worker exists', () => {
+    const createdWorker = { postMessage: jest.fn(), terminate: jest.fn() };
+    const WorkerMock = jest.fn(() => createdWorker);
+    global.Worker = WorkerMock;
+    global.__GOL_TEST_MODE__ = false;
+
+    let createWorker;
+    jest.isolateModules(() => {
+      jest.doMock('../runtimeEnv.js', () => ({
+        isTestEnvironment: () => false
+      }));
+      createWorker = require('../workerFactories.js').createNamesWorker;
     });
 
-    expect(preview).toHaveProperty('id', 'x');
-    expect(preview).toHaveProperty('name', 'X');
-    expect(preview).toHaveProperty('cells');
-    expect(preview.cells).toEqual([[0, 0]]);
+    const worker = createWorker();
+    expect(WorkerMock).toHaveBeenCalledWith('/workers/namesWorker.js', { type: 'module' });
+    expect(worker).toBe(createdWorker);
   });
 
+  test('falls back to faux worker when Worker constructor throws', () => {
+    global.Worker = jest.fn(() => {
+      throw new Error('boom');
+    });
+    global.__GOL_TEST_MODE__ = false;
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-  test('createNamesWorker returns error', async () => {
-    fetchShapeNames.mockResolvedValueOnce({ ok: false, items: [], total: 0 });
-    const worker = createNamesWorker('', '', 1);
-    const events = [];
-    worker.onmessage = (ev) => events.push(ev.data);
-    worker.postMessage({ type: 'start', base: '', q: '', limit: 1 });
-    await new Promise(r => setTimeout(r, 50));
-    expect(events.some(e => e.type === 'error')).toBe(true);
-  });
+    let createWorker;
+    jest.isolateModules(() => {
+      jest.doMock('../runtimeEnv.js', () => ({
+        isTestEnvironment: () => false
+      }));
+      createWorker = require('../workerFactories.js').createNamesWorker;
+    });
 
-  test('createNamesWorker can be aborted', async () => {
-    fetchShapeNames.mockResolvedValue({ ok: true, items: [{ id: 'a', name: 'A' }], total: 100 });
-    const worker = createNamesWorker('', '', 1);
-    const events = [];
-    worker.onmessage = (ev) => events.push(ev.data);
-    worker.postMessage({ type: 'start', base: '', q: '', limit: 1 });
-    worker.terminate();
-    await new Promise(r => setTimeout(r, 50));
-    // Should not emit more than one page due to abort
-    expect(events.filter(e => e.type === 'page').length).toBeLessThanOrEqual(1);
+    const worker = createWorker();
+    expect(typeof worker.postMessage).toBe('function');
+    expect(warnSpy).toHaveBeenCalled();
   });
 });

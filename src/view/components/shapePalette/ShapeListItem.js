@@ -8,9 +8,60 @@ import Typography from '@mui/material/Typography';
 import { Delete as DeleteIcon, Public as PublicIcon, PublicOff as PublicOffIcon } from '@mui/icons-material';
 import Checkbox from '@mui/material/Checkbox';
 import Tooltip from '@mui/material/Tooltip';
-import { updateShapePublic } from '../../../utils/backendApi.js';
+import { fetchShapeById, updateShapePublic } from '../../../utils/backendApi.js';
 import logger from '../../../controller/utils/logger.js';
-import { fetchShapeById } from '../../../utils/backendApi.js';
+
+function hasShapeCells(shape) {
+  if (!shape) return false;
+  const has = (cells) => Array.isArray(cells) && cells.length > 0;
+  return has(shape.cells) || has(shape.pattern) || has(shape.liveCells);
+}
+
+function resolveCellPoint(cell) {
+  if (cell && typeof cell === 'object' && !Array.isArray(cell)) {
+    return { x: Number(cell.x) || 0, y: Number(cell.y) || 0 };
+  }
+  if (Array.isArray(cell)) {
+    return { x: Number(cell[0]) || 0, y: Number(cell[1]) || 0 };
+  }
+  return { x: 0, y: 0 };
+}
+
+function computeCellBounds(cells) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const cell of cells) {
+    const { x, y } = resolveCellPoint(cell);
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+function drawMiniPreview(ctx, cells, getCellColor) {
+  ctx.clearRect(0, 0, 16, 16);
+  const { minX, minY, maxX, maxY } = computeCellBounds(cells);
+  const width = maxX - minX + 1;
+  const height = maxY - minY + 1;
+  const scale = Math.min(16 / width, 16 / height);
+
+  ctx.save();
+  ctx.scale(scale, scale);
+  for (const cell of cells) {
+    const { x, y } = resolveCellPoint(cell);
+    const drawX = x - minX;
+    const drawY = y - minY;
+    const color = getCellColor(x, y);
+    ctx.fillStyle = color;
+    ctx.fillRect(drawX, drawY, 1, 1);
+  }
+  ctx.restore();
+}
+
 const ShapeListItem = memo(function ShapeListItem({
   shape,
   idx,
@@ -18,16 +69,9 @@ const ShapeListItem = memo(function ShapeListItem({
   onSelect,
   onRequestDelete,
   onAddRecent,
-  onHover,
   user,
   backendBase,
 }) {
-  const hasShapeCells = (shape) => {
-    if (!shape) return false;
-    const has = (cells) => Array.isArray(cells) && cells.length > 0;
-    return has(shape.cells) || has(shape.pattern) || has(shape.liveCells);
-  };
-
   const [publicLoading, setPublicLoading] = useState(false);
   const [isPublic, setIsPublic] = useState(!!shape.public);
 
@@ -72,60 +116,14 @@ const ShapeListItem = memo(function ShapeListItem({
     const getCtx = canvasRef.current.getContext;
     const ctx = (typeof getCtx === 'function') ? getCtx.call(canvasRef.current, '2d') : null;
     if (!ctx || typeof ctx.clearRect !== 'function') return;
-    ctx.clearRect(0, 0, 16, 16);
-
-    // Compute bounds
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const cell of cells) {
-      const x = cell.x ?? cell[0];
-      const y = cell.y ?? cell[1];
-      if (x < minX) minX = x;
-      if (y < minY) minY = y;
-      if (x > maxX) maxX = x;
-      if (y > maxY) maxY = y;
-    }
-    const width = maxX - minX + 1;
-    const height = maxY - minY + 1;
-    const scale = Math.min(16 / width, 16 / height);
-
-    ctx.save();
-    ctx.scale(scale, scale);
-    const cellSize = 1;
-    for (const cell of cells) {
-      const x = (cell.x ?? cell[0]) - minX;
-      const y = (cell.y ?? cell[1]) - minY;
-      const color = getCellColor(x + minX, y + minY);
-      ctx.fillStyle = color;
-      ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-    }
-    ctx.restore();
+    drawMiniPreview(ctx, cells, getCellColor);
   }, [cells, getCellColor]);
-
-  try {
-    const first = Array.isArray(shape.cells) && shape.cells.length > 0 ? shape.cells[0] : null;
-    if (first) {
-      const fx = first.x ?? first[0];
-      const fy = first.y ?? first[1];
-      const sampleColor = getCellColor(fx, fy);
-      if (globalThis.__GOL_PREVIEW_DEBUG__) {
-        logger.debug('[ShapePaletteDialog] palette-sample', {
-          id: shape.id || shape.name,
-          x: fx,
-          y: fy,
-          color: sampleColor,
-        });
-      }
-    }
-  } catch (error) {
-    logger.warn('[ShapePaletteDialog] preview sample failed:', error);
-  }
 
   const handleAddRecent = (event) => {
     event.stopPropagation();
     setTimeout(() => onAddRecent(shape), 0);
   };
 
-  const hoverId = shape?.id ?? null;
   return (
     <ListItem
       key={`${keyBase}-${idx}`}
@@ -190,8 +188,6 @@ const ShapeListItem = memo(function ShapeListItem({
               bgcolor: 'rgba(56,142,60,0.15)'
             }
           }}
-          onMouseEnter={() => onHover?.(hoverId)}
-          onMouseLeave={() => onHover?.(null)}
           onClick={handleAddRecent}
           data-testid={`add-recent-btn-${keyBase}`}
         >
@@ -240,8 +236,6 @@ const ShapeListItem = memo(function ShapeListItem({
             display: 'flex',
             justifyContent: 'center'
           }}
-          onMouseEnter={() => onHover?.(hoverId)}
-          onMouseLeave={() => onHover?.(null)}
         >
           <Typography
             variant="body2"
@@ -296,7 +290,6 @@ ShapeListItem.propTypes = {
   onSelect: PropTypes.func,
   onRequestDelete: PropTypes.func,
   onAddRecent: PropTypes.func.isRequired,
-  onHover: PropTypes.func,
   user: PropTypes.object,
   backendBase: PropTypes.string,
 };
