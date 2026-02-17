@@ -3,11 +3,9 @@ import { render, fireEvent, waitFor, cleanup, screen } from '@testing-library/re
 import '@testing-library/jest-dom';
 import ShapePaletteDialog from '../ShapePaletteDialog.js';
 import { useShapePaletteSearch } from '../hooks/useShapePaletteSearch.js';
-import { useHoverPreview } from '../hooks/useHoverPreview.js';
 import { fetchShapeById } from '../../utils/backendApi.js';
 
 jest.mock('../hooks/useShapePaletteSearch');
-jest.mock('../hooks/useHoverPreview');
 jest.mock('../../auth/AuthProvider', () => ({
   useAuth: () => ({ user: null }),
 }));
@@ -36,7 +34,6 @@ const baseSearchState = (items = []) => ({
 describe('ShapePaletteDialog add-to-recent flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useHoverPreview.mockReturnValue({ preview: null, handleHover: jest.fn() });
   });
 
   afterEach(() => {
