@@ -109,15 +109,155 @@ async function ensurePortAvailable(port, { timeoutMs = 8000, intervalMs = 250, h
   }
 }
 
-async function start() {
-  const existing = readPid(config.pidFile);
-  if (existing && isRunning(existing)) {
-    console.log(`${area} already running (pid=${existing}). Logs: ${config.logFile}`);
-    process.exit(0);
+function isForegroundRequested(argv = process.argv) {
+  return argv.includes('--foreground') || argv.includes('--no-detach');
+}
+
+function resolveSpawnTarget() {
+  if (process.platform === 'win32') {
+    return { cmd: 'cmd.exe', args: ['/c', npmCmd].concat(config.args || []) };
   }
+  return { cmd: config.cmd, args: config.args };
+}
 
-  console.log(`Starting ${area} (cwd=${config.cwd})`);
+function isNpmCommand(command) {
+  return Boolean(command) && command.toLowerCase().indexOf('npm') !== -1;
+}
 
+function logSpawnConfig(spawnCmd, spawnArgs) {
+  console.log('spawn command:', spawnCmd);
+  console.log('spawn args:', JSON.stringify(spawnArgs));
+  console.log('spawn cwd:', config.cwd);
+}
+
+function openLogFd(logFile) {
+  try {
+    return fs.openSync(logFile, 'a');
+  } catch (e) {
+    console.warn('Unable to open log file for writing, falling back to ignore:', e.message);
+    return 'ignore';
+  }
+}
+
+function closeFd(fd) {
+  if (typeof fd !== 'number') return;
+  try {
+    fs.closeSync(fd);
+  } catch (e) {
+    console.warn('Failed to close file descriptor:', e.message);
+  }
+}
+
+function spawnDetached(spawnCmd, spawnArgs) {
+  const outFd = openLogFd(config.logFile);
+  const stdioOption = (typeof outFd === 'number') ? ['ignore', outFd, outFd] : ['ignore', 'ignore', 'ignore'];
+  try {
+    return spawn(spawnCmd, spawnArgs, {
+      cwd: config.cwd,
+      stdio: stdioOption,
+      detached: true,
+      env: { ...process.env, PORT: config.portEnv },
+    });
+  } finally {
+    closeFd(outFd);
+  }
+}
+
+function spawnForeground(spawnCmd, spawnArgs) {
+  if (process.platform === 'win32' && isNpmCommand(config.cmd)) {
+    return spawn(npmCmd, config.args, {
+      cwd: config.cwd,
+      stdio: 'inherit',
+      detached: false,
+      env: { ...process.env, PORT: config.portEnv },
+    });
+  }
+  return spawn(spawnCmd, spawnArgs, {
+    cwd: config.cwd,
+    stdio: 'inherit',
+    detached: false,
+    env: { ...process.env, PORT: config.portEnv },
+  });
+}
+
+function spawnManagedProcess(foreground) {
+  const { cmd: spawnCmd, args: spawnArgs } = resolveSpawnTarget();
+  logSpawnConfig(spawnCmd, spawnArgs);
+  return foreground ? spawnForeground(spawnCmd, spawnArgs) : spawnDetached(spawnCmd, spawnArgs);
+}
+
+function handlePortReadyCheck() {
+  const waitPort = area === 'frontend' ? (process.env.PORT || '3000') : (process.env.GOL_BACKEND_PORT || process.env.PORT || config.portEnv);
+  const configuredHost = process.env.HOST_IP || process.env.GOL_HOST || '127.0.0.1';
+  const localFallback = '127.0.0.1';
+  const portNum = Number.parseInt(waitPort, 10);
+  waitForPort(configuredHost, portNum, 20000)
+    .then(() => console.log(`${area} appears to be accepting connections on ${configuredHost}:${waitPort}`))
+    .catch(() => {
+      if (configuredHost !== localFallback) {
+        return waitForPort(localFallback, portNum, 8000)
+          .then(() => console.log(`${area} appears to be accepting connections on ${localFallback}:${waitPort} (fallback)`))
+          .catch((err) => console.warn(`${area} port check failed on ${configuredHost} and localhost: ${err.message}`));
+      }
+      console.warn(`${area} port check failed: timeout`);
+      return null;
+    });
+}
+
+function onSpawnError(err) {
+  console.error('Failed to spawn process:', err && err.stack ? err.stack : err);
+  process.exit(1);
+}
+
+function writePidFile(pid) {
+  fs.writeFileSync(config.pidFile, String(pid));
+}
+
+function logStartResult(pid, foreground) {
+  if (foreground) console.log(`${area} started in foreground (pid=${pid}).`);
+  else console.log(`${area} started in background (pid=${pid}). Logs: ${config.logFile}`);
+}
+
+function finalizeStart(child, foreground) {
+  if (!foreground && child.unref) child.unref();
+  if (child.pid) {
+    writePidFile(child.pid);
+    logStartResult(child.pid, foreground);
+  } else {
+    console.log(`${area} started (no pid available). Logs: ${config.logFile}`);
+  }
+  handlePortReadyCheck();
+}
+
+function cleanupPidFile() {
+  if (!fs.existsSync(config.pidFile)) return;
+  try {
+    fs.unlinkSync(config.pidFile);
+  } catch (e) {
+    console.warn('Failed to remove PID file:', e.message);
+  }
+}
+
+function attachForegroundLifecycle(child) {
+  child.on('exit', (code, signal) => {
+    cleanupPidFile();
+    if (typeof code === 'number') process.exit(code);
+    if (signal) process.exit(1);
+    process.exit(0);
+  });
+  const forward = (sig) => {
+    if (!child || !child.pid) return;
+    try {
+      child.kill(sig);
+    } catch (e) {
+      console.warn(`Failed to send ${sig} to process:`, e.message);
+    }
+  };
+  process.on('SIGINT', () => forward('SIGINT'));
+  process.on('SIGTERM', () => forward('SIGTERM'));
+}
+
+async function verifyDesiredPort() {
   const desiredPort = Number.parseInt(config.portEnv, 10);
   try {
     await ensurePortAvailable(desiredPort, {
@@ -133,114 +273,38 @@ async function start() {
     console.error(`Failed to verify port ${desiredPort}:`, err && err.message ? err.message : err);
     process.exit(1);
   }
+}
+
+async function start() {
+  const existing = readPid(config.pidFile);
+  if (existing && isRunning(existing)) {
+    console.log(`${area} already running (pid=${existing}). Logs: ${config.logFile}`);
+    process.exit(0);
+  }
+
+  console.log(`Starting ${area} (cwd=${config.cwd})`);
+
+  await verifyDesiredPort();
 
   // Default to background (detached) start for all platforms so `manage.js start`
   // returns immediately. Pass --foreground to keep the manager attached and
   // stream logs to the terminal (behaves like running `npm start` directly).
-  const foreground = process.argv.includes('--foreground') || process.argv.includes('--no-detach');
+  const foreground = isForegroundRequested();
   const shouldDetach = !foreground;
-
-  // On Windows, spawning shell commands is more reliable via cmd.exe /c
-  let spawnCmd = config.cmd;
-  let spawnArgs = config.args;
-  if (process.platform === 'win32') {
-    spawnCmd = 'cmd.exe';
-    spawnArgs = ['/c', npmCmd].concat(config.args || []);
-  }
-
-  // debug log the spawn options to diagnose EINVAL
-  console.log('spawn command:', spawnCmd);
-  console.log('spawn args:', JSON.stringify(spawnArgs));
-  console.log('spawn cwd:', config.cwd);
 
   let child;
   try {
-    if (shouldDetach) {
-      // Open the log file and pass its fd directly to the child as stdout/stderr.
-      // This allows the child to write logs without piping through the parent,
-      // so the parent can exit and the child keeps running.
-      let outFd;
-      try {
-        outFd = fs.openSync(config.logFile, 'a');
-      } catch (e) {
-        console.warn('Unable to open log file for writing, falling back to ignore:', e.message);
-        outFd = 'ignore';
-      }
-
-  const stdioOption = (typeof outFd === 'number') ? ['ignore', outFd, outFd] : ['ignore', 'ignore', 'ignore'];
-
-      child = spawn(spawnCmd, spawnArgs, {
-        cwd: config.cwd,
-        stdio: stdioOption,
-        detached: true,
-        // Always pass PORT so the frontend sticks to a predictable port
-        env: { ...process.env, PORT: config.portEnv },
-      });
-
-      // Parent no longer needs the fd open — close it so file isn't leaked.
-      if (typeof outFd === 'number') {
-        try { 
-          fs.closeSync(outFd); 
-        } catch (e) { 
-          console.warn('Failed to close file descriptor:', e.message); 
-        }
-      }
-    } else {
-      // Foreground: inherit stdio so the child appears in this terminal and
-      // Ctrl+C behaves normally. On Windows, spawn npm.cmd directly to avoid
-      // the extra cmd.exe wrapper.
-      if (process.platform === 'win32' && config.cmd && config.cmd.toLowerCase().indexOf('npm') !== -1) {
-        child = spawn(npmCmd, config.args, {
-          cwd: config.cwd,
-          stdio: 'inherit',
-          detached: false,
-          env: { ...process.env, PORT: config.portEnv },
-        });
-      } else {
-        child = spawn(spawnCmd, spawnArgs, {
-          cwd: config.cwd,
-          stdio: 'inherit',
-          detached: false,
-          env: { ...process.env, PORT: config.portEnv },
-        });
-      }
-    }
+    child = spawnManagedProcess(foreground);
   } catch (err) {
     console.error('spawn threw synchronously:', err && err.stack ? err.stack : err);
     throw err;
   }
 
-  child.on('error', (err) => {
-    console.error('Failed to spawn process:', err && err.stack ? err.stack : err);
-    process.exit(1);
-  });
+  child.on('error', onSpawnError);
 
   // detach and write PID only after spawn succeeded
   try {
-    if (shouldDetach && child.unref) child.unref();
-    if (child.pid) {
-      fs.writeFileSync(config.pidFile, String(child.pid));
-      if (shouldDetach) console.log(`${area} started in background (pid=${child.pid}). Logs: ${config.logFile}`);
-      else console.log(`${area} started in foreground (pid=${child.pid}).`);
-    } else {
-      console.log(`${area} started (no pid available). Logs: ${config.logFile}`);
-    }
-    // After start, wait for the expected port to be ready (only for start action)
-    const waitPort = area === 'frontend' ? (process.env.PORT || '3000') : (process.env.GOL_BACKEND_PORT || process.env.PORT || config.portEnv);
-    const configuredHost = process.env.HOST_IP || process.env.GOL_HOST || '127.0.0.1';
-    const localFallback = '127.0.0.1';
-    const portNum = Number.parseInt(waitPort, 10);
-    // Try configured host first; if that fails (e.g., portproxy not set yet), try localhost.
-    waitForPort(configuredHost, portNum, 20000)
-      .then(() => console.log(`${area} appears to be accepting connections on ${configuredHost}:${waitPort}`))
-      .catch(() => {
-        if (configuredHost !== localFallback) {
-          return waitForPort(localFallback, portNum, 8000)
-            .then(() => console.log(`${area} appears to be accepting connections on ${localFallback}:${waitPort} (fallback)`))
-            .catch((err) => console.warn(`${area} port check failed on ${configuredHost} and localhost: ${err.message}`));
-        }
-        console.warn(`${area} port check failed: timeout`);
-      });
+    finalizeStart(child, foreground);
   } catch (e) {
     console.error('Error while writing PID file:', e.message);
   }
@@ -248,29 +312,7 @@ async function start() {
   // In foreground mode, forward signals to the child and exit with its code so
   // the manager behaves like running the command directly.
   if (!shouldDetach) {
-    child.on('exit', (code, signal) => {
-      if (fs.existsSync(config.pidFile)) {
-        try { 
-          fs.unlinkSync(config.pidFile); 
-        } catch (e) { 
-          console.warn('Failed to remove PID file:', e.message); 
-        }
-      }
-      if (typeof code === 'number') process.exit(code);
-      if (signal) process.exit(1);
-      process.exit(0);
-    });
-    const forward = (sig) => { 
-      if (child && child.pid) {
-        try { 
-          child.kill(sig); 
-        } catch (e) { 
-          console.warn(`Failed to send ${sig} to process:`, e.message); 
-        }
-      }
-    };
-    process.on('SIGINT', () => forward('SIGINT'));
-    process.on('SIGTERM', () => forward('SIGTERM'));
+    attachForegroundLifecycle(child);
   }
 }
 
@@ -298,6 +340,24 @@ function waitForPort(host, port, timeoutMs) {
   });
 }
 
+function removePidFile(message) {
+  if (!fs.existsSync(config.pidFile)) return;
+  try {
+    fs.unlinkSync(config.pidFile);
+  } catch (e) {
+    console.warn(message, e.message);
+  }
+}
+
+function tryKill(pid, signal) {
+  try {
+    process.kill(Number.parseInt(pid, 10), signal);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function stop() {
   const pid = readPid(config.pidFile);
   if (!pid) {
@@ -306,42 +366,27 @@ function stop() {
   }
   if (!isRunning(pid)) {
     console.log(`Process ${pid} not running. Removing stale PID file.`);
-    if (fs.existsSync(config.pidFile)) {
-      try { 
-        fs.unlinkSync(config.pidFile); 
-      } catch (e) { 
-        console.warn('Failed to remove stale PID file:', e.message); 
-      }
-    }
+    removePidFile('Failed to remove stale PID file:');
     process.exit(0);
   }
   console.log(`Stopping ${area} (pid=${pid})`);
-  try {
-    process.kill(Number.parseInt(pid, 10));
-  } catch (e) {
+  const sentSigTerm = tryKill(pid);
+  if (!sentSigTerm) {
     console.error('Error sending SIGTERM, attempting kill -9');
-    try { 
-      process.kill(Number.parseInt(pid, 10), 'SIGKILL'); 
-    } catch (error) { 
-      console.error('Failed to kill process with SIGKILL:', error.message); 
+    const sentSigKill = tryKill(pid, 'SIGKILL');
+    if (!sentSigKill) {
+      console.error('Failed to kill process with SIGKILL:', 'unknown error');
     }
   }
   // wait briefly
   setTimeout(() => {
     if (isRunning(pid)) {
-      try { 
-        process.kill(Number.parseInt(pid, 10), 'SIGKILL'); 
-      } catch (e) { 
-        console.warn('Failed to force kill process:', e.message); 
+      const forced = tryKill(pid, 'SIGKILL');
+      if (!forced) {
+        console.warn('Failed to force kill process:', 'unknown error');
       }
     }
-    if (fs.existsSync(config.pidFile)) {
-      try { 
-        fs.unlinkSync(config.pidFile); 
-      } catch (e) { 
-        console.warn('Failed to remove PID file:', e.message); 
-      }
-    }
+    removePidFile('Failed to remove PID file:');
     console.log(`${area} stopped.`);
     process.exit(0);
   }, 500);
