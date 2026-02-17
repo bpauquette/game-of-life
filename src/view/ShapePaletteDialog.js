@@ -19,6 +19,29 @@ const hasShapeCells = (shape) => {
   return has(shape.cells) || has(shape.pattern) || has(shape.liveCells);
 };
 
+const fetchHydratedShape = async (shape, backendBase, context) => {
+  if (!shape?.id || hasShapeCells(shape)) return shape;
+  logger.debug(`[ShapePaletteDialog] ${context}: fetching shape by id`, { id: shape.id, base: backendBase });
+  try {
+    const response = await fetchShapeById(shape.id, backendBase);
+    const data = response?.data || null;
+    logger.debug(`[ShapePaletteDialog] ${context}: fetch result`, {
+      id: shape.id,
+      ok: response?.ok,
+      hasData: !!data,
+      cellsLen: Array.isArray(data?.cells) ? data.cells.length : null,
+    });
+    if (response?.ok && data && hasShapeCells(data)) return data;
+    return null;
+  } catch (err) {
+    logger.warn(`[ShapePaletteDialog] ${context}: fetch failed`, err);
+    return null;
+  }
+};
+
+const makeHydrator = (hydrateShape, backendBase, context) =>
+  hydrateShape || ((shape) => fetchHydratedShape(shape, backendBase, context));
+
 export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRecent, prefetchOnMount = false, recentShapes = [], fetchShapes, checkBackendHealth }) {
   // UI state from uiDao
   const colorScheme = useUiDao(state => state.colorScheme);
@@ -98,20 +121,7 @@ export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRe
   const safeAddRecent = useCallback(async (shape) => {
     if (!shape) return;
     try {
-      const hydrate = hydrateShape || (async (s) => {
-        if (!s?.id || hasShapeCells(s)) return s;
-        logger.debug('[ShapePaletteDialog] safeAddRecent: fetching shape by id', { id: s.id, base: backendBase });
-        try {
-          const response = await fetchShapeById(s.id, backendBase);
-          const data = response?.data || null;
-          logger.debug('[ShapePaletteDialog] safeAddRecent: fetch result', { id: s.id, ok: response?.ok, hasData: !!data, cellsLen: Array.isArray(data?.cells) ? data.cells.length : null });
-          if (response?.ok && data && hasShapeCells(data)) return data;
-          return null;
-        } catch (err) {
-          logger.warn('[ShapePaletteDialog] safeAddRecent: fetch failed', err);
-          return null;
-        }
-      });
+      const hydrate = makeHydrator(hydrateShape, backendBase, 'safeAddRecent');
       const hydrated = await hydrate(shape);
       if (!hydrated) {
         setSnackMsg('Unable to load shape details');
@@ -150,20 +160,7 @@ export default function ShapePaletteDialog({ open, onClose, backendBase, onAddRe
       return;
     }
     try {
-      const hydrate = hydrateShape || (async (s) => {
-        if (!s?.id) return null;
-        logger.debug('[ShapePaletteDialog] handleShapeSelect: fetching shape by id', { id: s.id, base: backendBase });
-        try {
-          const response = await fetchShapeById(s.id, backendBase);
-          const data = response?.data || null;
-          logger.debug('[ShapePaletteDialog] handleShapeSelect: fetch result', { id: s.id, ok: response?.ok, hasData: !!data, cellsLen: Array.isArray(data?.cells) ? data.cells.length : null });
-          if (response?.ok && data && hasShapeCells(data)) return data;
-          return null;
-        } catch (err) {
-          logger.warn('[ShapePaletteDialog] handleShapeSelect: fetch failed', err);
-          return null;
-        }
-      });
+      const hydrate = makeHydrator(hydrateShape, backendBase, 'handleShapeSelect');
       const hydrated = await hydrate(shape);
       setSelectedShape(hydrated || shape);
     } catch (err) {

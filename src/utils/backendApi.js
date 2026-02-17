@@ -137,16 +137,40 @@ export async function fetchShapes(q, backendBase = null, page = 1, pageSize = 10
   }
 }
 
+function resolveShapeNamesRequest(baseOrQ, qMaybe, limitMaybe, offsetMaybe, signalMaybe) {
+  const usingOldSignature =
+    typeof qMaybe === 'object' ||
+    (typeof limitMaybe === 'undefined' && typeof offsetMaybe === 'undefined');
+  return {
+    q: usingOldSignature ? baseOrQ : qMaybe,
+    base: usingOldSignature ? null : baseOrQ,
+    limit: Number(usingOldSignature ? 50 : limitMaybe) || 50,
+    offset: Number(usingOldSignature ? 0 : offsetMaybe) || 0,
+    signal: usingOldSignature ? (qMaybe || null) : signalMaybe,
+  };
+}
+
+function normalizeShapeNamesResponseData(data) {
+  if (Array.isArray(data)) {
+    return { items: data, total: data.length };
+  }
+  if (data && Array.isArray(data.items)) {
+    return { items: data.items, total: Number(data.total) || data.items.length };
+  }
+  return { items: [], total: 0 };
+}
+
 // Fetch only shape names (id + name) in a single call when supported by the backend.
 // Falls back to fetching a large page of shapes and mapping to minimal metadata.
 // Support legacy signature (q, signal) and new signature (base, q, limit, offset, signal).
 export async function fetchShapeNames(baseOrQ = '', qMaybe = '', limitMaybe = 50, offsetMaybe = 0, signalMaybe = null) {
-  const usingOldSignature = typeof qMaybe === 'object' || (typeof limitMaybe === 'undefined' && typeof offsetMaybe === 'undefined');
-  const q = usingOldSignature ? baseOrQ : qMaybe;
-  const base = usingOldSignature ? null : baseOrQ;
-  const limit = Number(usingOldSignature ? 50 : limitMaybe) || 50;
-  const offset = Number(usingOldSignature ? 0 : offsetMaybe) || 0;
-  const signal = usingOldSignature ? (qMaybe || null) : signalMaybe;
+  const { q, base, limit, offset, signal } = resolveShapeNamesRequest(
+    baseOrQ,
+    qMaybe,
+    limitMaybe,
+    offsetMaybe,
+    signalMaybe
+  );
 
   try {
     const apiBase = (typeof base === 'string' && base.trim().length) ? base : getBackendApiBase();
@@ -158,16 +182,8 @@ export async function fetchShapeNames(baseOrQ = '', qMaybe = '', limitMaybe = 50
     const res = await fetch(url, { signal });
     if (!res.ok) return { ok: false, items: [], total: 0 };
     const data = await res.json().catch(() => null);
-    let items = [];
-    let totalCount = 0;
-    if (Array.isArray(data)) {
-      items = data;
-      totalCount = data.length;
-    } else if (data && Array.isArray(data.items)) {
-      items = data.items;
-      totalCount = Number(data.total) || data.items.length;
-    }
-    return { ok: true, items, total: totalCount };
+    const normalized = normalizeShapeNamesResponseData(data);
+    return { ok: true, items: normalized.items, total: normalized.total };
   } catch (err) {
     logger.warn('fetchShapeNames failed:', err);
     return { ok: false, items: [], total: 0 };
@@ -221,26 +237,119 @@ export async function createShape(shape, backendBase = null) {
 }
 
 // Health check
-export async function checkBackendHealth() {
-     
+export async function getBackendHealthDetails(backendBase = null) {
   try {
-    // Always use getBackendApiBase (hardcoded for container)
-    const base = getBackendApiBase();
+    const base = (typeof backendBase === 'string' && backendBase.trim().length) ? backendBase : getBackendApiBase();
     const healthUrl = base.replace(/\/$/, '') + '/v1/health';
-    // Debug log: print the URL being used
-     
     const response = await fetch(healthUrl, {
       method: 'GET',
       timeout: 3000 // 3 second timeout
     });
-    // Debug log: print status
-     
-    return response.ok;
+
+    if (!response.ok) {
+      return { ok: false, aiConfigured: false, health: null };
+    }
+
+    let health = null;
+    try {
+      health = await response.json();
+    } catch (e) {
+      logger.warn('Failed to parse /v1/health JSON:', e?.message);
+    }
+
+    return {
+      ok: true,
+      aiConfigured: Boolean(health?.ai?.configured),
+      health
+    };
   } catch (error) {
-    // Debug log: print error
-     
-    console.error('[checkBackendHealth] Error:', error);
+    console.error('[getBackendHealthDetails] Error:', error);
     logger.warn('Backend health check failed:', error);
-    return false;
+    return { ok: false, aiConfigured: false, health: null };
+  }
+}
+
+export async function checkBackendHealth() {
+  const details = await getBackendHealthDetails();
+  return details.ok;
+}
+
+function resolveChatBase(options) {
+  if (typeof options.backendBase === 'string' && options.backendBase.trim().length) {
+    return options.backendBase;
+  }
+  return getBackendApiBase();
+}
+
+function resolveChatTimeout(options) {
+  if (Number.isFinite(Number(options.timeoutMs))) {
+    return Math.max(1000, Number(options.timeoutMs));
+  }
+  return 15000;
+}
+
+async function readChatPayload(response) {
+  try {
+    return await response.json();
+  } catch (e) {
+    logger.warn('chatWithAssistant: failed to parse JSON response', e?.message);
+    return {};
+  }
+}
+
+function validateChatResponse(response, payload) {
+  if (!response.ok) {
+    const error = new Error(payload.error || `Chat request failed (${response.status})`);
+    error.status = response.status;
+    error.code = payload.code || 'chat_request_failed';
+    throw error;
+  }
+  if (typeof payload.reply !== 'string' || !payload.reply.trim()) {
+    const error = new Error('AI response was empty.');
+    error.code = 'empty_reply';
+    throw error;
+  }
+}
+
+export async function chatWithAssistant(messages, options = {}) {
+  const base = resolveChatBase(options);
+  const timeoutMs = resolveChatTimeout(options);
+  const token = getAuthToken();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(`${base}/v1/ai/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        messages,
+        temperature: options.temperature,
+        maxOutputTokens: options.maxOutputTokens
+      }),
+      signal: controller.signal
+    });
+
+    const data = await readChatPayload(response);
+    validateChatResponse(response, data);
+
+    return {
+      reply: data.reply.trim(),
+      model: data.model || null,
+      usage: data.usage || null,
+      requestId: data.requestId || null
+    };
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      const timeoutError = new Error('Request timed out. Please try again.');
+      timeoutError.code = 'chat_timeout';
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

@@ -16,15 +16,25 @@ function resolveApiBase(msgBase) {
   return '/api';
 }
 
+function buildNamesUrl(base, q, limit, offset) {
+  return `${base}/v1/shapes/names?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`;
+}
+
+function getPagePayload(data) {
+  const items = Array.isArray(data?.items) ? data.items : [];
+  const total = Number(data?.total) || 0;
+  return { items, total };
+}
+
+function shouldContinuePaging(stopAfterFirstPage, itemsLength, total, offset) {
+  if (stopAfterFirstPage) return false;
+  if (!itemsLength) return false;
+  if (total && offset >= total) return false;
+  return true;
+}
+
 addEventListener('message', async (ev) => {
   const msg = ev.data || {};
-  // Debug: indicate worker received a message
-  try {
-    // no-op for now
-  } catch (e) {
-    // ignore logging errors
-    console.warn('Exception caught in namesWorker (debug):', e);
-  }
   if (!msg) return;
   if (msg.type === 'start') {
     await runNamesWorkerLoop(msg).catch(err => {
@@ -40,25 +50,29 @@ async function runNamesWorkerLoop(msg) {
   const limit = Number(msg.limit) || 50;
   let offset = Math.max(0, Number(msg.offsetStart) || 0);
   const stopAfterFirstPage = !!msg.stopAfterFirstPage;
+
   while (true) {
-    const url = `${base}/v1/shapes/names?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`;
-    try {
-      // no-op for now
-    } catch (e) {
-      console.warn('Exception caught in runNamesWorkerLoop (debug):', e);
-    }
+    const url = buildNamesUrl(base, q, limit, offset);
+
     const res = await fetch(url);
-    if (!res.ok) { postMessage({ type: 'error', message: 'HTTP ' + res.status }); return; }
+    if (!res.ok) {
+      postMessage({ type: 'error', message: 'HTTP ' + res.status });
+      return;
+    }
+
     const data = await res.json().catch(() => ({}));
-    const items = Array.isArray(data.items) ? data.items : [];
-    const total = Number(data.total) || 0;
+    const { items, total } = getPagePayload(data);
     if (items.length > 0) {
       postMessage({ type: 'page', items, total, offset });
     }
+
     offset += items.length;
-    if (stopAfterFirstPage) break;
-    if (!items.length || (total && offset >= total)) break;
+    if (!shouldContinuePaging(stopAfterFirstPage, items.length, total, offset)) {
+      break;
+    }
+
     await new Promise(r => setTimeout(r, 30));
   }
+
   postMessage({ type: 'done' });
 }

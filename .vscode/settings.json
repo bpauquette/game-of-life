@@ -17,6 +17,9 @@
             "icon": "terminal-ubuntu"
         }
     },
+    // Keep much more terminal history and make text easier to read
+    "terminal.integrated.scrollback": 50000,
+    "terminal.integrated.fontSize": 15,
     "files.watcherExclude": {
         "**/node_modules/**": true,
         "**/build/**": true,

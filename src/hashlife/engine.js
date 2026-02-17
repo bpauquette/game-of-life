@@ -8,24 +8,42 @@
 
 const { makeLeaf, makeNode, clearMemo } = require('./node.js');
 
+function pointToKey(point) {
+  if (typeof point === 'string') return point;
+  if (point && typeof point.x === 'number' && typeof point.y === 'number') return `${point.x},${point.y}`;
+  if (Array.isArray(point) && point.length >= 2) return `${point[0]},${point[1]}`;
+  return null;
+}
+
+function addFlatPairCells(target, cells) {
+  for (let i = 0; i < cells.length; i += 2) {
+    target.add(`${cells[i]},${cells[i + 1]}`);
+  }
+}
+
+function addObjectCells(target, cells) {
+  for (const point of cells) {
+    target.add(`${point.x},${point.y}`);
+  }
+}
+
+function addSetCells(target, cells) {
+  for (const point of cells) {
+    const key = pointToKey(point);
+    if (key) target.add(key);
+  }
+}
+
 // Helper: convert flat cell array or array of {x,y} into Set of "x,y" strings
 function cellsToSet(cells) {
   const s = new Set();
   if (!cells) return s;
-  // Accept Set inputs directly (common in internal code paths)
-  if (cells instanceof Set) {
-    for (const p of cells) {
-      if (typeof p === 'string') s.add(p);
-      else if (p && typeof p.x === 'number' && typeof p.y === 'number') s.add(`${p.x},${p.y}`);
-      else if (Array.isArray(p) && p.length >= 2) s.add(`${p[0]},${p[1]}`);
-    }
-    return s;
-  }
+  if (cells instanceof Set) { addSetCells(s, cells); return s; }
   if (Array.isArray(cells) && cells.length && typeof cells[0] === 'number') {
-    for (let i = 0; i < cells.length; i += 2) s.add(`${cells[i]},${cells[i+1]}`);
+    addFlatPairCells(s, cells);
     return s;
   }
-  for (const p of cells) s.add(`${p.x},${p.y}`);
+  addObjectCells(s, cells);
   return s;
 }
 
@@ -103,24 +121,49 @@ function nodeToCells(node, ox = 0, oy = 0) {
   return out;
 }
 
-// Brute-force life step for a set of live cells
-function bruteStepSet(set) {
-  const neighbors = new Map();
-  for (const s of set) {
-    const [x, y] = s.split(',').map(Number);
-    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+function parseCellKey(cell) {
+  const [x, y] = cell.split(',').map(Number);
+  return { x, y };
+}
+
+function incrementNeighbor(neighbors, key) {
+  neighbors.set(key, (neighbors.get(key) || 0) + 1);
+}
+
+function addNeighborTouches(neighbors, x, y) {
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
       if (dx === 0 && dy === 0) continue;
-      const key = `${x + dx},${y + dy}`;
-      neighbors.set(key, (neighbors.get(key) || 0) + 1);
+      incrementNeighbor(neighbors, `${x + dx},${y + dy}`);
     }
   }
+}
+
+function countNeighborTouches(set) {
+  const neighbors = new Map();
+  for (const point of set) {
+    const { x, y } = parseCellKey(point);
+    addNeighborTouches(neighbors, x, y);
+  }
+  return neighbors;
+}
+
+function shouldCellLive(alive, count) {
+  if (alive) return count === 2 || count === 3;
+  return count === 3;
+}
+
+function collectNextGeneration(set, neighbors) {
   const out = new Set();
-  for (const [cell, cnt] of neighbors.entries()) {
-    const alive = set.has(cell);
-    if (alive && (cnt === 2 || cnt === 3)) out.add(cell);
-    if (!alive && cnt === 3) out.add(cell);
+  for (const [cell, count] of neighbors.entries()) {
+    if (shouldCellLive(set.has(cell), count)) out.add(cell);
   }
   return out;
+}
+
+// Brute-force life step for a set of live cells
+function bruteStepSet(set) {
+  return collectNextGeneration(set, countNeighborTouches(set));
 }
 
 // Advance N generations using brute force on sets

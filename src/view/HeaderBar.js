@@ -1,5 +1,5 @@
 import useGlobalShortcuts from './hooks/useGlobalShortcuts.js';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import UserLoggedInIcon from '@mui/icons-material/LockPerson';
 import Box from '@mui/material/Box';
@@ -28,7 +28,8 @@ import OptionsPanel from './OptionsPanel.js';
 import PaymentDialog from './PaymentDialog.js';
 import PhotosensitivityTestDialog from './PhotosensitivityTestDialog.js';
 import RecentShapesStrip from './RecentShapesStrip.js';
-import { getBackendApiBase } from '../utils/backendApi.js';
+import { getBackendApiBase, getBackendHealthDetails } from '../utils/backendApi.js';
+import AssistantDialog from './AssistantDialog.js';
 // import { useGameContext } from '../context/GameContext.js';
 import SaveGridDialog from './SaveGridDialog.js';
 import ScriptPanel from './ScriptPanel.js';
@@ -75,11 +76,14 @@ export default function HeaderBar({
 
   // UI actions (wired via DAO)
   const setShowChart = useUiDao(state => state.setShowChart);
+  const [assistantAvailable, setAssistantAvailable] = useState(false);
 
   // UI state from uiDao
   const colorScheme = useUiDao(state => state.colorScheme);
   const scriptOpen = useUiDao(state => state.scriptOpen);
   const setScriptOpen = useUiDao(state => state.setScriptOpen);
+  const assistantOpen = useUiDao(state => state.assistantOpen);
+  const setAssistantOpen = useUiDao(state => state.setAssistantOpen);
   const optionsOpen = useUiDao(state => state.optionsOpen);
   const setOptionsOpen = useUiDao(state => state.setOptionsOpen);
   const wasRunningBeforeOptions = useUiDao(state => state.wasRunningBeforeOptions);
@@ -96,6 +100,24 @@ export default function HeaderBar({
   const setShowRegister = useUiDao(state => state.setShowRegister);
   const confirmOnClear = useUiDao(state => state.confirmOnClear);
   const enableAdaCompliance = useUiDao(state => state.enableAdaCompliance);
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      const health = await getBackendHealthDetails();
+      if (!active) return;
+      const available = health.ok && health.aiConfigured;
+      setAssistantAvailable(available);
+      if (!available) {
+        setAssistantOpen(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [setAssistantOpen]);
 
   const handleUserIconClick = useCallback(() => {
     try { setShowRegister(false); } catch (e) { console.error('[HeaderBar] failed to reset register flag', e); }
@@ -283,6 +305,9 @@ export default function HeaderBar({
               onOpenAbout={() => setAboutOpen(true)}
               onOpenOptions={openOptions}
               onOpenScript={() => setScriptOpen(true)}
+              onOpenAssistant={() => setAssistantOpen(true)}
+              showAssistant={assistantAvailable}
+              showPhotoTest={enableAdaCompliance}
               onOpenDonate={openDonate}
               onOpenPhotoTest={() => setPhotoTestOpen(true)}
               onOpenUser={handleUserIconClick}
@@ -403,6 +428,7 @@ export default function HeaderBar({
       )}
 
       <HelpDialog open={helpOpen} onClose={handleHelpClose} />
+      <AssistantDialog open={assistantOpen} onClose={() => setAssistantOpen(false)} />
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <PaymentDialog open={donateOpen} onClose={() => setDonateOpen(false)} />
       <PhotosensitivityTestDialog open={photoTestOpen} onClose={() => setPhotoTestOpen(false)} />

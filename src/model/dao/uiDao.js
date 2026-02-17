@@ -77,6 +77,8 @@ export const useUiDao = create((set) => ({
   setWasRunningBeforeOptions: (wasRunningBeforeOptions) => set({ wasRunningBeforeOptions }),
   scriptOpen: false,
   setScriptOpen: (scriptOpen) => set({ scriptOpen }),
+  assistantOpen: false,
+  setAssistantOpen: (assistantOpen) => set({ assistantOpen }),
   aboutOpen: false,
   setAboutOpen: (aboutOpen) => set({ aboutOpen }),
   donateOpen: false,

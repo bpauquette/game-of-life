@@ -3,6 +3,25 @@ import { useEffect, useState } from 'react';
 import { getBackendApiBase } from '../utils/backendApi.js';
 const backendBase = getBackendApiBase();
 
+function setUnauthenticatedState(setUser, setStatus, setError) {
+  setUser(null);
+  setStatus('unauthenticated');
+  setError(null);
+}
+
+function setAuthenticatedState(cancelled, setUser, setStatus, data) {
+  if (cancelled) return;
+  setUser(data);
+  setStatus('authenticated');
+}
+
+function setErroredState(cancelled, setError, setUser, setStatus, err) {
+  if (cancelled) return;
+  setError(err);
+  setUser(null);
+  setStatus('unauthenticated');
+}
+
 export function useCurrentUser(token) {
   const [user, setUser] = useState(null);
   const [status, setStatus] = useState('idle'); // idle | loading | authenticated | unauthenticated
@@ -10,9 +29,7 @@ export function useCurrentUser(token) {
 
   useEffect(() => {
     if (!token) {
-      setUser(null);
-      setStatus('unauthenticated');
-      setError(null);
+      setUnauthenticatedState(setUser, setStatus, setError);
       return;
     }
 
@@ -30,26 +47,16 @@ export function useCurrentUser(token) {
 
         if (!res.ok) {
           if (res.status === 401) {
-            if (!cancelled) {
-              setUser(null);
-              setStatus('unauthenticated');
-            }
+            if (!cancelled) setUnauthenticatedState(setUser, setStatus, setError);
             return;
           }
           throw new Error(`/v1/me failed with status ${res.status}`);
         }
 
         const data = await res.json();
-        if (!cancelled) {
-          setUser(data);
-          setStatus('authenticated');
-        }
+        setAuthenticatedState(cancelled, setUser, setStatus, data);
       } catch (err) {
-        if (!cancelled) {
-          setError(err);
-          setUser(null);
-          setStatus('unauthenticated');
-        }
+        setErroredState(cancelled, setError, setUser, setStatus, err);
       }
     }
 

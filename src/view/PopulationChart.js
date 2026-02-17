@@ -35,6 +35,78 @@ const AXIS_LABEL_OFFSET_Y = 6;
 const Y_AXIS_LABEL_OFFSET = 6;
 const Y_AXIS_TEXT_OFFSET_Y = 4;
 
+function normalizeHistoryEntry(entry, index) {
+  if (entry == null) return null;
+  if (typeof entry === 'number') {
+    return {
+      generation: index,
+      population: Number.isFinite(entry) ? entry : 0,
+    };
+  }
+  if (typeof entry !== 'object') return null;
+  const generation = Number(
+    Object.prototype.hasOwnProperty.call(entry, 'generation')
+      ? entry.generation
+      : index
+  );
+  const population = Number(
+    Object.prototype.hasOwnProperty.call(entry, 'population')
+      ? entry.population
+      : 0
+  );
+  if (!Number.isFinite(generation) || !Number.isFinite(population)) return null;
+  return { generation, population };
+}
+
+function normalizeHistorySeries(history) {
+  if (!Array.isArray(history) || history.length === 0) {
+    return { generations: [], populations: [] };
+  }
+  const generations = [];
+  const populations = [];
+  history.forEach((entry, index) => {
+    const normalized = normalizeHistoryEntry(entry, index);
+    if (!normalized) return;
+    generations.push(normalized.generation);
+    populations.push(normalized.population);
+  });
+  return { generations, populations };
+}
+
+function hasCustomPosition(position) {
+  return position && (
+    position.top !== undefined ||
+    position.right !== undefined ||
+    position.bottom !== undefined ||
+    position.left !== undefined
+  );
+}
+
+function applyPositionOverrides(style, position) {
+  if (position.top !== undefined) style.top = position.top;
+  if (position.right !== undefined) style.right = position.right;
+  if (position.bottom !== undefined) style.bottom = position.bottom;
+  if (position.left !== undefined) style.left = position.left;
+}
+
+function buildPositionStyle(embedded, position, width) {
+  if (embedded) {
+    return { position: 'static', width: '100%' };
+  }
+  const style = {
+    position: 'fixed',
+    zIndex: MODAL_Z_INDEX,
+    width: width + CHART_CONTAINER_PADDING,
+  };
+  if (hasCustomPosition(position)) {
+    applyPositionOverrides(style, position);
+  } else {
+    style.top = MODAL_POSITION_TOP;
+    style.right = MODAL_POSITION_RIGHT;
+  }
+  return style;
+}
+
 // Simple interactive SVG line chart for population over time.
 // Props:
 // - history: array of integers (population count per generation)
@@ -46,36 +118,10 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
 
   // Normalize history into parallel generation and population arrays so we can
   // plot against true generation numbers when available.
-  const { generations, populations } = useMemo(() => {
-    if (!Array.isArray(history) || history.length === 0) {
-      return { generations: [], populations: [] };
-    }
-    const gens = [];
-    const pops = [];
-    history.forEach((entry, index) => {
-      if (entry == null) return;
-      if (typeof entry === 'number') {
-        const v = Number.isFinite(entry) ? entry : 0;
-        gens.push(index);
-        pops.push(v);
-      } else if (typeof entry === 'object') {
-        const g = Number(
-          Object.prototype.hasOwnProperty.call(entry, 'generation')
-            ? entry.generation
-            : index
-        );
-        const p = Number(
-          Object.prototype.hasOwnProperty.call(entry, 'population')
-            ? entry.population
-            : 0
-        );
-        if (!Number.isFinite(g) || !Number.isFinite(p)) return;
-        gens.push(g);
-        pops.push(p);
-      }
-    });
-    return { generations: gens, populations: pops };
-  }, [history]);
+  const { generations, populations } = useMemo(
+    () => normalizeHistorySeries(history),
+    [history]
+  );
 
   const isEmpty = generations.length === 0;
 
@@ -118,22 +164,7 @@ export default function PopulationChart({ history = [], onClose, isRunning = fal
   );
 
   // Build positioning style; default to top-right if not provided
-  const posStyle = embedded
-    ? { position: 'static', width: '100%' }
-    : (() => {
-        const st = { position: 'fixed', zIndex: MODAL_Z_INDEX, width: w + CHART_CONTAINER_PADDING };
-        const hasCustom = position && (position.top !== undefined || position.right !== undefined || position.bottom !== undefined || position.left !== undefined);
-        if (hasCustom) {
-          if (position.top !== undefined) st.top = position.top;
-          if (position.right !== undefined) st.right = position.right;
-          if (position.bottom !== undefined) st.bottom = position.bottom;
-          if (position.left !== undefined) st.left = position.left;
-        } else {
-          st.top = MODAL_POSITION_TOP;
-          st.right = MODAL_POSITION_RIGHT;
-        }
-        return st;
-      })();
+  const posStyle = buildPositionStyle(embedded, position, w);
 
   return (
     <div style={posStyle}>
