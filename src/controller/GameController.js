@@ -302,59 +302,43 @@ export class GameController {
     return this.model.getSelectedShape();
   }
 
-  // Mouse event handlers
-  handleMouseDown(cellCoords, event) {
-    // Only handle left-button interactions for drawing
+  _isLeftMouseButton(event) {
     const button = event && typeof event.button === 'number' ? event.button : 0;
-    this.mouseState.isDown = true;
-    this.mouseState.button = button;
-    // Start a new diff buffer for undo tracking
-    this._currentDiff = [];
-    if (button !== 0) {
-      // Do not start tool interactions for non-left clicks
-      return;
-    }
-    const selectedTool = this.model.getSelectedTool();
-    const tool = this.toolMap[selectedTool];
-    // Centralized draw-while-running logic
+    return button === 0;
+  }
+
+  _isBlockedDrawingToolWhileRunning(selectedTool) {
     const drawWhileRunning = this._getDrawWhileRunning();
-    if (
+    return (
       this.model.getIsRunning?.() &&
       !drawWhileRunning &&
       ['draw', 'eraser', 'rect', 'line', 'circle', 'oval'].includes(selectedTool)
-    ) {
-      // Block drawing tools while running if option is off
-      return;
-    }
-    // Ensure start/last/dragging set for two-point flows
-    // Preserve fractional coordinates (fx/fy) when available so tools and
-    // overlays can render precise crosshairs while dragging or when the
-    // pointer stops moving.
-    const makePoint = (c) => {
-      if (!c) return { x: 0, y: 0 };
-      return {
-        x: c.x,
-        y: c.y,
-        ...(typeof c.fx === 'number' ? { fx: c.fx } : {}),
-        ...(typeof c.fy === 'number' ? { fy: c.fy } : {}),
-      };
+    );
+  }
+
+  _makeToolPoint(coords) {
+    if (!coords) return { x: 0, y: 0 };
+    return {
+      x: coords.x,
+      y: coords.y,
+      ...(typeof coords.fx === 'number' ? { fx: coords.fx } : {}),
+      ...(typeof coords.fy === 'number' ? { fy: coords.fy } : {}),
+    };
+  }
+
+  _setMouseDownToolState(selectedTool, cellCoords) {
+    const nextToolState = {
+      start: this._makeToolPoint(cellCoords),
+      last: this._makeToolPoint(cellCoords),
+      dragging: true
     };
     if (selectedTool === CONST_SHAPES) {
-      const selectedShape = this.model.getSelectedShape();
-      this._setToolState({
-        selectedShapeData: selectedShape || null,
-        start: makePoint(cellCoords),
-        last: makePoint(cellCoords),
-        dragging: true
-      });
-    } else {
-      this._setToolState({
-        start: makePoint(cellCoords),
-        last: makePoint(cellCoords),
-        dragging: true
-      });
+      nextToolState.selectedShapeData = this.model.getSelectedShape() || null;
     }
-    // Wrap setCellAlive to collect diffs
+    this._setToolState(nextToolState);
+  }
+
+  _initializeUndoDiffCollector() {
     this._setCellAliveForUndo = (x, y, alive) => {
       const prevAlive = this.model.isCellAlive(x, y);
       if (prevAlive !== alive) {
@@ -362,12 +346,30 @@ export class GameController {
       }
       this.model.setCellAliveModel(x, y, alive);
     };
-    if (tool?.onMouseDown) {
-      tool.onMouseDown(this.toolState, cellCoords.x, cellCoords.y);
-      this._setToolState({}, { updateOverlay: true });
-    } else {
-      // No-op if tool lacks mousedown
-    }
+  }
+
+  _invokeToolMouseDown(tool, cellCoords) {
+    if (!tool?.onMouseDown) return;
+    tool.onMouseDown(this.toolState, cellCoords.x, cellCoords.y);
+    this._setToolState({}, { updateOverlay: true });
+  }
+
+  // Mouse event handlers
+  handleMouseDown(cellCoords, event) {
+    const button = this._isLeftMouseButton(event) ? 0 : (event && typeof event.button === 'number' ? event.button : 0);
+    this.mouseState.isDown = true;
+    this.mouseState.button = button;
+    // Start a new diff buffer for undo tracking
+    this._currentDiff = [];
+    if (button !== 0) return;
+
+    const selectedTool = this.model.getSelectedTool();
+    const tool = this.toolMap[selectedTool];
+    if (this._isBlockedDrawingToolWhileRunning(selectedTool)) return;
+
+    this._setMouseDownToolState(selectedTool, cellCoords);
+    this._initializeUndoDiffCollector();
+    this._invokeToolMouseDown(tool, cellCoords);
   }
 
   handleMouseMove(cellCoords) {
@@ -473,33 +475,49 @@ export class GameController {
     };
   }
 
-  _handleShapesToolMouseUp(tool, cellCoords, setCellAlive, setCellsAliveBulk) {
-    const placeShape = (x, y) => {
-      const shape = this.model.getSelectedShape();
-      if (shape) {
-        // Collect diff for undo
-        const cells = shape.cells || shape.pattern || [];
-        const diff = [];
-        for (const cell of cells) {
-          const hasX = cell && Object.hasOwn(cell, 'x');
-          const hasY = cell && Object.hasOwn(cell, 'y');
-          let offsetX = hasX ? cell.x : Array.isArray(cell) ? cell[0] ?? 0 : 0;
-          let offsetY = hasY ? cell.y : Array.isArray(cell) ? cell[1] ?? 0 : 0;
-          const cellX = x + offsetX;
-          const cellY = y + offsetY;
-          const prevAlive = this.model.isCellAlive(cellX, cellY);
-          if (!prevAlive) {
-            diff.push({ x: cellX, y: cellY, prevAlive, newAlive: true });
-          }
-        }
-        this.model.placeShape(x, y, shape);
-        if (!this._currentDiff) this._currentDiff = [];
-        this._currentDiff.push(...diff);
-        // record when a placement happened so a subsequent click event
-        // that fires immediately after mouseup doesn't duplicate it
-        this._lastPlacementAt = Date.now();
-      }
+  _toCellOffset(cell) {
+    const hasX = cell && Object.hasOwn(cell, 'x');
+    const hasY = cell && Object.hasOwn(cell, 'y');
+    return {
+      offsetX: hasX ? cell.x : Array.isArray(cell) ? cell[0] ?? 0 : 0,
+      offsetY: hasY ? cell.y : Array.isArray(cell) ? cell[1] ?? 0 : 0
     };
+  }
+
+  _buildShapePlacementDiff(shape, baseX, baseY) {
+    const cells = shape.cells || shape.pattern || [];
+    const diff = [];
+    for (const cell of cells) {
+      const { offsetX, offsetY } = this._toCellOffset(cell);
+      const cellX = baseX + offsetX;
+      const cellY = baseY + offsetY;
+      const prevAlive = this.model.isCellAlive(cellX, cellY);
+      if (!prevAlive) {
+        diff.push({ x: cellX, y: cellY, prevAlive, newAlive: true });
+      }
+    }
+    return diff;
+  }
+
+  _appendCurrentDiff(diff) {
+    if (!Array.isArray(diff) || diff.length === 0) return;
+    if (!this._currentDiff) this._currentDiff = [];
+    this._currentDiff.push(...diff);
+  }
+
+  _placeSelectedShapeWithUndo(x, y) {
+    const shape = this.model.getSelectedShape();
+    if (!shape) return;
+    const diff = this._buildShapePlacementDiff(shape, x, y);
+    this.model.placeShape(x, y, shape);
+    this._appendCurrentDiff(diff);
+    // Record when a placement happened so a subsequent click event that fires
+    // immediately after mouseup doesn't duplicate it.
+    this._lastPlacementAt = Date.now();
+  }
+
+  _handleShapesToolMouseUp(tool, cellCoords, setCellAlive, setCellsAliveBulk) {
+    const placeShape = (x, y) => this._placeSelectedShapeWithUndo(x, y);
     tool.onMouseUp(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, placeShape, setCellsAliveBulk);
   }
 
@@ -901,57 +919,53 @@ export class GameController {
     this.applyPerformanceSettings({ maxFPS: nextFps, enableFPSCap: true });
   }
 
+  _updateNumericPerformanceCap(settings, settingKey, capKey, min, max) {
+    if (!Object.prototype.hasOwnProperty.call(settings, settingKey)) return false;
+    const current = this.performanceCaps[capKey];
+    const next = Math.max(min, Math.min(Number(settings[settingKey]) || current, max));
+    if (next === current) return false;
+    this.performanceCaps[capKey] = next;
+    return true;
+  }
+
+  _updateBooleanPerformanceCap(settings, settingKey, capKey) {
+    if (!Object.prototype.hasOwnProperty.call(settings, settingKey)) return false;
+    const next = !!settings[settingKey];
+    if (next === this.performanceCaps[capKey]) return false;
+    this.performanceCaps[capKey] = next;
+    return true;
+  }
+
+  _applyWorkerSetting(settings) {
+    if (!Object.prototype.hasOwnProperty.call(settings, 'useWebWorker')) return;
+    const next = !!settings.useWebWorker;
+    if (next && this.scheduler) {
+      this.scheduler.setUseWorker(next);
+    }
+  }
+
+  _syncSchedulerCaps() {
+    if (!this.scheduler) return;
+    this.scheduler.setCaps({
+      maxFPS: this.performanceCaps.maxFPS,
+      maxGPS: this.performanceCaps.maxGPS,
+      enableFPSCap: this.performanceCaps.enableFPSCap,
+      enableGPSCap: this.performanceCaps.enableGPSCap,
+    });
+  }
+
   applyPerformanceSettings(settings = {}) {
     if (!settings || typeof settings !== 'object') return;
 
     let capsChanged = false;
+    capsChanged = this._updateNumericPerformanceCap(settings, 'maxFPS', 'maxFPS', 1, 120) || capsChanged;
+    capsChanged = this._updateNumericPerformanceCap(settings, 'maxGPS', 'maxGPS', 1, 60) || capsChanged;
+    capsChanged = this._updateBooleanPerformanceCap(settings, 'enableFPSCap', 'enableFPSCap') || capsChanged;
+    capsChanged = this._updateBooleanPerformanceCap(settings, 'enableGPSCap', 'enableGPSCap') || capsChanged;
+    this._applyWorkerSetting(settings);
 
-    if (Object.prototype.hasOwnProperty.call(settings, 'maxFPS')) {
-      const nextFps = Math.max(1, Math.min(Number(settings.maxFPS) || this.performanceCaps.maxFPS, 120));
-      if (nextFps !== this.performanceCaps.maxFPS) {
-        this.performanceCaps.maxFPS = nextFps;
-        capsChanged = true;
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(settings, 'maxGPS')) {
-      const nextGps = Math.max(1, Math.min(Number(settings.maxGPS) || this.performanceCaps.maxGPS, 60));
-      if (nextGps !== this.performanceCaps.maxGPS) {
-        this.performanceCaps.maxGPS = nextGps;
-        capsChanged = true;
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(settings, 'enableFPSCap')) {
-      const next = !!settings.enableFPSCap;
-      if (next !== this.performanceCaps.enableFPSCap) {
-        this.performanceCaps.enableFPSCap = next;
-        capsChanged = true;
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(settings, 'enableGPSCap')) {
-      const next = !!settings.enableGPSCap;
-      if (next !== this.performanceCaps.enableGPSCap) {
-        this.performanceCaps.enableGPSCap = next;
-        capsChanged = true;
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(settings, 'useWebWorker')) {
-      const next = !!settings.useWebWorker;
-      if (next && this.scheduler) {
-        this.scheduler.setUseWorker(next);
-      }
-    }
-
-    if (capsChanged && this.scheduler) {
-      this.scheduler.setCaps({
-        maxFPS: this.performanceCaps.maxFPS,
-        maxGPS: this.performanceCaps.maxGPS,
-        enableFPSCap: this.performanceCaps.enableFPSCap,
-        enableGPSCap: this.performanceCaps.enableGPSCap,
-      });
+    if (capsChanged) {
+      this._syncSchedulerCaps();
     }
   }
 
