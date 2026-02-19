@@ -185,6 +185,17 @@ function GameUILayout({
           showToolsRow
           shapesReady={shapesReady}
           selectedShape={controlsProps?.selectedShape}
+          isRunning={controlsProps?.isRunning}
+          setIsRunning={controlsProps?.setIsRunning}
+          engineMode={controlsProps?.engineMode}
+          isHashlifeMode={controlsProps?.isHashlifeMode}
+          onStartNormalMode={controlsProps?.onStartNormalMode}
+          onStartHashlifeMode={controlsProps?.onStartHashlifeMode}
+          onStopAllEngines={controlsProps?.onStopAllEngines}
+          onSetEngineMode={controlsProps?.onSetEngineMode}
+          useHashlife={controlsProps?.useHashlife}
+          generationBatchSize={controlsProps?.generationBatchSize}
+          onSetGenerationBatchSize={controlsProps?.onSetGenerationBatchSize}
           step={step}
           draw={draw}
           clear={clear}

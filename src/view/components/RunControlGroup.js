@@ -26,6 +26,7 @@ export default function RunControlGroup({
   // Engine mode props
   engineMode = 'normal',
   onStartNormalMode,
+  onStartHashlifeMode,
   onStopAllEngines,
   onSetEngineMode
 }) {
@@ -124,7 +125,9 @@ export default function RunControlGroup({
 
         {/* Universal Play/Pause button */}
         <Tooltip title={
-          enableAdaCompliance ? 'Disabled in ADA mode' : (isRunning ? 'Stop normal' : 'Start normal simulation')
+          enableAdaCompliance
+            ? 'Disabled in ADA mode'
+            : (isRunning ? 'Stop simulation' : `Start ${engineMode === 'hashlife' ? 'hashlife' : 'normal'} simulation`)
         }>
           <IconButton
             size="small"
@@ -132,7 +135,15 @@ export default function RunControlGroup({
             color={isRunning ? 'error' : 'primary'}
             disabled={!!enableAdaCompliance}
             onClick={() => {
-              try { console.debug('[RunControlGroup] play button clicked', { isRunning, hasStart: !!onStartNormalMode, hasStop: !!onStopAllEngines }); } catch (e) { console.warn('Debug log failed:', e); }
+              try {
+                console.debug('[RunControlGroup] play button clicked', {
+                  isRunning,
+                  engineMode,
+                  hasStartNormal: !!onStartNormalMode,
+                  hasStartHashlife: !!onStartHashlifeMode,
+                  hasStop: !!onStopAllEngines
+                });
+              } catch (e) { console.warn('Debug log failed:', e); }
               if (isRunning) {
                 if (typeof onStopAllEngines === 'function') {
                   onStopAllEngines();
@@ -140,8 +151,9 @@ export default function RunControlGroup({
                   try { setIsRunning(false); } catch (e) { console.warn('setIsRunning(false) failed:', e); }
                 }
               } else {
-                if (typeof onStartNormalMode === 'function') {
-                  onStartNormalMode();
+                const startHandler = engineMode === 'hashlife' ? onStartHashlifeMode : onStartNormalMode;
+                if (typeof startHandler === 'function') {
+                  startHandler();
                 } else {
                   try { setIsRunning(true); } catch (e) { console.warn('setIsRunning(true) failed:', e); }
                 }
@@ -239,6 +251,7 @@ RunControlGroup.propTypes = {
   engineMode: PropTypes.oneOf(['normal', 'hashlife']),
   isHashlifeMode: PropTypes.bool,
   onStartNormalMode: PropTypes.func,
+  onStartHashlifeMode: PropTypes.func,
   onStopAllEngines: PropTypes.func,
   onSetEngineMode: PropTypes.func,
   useHashlife: PropTypes.bool,
