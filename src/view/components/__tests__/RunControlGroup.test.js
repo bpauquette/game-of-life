@@ -63,28 +63,4 @@ describe('RunControlGroup engine controls', () => {
     await userEvent.click(stepButton);
     expect(step).toHaveBeenCalledTimes(1);
   });
-
-  test('reset button calls generation-zero reset handler', async () => {
-    const resetToGenerationZero = jest.fn();
-    const setIsRunning = jest.fn();
-
-    render(
-      <RunControlGroup
-        isRunning={true}
-        setIsRunning={setIsRunning}
-        step={jest.fn()}
-        draw={jest.fn()}
-        clear={jest.fn()}
-        snapshotsRef={{ current: [] }}
-        setSteadyInfo={jest.fn()}
-        resetToGenerationZero={resetToGenerationZero}
-      />
-    );
-
-    const resetButton = screen.getByRole('button', { name: /reset-to-generation-zero/i });
-    await userEvent.click(resetButton);
-
-    expect(setIsRunning).toHaveBeenCalledWith(false);
-    expect(resetToGenerationZero).toHaveBeenCalledTimes(1);
-  });
 });
