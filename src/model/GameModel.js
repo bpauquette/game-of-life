@@ -54,11 +54,14 @@ function shouldThrottleCursorUpdate(now, lastUpdateTime, throttleDelay) {
 }
 
 function runNormalEngineSteps(liveCells, generations) {
-  if (!(liveCells instanceof Map) || liveCells.size === 0) return new Map();
+  if (!liveCells || typeof liveCells !== 'object') return new Map();
+  const initialSize = Number.isFinite(liveCells.size) ? liveCells.size : 0;
+  if (initialSize === 0) return new Map();
   let next = liveCells;
   for (let i = 0; i < generations; i++) {
     next = gameStep(next);
-    if (next.size === 0) break;
+    const nextSize = Number.isFinite(next?.size) ? next.size : 0;
+    if (nextSize === 0) break;
   }
   return next;
 }
