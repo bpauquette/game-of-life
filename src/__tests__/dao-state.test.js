@@ -91,6 +91,7 @@ describe('uiDao', () => {
 
   test('handles palette and color scheme changes', async () => {
     const useUiDao = await loadUiDao();
+    useUiDao.getState().setEnableAdaCompliance(false);
     useUiDao.getState().setPaletteOpen(true);
     useUiDao.getState().setColorSchemeKey('adaSafe');
     useUiDao.getState().setColorScheme({ foo: 'bar' });
@@ -99,6 +100,19 @@ describe('uiDao', () => {
     expect(useUiDao.getState().colorSchemeKey).toBe('adaSafe');
     expect(useUiDao.getState().colorScheme).toEqual({ foo: 'bar' });
     expect(typeof useUiDao.getState().scheduleCursorUpdate).toBe('function');
+  });
+
+  test('enforces adaSafe color scheme while ADA mode is enabled', async () => {
+    const useUiDao = await loadUiDao();
+    useUiDao.getState().setEnableAdaCompliance(true);
+    useUiDao.getState().setColorSchemeKey('bio');
+
+    expect(useUiDao.getState().colorSchemeKey).toBe('adaSafe');
+    expect(useUiDao.getState().colorScheme).toEqual(expect.objectContaining({ name: expect.stringContaining('ADA') }));
+
+    useUiDao.getState().setColorScheme({ foo: 'bar' });
+    expect(useUiDao.getState().colorSchemeKey).toBe('adaSafe');
+    expect(useUiDao.getState().colorScheme).toEqual(expect.objectContaining({ name: expect.stringContaining('ADA') }));
   });
 
   test('sets dialog toggles and payloads', async () => {

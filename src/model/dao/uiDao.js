@@ -3,6 +3,33 @@
 
 import { create } from 'zustand';
 import { colorSchemes } from '../colorSchemes.js';
+
+const ADA_SCHEME_KEY = 'adaSafe';
+const DEFAULT_SCHEME_KEY = 'bio';
+
+function resolveSchemeMap(schemes) {
+  if (schemes && typeof schemes === 'object' && Object.keys(schemes).length > 0) {
+    return schemes;
+  }
+  return colorSchemes;
+}
+
+function normalizeColorSchemeKey(requestedKey, adaEnabled, schemes) {
+  if (adaEnabled) return ADA_SCHEME_KEY;
+  const map = resolveSchemeMap(schemes);
+  const candidate = (typeof requestedKey === 'string' && requestedKey.trim())
+    ? requestedKey.trim()
+    : DEFAULT_SCHEME_KEY;
+  return Object.prototype.hasOwnProperty.call(map, candidate)
+    ? candidate
+    : DEFAULT_SCHEME_KEY;
+}
+
+function resolveColorSchemeValue(key, schemes) {
+  const map = resolveSchemeMap(schemes);
+  return map[key] || map[DEFAULT_SCHEME_KEY] || colorSchemes[DEFAULT_SCHEME_KEY];
+}
+
 export function getEnableAdaCompliance() {
   let value;
   try {
@@ -46,6 +73,21 @@ function getInitialUseWebWorker() {
   }
   return false;
 }
+
+function getInitialColorSchemeKey(adaEnabled) {
+  if (adaEnabled) return ADA_SCHEME_KEY;
+  try {
+    const stored = globalThis?.localStorage?.getItem('colorSchemeKey');
+    return normalizeColorSchemeKey(stored, false, colorSchemes);
+  } catch (e) {
+    console.error('getInitialColorSchemeKey error:', e);
+  }
+  return DEFAULT_SCHEME_KEY;
+}
+
+const initialEnableAdaCompliance = getInitialAdaCompliance();
+const initialColorSchemeKey = getInitialColorSchemeKey(initialEnableAdaCompliance);
+const initialColorScheme = resolveColorSchemeValue(initialColorSchemeKey, colorSchemes);
 
 export const useUiDao = create((set) => ({
   // UI state
@@ -113,25 +155,57 @@ export const useUiDao = create((set) => ({
   },
 
   // ADA compliance state (default true unless explicitly set to false)
-  enableAdaCompliance: getInitialAdaCompliance(),
+  enableAdaCompliance: initialEnableAdaCompliance,
   setEnableAdaCompliance: (value) => {
     const boolValue = Boolean(value);
-    set({ enableAdaCompliance: boolValue });
+    set((state) => {
+      const enforcedKey = normalizeColorSchemeKey(state.colorSchemeKey, boolValue, state.colorSchemes);
+      return {
+        enableAdaCompliance: boolValue,
+        colorSchemeKey: enforcedKey,
+        colorScheme: resolveColorSchemeValue(enforcedKey, state.colorSchemes)
+      };
+    });
     try {
       globalThis?.localStorage?.setItem('enableAdaCompliance', JSON.stringify(boolValue));
+      if (boolValue) {
+        globalThis?.localStorage?.setItem('colorSchemeKey', ADA_SCHEME_KEY);
+      }
     } catch (e) {
       console.error('setEnableAdaCompliance error:', e);
     }
   },
 
   // Color schemes
-  colorScheme: colorSchemes.bio,
+  colorScheme: initialColorScheme,
   colorSchemes,
-  colorSchemeKey: 'bio',
-  setColorSchemeKey: (key) => set({ colorSchemeKey: key || 'bio' }),
-  setColorScheme: (colorScheme) => set({ colorScheme }),
+  colorSchemeKey: initialColorSchemeKey,
+  setColorSchemeKey: (key) => set((state) => {
+    const nextKey = normalizeColorSchemeKey(key, state.enableAdaCompliance, state.colorSchemes);
+    return {
+      colorSchemeKey: nextKey,
+      colorScheme: resolveColorSchemeValue(nextKey, state.colorSchemes)
+    };
+  }),
+  setColorScheme: (colorScheme) => set((state) => {
+    if (state.enableAdaCompliance) {
+      const enforcedKey = ADA_SCHEME_KEY;
+      return {
+        colorSchemeKey: enforcedKey,
+        colorScheme: resolveColorSchemeValue(enforcedKey, state.colorSchemes)
+      };
+    }
+    return { colorScheme };
+  }),
   setColorSchemes: (schemes) => {
-    const safe = schemes && typeof schemes === 'object' ? schemes : {};
-    set({ colorSchemes: safe });
+    const safe = resolveSchemeMap(schemes);
+    set((state) => {
+      const nextKey = normalizeColorSchemeKey(state.colorSchemeKey, state.enableAdaCompliance, safe);
+      return {
+        colorSchemes: safe,
+        colorSchemeKey: nextKey,
+        colorScheme: resolveColorSchemeValue(nextKey, safe)
+      };
+    });
   },
 }));
