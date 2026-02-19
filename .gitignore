@@ -75,3 +75,6 @@ backend/data/shapes.json
 
 # Generated shape thumbnails
 backend/data/thumbnails/
+
+# Scanner workspace
+.scannerwork/
