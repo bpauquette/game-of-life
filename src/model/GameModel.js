@@ -34,6 +34,141 @@ const clampNumber = (value, min, max) => {
   return Math.min(max, Math.max(min, num));
 };
 
+function normalizeCursorPosition(position) {
+  if (!position) return null;
+  return {
+    x: Number.isFinite(position.x) ? Math.round(position.x) : position.x,
+    y: Number.isFinite(position.y) ? Math.round(position.y) : position.y,
+    fx: Number.isFinite(position.fx) ? Number(position.fx.toFixed(2)) : position.fx,
+    fy: Number.isFinite(position.fy) ? Number(position.fy.toFixed(2)) : position.fy
+  };
+}
+
+function hasCursorPositionChanged(previous, next) {
+  if (previous === null || next === null) return previous !== next;
+  return previous.x !== next.x || previous.y !== next.y || previous.fx !== next.fx || previous.fy !== next.fy;
+}
+
+function shouldThrottleCursorUpdate(now, lastUpdateTime, throttleDelay) {
+  return now - (lastUpdateTime || 0) < throttleDelay;
+}
+
+function runNormalEngineSteps(liveCells, generations) {
+  if (!(liveCells instanceof Map) || liveCells.size === 0) return new Map();
+  let next = liveCells;
+  for (let i = 0; i < generations; i++) {
+    next = gameStep(next);
+    if (next.size === 0) break;
+  }
+  return next;
+}
+
+function shouldUseHashlifeBatch(engineMode, forceExactGenerations, requestedValue, requestedNumber) {
+  if (engineMode !== 'hashlife' || forceExactGenerations) return false;
+  return requestedValue === undefined || requestedNumber === 1 || Number.isNaN(requestedNumber);
+}
+
+function resolveGenerationCount(requestedValue, requestedNumber, useBatch, batchSize) {
+  if (useBatch) return Math.max(1, Number(batchSize) || 1);
+  return Math.max(1, requestedNumber || 1);
+}
+
+function liveCellsMapToArray(liveCells) {
+  return Array.from(liveCells.keys()).map((key) => {
+    const [x, y] = key.split(',').map(Number);
+    return { x, y };
+  });
+}
+
+function calculateHashlifeGenerations(generations, generationBatchSize) {
+  return Math.max(1, Number(generations) || Number(generationBatchSize) || 1);
+}
+
+function average(values) {
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function computePopulationStats(recent, tolerance) {
+  const avg = average(recent);
+  const variance = recent.reduce((sum, pop) => sum + Math.pow(pop - avg, 2), 0) / recent.length;
+  const stdDev = Math.sqrt(variance);
+  return { stdDev, populationStable: stdDev <= tolerance };
+}
+
+function computeTrendStable(recent, tolerance) {
+  if (recent.length < 10) return true;
+  const mid = Math.floor(recent.length / 2);
+  const firstHalf = recent.slice(0, mid);
+  const secondHalf = recent.slice(mid);
+  const firstAvg = average(firstHalf);
+  const secondAvg = average(secondHalf);
+  return Math.abs(secondAvg - firstAvg) <= tolerance * 1.5;
+}
+
+function findDetectedPeriod(recentStates, maxPeriod) {
+  for (let period = 1; period <= maxPeriod; period++) {
+    const cyclesToCheck = Math.floor(recentStates.length / period) - 1;
+    if (cyclesToCheck < 2) continue;
+    if (isPeriodMatch(recentStates, period, cyclesToCheck)) return period;
+  }
+  return 0;
+}
+
+function detectPeriodicStateStability(stateHashHistory, effectiveWindowSize) {
+  if (stateHashHistory.length < 6) return { periodicStable: false, detectedPeriod: 0 };
+
+  const recentStates = stateHashHistory.slice(-effectiveWindowSize);
+  const maxPeriod = Math.min(8, Math.floor(recentStates.length / 3));
+  const detectedPeriod = findDetectedPeriod(recentStates, maxPeriod);
+  return { periodicStable: detectedPeriod > 0, detectedPeriod };
+}
+
+function computePlateauStable(recent, engineMode, effectiveWindowSize, tolerance) {
+  const plateauWindow = engineMode === 'hashlife' ? Math.min(15, Math.max(5, effectiveWindowSize)) : 15;
+  if (recent.length < plateauWindow) return false;
+
+  const lastSample = recent.slice(-plateauWindow);
+  const uniqueValues = [...new Set(lastSample)];
+  if (uniqueValues.length === 1) return true;
+  if (uniqueValues.length !== 2) return false;
+
+  const sorted = uniqueValues.sort((a, b) => a - b);
+  return (sorted[1] - sorted[0]) <= Math.max(1, tolerance * 0.5);
+}
+
+function hasRecentPerfectStability(recent, requiredLength = 10) {
+  if (recent.length < requiredLength) return false;
+  const lastValue = recent[recent.length - 1];
+  return recent.slice(-requiredLength).every((pop) => pop === lastValue);
+}
+
+function isPeriodMatch(recentStates, period, cyclesToCheck) {
+  for (let cycle = 0; cycle < cyclesToCheck; cycle++) {
+    for (let offset = 0; offset < period; offset++) {
+      const idx1 = recentStates.length - 1 - offset;
+      const idx2 = idx1 - period;
+      if (idx2 >= 0 && recentStates[idx1] !== recentStates[idx2]) return false;
+    }
+  }
+  return true;
+}
+
+function applyNumericPerformanceSetting(next, settings, key, min, max) {
+  if (!Object.prototype.hasOwnProperty.call(settings, key)) return false;
+  const clamped = clampNumber(settings[key], min, max);
+  if (clamped === null || clamped === next[key]) return false;
+  next[key] = clamped;
+  return true;
+}
+
+function applyBooleanPerformanceSetting(next, settings, key) {
+  if (!Object.prototype.hasOwnProperty.call(settings, key)) return false;
+  const boolValue = !!settings[key];
+  if (boolValue === next[key]) return false;
+  next[key] = boolValue;
+  return true;
+}
+
 export class GameModel {
   // Overlay management - persistent caching
   // Overlay is cached and only cleared when tool/shape explicitly changes,
@@ -274,33 +409,12 @@ export class GameModel {
   }
 
   setCursorPositionModel(position) {
-    // Normalize incoming cursor positions to avoid tiny float diffs
     const now = performance.now();
-    const normalize = (p) => {
-      if (!p) return null;
-      return {
-        x: Number.isFinite(p.x) ? Math.round(p.x) : p.x,
-        y: Number.isFinite(p.y) ? Math.round(p.y) : p.y,
-        fx: Number.isFinite(p.fx) ? Number(p.fx.toFixed(2)) : p.fx,
-        fy: Number.isFinite(p.fy) ? Number(p.fy.toFixed(2)) : p.fy
-      };
-    };
-
-    const nextPos = normalize(position);
+    const nextPos = normalizeCursorPosition(position);
     const prev = this.cursorPosition;
+    if (!hasCursorPositionChanged(prev, nextPos)) return;
 
-    const changed = (prev === null && nextPos !== null) ||
-      (prev !== null && nextPos === null) ||
-      (prev !== null && nextPos !== null && (
-        prev.x !== nextPos.x || prev.y !== nextPos.y || prev.fx !== nextPos.fx || prev.fy !== nextPos.fy
-      ));
-
-    if (!changed) return;
-
-    // Minimal throttle to avoid high-frequency noise causing rapid observer churn.
-    if (now - (this.lastCursorUpdateTime || 0) < this.cursorThrottleDelay) {
-      // Still update the stored value so subsequent comparisons reflect latest coords,
-      // but avoid notifying observers too frequently.
+    if (shouldThrottleCursorUpdate(now, this.lastCursorUpdateTime, this.cursorThrottleDelay)) {
       this.cursorPosition = nextPos;
       return;
     }
@@ -376,81 +490,38 @@ export class GameModel {
 
   // Game evolution  
   async step(n = 1, options = {}) {
-    // Debug log removed to reduce console noise during normal stepping
     const requested = Number(n);
     const forceExactGenerations = !!options?.forceExactGenerations;
-    const useBatch = !forceExactGenerations
-      && (this.engineMode === 'hashlife')
-      && (n === undefined || requested === 1 || Number.isNaN(requested));
-    const generations = Math.max(1, useBatch ? Number(this.generationBatchSize) || 1 : requested || 1);
-    if (this.engineMode === 'hashlife') {
-      await this._stepHashlife(generations);
-    } else {
-      // Normal engine: iterate locally and apply once to preserve
-      // the single-step notification semantics.
-      let next = this.liveCells;
-      if (next.size > 0) {
-        for (let i = 0; i < generations; i++) {
-          next = gameStep(next);
-          if (next.size === 0) {
-            // Early exit if empty
-            if (i < generations - 1) {
-              // consume remaining generations without work
-            }
-            break;
-          }
-        }
-      } else {
-        next = new Map();
-      }
-      this._applyStepResult(next, generations);
-    }
+    const useBatch = shouldUseHashlifeBatch(this.engineMode, forceExactGenerations, n, requested);
+    const generations = resolveGenerationCount(n, requested, useBatch, this.generationBatchSize);
+
+    if (this.engineMode === 'hashlife') return this._stepHashlife(generations);
+
+    const next = runNormalEngineSteps(this.liveCells, generations);
+    this._applyStepResult(next, generations);
   }
 
   async _stepHashlife(generations = 1) {
     if (this.liveCells.size === 0) {
-      // No cells to step - advance generations but keep empty state
       this._applyStepResult(new Map(), Math.max(1, Number(generations) || 1));
       return;
     }
 
-    try {
-      // Convert live cells to array format for hashlife
-      const cellsArray = Array.from(this.liveCells.keys()).map(key => {
-        const [x, y] = key.split(',').map(Number);
-        return { x, y };
-      });
+    const gens = calculateHashlifeGenerations(generations, this.generationBatchSize);
 
-      // Use hashlife adapter to step multiple generations based on batch size
-      // hashlifeAdapter is now statically imported at the top
-      const gens = Math.max(1, Number(generations) || Number(this.generationBatchSize) || 1);
+    try {
+      const cellsArray = liveCellsMapToArray(this.liveCells);
       const result = await hashlifeAdapter.run(cellsArray, gens);
 
       if (result && result.cells) {
         this.applyExternalStepResult({ ...result, generations: gens }, gens);
-      } else {
-        // Fallback to normal step if hashlife fails
-        let next = this.liveCells;
-        for (let i = 0; i < gens; i++) {
-          next = gameStep(next);
-          if (next.size === 0) break;
-        }
-        this._applyStepResult(next, gens);
+        return;
       }
+
+      this._applyStepResult(runNormalEngineSteps(this.liveCells, gens), gens);
     } catch (error) {
       logger.warn('[GameModel] Hashlife step failed, falling back to normal step:', error);
-      // Fallback to normal step
-      let next = this.liveCells;
-      const gens = Math.max(1, Number(generations) || 1);
-      if (next.size > 0) {
-        for (let i = 0; i < gens; i++) {
-          next = gameStep(next);
-          if (next.size === 0) break;
-        }
-      } else {
-        next = new Map();
-      }
-      this._applyStepResult(next, gens);
+      this._applyStepResult(runNormalEngineSteps(this.liveCells, gens), gens);
     }
   }
 
@@ -606,163 +677,49 @@ export class GameModel {
 
   // Enhanced pattern analysis with sophisticated heuristic algorithm
   isStable(globalThisSize = 50, tolerance = 3) {
-    // Adjust parameters for hashlife batch stepping
     const isHashlife = this.engineMode === 'hashlife';
     const batchSize = isHashlife ? this.generationBatchSize : 1;
-
-    // Adjust globalThis size and tolerance for batch stepping
-    const effectiveWindowSize = isHashlife ?
-      Math.min(globalThisSize, Math.max(10, Math.floor(globalThisSize / Math.max(1, batchSize / 10)))) :
-      globalThisSize;
-    const effectiveTolerance = isHashlife ?
-      Math.max(tolerance, tolerance * Math.min(2, Math.sqrt(batchSize / 10))) :
-      tolerance;
-
-    // Require less history for hashlife due to batch stepping
-    const minHistory = isHashlife ?
-      Math.max(effectiveWindowSize, 15) :
-      Math.max(globalThisSize * 1.5, 40);
+    const effectiveWindowSize = isHashlife
+      ? Math.min(globalThisSize, Math.max(10, Math.floor(globalThisSize / Math.max(1, batchSize / 10))))
+      : globalThisSize;
+    const effectiveTolerance = isHashlife
+      ? Math.max(tolerance, tolerance * Math.min(2, Math.sqrt(batchSize / 10)))
+      : tolerance;
+    const minHistory = isHashlife
+      ? Math.max(effectiveWindowSize, 15)
+      : Math.max(globalThisSize * 1.5, 40);
 
     if (this.populationHistory.length < minHistory) {
-      // console.log(`🔍 [Stability] Not enough history: ${this.populationHistory.length} < ${minHistory} (${isHashlife ? 'hashlife' : 'normal'})`);
       return false;
     }
 
     const recent = this.populationHistory.slice(-effectiveWindowSize);
+    const { stdDev, populationStable } = computePopulationStats(recent, effectiveTolerance);
+    const trendStable = computeTrendStable(recent, effectiveTolerance);
+    const { periodicStable, detectedPeriod } = detectPeriodicStateStability(this.stateHashHistory, effectiveWindowSize);
+    const plateauStable = computePlateauStable(recent, this.engineMode, effectiveWindowSize, effectiveTolerance);
 
-    // Multi-criteria stability detection heuristic (adjusted for batch stepping)
-
-    // Criterion 1: Population variance analysis (primary indicator)
-    const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
-    const variance = recent.reduce((sum, pop) => sum + Math.pow(pop - avg, 2), 0) / recent.length;
-    const stdDev = Math.sqrt(variance);
-    const populationStable = stdDev <= effectiveTolerance;
-
-    // Criterion 2: Trend analysis (detect long-term drift)
-    let trendStable = true;
-    if (recent.length >= 10) {
-      const mid = Math.floor(recent.length / 2);
-      const firstHalf = recent.slice(0, mid);
-      const secondHalf = recent.slice(mid);
-      const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
-      const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-
-      // Allow small drift but reject significant population changes
-      trendStable = Math.abs(secondAvg - firstAvg) <= effectiveTolerance * 1.5;
-    }
-
-    // Criterion 3: Oscillation detection using state hashes (proper detection for oscillators)
-    let periodicStable = false;
-    let detectedPeriod = 0;
-
-    if (this.stateHashHistory.length >= 6) {
-      const recentStates = this.stateHashHistory.slice(-effectiveWindowSize);
-
-      // State hash debugging removed to reduce log spam
-
-      // Check for stable oscillations (periods 1-8)
-      for (let period = 1; period <= Math.min(8, Math.floor(recentStates.length / 3)); period++) {
-        let cyclicMatch = true;
-        const cyclesToCheck = Math.floor(recentStates.length / period) - 1;
-
-        if (cyclesToCheck >= 2) {
-          // Check if the pattern repeats with this period
-          for (let cycle = 0; cycle < cyclesToCheck && cyclicMatch; cycle++) {
-            for (let offset = 0; offset < period && cyclicMatch; offset++) {
-              const idx1 = recentStates.length - 1 - offset;
-              const idx2 = idx1 - period;
-              if (idx2 >= 0 && recentStates[idx1] !== recentStates[idx2]) {
-                cyclicMatch = false;
-              }
-            }
-          }
-          if (cyclicMatch) {
-            periodicStable = true;
-            detectedPeriod = period;
-
-            // Period detection successful
-            break;
-          }
-        }
-      }
-    }
-
-    // Criterion 4: Plateau detection (stable still life) - adjusted for batch stepping
-    let plateauStable = false;
-    const plateauWindow = this.engineMode === 'hashlife' ? Math.min(15, Math.max(5, effectiveWindowSize)) : 15;
-    if (recent.length >= plateauWindow) {
-      const lastSample = recent.slice(-plateauWindow);
-      const uniqueValues = [...new Set(lastSample)];
-      // Require plateau with adjusted criteria for batch stepping
-      // Sample must have identical populations (true still life)
-      // OR at most 2 unique values with very small variance (tight oscillation)
-      if (uniqueValues.length === 1) {
-        plateauStable = true; // Perfect still life
-      } else if (uniqueValues.length === 2) {
-        // Check if it's a tight 2-state oscillation
-        const sorted = uniqueValues.sort((a, b) => a - b);
-        plateauStable = (sorted[1] - sorted[0]) <= Math.max(1, effectiveTolerance * 0.5);
-      }
-
-      // Debug plateau detection
-      if (this.generation >= 500 && this.generation <= 505) {
-        // Plateau debug logging removed
-      }
-    }
-
-    // Combine criteria with stricter logic to reduce false positives
-    // Require both population stability AND trend stability for still life
-    // OR require both periodic pattern AND population stability for oscillators
     const stillLifeDetected = populationStable && trendStable && plateauStable;
     const oscillatorDetected = periodicStable && populationStable;
-
-    // RELAXED CRITERIA: Only apply if we also have some state repetition to prevent
-    // moving patterns (like gliders) from being detected as stable just because population is constant
     const perfectlyStableForLongTime = populationStable && stdDev <= 0.1 && recent.length >= 20;
-    const recentlyPerfectStable = recent.length >= 10 &&
-      recent.slice(-10).every(pop => pop === recent[recent.length - 1]);
+    const recentlyPerfectStable = hasRecentPerfectStability(recent);
     const hasStateRepetition = periodicStable || detectedPeriod > 0;
-
-    const finalResult = stillLifeDetected || oscillatorDetected || (perfectlyStableForLongTime && recentlyPerfectStable && hasStateRepetition);
-
-    // Stability analysis complete
-
-    return finalResult;
+    return stillLifeDetected || oscillatorDetected || (perfectlyStableForLongTime && recentlyPerfectStable && hasStateRepetition);
   }
 
   detectPeriod(maxPeriod = 30) {
-    // Need at least 6 states minimum, and enough to check at least 2 cycles of the largest period we'll test
     const absoluteMinimum = 6;
     if (this.stateHashHistory.length < absoluteMinimum) {
       return 0;
     }
 
     const recentStates = this.stateHashHistory;
-
-    // Use state hash comparison for accurate period detection
-    // Only test periods where we have enough history for at least 3 full cycles
     const effectiveMaxPeriod = Math.min(maxPeriod, Math.floor(recentStates.length / 3));
 
     for (let period = 1; period <= effectiveMaxPeriod; period++) {
       const cyclesToCheck = Math.floor(recentStates.length / period) - 1;
-
-      if (cyclesToCheck < 2) continue; // Need at least 2 complete cycles
-
-      let perfectMatch = true;
-
-      // Check if the pattern repeats perfectly with this period
-      for (let cycle = 0; cycle < cyclesToCheck && perfectMatch; cycle++) {
-        for (let offset = 0; offset < period && perfectMatch; offset++) {
-          const idx1 = recentStates.length - 1 - offset;
-          const idx2 = idx1 - period;
-
-          if (idx2 >= 0 && recentStates[idx1] !== recentStates[idx2]) {
-            perfectMatch = false;
-          }
-        }
-      }
-
-      if (perfectMatch) {
+      if (cyclesToCheck < 2) continue;
+      if (isPeriodMatch(recentStates, period, cyclesToCheck)) {
         return period;
       }
     }
@@ -894,63 +851,15 @@ export class GameModel {
     }
 
     const next = { ...this.performanceSettings };
-    let changed = false;
-
-    if (Object.prototype.hasOwnProperty.call(settings, 'maxFPS')) {
-      const clamped = clampNumber(settings.maxFPS, 1, 120);
-      if (clamped !== null && clamped !== next.maxFPS) {
-        next.maxFPS = clamped;
-        changed = true;
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(settings, 'maxGPS')) {
-      const clamped = clampNumber(settings.maxGPS, 1, 60);
-      if (clamped !== null && clamped !== next.maxGPS) {
-        next.maxGPS = clamped;
-        changed = true;
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(settings, 'populationWindowSize')) {
-      const clamped = clampNumber(settings.populationWindowSize, 1, 1000);
-      if (clamped !== null && clamped !== next.populationWindowSize) {
-        next.populationWindowSize = clamped;
-        changed = true;
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(settings, 'populationTolerance')) {
-      const clamped = clampNumber(settings.populationTolerance, 0, 1000);
-      if (clamped !== null && clamped !== next.populationTolerance) {
-        next.populationTolerance = clamped;
-        changed = true;
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(settings, 'useWebWorker')) {
-      const nextUseWebWorker = !!settings.useWebWorker;
-      if (nextUseWebWorker !== next.useWebWorker) {
-        next.useWebWorker = nextUseWebWorker;
-        changed = true;
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(settings, 'enableFPSCap')) {
-      const nextEnableFPSCap = !!settings.enableFPSCap;
-      if (nextEnableFPSCap !== next.enableFPSCap) {
-        next.enableFPSCap = nextEnableFPSCap;
-        changed = true;
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(settings, 'enableGPSCap')) {
-      const nextEnableGPSCap = !!settings.enableGPSCap;
-      if (nextEnableGPSCap !== next.enableGPSCap) {
-        next.enableGPSCap = nextEnableGPSCap;
-        changed = true;
-      }
-    }
+    const changed = [
+      applyNumericPerformanceSetting(next, settings, 'maxFPS', 1, 120),
+      applyNumericPerformanceSetting(next, settings, 'maxGPS', 1, 60),
+      applyNumericPerformanceSetting(next, settings, 'populationWindowSize', 1, 1000),
+      applyNumericPerformanceSetting(next, settings, 'populationTolerance', 0, 1000),
+      applyBooleanPerformanceSetting(next, settings, 'useWebWorker'),
+      applyBooleanPerformanceSetting(next, settings, 'enableFPSCap'),
+      applyBooleanPerformanceSetting(next, settings, 'enableGPSCap')
+    ].some(Boolean);
 
     if (changed) {
       this.performanceSettings = next;

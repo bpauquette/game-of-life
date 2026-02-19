@@ -60,57 +60,147 @@ const hasShapeCells = (shape) => {
   return has(shape.cells) || has(shape.pattern) || has(shape.liveCells);
 };
 
-const normalizeRecentShape = (shape) => {
-  // Memoization cache (keyed by shape id + cell positions to handle rotations)
+const getRecentShapeCache = () => {
   if (!normalizeRecentShape._cache) normalizeRecentShape._cache = new Map();
   const cache = normalizeRecentShape._cache;
-  // Clear cache if it gets too large to prevent memory issues
   if (cache.size > 200) cache.clear();
-  const sourceCells = extractCells(shape);
-  // Include actual cell positions in cache key to distinguish rotated versions
+  return cache;
+};
+
+const getCellCoordinates = (cell) => {
+  const x = Array.isArray(cell) ? cell[0] : (cell?.x ?? 0);
+  const y = Array.isArray(cell) ? cell[1] : (cell?.y ?? 0);
+  return { x, y };
+};
+
+const buildRecentShapeCacheKey = (shape, sourceCells) => {
   const cellsKey = sourceCells.length > 0 ? JSON.stringify(sourceCells.slice(0, 10)) : 'empty';
-  let key = (shape?.id || shape?.name || 'unnamed') + '::' + cellsKey;
+  return (shape?.id || shape?.name || 'unnamed') + '::' + cellsKey;
+};
+
+const normalizeCellsToOrigin = (sourceCells) => {
+  let minX = Infinity;
+  let minY = Infinity;
+  const absoluteCells = sourceCells.map((cell) => {
+    const { x, y } = getCellCoordinates(cell);
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    return { x, y };
+  });
+
+  if (!Number.isFinite(minX)) minX = 0;
+  if (!Number.isFinite(minY)) minY = 0;
+
+  const normalized = absoluteCells.map(({ x, y }) => [x - minX, y - minY]);
+  if (!normalized.length) return { normalized, width: null, height: null };
+
+  const xs = normalized.map(([x]) => x);
+  const ys = normalized.map(([, y]) => y);
+  return {
+    normalized,
+    width: Math.max(...xs) - Math.min(...xs) + 1,
+    height: Math.max(...ys) - Math.min(...ys) + 1
+  };
+};
+
+const buildNormalizedShape = (shape, normalizedCells, width, height, cellCount) => ({
+  ...shape,
+  cells: normalizedCells,
+  width: width || shape.width,
+  height: height || shape.height,
+  meta: {
+    ...shape.meta,
+    width: width || shape.meta?.width,
+    height: height || shape.meta?.height,
+    cellCount
+  }
+});
+
+const appendShapeMetaKeyParts = (keyParts, shape) => {
+  if (!shape?.meta) return;
+  if (shape.meta.width) keyParts.push(`w:${shape.meta.width}`);
+  if (shape.meta.height) keyParts.push(`h:${shape.meta.height}`);
+  if (shape.meta.cellCount) keyParts.push(`c:${shape.meta.cellCount}`);
+};
+
+const appendShapeCellSampleKeyParts = (keyParts, cells) => {
+  if (!Array.isArray(cells) || cells.length === 0) return;
+  keyParts.push(`len:${cells.length}`);
+  const sampleCount = Math.min(4, cells.length);
+  for (let i = 0; i < sampleCount; i++) {
+    const { x, y } = getCellCoordinates(cells[i]);
+    keyParts.push(`${x},${y}`);
+  }
+};
+
+const fallbackShapeKey = (shape, cells) => JSON.stringify({ name: shape?.name || '', len: (cells && cells.length) || 0 });
+
+const isValidRecentsPayload = (payload) => {
+  if (!payload) return false;
+  if (payload.version !== RECENTS_STORAGE_VERSION) return false;
+  return Array.isArray(payload.shapes);
+};
+
+const normalizePersistedShapes = (shapes) => {
+  return (shapes || []).map(normalizeRecentShape).filter(Boolean).slice(0, MAX_RECENT_SHAPES);
+};
+
+const mergeUniqueRecentShapes = (primary, secondary, getKey) => {
+  const seen = new Set();
+  const result = [];
+  for (const shape of [...primary, ...secondary]) {
+    const key = getKey(shape);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(shape);
+    if (result.length >= MAX_RECENT_SHAPES) break;
+  }
+  return result;
+};
+
+const cloneCellPair = (cell) => {
+  if (Array.isArray(cell)) return [...cell];
+  return [cell?.x ?? 0, cell?.y ?? 0];
+};
+
+const buildRecentShapeStub = (shape, normalizedShape) => {
+  const stubSource = normalizedShape || shape;
+  const stubMeta = stubSource?.meta || shape?.meta;
+  const stubCells = Array.isArray(stubSource?.cells) ? stubSource.cells : extractCells(stubSource);
+  return {
+    id: stubSource?.id,
+    name: stubSource?.name || stubMeta?.name,
+    width: stubSource?.width || stubMeta?.width,
+    height: stubSource?.height || stubMeta?.height,
+    meta: stubMeta ? { width: stubMeta.width, height: stubMeta.height, cellCount: stubMeta.cellCount } : undefined,
+    cells: Array.isArray(stubCells) ? stubCells.map(cloneCellPair) : []
+  };
+};
+
+const prependUniqueShape = (prev, shape, getKey) => {
+  const newKey = getKey(shape);
+  if (prev.some((existing) => getKey(existing) === newKey)) return prev;
+  return [shape, ...prev].slice(0, MAX_RECENT_SHAPES);
+};
+
+const normalizeRecentShape = (shape) => {
+  const cache = getRecentShapeCache();
+  const sourceCells = extractCells(shape);
+  const key = buildRecentShapeCacheKey(shape, sourceCells);
   if (cache.has(key)) return cache.get(key);
   if (!shape) return shape;
   if (!sourceCells.length) return shape;
 
-  // Offload normalization to worker for all shapes
   if (typeof globalThis !== 'undefined' && globalThis.Worker) {
     normalizeRecentShapeWorker(shape).then((result) => {
       cache.set(key, result);
     });
     return shape;
   }
-  // Fallback to main thread if worker not available
-  let minX = Infinity;
-  let minY = Infinity;
-  const absoluteCells = sourceCells.map((cell) => {
-    const x = Array.isArray(cell) ? cell[0] : (cell?.x ?? 0);
-    const y = Array.isArray(cell) ? cell[1] : (cell?.y ?? 0);
-    if (x < minX) minX = x;
-    if (y < minY) minY = y;
-    return { x, y };
-  });
-  if (!Number.isFinite(minX)) minX = 0;
-  if (!Number.isFinite(minY)) minY = 0;
-  const normalized = absoluteCells.map(({ x, y }) => [x - minX, y - minY]);
+
+  const { normalized, width, height } = normalizeCellsToOrigin(sourceCells);
   if (!normalized.length) return shape;
-  const xs = normalized.map(([x]) => x);
-  const ys = normalized.map(([, y]) => y);
-  const width = Math.max(...xs) - Math.min(...xs) + 1;
-  const height = Math.max(...ys) - Math.min(...ys) + 1;
-  const result = {
-    ...shape,
-    cells: normalized,
-    width: width || shape.width,
-    height: height || shape.height,
-    meta: {
-      ...shape.meta,
-      width: width || shape.meta?.width,
-      height: height || shape.meta?.height,
-      cellCount: sourceCells.length
-    }
-  };
+  const result = buildNormalizedShape(shape, normalized, width, height, sourceCells.length);
   cache.set(key, result);
   return result;
 };
@@ -167,33 +257,18 @@ export const useShapeManager = ({
 
   // Generate a unique key for shape identification and deduplication
   const generateShapeKey = useCallback((shape) => {
-  // Prefer stable cheap keys: use id when available, fall back to name/meta and
-  // a compact sample of the cells. Avoid full JSON.stringify on the entire
-  // shape (which can be large) because that can block the main thread when
-  // shapes contain many cells. Keep keys small and fast to compute.
-  if (shape?.id) return String(shape.id);
-  if (typeof shape === 'string') return shape;
-  let keyParts = [];
-  if (shape?.name) keyParts.push(`n:${String(shape.name)}`);
-  if (shape?.meta && (shape.meta.width || shape.meta.height || shape.meta.cellCount)) {
-    if (shape.meta.width) keyParts.push(`w:${shape.meta.width}`);
-    if (shape.meta.height) keyParts.push(`h:${shape.meta.height}`);
-    if (shape.meta.cellCount) keyParts.push(`c:${shape.meta.cellCount}`);
-  }
-  const cells = extractCells(shape);
-  if (Array.isArray(cells) && cells.length > 0) {
-    keyParts.push(`len:${cells.length}`);
-    // include a small sample of first few cells to reduce collisions
-    const sampleCount = Math.min(4, cells.length);
-    for (let i = 0; i < sampleCount; i++) {
-      const c = cells[i];
-      const x = Array.isArray(c) ? c[0] : (c?.x ?? 0);
-      const y = Array.isArray(c) ? c[1] : (c?.y ?? 0);
-      keyParts.push(`${x},${y}`);
-    }
-  }
-  const key = keyParts.join('|');
-  return key || JSON.stringify({ name: shape?.name || '', len: (cells && cells.length) || 0 });
+    if (shape?.id) return String(shape.id);
+    if (typeof shape === 'string') return shape;
+
+    const keyParts = [];
+    if (shape?.name) keyParts.push(`n:${String(shape.name)}`);
+    appendShapeMetaKeyParts(keyParts, shape);
+
+    const cells = extractCells(shape);
+    appendShapeCellSampleKeyParts(keyParts, cells);
+
+    const key = keyParts.join('|');
+    return key || fallbackShapeKey(shape, cells);
   }, []);
 
   const computeFingerprint = useCallback((shapes = []) => {
@@ -359,30 +434,21 @@ export const useShapeManager = ({
         return { restored: false };
       }
       const parsed = JSON.parse(raw);
-      if (!parsed || parsed.version !== RECENTS_STORAGE_VERSION || !Array.isArray(parsed.shapes)) {
+      if (!isValidRecentsPayload(parsed)) {
         setPersistenceState(prev => ({ ...prev, hasSavedState: false }));
         return { restored: false };
       }
-      const normalized = parsed.shapes.map(normalizeRecentShape).filter(Boolean).slice(0, MAX_RECENT_SHAPES);
+      const normalized = normalizePersistedShapes(parsed.shapes);
       if (!normalized.length) {
         setPersistenceState(prev => ({ ...prev, hasSavedState: false }));
         return { restored: false };
       }
+
       const fingerprint = computeFingerprint(normalized);
       lastPersistedFingerprintRef.current = fingerprint || null;
       setRecentShapes(prev => {
         if (!prev || prev.length === 0) return normalized;
-        const seen = new Set();
-        const combined = [...normalized, ...prev];
-        const result = [];
-        for (const shape of combined) {
-          const key = generateShapeKey(shape);
-          if (seen.has(key)) continue;
-          seen.add(key);
-          result.push(shape);
-          if (result.length >= MAX_RECENT_SHAPES) break;
-        }
-        return result;
+        return mergeUniqueRecentShapes(normalized, prev, generateShapeKey);
       });
       setPersistenceState(prev => ({
         ...prev,
@@ -441,6 +507,24 @@ export const useShapeManager = ({
     }
   }, [clearPersistedRecentShapes]);
 
+  const addRecentShape = useCallback((shape) => {
+    debugLog('[addRecentShape] Adding shape:', shape?.id, shape?.name, 'has cells:', hasShapeCells(shape), shape?.cells?.length);
+    if (!shape) return;
+
+    try {
+      const normalized = normalizeRecentShape(shape);
+      const stub = buildRecentShapeStub(shape, normalized);
+      debugLog('[addRecentShape] Created stub with cells:', stub.cells.length);
+      setRecentShapes((prev) => prependUniqueShape(prev, stub, generateShapeKey));
+
+      setTimeout(() => {
+        try { updateRecentShapesList(normalized || shape); } catch (e) { /* swallow */ }
+      }, 0);
+    } catch (e) {
+      updateRecentShapesList(shape);
+    }
+  }, [debugLog, generateShapeKey, updateRecentShapesList]);
+
   return {
     // State
     recentShapes,
@@ -461,56 +545,7 @@ export const useShapeManager = ({
       });
       return normalized;
     },
-    // Add a recent shape programmatically
-    addRecentShape: (shape) => {
-      debugLog('[addRecentShape] Adding shape:', shape?.id, shape?.name, 'has cells:', hasShapeCells(shape), shape?.cells?.length);
-      if (!shape) return;
-      try {
-        const normalized = normalizeRecentShape(shape);
-        const stubSource = normalized || shape;
-        const stubMeta = stubSource?.meta || shape.meta;
-        // Fast optimistic update: insert a small stub immediately so the UI
-        // responds without waiting for any heavier processing. The full
-        // shape (with cells) is reconciled on the next microtask.
-        const stubCells = Array.isArray(stubSource?.cells)
-          ? stubSource.cells
-          : extractCells(stubSource);
-        debugLog('[addRecentShape] stubCells length:', stubCells.length, 'from', Array.isArray(stubSource?.cells) ? 'cells' : 'extractCells');
-        const stub = {
-          id: stubSource?.id,
-          name: stubSource?.name || stubMeta?.name,
-          width: stubSource?.width || stubMeta?.width,
-          height: stubSource?.height || stubMeta?.height,
-          // preserve a minimal preview-friendly meta so RecentShapesStrip can render quickly
-          meta: stubMeta ? { width: stubMeta.width, height: stubMeta.height, cellCount: stubMeta.cellCount } : undefined,
-          // include cell data immediately so thumbnails never render empty while awaiting async normalization
-          cells: Array.isArray(stubCells)
-            ? stubCells.map(cell => (Array.isArray(cell) ? [...cell] : [cell?.x ?? 0, cell?.y ?? 0]))
-            : []
-        };
-        debugLog('[addRecentShape] Created stub with cells:', stub.cells.length);
-        setRecentShapes(prev => {
-          const newKey = generateShapeKey(stub);
-          // If shape already exists, do not change order
-          if (prev.some(s => generateShapeKey(s) === newKey)) {
-            return prev;
-          }
-          // Insert new shape at the leftmost position
-          return [stub, ...prev].slice(0, MAX_RECENT_SHAPES);
-        });
-
-        // Defer the full update (which may be slightly heavier) to the next
-        // macrotask so the click handler returns immediately and the
-        // browser has a chance to paint. Using setTimeout avoids blocking
-        // the current microtask checkpoint which can still delay paint.
-        setTimeout(() => {
-          try { updateRecentShapesList(normalized || shape); } catch (e) { /* swallow */ }
-        }, 0);
-      } catch (e) {
-        // Fallback to the original behavior on unexpected errors
-        updateRecentShapesList(shape);
-      }
-    },
+    addRecentShape,
     
     // Internal utilities (exposed for testing)
     generateShapeKey,

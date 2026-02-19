@@ -141,7 +141,8 @@ const OptionsPanel = ({
 })();
 
   const handleOk = () => {
-  setColorSchemeKey(localScheme);
+  const finalColorScheme = localEnableAdaCompliance ? 'adaSafe' : localScheme;
+  setColorSchemeKey(finalColorScheme);
   setBackendType?.(localBackendType);
   globalThis.localStorage.setItem('backendType', localBackendType);
   // Apply theme change
@@ -161,6 +162,10 @@ const OptionsPanel = ({
   // When ADA compliance is on, always enable FPS/GPS caps
   const finalEnableFPSCap = localEnableAdaCompliance ? true : !!localEnableFPSCap;
   const finalEnableGPSCap = localEnableAdaCompliance ? true : !!localEnableGPSCap;
+  const preferredMaxFPS = Math.max(1, Math.min(120, Number(localMaxFPS) || 60));
+  const preferredMaxGPS = Math.max(1, Math.min(60, Number(localMaxGPS) || 30));
+  const preferredEnableFPSCap = !!localEnableFPSCap;
+  const preferredEnableGPSCap = !!localEnableGPSCap;
   setPerformanceCaps?.((prev) => ({
     ...prev,
     maxFPS: finalMaxFPS,
@@ -175,10 +180,14 @@ const OptionsPanel = ({
   setEnableAdaCompliance?.(!!localEnableAdaCompliance);
   setPhotosensitivityTesterEnabled?.(!!localPhotosensitivityTesterEnabled);
   // Persist all options so they are remembered across sessions
-  globalThis.localStorage.setItem('colorSchemeKey', String(localScheme));
+  globalThis.localStorage.setItem('colorSchemeKey', String(finalColorScheme));
   globalThis.localStorage.setItem('popWindowSize', String(win));
   globalThis.localStorage.setItem('popTolerance', String(tol));
   globalThis.localStorage.setItem('showSpeedGauge', JSON.stringify(!!localShowSpeedGauge));
+  globalThis.localStorage.setItem('preferredMaxFPS', String(preferredMaxFPS));
+  globalThis.localStorage.setItem('preferredMaxGPS', String(preferredMaxGPS));
+  globalThis.localStorage.setItem('preferredEnableFPSCap', JSON.stringify(preferredEnableFPSCap));
+  globalThis.localStorage.setItem('preferredEnableGPSCap', JSON.stringify(preferredEnableGPSCap));
   globalThis.localStorage.setItem('maxFPS', String(finalMaxFPS));
   globalThis.localStorage.setItem('maxGPS', String(finalMaxGPS));
   globalThis.localStorage.setItem('enableFPSCap', JSON.stringify(finalEnableFPSCap));
@@ -198,7 +207,19 @@ const OptionsPanel = ({
 
   // Dispatch global event if ADA compliance changed
   if (prevAda !== !!localEnableAdaCompliance) {
-    globalThis.dispatchEvent(new CustomEvent('gol:adaChanged', { detail: { enabled: !!localEnableAdaCompliance } }));
+    const detail = {
+      enabled: !!localEnableAdaCompliance,
+      colorScheme: finalColorScheme,
+      performanceCaps: {
+        maxFPS: finalMaxFPS,
+        maxGPS: finalMaxGPS,
+        enableFPSCap: finalEnableFPSCap,
+        enableGPSCap: finalEnableGPSCap
+      },
+      source: 'optionsPanel'
+    };
+    globalThis.dispatchEvent(new CustomEvent('gol:adaChanged', { detail }));
+    globalThis.dispatchEvent(new CustomEvent('gol:adaPolicyReset', { detail }));
   }
   onOk?.();
   };
