@@ -346,11 +346,6 @@ export function useGameOfLifeAppRuntime() {
   }, [setPopulationHistory, setSteadyInfo]);
 
   useEffect(() => {
-    if (generation !== 0) return;
-    persistGenerationZeroPattern();
-  }, [generation, persistGenerationZeroPattern]);
-
-  useEffect(() => {
     // Hashlife progress updates are disabled; we only use final results
     // from GameModel._stepHashlife() so intermediate generations are not
     // applied to the model.
@@ -1263,6 +1258,11 @@ export function useGameOfLifeAppRuntime() {
       console.error('[useGameOfLifeAppRuntime] Failed to snapshot generation-zero pattern:', error);
     }
   }, [gameRef, persistGenerationZeroPatternFromCells]);
+
+  useEffect(() => {
+    if (generation !== 0) return;
+    persistGenerationZeroPattern();
+  }, [generation, persistGenerationZeroPattern]);
 
   const resetToGenerationZero = useCallback(() => {
     try {
