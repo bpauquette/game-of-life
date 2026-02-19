@@ -188,6 +188,7 @@ function GameUILayout({
           step={step}
           draw={draw}
           clear={clear}
+          resetToGenerationZero={controlsProps?.resetToGenerationZero}
           snapshotsRef={snapshotsRef}
           setSteadyInfo={setSteadyInfo}
         />

@@ -53,6 +53,7 @@ export default function HeaderBar({
   step,
   draw,
   clear,
+  resetToGenerationZero,
   snapshotsRef,
   setSteadyInfo,
   isRunning: isRunningProp,
@@ -282,6 +283,7 @@ export default function HeaderBar({
               step={step}
               draw={draw}
               clear={clear}
+              resetToGenerationZero={resetToGenerationZero}
               snapshotsRef={snapshotsRef}
               setSteadyInfo={setSteadyInfo}
               confirmOnClear={confirmOnClear}
@@ -431,7 +433,11 @@ export default function HeaderBar({
       <AssistantDialog open={assistantOpen} onClose={() => setAssistantOpen(false)} />
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <PaymentDialog open={donateOpen} onClose={() => setDonateOpen(false)} />
-      <PhotosensitivityTestDialog open={photoTestOpen} onClose={() => setPhotoTestOpen(false)} />
+      <PhotosensitivityTestDialog
+        open={photoTestOpen}
+        onClose={() => setPhotoTestOpen(false)}
+        enableAdaCompliance={enableAdaCompliance}
+      />
 
       <SaveGridDialog
         open={saveDialogOpen}
@@ -476,6 +482,7 @@ HeaderBar.propTypes = {
   step: PropTypes.func.isRequired,
   draw: PropTypes.func.isRequired,
   clear: PropTypes.func.isRequired,
+  resetToGenerationZero: PropTypes.func,
   snapshotsRef: PropTypes.object.isRequired,
   setSteadyInfo: PropTypes.func,
   isRunning: PropTypes.bool,
