@@ -56,7 +56,16 @@ export default function HeaderBar({
   snapshotsRef,
   setSteadyInfo,
   isRunning: isRunningProp,
-  setIsRunning: setIsRunningProp
+  setIsRunning: setIsRunningProp,
+  engineMode: engineModeProp,
+  isHashlifeMode: isHashlifeModeProp,
+  onStartNormalMode: onStartNormalModeProp,
+  onStartHashlifeMode: onStartHashlifeModeProp,
+  onStopAllEngines: onStopAllEnginesProp,
+  onSetEngineMode: onSetEngineModeProp,
+  useHashlife: useHashlifeProp,
+  generationBatchSize: generationBatchSizeProp,
+  onSetGenerationBatchSize: onSetGenerationBatchSizeProp
 }) {
 
   useGlobalShortcuts();
@@ -140,15 +149,27 @@ export default function HeaderBar({
   const storeSetIsRunning = useGameDao(state => state.setIsRunning);
   const isRunning = typeof isRunningProp === 'boolean' ? isRunningProp : storeIsRunning;
   const setIsRunning = typeof setIsRunningProp === 'function' ? setIsRunningProp : storeSetIsRunning;
-  const engineMode = useGameDao(state => state.engineMode);
-  const isHashlifeMode = useGameDao(state => state.isHashlifeMode);
-  const onStartNormalMode = useGameDao(state => state.onStartNormalMode);
-  const onStartHashlifeMode = useGameDao(state => state.onStartHashlifeMode);
-  const onStopAllEngines = useGameDao(state => state.onStopAllEngines);
-  const onSetEngineMode = useGameDao(state => state.onSetEngineMode);
-  const useHashlife = useGameDao(state => state.useHashlife);
-  const generationBatchSize = useGameDao(state => state.generationBatchSize);
-  const onSetGenerationBatchSize = useGameDao(state => state.onSetGenerationBatchSize);
+  const storeEngineMode = useGameDao(state => state.engineMode);
+  const storeIsHashlifeMode = useGameDao(state => state.isHashlifeMode);
+  const storeOnStartNormalMode = useGameDao(state => state.onStartNormalMode);
+  const storeOnStartHashlifeMode = useGameDao(state => state.onStartHashlifeMode);
+  const storeOnStopAllEngines = useGameDao(state => state.onStopAllEngines);
+  const storeOnSetEngineMode = useGameDao(state => state.onSetEngineMode);
+  const storeUseHashlife = useGameDao(state => state.useHashlife);
+  const storeGenerationBatchSize = useGameDao(state => state.generationBatchSize);
+  const storeOnSetGenerationBatchSize = useGameDao(state => state.onSetGenerationBatchSize);
+
+  const engineMode = engineModeProp ?? storeEngineMode;
+  const isHashlifeMode = typeof isHashlifeModeProp === 'boolean' ? isHashlifeModeProp : storeIsHashlifeMode;
+  const onStartNormalMode = typeof onStartNormalModeProp === 'function' ? onStartNormalModeProp : storeOnStartNormalMode;
+  const onStartHashlifeMode = typeof onStartHashlifeModeProp === 'function' ? onStartHashlifeModeProp : storeOnStartHashlifeMode;
+  const onStopAllEngines = typeof onStopAllEnginesProp === 'function' ? onStopAllEnginesProp : storeOnStopAllEngines;
+  const onSetEngineMode = typeof onSetEngineModeProp === 'function' ? onSetEngineModeProp : storeOnSetEngineMode;
+  const useHashlife = typeof useHashlifeProp === 'boolean' ? useHashlifeProp : storeUseHashlife;
+  const generationBatchSize = typeof generationBatchSizeProp === 'number' ? generationBatchSizeProp : storeGenerationBatchSize;
+  const onSetGenerationBatchSize = typeof onSetGenerationBatchSizeProp === 'function'
+    ? onSetGenerationBatchSizeProp
+    : storeOnSetGenerationBatchSize;
 
   // Population state from populationDao
   const generation = usePopulationDao(state => state.generation);
@@ -479,5 +500,14 @@ HeaderBar.propTypes = {
   snapshotsRef: PropTypes.object.isRequired,
   setSteadyInfo: PropTypes.func,
   isRunning: PropTypes.bool,
-  setIsRunning: PropTypes.func
+  setIsRunning: PropTypes.func,
+  engineMode: PropTypes.oneOf(['normal', 'hashlife']),
+  isHashlifeMode: PropTypes.bool,
+  onStartNormalMode: PropTypes.func,
+  onStartHashlifeMode: PropTypes.func,
+  onStopAllEngines: PropTypes.func,
+  onSetEngineMode: PropTypes.func,
+  useHashlife: PropTypes.bool,
+  generationBatchSize: PropTypes.number,
+  onSetGenerationBatchSize: PropTypes.func
 };
