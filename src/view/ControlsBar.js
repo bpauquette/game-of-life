@@ -149,6 +149,7 @@ const ControlsBar = ({
   step,
   draw,
   clear,
+  resetToGenerationZero,
   snapshotsRef,
   setSteadyInfo,
   setShowChart,
@@ -272,6 +273,7 @@ const ControlsBar = ({
           step={step}
           draw={draw}
           clear={clear}
+          resetToGenerationZero={resetToGenerationZero}
           snapshotsRef={snapshotsRef}
           setSteadyInfo={setSteadyInfo}
           onStartNormalMode={onStartNormalMode}
@@ -354,6 +356,7 @@ ControlsBar.propTypes = {
   step: PropTypes.func.isRequired,
   draw: PropTypes.func.isRequired,
   clear: PropTypes.func.isRequired,
+  resetToGenerationZero: PropTypes.func,
   snapshotsRef: PropTypes.object.isRequired,
   setSteadyInfo: PropTypes.func.isRequired,
   setShowChart: PropTypes.func.isRequired,
