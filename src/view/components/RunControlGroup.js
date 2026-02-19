@@ -9,7 +9,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
-import { PlayArrow as PlayArrowIcon, Stop as StopIcon, SkipNext as SkipNextIcon, DeleteSweep as DeleteSweepIcon, Lightbulb as LightbulbIcon, RestartAlt as RestartAltIcon } from '@mui/icons-material';
+import { PlayArrow as PlayArrowIcon, Stop as StopIcon, SkipNext as SkipNextIcon, DeleteSweep as DeleteSweepIcon, Lightbulb as LightbulbIcon } from '@mui/icons-material';
 import { keyframes } from '@emotion/react';
 
 // A visually distinct grouping for stepping and run controls
@@ -23,7 +23,6 @@ export default function RunControlGroup({
   setSteadyInfo,
   confirmOnClear = true,
   enableAdaCompliance = false,
-  resetToGenerationZero = null,
   // Engine mode props
   engineMode = 'normal',
   onStartNormalMode,
@@ -208,28 +207,6 @@ export default function RunControlGroup({
             <DeleteSweepIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-
-        <Tooltip title="Reset to generation 0 pattern">
-          <IconButton
-            size="small"
-            aria-label="reset-to-generation-zero"
-            onClick={() => {
-              try {
-                setIsRunning(false);
-              } catch (e) {
-                console.warn('setIsRunning(false) failed:', e);
-              }
-              if (typeof resetToGenerationZero === 'function') {
-                resetToGenerationZero();
-                return;
-              }
-              clear();
-              draw();
-            }}
-          >
-            <RestartAltIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
         
       </Stack>
 
@@ -269,6 +246,5 @@ RunControlGroup.propTypes = {
   generationBatchSize: PropTypes.number,
   onSetGenerationBatchSize: PropTypes.func,
   confirmOnClear: PropTypes.bool,
-  enableAdaCompliance: PropTypes.bool,
-  resetToGenerationZero: PropTypes.func
+  enableAdaCompliance: PropTypes.bool
 };

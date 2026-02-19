@@ -31,7 +31,6 @@ function getColorSchemeFromKey(key) {
 }
 
 const INITIAL_STEADY_INFO = Object.freeze({ steady: false, period: 0, popChanging: false });
-const GENERATION_ZERO_STORAGE_KEY = 'gol.generationZeroPattern.v1';
 
 export function useGameOfLifeAppRuntime() {
   // Declare gameRef before any use
@@ -427,124 +426,94 @@ export function useGameOfLifeAppRuntime() {
     });
   }, [setPerformanceCaps]);
 
-  const readPreferredPerformanceCaps = useCallback(() => {
-    let prefMaxFPS = 60;
-    let prefMaxGPS = 30;
-    let prefEnableFPSCap = false;
-    let prefEnableGPSCap = false;
-
-    try {
-      const preferredFPSRaw = globalThis.localStorage?.getItem('preferredMaxFPS');
-      const preferredGPSRaw = globalThis.localStorage?.getItem('preferredMaxGPS');
-      const preferredEnableFPSRaw = globalThis.localStorage?.getItem('preferredEnableFPSCap');
-      const preferredEnableGPSRaw = globalThis.localStorage?.getItem('preferredEnableGPSCap');
-      const fallbackFPSRaw = globalThis.localStorage?.getItem('maxFPS');
-      const fallbackGPSRaw = globalThis.localStorage?.getItem('maxGPS');
-      const fallbackEnableFPSRaw = globalThis.localStorage?.getItem('enableFPSCap');
-      const fallbackEnableGPSRaw = globalThis.localStorage?.getItem('enableGPSCap');
-      const parsedFPS = Number.parseInt(preferredFPSRaw ?? fallbackFPSRaw, 10);
-      const parsedGPS = Number.parseInt(preferredGPSRaw ?? fallbackGPSRaw, 10);
-
-      if (Number.isFinite(parsedFPS) && parsedFPS > 0) prefMaxFPS = Math.max(1, Math.min(120, parsedFPS));
-      if (Number.isFinite(parsedGPS) && parsedGPS > 0) prefMaxGPS = Math.max(1, Math.min(60, parsedGPS));
-      if (preferredEnableFPSRaw ?? fallbackEnableFPSRaw) {
-        prefEnableFPSCap = JSON.parse(preferredEnableFPSRaw ?? fallbackEnableFPSRaw);
-      }
-      if (preferredEnableGPSRaw ?? fallbackEnableGPSRaw) {
-        prefEnableGPSCap = JSON.parse(preferredEnableGPSRaw ?? fallbackEnableGPSRaw);
-      }
-    } catch (e) { console.error(e); }
-
-    return {
-      maxFPS: prefMaxFPS,
-      maxGPS: prefMaxGPS,
-      enableFPSCap: prefEnableFPSCap,
-      enableGPSCap: prefEnableGPSCap
-    };
-  }, []);
-
-  const applyAdaPolicy = useCallback((enabled, options = {}) => {
-    const newValue = Boolean(enabled);
-    const broadcast = options.broadcast !== false;
-    const source = options.source || 'runtime';
-    const preferred = readPreferredPerformanceCaps();
-    const newColorScheme = newValue ? 'adaSafe' : 'bio';
-    const computedCaps = {
-      maxFPS: newValue ? 2 : preferred.maxFPS,
-      maxGPS: newValue ? 2 : preferred.maxGPS,
-      enableFPSCap: newValue ? true : preferred.enableFPSCap,
-      enableGPSCap: newValue ? true : preferred.enableGPSCap
-    };
-
+  const setEnableAdaComplianceWithUpdate = useCallback((value) => {
+    const newValue = Boolean(value);
     setEnableAdaCompliance(newValue);
     if (newValue) {
       setRunningState(false);
     }
+    // Update colorSchemeKey based on ADA mode
+    const newColorScheme = newValue ? 'adaSafe' : 'bio';
     setColorSchemeKey(newColorScheme);
-    setPerformanceCaps(() => computedCaps);
-
+    try {
+      globalThis.localStorage?.setItem('colorSchemeKey', newColorScheme);
+    } catch (e) { console.error(e); }
+    // Update performance caps based on ADA mode: use preferred values, apply ADA caps if enabled
+    setPerformanceCaps(() => {
+      // Read preferred values from storage (they were saved independently)
+      let prefMaxFPS = 60, prefMaxGPS = 30, prefEnableFPSCap = false, prefEnableGPSCap = false;
+      try {
+        const storedFPS = Number.parseInt(globalThis.localStorage?.getItem('maxFPS'), 10);
+        const storedGPS = Number.parseInt(globalThis.localStorage?.getItem('maxGPS'), 10);
+        const storedEnableFPS = globalThis.localStorage?.getItem('enableFPSCap');
+        const storedEnableGPS = globalThis.localStorage?.getItem('enableGPSCap');
+        if (Number.isFinite(storedFPS) && storedFPS > 0) prefMaxFPS = Math.max(1, Math.min(120, storedFPS));
+        if (Number.isFinite(storedGPS) && storedGPS > 0) prefMaxGPS = Math.max(1, Math.min(60, storedGPS));
+        if (storedEnableFPS) prefEnableFPSCap = JSON.parse(storedEnableFPS);
+        if (storedEnableGPS) prefEnableGPSCap = JSON.parse(storedEnableGPS);
+      } catch (e) { console.error(e); }
+      // Apply ADA caps if enabled, otherwise use preferred
+      const newCaps = {
+        maxFPS: newValue ? 2 : prefMaxFPS,
+        maxGPS: newValue ? 2 : prefMaxGPS,
+        enableFPSCap: newValue ? true : prefEnableFPSCap,
+        enableGPSCap: newValue ? true : prefEnableGPSCap,
+      };
+      return newCaps;
+    });
+    // Save to localStorage
     try {
       globalThis.localStorage?.setItem('enableAdaCompliance', JSON.stringify(newValue));
-      globalThis.localStorage?.setItem('colorSchemeKey', newColorScheme);
-      globalThis.localStorage?.setItem('maxFPS', String(computedCaps.maxFPS));
-      globalThis.localStorage?.setItem('maxGPS', String(computedCaps.maxGPS));
-      globalThis.localStorage?.setItem('enableFPSCap', JSON.stringify(computedCaps.enableFPSCap));
-      globalThis.localStorage?.setItem('enableGPSCap', JSON.stringify(computedCaps.enableGPSCap));
     } catch (e) { console.error(e); }
-
-    if (broadcast) {
+    // Broadcast a global event so non-React listeners can react immediately
+    try {
+      // Read current preferred caps to report
+      let prefMaxFPS = 60, prefMaxGPS = 30, prefEnableFPSCap = false, prefEnableGPSCap = false;
       try {
-        const detail = {
-          enabled: newValue,
-          colorScheme: newColorScheme,
-          performanceCaps: computedCaps,
-          source
-        };
-        globalThis.dispatchEvent(new CustomEvent('gol:adaChanged', { detail }));
-        globalThis.dispatchEvent(new CustomEvent('gol:adaPolicyReset', { detail }));
+        const storedFPS = Number.parseInt(globalThis.localStorage?.getItem('maxFPS'), 10);
+        const storedGPS = Number.parseInt(globalThis.localStorage?.getItem('maxGPS'), 10);
+        const storedEnableFPS = globalThis.localStorage?.getItem('enableFPSCap');
+        const storedEnableGPS = globalThis.localStorage?.getItem('enableGPSCap');
+        if (Number.isFinite(storedFPS) && storedFPS > 0) prefMaxFPS = Math.max(1, Math.min(120, storedFPS));
+        if (Number.isFinite(storedGPS) && storedGPS > 0) prefMaxGPS = Math.max(1, Math.min(60, storedGPS));
+        if (storedEnableFPS) prefEnableFPSCap = JSON.parse(storedEnableFPS);
+        if (storedEnableGPS) prefEnableGPSCap = JSON.parse(storedEnableGPS);
       } catch (e) { console.error(e); }
-    }
-
+      const computedCaps = {
+        maxFPS: newValue ? 2 : prefMaxFPS,
+        maxGPS: newValue ? 2 : prefMaxGPS,
+        enableFPSCap: newValue ? true : prefEnableFPSCap,
+        enableGPSCap: newValue ? true : prefEnableGPSCap,
+      };
+      globalThis.globalThis?.dispatchEvent(
+        new CustomEvent('gol:adaChanged', {
+          detail: { enabled: newValue, colorScheme: newColorScheme, performanceCaps: computedCaps }
+        })
+      );
+    } catch (e) { console.error(e); }
     // Trigger canvas resize to apply layout updates after ADA toggle
+    // The canvas CSS style changes in GameUILayout, so we need to notify the renderer
     try {
       const canvas = canvasRef?.current;
-      if (!canvas) return;
-      globalThis.dispatchEvent(new Event('resize', { bubbles: true }));
-      const schedule = typeof requestAnimationFrame === 'function'
-        ? requestAnimationFrame
-        : (fn) => setTimeout(fn, 0);
-      schedule(() => {
-        if (gameRef?.current?.renderer?.resize) {
-          try {
-            const rect = canvas.getBoundingClientRect();
-            if (rect && rect.width > 0 && rect.height > 0) {
-              gameRef.current.renderer.resize(Math.floor(rect.width), Math.floor(rect.height));
-            }
-          } catch (e) { console.error(e); }
-        }
-      });
+      if (canvas) {
+        // Force a layout recalculation by triggering a resize event
+        // The ResizeObserver in useCanvasManager will detect this and recalculate viewport
+        const resizeEvent = new Event('resize', { bubbles: true });
+        globalThis.globalThis?.dispatchEvent(resizeEvent);
+        // Also trigger a direct canvas rect update after a frame to ensure layout is complete
+        requestAnimationFrame(() => {
+          if (gameRef?.current?.renderer?.resize) {
+            try {
+              const rect = canvas.getBoundingClientRect();
+              if (rect && rect.width > 0 && rect.height > 0) {
+                gameRef.current.renderer.resize(Math.floor(rect.width), Math.floor(rect.height));
+              }
+            } catch (e) { console.error(e); }
+          }
+        });
+      }
     } catch (e) { console.error(e); }
-  }, [canvasRef, gameRef, readPreferredPerformanceCaps, setColorSchemeKey, setEnableAdaCompliance, setPerformanceCaps, setRunningState]);
-
-  const setEnableAdaComplianceWithUpdate = useCallback((value) => {
-    applyAdaPolicy(Boolean(value), { broadcast: true, source: 'runtime' });
-  }, [applyAdaPolicy]);
-
-  useEffect(() => {
-    if (typeof globalThis === 'undefined' || !globalThis.addEventListener) return undefined;
-    const handleAdaEvent = (event) => {
-      const detail = event?.detail || {};
-      if (detail.source === 'runtime') return;
-      if (typeof detail.enabled === 'undefined') return;
-      applyAdaPolicy(Boolean(detail.enabled), { broadcast: false, source: detail.source || 'event' });
-    };
-    globalThis.addEventListener('gol:adaChanged', handleAdaEvent);
-    globalThis.addEventListener('gol:adaPolicyReset', handleAdaEvent);
-    return () => {
-      globalThis.removeEventListener('gol:adaChanged', handleAdaEvent);
-      globalThis.removeEventListener('gol:adaPolicyReset', handleAdaEvent);
-    };
-  }, [applyAdaPolicy]);
+  }, [setColorSchemeKey, setPerformanceCaps, setEnableAdaCompliance, setRunningState]);
 
   // Seed DAO color schemes once so OptionsPanel has entries to render.
   useEffect(() => {
@@ -1199,130 +1168,6 @@ export function useGameOfLifeAppRuntime() {
     rotateAndApply(gameRef, shapeManager, rotatedShape, index);
     if (typeof drawWithOverlay === 'function') drawWithOverlay();
   }, [drawWithOverlay, gameRef, shapeManager]);
-
-  const persistGenerationZeroPatternFromCells = useCallback((cells) => {
-    try {
-      const normalized = Array.isArray(cells)
-        ? cells
-            .map((cell) => ({
-              x: Math.floor(Number(cell?.x)),
-              y: Math.floor(Number(cell?.y))
-            }))
-            .filter((cell) => Number.isFinite(cell.x) && Number.isFinite(cell.y))
-        : [];
-
-      globalThis.localStorage?.setItem(
-        GENERATION_ZERO_STORAGE_KEY,
-        JSON.stringify({
-          savedAt: new Date().toISOString(),
-          cells: normalized
-        })
-      );
-    } catch (error) {
-      console.error('[useGameOfLifeAppRuntime] Failed to persist generation-zero pattern:', error);
-    }
-  }, []);
-
-  const readGenerationZeroPattern = useCallback(() => {
-    try {
-      const raw = globalThis.localStorage?.getItem(GENERATION_ZERO_STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed?.cells)) return [];
-      return parsed.cells
-        .map((cell) => ({
-          x: Math.floor(Number(cell?.x)),
-          y: Math.floor(Number(cell?.y))
-        }))
-        .filter((cell) => Number.isFinite(cell.x) && Number.isFinite(cell.y));
-    } catch (error) {
-      console.error('[useGameOfLifeAppRuntime] Failed to read generation-zero pattern:', error);
-      return [];
-    }
-  }, []);
-
-  const persistGenerationZeroPattern = useCallback(() => {
-    try {
-      const model = gameRef.current?.model;
-      if (!model || typeof model.getGeneration !== 'function' || typeof model.getLiveCells !== 'function') {
-        return;
-      }
-      if (Number(model.getGeneration()) !== 0) return;
-
-      const nextCells = Array.from(model.getLiveCells().keys()).map((key) => {
-        const [x, y] = String(key).split(',').map(Number);
-        return { x, y };
-      });
-      persistGenerationZeroPatternFromCells(nextCells);
-    } catch (error) {
-      console.error('[useGameOfLifeAppRuntime] Failed to snapshot generation-zero pattern:', error);
-    }
-  }, [gameRef, persistGenerationZeroPatternFromCells]);
-
-  useEffect(() => {
-    if (generation !== 0) return;
-    persistGenerationZeroPattern();
-  }, [generation, persistGenerationZeroPattern]);
-
-  const resetToGenerationZero = useCallback(() => {
-    try {
-      setRunningState(false);
-      const mvc = gameRef.current;
-      if (!mvc || typeof mvc.importState !== 'function') return;
-
-      let cells = readGenerationZeroPattern();
-      if (!cells.length) {
-        const fallbackModel = mvc.model;
-        if (fallbackModel && typeof fallbackModel.getGeneration === 'function' && Number(fallbackModel.getGeneration()) === 0) {
-          cells = Array.from(fallbackModel.getLiveCells().keys()).map((key) => {
-            const [x, y] = String(key).split(',').map(Number);
-            return { x, y };
-          });
-        }
-      }
-
-      const currentViewport = typeof mvc.getViewport === 'function' ? mvc.getViewport() : null;
-      mvc.importState({
-        liveCells: cells,
-        generation: 0,
-        populationHistory: [],
-        viewport: currentViewport
-          ? {
-              offsetX: Number(currentViewport.offsetX) || 0,
-              offsetY: Number(currentViewport.offsetY) || 0,
-              zoom: Number(currentViewport.zoom) || 1
-            }
-          : { offsetX: 0, offsetY: 0, zoom: 1 }
-      });
-
-      popHistoryRef.current = [];
-      snapshotsRef.current = [];
-      setPopulationHistory([]);
-      setGeneration(0);
-      setSteadyInfo(INITIAL_STEADY_INFO);
-      persistGenerationZeroPatternFromCells(cells);
-      drawWithOverlay?.();
-
-      try {
-        globalThis.dispatchEvent?.(new CustomEvent('gol:sessionCleared'));
-      } catch (e) {
-        console.error('[useGameOfLifeAppRuntime] Failed to dispatch session-cleared event:', e);
-      }
-    } catch (error) {
-      console.error('[useGameOfLifeAppRuntime] resetToGenerationZero failed:', error);
-    }
-  }, [
-    drawWithOverlay,
-    gameRef,
-    persistGenerationZeroPatternFromCells,
-    readGenerationZeroPattern,
-    setGeneration,
-    setPopulationHistory,
-    setRunningState,
-    setSteadyInfo,
-    snapshotsRef
-  ]);
-
   const step = useCallback(async () => {
     try {
       if (enableAdaCompliance) {
@@ -1627,18 +1472,6 @@ export function useGameOfLifeAppRuntime() {
               };
             });
           }
-          if (
-            event === 'cellChanged' ||
-            event === 'cellsChangedBulk' ||
-            event === 'gameStep' ||
-            event === 'modelCleared' ||
-            event === 'gameCleared' ||
-            event === 'stateImported' ||
-            event === 'loadGrid' ||
-            event === 'reset'
-          ) {
-            persistGenerationZeroPattern();
-          }
         };
         model.addObserver(observer);
         // Ensure we remove the observer when the MVC instance is destroyed
@@ -1698,7 +1531,7 @@ export function useGameOfLifeAppRuntime() {
         gameRef.current = null;
       }
     };
-  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme, preloadStrategy, shapesLoading, shapesError, updateViewportSnapshot, setPerformanceCaps, setIsRunning, setPopulationHistory, setSelectedShape, setSelectedTool, setGeneration, randomRectPercent, setCaptureData, setCaptureDialogOpen, persistGenerationZeroPattern]);
+  }, [applyPendingLoad, syncOffsetFromMVC, applyInitialColorScheme, preloadStrategy, shapesLoading, shapesError, updateViewportSnapshot, setPerformanceCaps, setIsRunning, setPopulationHistory, setSelectedShape, setSelectedTool, setGeneration, randomRectPercent, setCaptureData, setCaptureDialogOpen]);
   // UI callback to request a tool change. This always goes through the controller/model.
   const requestToolChange = React.useCallback((tool) => {
     try {
@@ -1728,7 +1561,6 @@ export function useGameOfLifeAppRuntime() {
     step,
     draw: drawWithOverlay,
     clear,
-    resetToGenerationZero,
     snapshotsRef,
     setSteadyInfo,
     canvasRef,
@@ -1789,7 +1621,7 @@ export function useGameOfLifeAppRuntime() {
     setUseWebWorker: setUseWebWorkerPreference
   }), [
     setSteadyInfo,selectedTool, setColorSchemeKey, isRunning, setIsRunningCombined,
-    step, drawWithOverlay, clear, resetToGenerationZero, viewportSnapshot, setCellAlive, setShowChart, getLiveCells, popWindowSize,
+    step, drawWithOverlay, clear, viewportSnapshot, setCellAlive, setShowChart, getLiveCells, popWindowSize,
     setPopWindowSize, popTolerance, setPopTolerance, handleSelectShape, setPaletteOpen, steadyInfo, handleLoadGrid,
     setShowSpeedGauge, detectStablePopulation, setDetectStablePopulationPreference, maxChartGenerations,
     setMaxChartGenerations, memoryTelemetryEnabled, setMemoryTelemetryEnabled, randomRectPercent,
@@ -1878,7 +1710,6 @@ export function useGameOfLifeAppRuntime() {
     offsetRef,
     isSmall,
     clear,
-    resetToGenerationZero,
     step,
     colorSchemeKey: useUiDao.getState().colorSchemeKey || 'bio'
   };
