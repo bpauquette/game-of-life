@@ -56,8 +56,6 @@ function ControlsDialogs({
   optionsOpen,
   handleOk,
   handleCancel,
-  photosensitivityTesterEnabled,
-  setPhotosensitivityTesterEnabled,
   helpOpen,
   closeHelp,
   aboutOpen,
@@ -80,8 +78,6 @@ function ControlsDialogs({
     <>
       {optionsOpen && (
         <OptionsPanel
-          photosensitivityTesterEnabled={photosensitivityTesterEnabled}
-          setPhotosensitivityTesterEnabled={setPhotosensitivityTesterEnabled}
           onOk={handleOk}
           onCancel={handleCancel}
           data-testid-ok="options-ok-button"
@@ -119,8 +115,6 @@ ControlsDialogs.propTypes = {
   optionsOpen: PropTypes.bool.isRequired,
   handleOk: PropTypes.func.isRequired,
   handleCancel: PropTypes.func.isRequired,
-  photosensitivityTesterEnabled: PropTypes.bool,
-  setPhotosensitivityTesterEnabled: PropTypes.func,
   helpOpen: PropTypes.bool.isRequired,
   closeHelp: PropTypes.func.isRequired,
   aboutOpen: PropTypes.bool.isRequired,
@@ -167,8 +161,6 @@ const ControlsBar = ({
   onLoadGrid,
   // Viewport helpers
   onCenterViewport,
-  photosensitivityTesterEnabled,
-  setPhotosensitivityTesterEnabled,
 
   // Optional model to drive ToolStatus observer
   model,
@@ -320,8 +312,6 @@ const ControlsBar = ({
         optionsOpen={optionsOpen}
         handleOk={handleOk}
         handleCancel={handleCancel}
-        photosensitivityTesterEnabled={photosensitivityTesterEnabled}
-        setPhotosensitivityTesterEnabled={setPhotosensitivityTesterEnabled}
         helpOpen={helpOpen}
         closeHelp={closeHelp}
         aboutOpen={aboutOpen}
@@ -372,8 +362,6 @@ ControlsBar.propTypes = {
   generation: PropTypes.number.isRequired,
   onLoadGrid: PropTypes.func.isRequired,
   onCenterViewport: PropTypes.func,
-  photosensitivityTesterEnabled: PropTypes.bool,
-  setPhotosensitivityTesterEnabled: PropTypes.func,
   // Engine control callbacks
   onStartNormalMode: PropTypes.func,
   onStartHashlifeMode: PropTypes.func,

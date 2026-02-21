@@ -38,4 +38,17 @@ describe('OptionsPanel ADA enforcement', () => {
     expect(localStorage.getItem('colorSchemeKey')).toBe('adaSafe');
     expect(onOk).toHaveBeenCalledTimes(1);
   });
+
+  test('does not render a manual photosensitivity tester toggle', () => {
+    render(
+      <ThemeProvider>
+        <OptionsPanel onOk={() => {}} onCancel={() => {}} />
+      </ThemeProvider>
+    );
+
+    expect(screen.queryByLabelText('Enable photosensitivity tester (manual)')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Photosensitivity testing is available only when ADA Compliance Mode is enabled.')
+    ).toBeInTheDocument();
+  });
 });

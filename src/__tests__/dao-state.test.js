@@ -115,6 +115,53 @@ describe('uiDao', () => {
     expect(useUiDao.getState().colorScheme).toEqual(expect.objectContaining({ name: expect.stringContaining('ADA') }));
   });
 
+  test('maintains ADA/color-scheme invariants under rapid ADA toggles', async () => {
+    const useUiDao = await loadUiDao();
+    useUiDao.getState().setEnableAdaCompliance(false);
+    useUiDao.getState().setColorSchemeKey('bio');
+
+    const snapshots = [];
+    const unsubscribe = useUiDao.subscribe((state) => {
+      snapshots.push({
+        enableAdaCompliance: state.enableAdaCompliance,
+        colorSchemeKey: state.colorSchemeKey
+      });
+    });
+
+    for (let i = 0; i < 50; i += 1) {
+      useUiDao.getState().setEnableAdaCompliance(i % 2 === 0);
+      useUiDao.getState().setColorSchemeKey('bio');
+    }
+
+    unsubscribe();
+
+    const invariantBreaches = snapshots.filter(
+      (s) => s.enableAdaCompliance && s.colorSchemeKey !== 'adaSafe'
+    );
+    expect(invariantBreaches).toEqual([]);
+
+    useUiDao.getState().setEnableAdaCompliance(false);
+    useUiDao.getState().setColorSchemeKey('bio');
+    expect(useUiDao.getState().enableAdaCompliance).toBe(false);
+    expect(useUiDao.getState().colorSchemeKey).toBe('bio');
+  });
+
+  test('resolves interleaved ADA toggles and scheme writes to the final expected state', async () => {
+    const useUiDao = await loadUiDao();
+    useUiDao.getState().setEnableAdaCompliance(false);
+    useUiDao.getState().setColorSchemeKey('bio');
+
+    await Promise.all([
+      Promise.resolve().then(() => useUiDao.getState().setEnableAdaCompliance(true)),
+      Promise.resolve().then(() => useUiDao.getState().setColorSchemeKey('bio')),
+      Promise.resolve().then(() => useUiDao.getState().setEnableAdaCompliance(false)),
+      Promise.resolve().then(() => useUiDao.getState().setColorSchemeKey('bio'))
+    ]);
+
+    expect(useUiDao.getState().enableAdaCompliance).toBe(false);
+    expect(useUiDao.getState().colorSchemeKey).toBe('bio');
+  });
+
   test('sets dialog toggles and payloads', async () => {
     const useUiDao = await loadUiDao();
     const toggles = [
