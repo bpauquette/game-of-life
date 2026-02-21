@@ -779,13 +779,28 @@ export class GameController {
 
   // Speed control methods for keyboard shortcuts
   increaseSpeed() {
-    const currentSpeed = this.model.getSpeed();
-    this.setSpeed(Math.min(currentSpeed + 1, 10));
+    const currentSpeed = this.getCurrentSpeedFps();
+    this.setSpeed(Math.min(currentSpeed + 1, 120));
   }
 
   decreaseSpeed() {
-    const currentSpeed = this.model.getSpeed();
+    const currentSpeed = this.getCurrentSpeedFps();
     this.setSpeed(Math.max(currentSpeed - 1, 1));
+  }
+
+  getCurrentSpeedFps() {
+    // Legacy models exposed getSpeed(); current model exposes getMaxFPS().
+    if (typeof this.model?.getMaxFPS === 'function') {
+      const fromModel = Number(this.model.getMaxFPS());
+      if (Number.isFinite(fromModel) && fromModel > 0) return fromModel;
+    }
+    if (typeof this.model?.getSpeed === 'function') {
+      const legacy = Number(this.model.getSpeed());
+      if (Number.isFinite(legacy) && legacy > 0) return legacy;
+    }
+    const fromCaps = Number(this.performanceCaps?.maxFPS);
+    if (Number.isFinite(fromCaps) && fromCaps > 0) return fromCaps;
+    return 60;
   }
 
   // Center viewport on current live cells
@@ -913,8 +928,7 @@ export class GameController {
 
   setSpeed(fps) {
     // setSpeed is deprecated; prefer applyPerformanceSettings
-    // This is a compatibility wrapper for keyboard shortcuts (+ and - keys)
-    // Map fps (1-10 range) to FPS cap
+    // This is a compatibility wrapper for keyboard shortcuts.
     const nextFps = Math.max(1, Math.min(Number(fps) || 60, 120));
     this.applyPerformanceSettings({ maxFPS: nextFps, enableFPSCap: true });
   }
