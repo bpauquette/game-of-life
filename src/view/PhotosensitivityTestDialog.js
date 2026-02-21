@@ -27,23 +27,6 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Sync external open prop with internal state
-  React.useEffect(() => {
-    if (open) {
-      setDialogOpen(true);
-    }
-  }, [open]);
-
-  // Reopen dialog when test completes with results
-  React.useEffect(() => {
-    if (result && !testing) {
-      // Small delay to ensure snackbar closes first
-      setTimeout(() => {
-        setDialogOpen(true);
-      }, 200);
-    }
-  }, [result, testing]);
-
   const detectFlash = (prevFrame, currFrame, flashPixelTrigger) => {
     if (!prevFrame || !currFrame) return null;
 
@@ -71,7 +54,7 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
     return null;
   };
 
-  const runTest = async () => {
+  const runTest = React.useCallback(async () => {
     // Reset all state before starting new test
     setResult(null);
     setTesting(true);
@@ -243,7 +226,18 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
       setTesting(false);
       setSnackbarOpen(false);
     }
-  };
+  }, [enableAdaCompliance]);
+
+  // Auto-run probe when opened so there is no intermediate "Start Test" step.
+  React.useEffect(() => {
+    if (!open) {
+      setDialogOpen(false);
+      return;
+    }
+    if (!testing && !result) {
+      runTest();
+    }
+  }, [open, result, runTest, testing]);
 
   const handleClose = () => {
     if (!testing) {
@@ -256,7 +250,6 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
     }
   };
 
-  // Reopen dialog when test completes with results
   React.useEffect(() => {
     if (result && !testing) {
       // Small delay to ensure snackbar closes first
@@ -400,12 +393,7 @@ export default function PhotosensitivityTestDialog({ open, onClose, enableAdaCom
 
       <DialogActions>
         {!result && (
-          <>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button onClick={runTest} variant="contained" color="primary">
-              Start Test
-            </Button>
-          </>
+          <Button onClick={handleClose}>Close</Button>
         )}
         
         {result && (
