@@ -25,10 +25,6 @@ const OptionsPanel = ({
   backendType = 'node',
   setBackendType,
 
-  // Photosensitivity tester toggle (prop-managed until we add a DAO)
-  photosensitivityTesterEnabled = false,
-  setPhotosensitivityTesterEnabled,
-
   onOk,
   onCancel
 }) => {
@@ -106,11 +102,6 @@ const OptionsPanel = ({
   if (stored === 'true' || stored === 'false') return stored === 'true';
   return memoryTelemetryEnabled;
 });
-  const [localPhotosensitivityTesterEnabled, setLocalPhotosensitivityTesterEnabled] = useState(() => {
-  const stored = globalThis.localStorage.getItem('photosensitivityTesterEnabled');
-  if (stored === 'true' || stored === 'false') return stored === 'true';
-  return photosensitivityTesterEnabled;
-});
   const [localRandomRectPercent, setLocalRandomRectPercent] = useState(() => {
   const stored = globalThis.localStorage.getItem('randomRectPercent');
   if (stored != null) {
@@ -178,7 +169,6 @@ const OptionsPanel = ({
   setMaxChartGenerations?.(Number(localMaxChartGenerations) || 5000);
   setRandomRectPercentDao?.(Math.max(0, Math.min(100, Number(localRandomRectPercent))));
   setEnableAdaCompliance?.(!!localEnableAdaCompliance);
-  setPhotosensitivityTesterEnabled?.(!!localPhotosensitivityTesterEnabled);
   // Persist all options so they are remembered across sessions
   globalThis.localStorage.setItem('colorSchemeKey', String(finalColorScheme));
   globalThis.localStorage.setItem('popWindowSize', String(win));
@@ -199,7 +189,6 @@ const OptionsPanel = ({
   globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode));
   globalThis.localStorage.setItem('randomRectPercent', String(Math.max(0, Math.min(100, Number(localRandomRectPercent)))));
   globalThis.localStorage.setItem('enableAdaCompliance', JSON.stringify(!!localEnableAdaCompliance));
-  globalThis.localStorage.setItem('photosensitivityTesterEnabled', JSON.stringify(!!localPhotosensitivityTesterEnabled));
   globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning));
   setDetectStablePopulation?.(!!localDetectStablePopulation);
   setMemoryTelemetryEnabled?.(!!localMemoryTelemetryEnabled);
@@ -391,22 +380,11 @@ const OptionsPanel = ({
               </Alert>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, color: 'var(--text-primary)' }}>
-              <input
-                type="checkbox"
-                checked={localEnableAdaCompliance && !!localPhotosensitivityTesterEnabled}
-                onChange={(e) => localEnableAdaCompliance && setLocalPhotosensitivityTesterEnabled(e.target.checked)}
-                disabled={!localEnableAdaCompliance}
-                style={{ marginRight: 8 }}
-                id="enable-photosensitivity-tester-checkbox"
-              />
-              <label htmlFor="enable-photosensitivity-tester-checkbox" style={{ margin: 0, opacity: localEnableAdaCompliance ? 1 : 0.5 }}>
-                Enable photosensitivity tester (manual)
-              </label>
-              <Tooltip title={localEnableAdaCompliance ? "Expose the manual photosensitivity tester dialog. Available only in ADA Compliance Mode." : "Only available when ADA Compliance Mode is enabled"}>
-                <InfoIcon fontSize="small" style={{ marginLeft: '8px', cursor: 'pointer', color: 'var(--text-secondary)' }} />
-              </Tooltip>
-            </div>
+            <Alert severity={localEnableAdaCompliance ? 'success' : 'warning'} sx={{ mt: 1 }}>
+              <Typography variant="body2">
+                Photosensitivity testing is available only when ADA Compliance Mode is enabled.
+              </Typography>
+            </Alert>
           </div>
 
           <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, marginTop: 16 }}>
@@ -664,8 +642,6 @@ const OptionsPanel = ({
 OptionsPanel.propTypes = {
   backendType: PropTypes.string,
   setBackendType: PropTypes.func,
-  photosensitivityTesterEnabled: PropTypes.bool,
-  setPhotosensitivityTesterEnabled: PropTypes.func,
   onOk: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired
 };

@@ -198,8 +198,8 @@ export default function HelpDialog({ open, onClose }) {
 
               <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>Photosensitivity Testing</Typography>
               <Typography variant="body2">
-                Advanced users can test photosensitivity compliance using the built-in tester. Enable it in Options &rarr; 
-                &quot;Enable Photosensitivity Tester&quot; &rarr; then access it via the bug icon in the header. The tester analyzes 
+                Advanced users can test photosensitivity compliance using the built-in tester. The bug icon is available
+                only while ADA Compliance Mode is enabled. The tester analyzes 
                 flash rate (must be ≤3/sec) and flash area (must be ≤87,296px) to verify WCAG compliance.
               </Typography>
             </CardContent>
