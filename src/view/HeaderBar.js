@@ -336,7 +336,8 @@ export default function HeaderBar({
               onOpenScript={() => setScriptOpen(true)}
               onOpenAssistant={() => setAssistantOpen(true)}
               showAssistant={assistantAvailable}
-              showPhotoTest={enableAdaCompliance}
+              showPhotoTest={true}
+              photoTestEnabled={enableAdaCompliance}
               onOpenDonate={openDonate}
               onOpenPhotoTest={() => {
                 if (enableAdaCompliance) {

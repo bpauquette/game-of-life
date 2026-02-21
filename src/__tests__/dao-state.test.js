@@ -115,6 +115,33 @@ describe('uiDao', () => {
     expect(useUiDao.getState().colorScheme).toEqual(expect.objectContaining({ name: expect.stringContaining('ADA') }));
   });
 
+  test('forces BioLife and max speed caps when ADA mode is disabled', async () => {
+    const useUiDao = await loadUiDao();
+    const usePerformanceDao = await loadPerformanceDao();
+
+    useUiDao.getState().setEnableAdaCompliance(true);
+    usePerformanceDao.getState().setPerformanceCaps({
+      maxFPS: 2,
+      maxGPS: 2,
+      enableFPSCap: true,
+      enableGPSCap: true
+    });
+
+    useUiDao.getState().setEnableAdaCompliance(false);
+
+    expect(useUiDao.getState().enableAdaCompliance).toBe(false);
+    expect(useUiDao.getState().colorSchemeKey).toBe('bio');
+    expect(usePerformanceDao.getState().performanceCaps).toEqual(expect.objectContaining({
+      maxFPS: 120,
+      maxGPS: 60,
+      enableFPSCap: true,
+      enableGPSCap: true
+    }));
+    expect(localStorage.getItem('colorSchemeKey')).toBe('bio');
+    expect(localStorage.getItem('maxFPS')).toBe('120');
+    expect(localStorage.getItem('maxGPS')).toBe('60');
+  });
+
   test('maintains ADA/color-scheme invariants under rapid ADA toggles', async () => {
     const useUiDao = await loadUiDao();
     useUiDao.getState().setEnableAdaCompliance(false);
@@ -144,6 +171,48 @@ describe('uiDao', () => {
     useUiDao.getState().setColorSchemeKey('bio');
     expect(useUiDao.getState().enableAdaCompliance).toBe(false);
     expect(useUiDao.getState().colorSchemeKey).toBe('bio');
+  });
+
+  test('enforces photosensitivity dialog availability based on ADA state', async () => {
+    const useUiDao = await loadUiDao();
+
+    useUiDao.getState().setEnableAdaCompliance(false);
+    useUiDao.getState().setPhotoTestOpen(true);
+    expect(useUiDao.getState().photoTestOpen).toBe(false);
+
+    useUiDao.getState().setEnableAdaCompliance(true);
+    useUiDao.getState().setPhotoTestOpen(true);
+    expect(useUiDao.getState().photoTestOpen).toBe(true);
+
+    useUiDao.getState().setEnableAdaCompliance(false);
+    expect(useUiDao.getState().photoTestOpen).toBe(false);
+  });
+
+  test('maintains ADA/photosensitivity invariants under rapid interleaved updates', async () => {
+    const useUiDao = await loadUiDao();
+
+    const snapshots = [];
+    const unsubscribe = useUiDao.subscribe((state) => {
+      snapshots.push({
+        enableAdaCompliance: state.enableAdaCompliance,
+        photoTestOpen: state.photoTestOpen
+      });
+    });
+
+    const ops = [];
+    for (let i = 0; i < 80; i += 1) {
+      const adaOn = i % 2 === 0;
+      ops.push(Promise.resolve().then(() => useUiDao.getState().setEnableAdaCompliance(adaOn)));
+      ops.push(Promise.resolve().then(() => useUiDao.getState().setPhotoTestOpen(true)));
+      ops.push(Promise.resolve().then(() => useUiDao.getState().setPhotoTestOpen(false)));
+    }
+    await Promise.all(ops);
+    unsubscribe();
+
+    const invariantBreaches = snapshots.filter(
+      (s) => !s.enableAdaCompliance && s.photoTestOpen
+    );
+    expect(invariantBreaches).toEqual([]);
   });
 
   test('resolves interleaved ADA toggles and scheme writes to the final expected state', async () => {
@@ -383,6 +452,18 @@ describe('populationDao', () => {
 });
 
 describe('dialogDao', () => {
+  test('shows first-load warning by default when not previously acknowledged', async () => {
+    localStorage.removeItem('gol-first-load-warning-seen');
+    const useDialogDao = await loadDialogDao();
+    expect(useDialogDao.getState().showFirstLoadWarning).toBe(true);
+  });
+
+  test('hides first-load warning when it was previously acknowledged', async () => {
+    localStorage.setItem('gol-first-load-warning-seen', 'true');
+    const useDialogDao = await loadDialogDao();
+    expect(useDialogDao.getState().showFirstLoadWarning).toBe(false);
+  });
+
   test('opens dialogs and stores payloads', async () => {
     const useDialogDao = await loadDialogDao();
     useDialogDao.getState().setCaptureDialogOpen(true);

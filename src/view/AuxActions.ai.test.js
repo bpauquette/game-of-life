@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import AuxActions from './AuxActions.js';
 
 function buildProps(overrides = {}) {
@@ -38,5 +38,23 @@ describe('AuxActions AI button visibility', () => {
   test('shows Photosensitivity button when showPhotoTest is true', () => {
     render(<AuxActions {...buildProps({ showPhotoTest: true })} />);
     expect(screen.getByLabelText('photosensitivity-test')).toBeInTheDocument();
+  });
+
+  test('disables Photosensitivity button when photoTestEnabled is false', () => {
+    const onOpenPhotoTest = jest.fn();
+    render(<AuxActions {...buildProps({ showPhotoTest: true, photoTestEnabled: false, onOpenPhotoTest })} />);
+    const button = screen.getByLabelText('photosensitivity-test');
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(onOpenPhotoTest).not.toHaveBeenCalled();
+  });
+
+  test('enables Photosensitivity button when photoTestEnabled is true', () => {
+    const onOpenPhotoTest = jest.fn();
+    render(<AuxActions {...buildProps({ showPhotoTest: true, photoTestEnabled: true, onOpenPhotoTest })} />);
+    const button = screen.getByLabelText('photosensitivity-test');
+    expect(button).not.toBeDisabled();
+    fireEvent.click(button);
+    expect(onOpenPhotoTest).toHaveBeenCalledTimes(1);
   });
 });

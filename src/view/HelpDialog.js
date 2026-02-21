@@ -167,12 +167,6 @@ export default function HelpDialog({ open, onClose }) {
                 </ListItem>
                 <ListItem sx={{ py: 0 }}>
                   <ListItemText 
-                    primary="• Canvas limited to 160×160 pixels" 
-                    secondary="Restricts visible flash area below safety threshold (87,296 pixels)" 
-                  />
-                </ListItem>
-                <ListItem sx={{ py: 0 }}>
-                  <ListItemText 
                     primary="• Script execution HUD hidden" 
                     secondary="Removes translucent overlays that could contribute to flash area" 
                   />

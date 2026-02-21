@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import OptionsPanel from './OptionsPanel.js';
 import { ThemeProvider } from './context/ThemeContext.js';
 import { useUiDao } from '../model/dao/uiDao.js';
+import { useDialogDao } from '../model/dao/dialogDao.js';
+import { usePerformanceDao } from '../model/dao/performanceDao.js';
 
 describe('OptionsPanel ADA enforcement', () => {
   beforeEach(() => {
@@ -13,6 +15,15 @@ describe('OptionsPanel ADA enforcement', () => {
       colorSchemes: {
         bio: { name: 'Bio' },
         adaSafe: { name: 'ADA Safe (Low Contrast)' }
+      }
+    });
+    useDialogDao.setState({ showFirstLoadWarning: false });
+    usePerformanceDao.setState({
+      performanceCaps: {
+        maxFPS: 60,
+        maxGPS: 30,
+        enableFPSCap: false,
+        enableGPSCap: false
       }
     });
   });
@@ -50,5 +61,62 @@ describe('OptionsPanel ADA enforcement', () => {
     expect(
       screen.getByText('Photosensitivity testing is available only when ADA Compliance Mode is enabled.')
     ).toBeInTheDocument();
+  });
+
+  test('resets privacy controls and reopens first-load warning flow', () => {
+    localStorage.setItem('gol-first-load-warning-seen', 'true');
+    const onCancel = jest.fn();
+
+    render(
+      <ThemeProvider>
+        <OptionsPanel onOk={() => {}} onCancel={onCancel} />
+      </ThemeProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Privacy Controls' }));
+
+    expect(localStorage.getItem('gol-first-load-warning-seen')).toBe('false');
+    expect(useDialogDao.getState().showFirstLoadWarning).toBe(true);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  test('when ADA mode is turned off, resets to BioLife and max speed caps', () => {
+    localStorage.setItem('enableAdaCompliance', 'true');
+    useUiDao.setState({
+      colorSchemeKey: 'adaSafe',
+      enableAdaCompliance: true,
+    });
+    usePerformanceDao.setState({
+      performanceCaps: {
+        maxFPS: 2,
+        maxGPS: 2,
+        enableFPSCap: true,
+        enableGPSCap: true
+      }
+    });
+
+    render(
+      <ThemeProvider>
+        <OptionsPanel onOk={() => {}} onCancel={() => {}} />
+      </ThemeProvider>
+    );
+
+    const adaCheckbox = screen.getByLabelText('Enable ADA Compliance Mode');
+    fireEvent.click(adaCheckbox);
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    expect(useUiDao.getState().enableAdaCompliance).toBe(false);
+    expect(useUiDao.getState().colorSchemeKey).toBe('bio');
+    expect(usePerformanceDao.getState().performanceCaps).toEqual(expect.objectContaining({
+      maxFPS: 120,
+      maxGPS: 60,
+      enableFPSCap: true,
+      enableGPSCap: true
+    }));
+    expect(localStorage.getItem('colorSchemeKey')).toBe('bio');
+    expect(localStorage.getItem('maxFPS')).toBe('120');
+    expect(localStorage.getItem('maxGPS')).toBe('60');
+    expect(localStorage.getItem('enableFPSCap')).toBe('true');
+    expect(localStorage.getItem('enableGPSCap')).toBe('true');
   });
 });

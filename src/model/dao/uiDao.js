@@ -3,9 +3,14 @@
 
 import { create } from 'zustand';
 import { colorSchemes } from '../colorSchemes.js';
+import { usePerformanceDao } from './performanceDao.js';
 
 const ADA_SCHEME_KEY = 'adaSafe';
 const DEFAULT_SCHEME_KEY = 'bio';
+const ADA_SAFE_MAX_FPS = 2;
+const ADA_SAFE_MAX_GPS = 2;
+const ADA_OFF_MAX_FPS = 120;
+const ADA_OFF_MAX_GPS = 60;
 
 function resolveSchemeMap(schemes) {
   if (schemes && typeof schemes === 'object' && Object.keys(schemes).length > 0) {
@@ -126,7 +131,13 @@ export const useUiDao = create((set) => ({
   donateOpen: false,
   setDonateOpen: (donateOpen) => set({ donateOpen }),
   photoTestOpen: false,
-  setPhotoTestOpen: (photoTestOpen) => set({ photoTestOpen }),
+  setPhotoTestOpen: (photoTestOpen) => set((state) => {
+    const requestedOpen = Boolean(photoTestOpen);
+    if (!state.enableAdaCompliance) {
+      return { photoTestOpen: false };
+    }
+    return { photoTestOpen: requestedOpen };
+  }),
   userDialogOpen: false,
   setUserDialogOpen: (userDialogOpen) => set({ userDialogOpen }),
   showRegister: false,
@@ -158,21 +169,35 @@ export const useUiDao = create((set) => ({
   enableAdaCompliance: initialEnableAdaCompliance,
   setEnableAdaCompliance: (value) => {
     const boolValue = Boolean(value);
+    const enforcedKey = boolValue ? ADA_SCHEME_KEY : DEFAULT_SCHEME_KEY;
+    const enforcedCaps = {
+      maxFPS: boolValue ? ADA_SAFE_MAX_FPS : ADA_OFF_MAX_FPS,
+      maxGPS: boolValue ? ADA_SAFE_MAX_GPS : ADA_OFF_MAX_GPS,
+      enableFPSCap: true,
+      enableGPSCap: true
+    };
     set((state) => {
-      const enforcedKey = normalizeColorSchemeKey(state.colorSchemeKey, boolValue, state.colorSchemes);
       return {
         enableAdaCompliance: boolValue,
+        photoTestOpen: boolValue ? state.photoTestOpen : false,
         colorSchemeKey: enforcedKey,
         colorScheme: resolveColorSchemeValue(enforcedKey, state.colorSchemes)
       };
     });
     try {
       globalThis?.localStorage?.setItem('enableAdaCompliance', JSON.stringify(boolValue));
-      if (boolValue) {
-        globalThis?.localStorage?.setItem('colorSchemeKey', ADA_SCHEME_KEY);
-      }
+      globalThis?.localStorage?.setItem('colorSchemeKey', enforcedKey);
+      globalThis?.localStorage?.setItem('maxFPS', String(enforcedCaps.maxFPS));
+      globalThis?.localStorage?.setItem('maxGPS', String(enforcedCaps.maxGPS));
+      globalThis?.localStorage?.setItem('enableFPSCap', JSON.stringify(true));
+      globalThis?.localStorage?.setItem('enableGPSCap', JSON.stringify(true));
     } catch (e) {
       console.error('setEnableAdaCompliance error:', e);
+    }
+    try {
+      usePerformanceDao.getState().setPerformanceCaps(enforcedCaps);
+    } catch (e) {
+      console.error('setEnableAdaCompliance performance sync error:', e);
     }
   },
 

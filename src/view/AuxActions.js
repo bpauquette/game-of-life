@@ -9,7 +9,22 @@ import Tooltip from '@mui/material/Tooltip';
 import PropTypes from 'prop-types';
 import { FRONTEND_TIMESTAMP, FRONTEND_VERSION } from '../version.js';
 
-function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, onOpenImport, onOpenDonate, onOpenPhotoTest, onOpenScript, onOpenAssistant, showAssistant = false, showPhotoTest = true, loggedIn }) {
+function AuxActions({
+  onOpenChart,
+  onOpenHelp,
+  onOpenAbout,
+  onOpenOptions,
+  onOpenUser,
+  onOpenImport,
+  onOpenDonate,
+  onOpenPhotoTest,
+  onOpenScript,
+  onOpenAssistant,
+  showAssistant = false,
+  showPhotoTest = true,
+  photoTestEnabled = true,
+  loggedIn
+}) {
   const openLifeWiki = () => {
     globalThis.open('https://conwaylife.com/wiki/Main_Page', '_blank');
   };
@@ -25,8 +40,17 @@ function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpe
         </Tooltip>
       ) : null}
       {showPhotoTest ? (
-        <Tooltip title="Photosensitivity Test">
-          <IconButton size="small" onClick={onOpenPhotoTest} aria-label="photosensitivity-test"><BugReportIcon fontSize="small" /></IconButton>
+        <Tooltip title={photoTestEnabled ? 'Photosensitivity Test' : 'Enable ADA Compliance Mode to use Photosensitivity Test'}>
+          <span>
+            <IconButton
+              size="small"
+              onClick={onOpenPhotoTest}
+              aria-label="photosensitivity-test"
+              disabled={!photoTestEnabled}
+            >
+              <BugReportIcon fontSize="small" />
+            </IconButton>
+          </span>
         </Tooltip>
       ) : null}
       <IconButton size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
@@ -58,6 +82,7 @@ AuxActions.propTypes = {
   onOpenAssistant: PropTypes.func,
   showAssistant: PropTypes.bool,
   showPhotoTest: PropTypes.bool,
+  photoTestEnabled: PropTypes.bool,
   onOpenDonate: PropTypes.func,
   onOpenUser: PropTypes.func,
   onOpenPhotoTest: PropTypes.func,
