@@ -19,6 +19,13 @@ import { useToolDao } from '../model/dao/toolDao.js';
 import { useUiDao } from '../model/dao/uiDao.js';
 import { usePopulationDao } from '../model/dao/populationDao.js';
 import { usePerformanceDao } from '../model/dao/performanceDao.js';
+import { useDialogDao } from '../model/dao/dialogDao.js';
+import { ADA_LEGAL_LIABILITY_NOTICE } from './legalNotices.js';
+
+const ADA_SAFE_MAX_FPS = 2;
+const ADA_SAFE_MAX_GPS = 2;
+const ADA_OFF_MAX_FPS = 120;
+const ADA_OFF_MAX_GPS = 60;
 
 const OptionsPanel = ({
   // Backend toggle (still managed by parent/runtime)
@@ -53,6 +60,7 @@ const OptionsPanel = ({
   const setUseWebWorker = useUiDao(state => state.setUseWebWorker);
   const maxChartGenerations = usePopulationDao(state => state.maxChartGenerations);
   const setMaxChartGenerations = usePopulationDao(state => state.setMaxChartGenerations);
+  const setShowFirstLoadWarning = useDialogDao(state => state.setShowFirstLoadWarning);
   const [localScheme, setLocalScheme] = useState(colorSchemeKey || 'bio');
   const [localBackendType, setLocalBackendType] = useState(() => {
   const stored = globalThis.localStorage.getItem('backendType');
@@ -132,7 +140,8 @@ const OptionsPanel = ({
 })();
 
   const handleOk = () => {
-  const finalColorScheme = localEnableAdaCompliance ? 'adaSafe' : localScheme;
+  const turnedAdaOffThisSave = prevAda && !localEnableAdaCompliance;
+  const finalColorScheme = localEnableAdaCompliance ? 'adaSafe' : 'bio';
   setColorSchemeKey(finalColorScheme);
   setBackendType?.(localBackendType);
   globalThis.localStorage.setItem('backendType', localBackendType);
@@ -148,11 +157,15 @@ const OptionsPanel = ({
   setPopTolerance(tol);
   setShowSpeedGauge?.(localShowSpeedGauge);
   // If ADA compliance is on, force maxFPS to 2 and enable FPS cap
-  const finalMaxFPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(120, Number(localMaxFPS) || 60));
-  const finalMaxGPS = localEnableAdaCompliance ? 2 : Math.max(1, Math.min(60, Number(localMaxGPS) || 30));
-  // When ADA compliance is on, always enable FPS/GPS caps
-  const finalEnableFPSCap = localEnableAdaCompliance ? true : !!localEnableFPSCap;
-  const finalEnableGPSCap = localEnableAdaCompliance ? true : !!localEnableGPSCap;
+  const finalMaxFPS = localEnableAdaCompliance
+    ? ADA_SAFE_MAX_FPS
+    : (turnedAdaOffThisSave ? ADA_OFF_MAX_FPS : Math.max(1, Math.min(120, Number(localMaxFPS) || 60)));
+  const finalMaxGPS = localEnableAdaCompliance
+    ? ADA_SAFE_MAX_GPS
+    : (turnedAdaOffThisSave ? ADA_OFF_MAX_GPS : Math.max(1, Math.min(60, Number(localMaxGPS) || 30)));
+  // ADA on and ADA-off transitions both force caps on.
+  const finalEnableFPSCap = localEnableAdaCompliance ? true : (turnedAdaOffThisSave ? true : !!localEnableFPSCap);
+  const finalEnableGPSCap = localEnableAdaCompliance ? true : (turnedAdaOffThisSave ? true : !!localEnableGPSCap);
   const preferredMaxFPS = Math.max(1, Math.min(120, Number(localMaxFPS) || 60));
   const preferredMaxGPS = Math.max(1, Math.min(60, Number(localMaxGPS) || 30));
   const preferredEnableFPSCap = !!localEnableFPSCap;
@@ -214,6 +227,12 @@ const OptionsPanel = ({
   };
 
   const handleCancel = () => {
+    onCancel?.();
+  };
+
+  const handleResetPrivacyControls = () => {
+    globalThis.localStorage.setItem('gol-first-load-warning-seen', 'false');
+    setShowFirstLoadWarning(true);
     onCancel?.();
   };
 
@@ -359,14 +378,24 @@ const OptionsPanel = ({
               <input
                 type="checkbox"
                 checked={!!localEnableAdaCompliance}
-                onChange={(e) => setLocalEnableAdaCompliance(e.target.checked)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setLocalEnableAdaCompliance(checked);
+                  if (!checked) {
+                    setLocalScheme('bio');
+                    setLocalMaxFPS(ADA_OFF_MAX_FPS);
+                    setLocalMaxGPS(ADA_OFF_MAX_GPS);
+                    setLocalEnableFPSCap(true);
+                    setLocalEnableGPSCap(true);
+                  }
+                }}
                 style={{ marginRight: 8 }}
                 id="enable-ada-compliance-checkbox"
               />
               <label htmlFor="enable-ada-compliance-checkbox" style={{ margin: 0, fontWeight: 'bold' }}>
                 Enable ADA Compliance Mode
               </label>
-              <Tooltip title="When enabled, animation and simulation are capped at 2 FPS/GPS for photosensitivity safety. When disabled, you assume legal liability.">
+              <Tooltip title="When enabled, animation and simulation are capped at 2 FPS/GPS for photosensitivity safety.">
                 <InfoIcon fontSize="small" style={{ marginLeft: '8px', cursor: 'pointer', color: 'var(--text-secondary)' }} />
               </Tooltip>
             </div>
@@ -375,7 +404,7 @@ const OptionsPanel = ({
               <Alert severity="error" sx={{ mb: 2 }}>
                 <Typography variant="body2">
                   <strong>⚠️ WARNING: LEGAL LIABILITY NOTICE</strong><br />
-                  You have disabled ADA compliance mode. By continuing, you acknowledge and accept full legal responsibility for any harm caused by photosensitive seizures or other adverse health effects resulting from the animation speed. This software is provided as-is, and the copyright holders, developers, and distributors disclaim all liability for injuries, damages, or claims arising from your choice to operate outside compliance standards. Photosensitive individuals, particularly those with epilepsy, may experience seizures triggered by visual stimuli at frequencies above 2 Hz. You are legally liable if your use of this non-compliant setting causes injury.
+                  {ADA_LEGAL_LIABILITY_NOTICE}
                 </Typography>
               </Alert>
             )}
@@ -385,6 +414,16 @@ const OptionsPanel = ({
                 Photosensitivity testing is available only when ADA Compliance Mode is enabled.
               </Typography>
             </Alert>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, marginTop: 16 }}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: 'var(--text-primary)' }}>Privacy Controls</h2>
+            <Typography variant="body2" sx={{ mb: 1.5 }}>
+              Reset privacy controls to make the first-time ADA dialog appear again.
+            </Typography>
+            <Button variant="outlined" size="small" onClick={handleResetPrivacyControls}>
+              Reset Privacy Controls
+            </Button>
           </div>
 
           <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, marginTop: 16 }}>

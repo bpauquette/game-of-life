@@ -1,6 +1,15 @@
 // Dialog DAO: dialogs and notifications
 import { create } from 'zustand';
 
+function getInitialShowFirstLoadWarning() {
+  try {
+    return globalThis?.localStorage?.getItem('gol-first-load-warning-seen') !== 'true';
+  } catch (e) {
+    console.error('getInitialShowFirstLoadWarning error:', e);
+  }
+  return true;
+}
+
 export const useDialogDao = create((set) => ({
   captureDialogOpen: false,
   setCaptureDialogOpen: (captureDialogOpen) => set({ captureDialogOpen }),
@@ -12,7 +21,7 @@ export const useDialogDao = create((set) => ({
   setCaptureData: (captureData) => set({ captureData }),
   showStableDialog: false,
   setShowStableDialog: (showStableDialog) => set({ showStableDialog }),
-  showFirstLoadWarning: false,
+  showFirstLoadWarning: getInitialShowFirstLoadWarning(),
   setShowFirstLoadWarning: (showFirstLoadWarning) => set({ showFirstLoadWarning }),
   shapesNotifOpen: false,
   setShapesNotifOpen: (shapesNotifOpen) => set({ shapesNotifOpen }),

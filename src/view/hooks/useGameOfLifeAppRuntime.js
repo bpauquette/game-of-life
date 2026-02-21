@@ -151,14 +151,6 @@ export function useGameOfLifeAppRuntime() {
   }, [setUseWebWorker]);
  
   const setRunningState = useCallback((running) => {
-    if (running && enableAdaCompliance) {
-      // Angular parity: ADA mode blocks autoplay/start and keeps simulation paused.
-      setIsRunning(false);
-      isRunningRef.current = false;
-      try { gameRef.current?.controller?.handleRunningStateChange?.(false); } catch (e) { console.error(e); }
-      try { gameRef.current?.model?.setRunningModel?.(false); } catch (e) { console.error(e); }
-      return;
-    }
     const modelIsRunning = !!running;
     setIsRunning(modelIsRunning);
     isRunningRef.current = modelIsRunning;
@@ -177,7 +169,7 @@ export function useGameOfLifeAppRuntime() {
     if (gameRef.current?.model?.setRunningModel) {
       try { gameRef.current.model.setRunningModel(modelIsRunning); } catch (e) { console.error(e); }
     }
-  }, [setIsRunning, gameRef, enableAdaCompliance]);
+  }, [setIsRunning, gameRef]);
 
   const setIsRunningCombined = useCallback((running, mode = engineMode) => {
     if (running && mode !== engineMode) {
@@ -455,53 +447,16 @@ export function useGameOfLifeAppRuntime() {
     });
   }, [setPerformanceCaps]);
 
-  const readPreferredPerformanceCaps = useCallback(() => {
-    let prefMaxFPS = 60;
-    let prefMaxGPS = 30;
-    let prefEnableFPSCap = false;
-    let prefEnableGPSCap = false;
-
-    try {
-      const preferredFPSRaw = globalThis.localStorage?.getItem('preferredMaxFPS');
-      const preferredGPSRaw = globalThis.localStorage?.getItem('preferredMaxGPS');
-      const preferredEnableFPSRaw = globalThis.localStorage?.getItem('preferredEnableFPSCap');
-      const preferredEnableGPSRaw = globalThis.localStorage?.getItem('preferredEnableGPSCap');
-      const fallbackFPSRaw = globalThis.localStorage?.getItem('maxFPS');
-      const fallbackGPSRaw = globalThis.localStorage?.getItem('maxGPS');
-      const fallbackEnableFPSRaw = globalThis.localStorage?.getItem('enableFPSCap');
-      const fallbackEnableGPSRaw = globalThis.localStorage?.getItem('enableGPSCap');
-      const parsedFPS = Number.parseInt(preferredFPSRaw ?? fallbackFPSRaw, 10);
-      const parsedGPS = Number.parseInt(preferredGPSRaw ?? fallbackGPSRaw, 10);
-
-      if (Number.isFinite(parsedFPS) && parsedFPS > 0) prefMaxFPS = Math.max(1, Math.min(120, parsedFPS));
-      if (Number.isFinite(parsedGPS) && parsedGPS > 0) prefMaxGPS = Math.max(1, Math.min(60, parsedGPS));
-      if (preferredEnableFPSRaw ?? fallbackEnableFPSRaw) {
-        prefEnableFPSCap = JSON.parse(preferredEnableFPSRaw ?? fallbackEnableFPSRaw);
-      }
-      if (preferredEnableGPSRaw ?? fallbackEnableGPSRaw) {
-        prefEnableGPSCap = JSON.parse(preferredEnableGPSRaw ?? fallbackEnableGPSRaw);
-      }
-    } catch (e) { console.error(e); }
-
-    return {
-      maxFPS: prefMaxFPS,
-      maxGPS: prefMaxGPS,
-      enableFPSCap: prefEnableFPSCap,
-      enableGPSCap: prefEnableGPSCap
-    };
-  }, []);
-
   const applyAdaPolicy = useCallback((enabled, options = {}) => {
     const newValue = Boolean(enabled);
     const broadcast = options.broadcast !== false;
     const source = options.source || 'runtime';
-    const preferred = readPreferredPerformanceCaps();
     const newColorScheme = newValue ? 'adaSafe' : 'bio';
     const computedCaps = {
-      maxFPS: newValue ? 2 : preferred.maxFPS,
-      maxGPS: newValue ? 2 : preferred.maxGPS,
-      enableFPSCap: newValue ? true : preferred.enableFPSCap,
-      enableGPSCap: newValue ? true : preferred.enableGPSCap
+      maxFPS: newValue ? 2 : 120,
+      maxGPS: newValue ? 2 : 60,
+      enableFPSCap: true,
+      enableGPSCap: true
     };
 
     setEnableAdaCompliance(newValue);
@@ -552,7 +507,7 @@ export function useGameOfLifeAppRuntime() {
         }
       });
     } catch (e) { console.error(e); }
-  }, [canvasRef, gameRef, readPreferredPerformanceCaps, setColorSchemeKey, setEnableAdaCompliance, setPerformanceCaps, setRunningState]);
+  }, [canvasRef, gameRef, setColorSchemeKey, setEnableAdaCompliance, setPerformanceCaps, setRunningState]);
 
   const setEnableAdaComplianceWithUpdate = useCallback((value) => {
     applyAdaPolicy(Boolean(value), { broadcast: true, source: 'runtime' });

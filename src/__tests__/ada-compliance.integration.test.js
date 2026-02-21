@@ -49,20 +49,20 @@ describe('ADA Compliance Integration Tests', () => {
       expect(newColorScheme).toBe('adaSafe');
     });
 
-    test('restores original settings when ADA disabled', () => {
-      // When ADA is disabled, restore previous values
+    test('forces BioLife and max speeds when ADA disabled', () => {
+      // When ADA is disabled, force the non-ADA policy defaults.
       const enableAdaCompliance = false;
-      const prevColorScheme = 'bio';
-      const prevMaxFPS = 60;
-      const prevMaxGPS = 30;
+      const offColorScheme = 'bio';
+      const offMaxFPS = 120;
+      const offMaxGPS = 60;
       
-      const finalColorScheme = enableAdaCompliance ? 'adaSafe' : prevColorScheme;
-      const finalMaxFPS = enableAdaCompliance ? 2 : prevMaxFPS;
-      const finalMaxGPS = enableAdaCompliance ? 2 : prevMaxGPS;
+      const finalColorScheme = enableAdaCompliance ? 'adaSafe' : offColorScheme;
+      const finalMaxFPS = enableAdaCompliance ? 2 : offMaxFPS;
+      const finalMaxGPS = enableAdaCompliance ? 2 : offMaxGPS;
       
       expect(finalColorScheme).toBe('bio');
-      expect(finalMaxFPS).toBe(60);
-      expect(finalMaxGPS).toBe(30);
+      expect(finalMaxFPS).toBe(120);
+      expect(finalMaxGPS).toBe(60);
     });
   });
 
