@@ -7,6 +7,7 @@ import { GameView } from '../view/GameView.js';
 import { GameController } from './GameController.js';
 import { drawTool } from './tools/drawTool.js';
 import { eraserTool } from './tools/eraserTool.js';
+import { toggleTool } from './tools/toggleTool.js';
 import { lineTool } from './tools/lineTool.js';
 import { rectTool } from './tools/rectTool.js';
 import { squareTool } from './tools/squareTool.js';
@@ -97,6 +98,7 @@ export class GameMVC {
   registerDefaultTools() {
   
   try {
+    this.controller.registerTool('toggle', toggleTool);
     this.controller.registerTool('draw', drawTool);
     this.controller.registerTool('erase', eraserTool);
     this.controller.registerTool('line', lineTool);

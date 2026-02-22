@@ -36,4 +36,17 @@ describe('GameView', () => {
     view.emit('test', { foo: 2 });
     expect(handler).toHaveBeenCalledTimes(1);
   });
+
+  it('registers non-passive wheel listeners', () => {
+    const addEventListenerSpy = jest.spyOn(canvas, 'addEventListener');
+    const view = new GameView(canvas);
+    view.setupMouseEvents();
+
+    const wheelCalls = addEventListenerSpy.mock.calls.filter(call => call[0] === 'wheel');
+    expect(wheelCalls.length).toBeGreaterThan(0);
+    for (const call of wheelCalls) {
+      expect(call[2]).toMatchObject({ passive: false });
+    }
+    addEventListenerSpy.mockRestore();
+  });
 });

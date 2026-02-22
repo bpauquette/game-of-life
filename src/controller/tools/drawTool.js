@@ -1,47 +1,25 @@
 // Freehand drawing tool
 export const drawTool = {
   // Called when mouse is pressed down
-  onMouseDown(toolState, x, y) {
+  onMouseDown(toolState, x, y, setCellAlive) {
     toolState.start = { x, y };
     toolState.last = { x, y };
-    // Set cell alive on mouseDown for single cell draws
-    if (toolState.setCellAlive) {
-      toolState.setCellAlive(x, y, true);
+    // Draw immediately so single-click paint works.
+    if (typeof setCellAlive === 'function') {
+      setCellAlive(x, y, true);
     }
   },
-  onMouseMove(toolState, x, y, setCellAlive, isCellAlive = () => false) {
-    const drawToggleMode = JSON.parse(globalThis.localStorage.getItem('drawToggleMode') || 'false');
-    if (drawToggleMode) {
-      // Original toggle mode
-      const { x: lx, y: ly } = toolState.last || { x, y };
-      const dx = x - lx;
-      const dy = y - ly;
-      const steps = Math.max(Math.abs(dx), Math.abs(dy));
-      if (steps === 0) {
-        const alive = isCellAlive(x, y);
-        setCellAlive(x, y, !alive);
-      } else {
-        for (let i = 0; i <= steps; i++) {
-          const px = Math.round(lx + (dx * i) / steps);
-          const py = Math.round(ly + (dy * i) / steps);
-          const alive = isCellAlive(px, py);
-          setCellAlive(px, py, !alive);
-        }
-      }
-      toolState.last = { x, y };
-    } else {
-      // New draw mode: always set cells alive as mouse moves, connected line
-      const { x: lx, y: ly } = toolState.last || { x, y };
-      const dx = x - lx;
-      const dy = y - ly;
-      const steps = Math.max(Math.abs(dx), Math.abs(dy));
-      for (let i = 0; i <= steps; i++) {
-        const px = Math.round(lx + (dx * i) / steps);
-        const py = Math.round(ly + (dy * i) / steps);
-        setCellAlive(px, py, true);
-      }
-      toolState.last = { x, y };
+  onMouseMove(toolState, x, y, setCellAlive) {
+    const { x: lx, y: ly } = toolState.last || { x, y };
+    const dx = x - lx;
+    const dy = y - ly;
+    const steps = Math.max(Math.abs(dx), Math.abs(dy));
+    for (let i = 0; i <= steps; i++) {
+      const px = Math.round(lx + (dx * i) / steps);
+      const py = Math.round(ly + (dy * i) / steps);
+      setCellAlive(px, py, true);
     }
+    toolState.last = { x, y };
   },
   onMouseUp(toolState) {
     toolState.start = null;

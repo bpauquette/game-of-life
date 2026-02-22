@@ -25,6 +25,13 @@ export class GameController {
     this.toolMap = {};
     this.toolState = {};
     this.mouseState = { isDown: false };
+    this.panState = {
+      isPanning: false,
+      startClientX: 0,
+      startClientY: 0,
+      startOffsetX: 0,
+      startOffsetY: 0,
+    };
     // Expose scheduler indicators for tests and external tooling
     this.animationId = null;
     this.worker = null;
@@ -57,8 +64,8 @@ export class GameController {
     this.renderScheduled = false;
 
     this.init();
-    // Register eraser tool
-    this.registerTool('eraser', eraserTool);
+    // Register erase tool.
+    this.registerTool('erase', eraserTool);
   }
 
   // Duplicate _getScheduler removed
@@ -185,15 +192,15 @@ export class GameController {
       if (!cellCoords) return;
       this.handleMouseMove(cellCoords, event);
     });
-    this.view.on('mouseUp', ({ cellCoords }) => {
-      this.handleMouseUp(cellCoords || null);
+    this.view.on('mouseUp', ({ cellCoords, event }) => {
+      this.handleMouseUp(cellCoords || null, event);
     });
     this.view.on('click', ({ cellCoords, event }) => {
       if (!cellCoords) return;
       this.handleClick(cellCoords, event);
     });
-    this.view.on('wheel', ({ deltaY, event }) => {
-      this.handleWheel(deltaY, event);
+    this.view.on('wheel', ({ deltaY, event, screenX, screenY, canvasCenterX, canvasCenterY }) => {
+      this.handleWheel(deltaY, event, { screenX, screenY, canvasCenterX, canvasCenterY });
     });
     // Two-finger pan from touch/pointer gestures
     this.view.on('gesturePan', ({ dx, dy }) => {
@@ -312,7 +319,7 @@ export class GameController {
     return (
       this.model.getIsRunning?.() &&
       !drawWhileRunning &&
-      ['draw', 'eraser', 'rect', 'line', 'circle', 'oval'].includes(selectedTool)
+      ['toggle', 'draw', 'erase', 'rect', 'line', 'circle', 'oval'].includes(selectedTool)
     );
   }
 
@@ -350,15 +357,59 @@ export class GameController {
 
   _invokeToolMouseDown(tool, cellCoords) {
     if (!tool?.onMouseDown) return;
-    tool.onMouseDown(this.toolState, cellCoords.x, cellCoords.y);
+    const setCellAlive = this._setCellAliveForUndo || ((x, y, alive) => this.model.setCellAliveModel(x, y, alive));
+    const isCellAlive = (x, y) => this.model.isCellAlive(x, y);
+    tool.onMouseDown(this.toolState, cellCoords.x, cellCoords.y, setCellAlive, isCellAlive);
     this._setToolState({}, { updateOverlay: true });
   }
 
   // Mouse event handlers
+  _shouldStartPanGesture(event, button) {
+    return button === 1 || (button === 0 && !!event?.shiftKey);
+  }
+
+  _beginPanGesture(event) {
+    const viewport = this.model.getViewport();
+    this.panState = {
+      isPanning: true,
+      startClientX: Number(event?.clientX) || 0,
+      startClientY: Number(event?.clientY) || 0,
+      startOffsetX: Number(viewport?.offsetX) || 0,
+      startOffsetY: Number(viewport?.offsetY) || 0,
+    };
+  }
+
+  _updatePanGesture(event) {
+    if (!this.panState?.isPanning) return;
+    const clientX = Number(event?.clientX);
+    const clientY = Number(event?.clientY);
+    if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) return;
+
+    const viewport = this.model.getViewport();
+    const cellSize = this.view?.renderer?.viewport?.cellSize || viewport?.cellSize || 8;
+    if (!Number.isFinite(cellSize) || cellSize <= 0) return;
+
+    const dx = clientX - this.panState.startClientX;
+    const dy = clientY - this.panState.startClientY;
+    const nextOffsetX = this.panState.startOffsetX - dx / cellSize;
+    const nextOffsetY = this.panState.startOffsetY - dy / cellSize;
+    this.model.setViewportModel(nextOffsetX, nextOffsetY, cellSize, viewport?.zoom);
+  }
+
+  _endPanGesture() {
+    this.panState.isPanning = false;
+  }
+
   handleMouseDown(cellCoords, event) {
     const button = this._isLeftMouseButton(event) ? 0 : (event && typeof event.button === 'number' ? event.button : 0);
+    // Ignore nested pointerdown/mousedown sequences until mouseup resets state.
+    if (this.mouseState.isDown) return;
     this.mouseState.isDown = true;
     this.mouseState.button = button;
+    if (this._shouldStartPanGesture(event, button)) {
+      this._beginPanGesture(event);
+      return;
+    }
     // Start a new diff buffer for undo tracking
     this._currentDiff = [];
     if (button !== 0) return;
@@ -372,8 +423,12 @@ export class GameController {
     this._invokeToolMouseDown(tool, cellCoords);
   }
 
-  handleMouseMove(cellCoords) {
+  handleMouseMove(cellCoords, event) {
     this.model.setCursorPositionModel(cellCoords);
+    if (this.panState?.isPanning) {
+      this._updatePanGesture(event);
+      return;
+    }
     const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
     // Centralized draw-while-running logic
@@ -381,7 +436,7 @@ export class GameController {
     if (
       this.model.getIsRunning?.() &&
       !drawWhileRunning &&
-      ['draw', 'eraser', 'rect', 'line', 'circle', 'oval'].includes(selectedTool)
+      ['toggle', 'draw', 'erase', 'rect', 'line', 'circle', 'oval'].includes(selectedTool)
     ) {
       // Block drawing tools while running if option is off
       return;
@@ -413,8 +468,15 @@ export class GameController {
   }
 
   handleMouseUp(cellCoords) {
+    const wasPanning = !!this.panState?.isPanning;
+    this._endPanGesture();
     this.mouseState.isDown = false;
     this.mouseState.button = undefined;
+    if (wasPanning) {
+      this._currentDiff = null;
+      this._setCellAliveForUndo = null;
+      return;
+    }
     const resolvedCoords = (cellCoords && typeof cellCoords.x === 'number' && typeof cellCoords.y === 'number')
       ? cellCoords
       : (() => {
@@ -536,13 +598,10 @@ export class GameController {
   }
 
   handleClick(cellCoords, event) {
-    // Only left-click toggles
+    // Only left-click actions
     const button = event && typeof event.button === 'number' ? event.button : 0;
     if (button !== 0) return;
-    if (this.model.getSelectedTool() === 'draw') {
-      const currentlyAlive = this.model.isCellAlive(cellCoords.x, cellCoords.y);
-      this.model.setCellAliveModel(cellCoords.x, cellCoords.y, !currentlyAlive);
-    } else if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape()) {
+    if (this.model.getSelectedTool() === CONST_SHAPES && this.model.getSelectedShape()) {
       // Guard against duplicate placements: if we just placed via mouseup,
       // the click event may fire immediately after. Ignore clicks within
       // a short globalThis after a placement.
@@ -555,22 +614,44 @@ export class GameController {
     }
   }
 
+  // Compute anchored offsets so zoom keeps the interaction point fixed.
+  computeAnchoredOffsets(viewport, currentCellSize, nextCellSize, anchor = {}) {
+    const rendererViewport = this.view?.renderer?.viewport || {};
+    const centerX = Number.isFinite(anchor.canvasCenterX)
+      ? anchor.canvasCenterX
+      : (Number(rendererViewport.width) || 0) / 2;
+    const centerY = Number.isFinite(anchor.canvasCenterY)
+      ? anchor.canvasCenterY
+      : (Number(rendererViewport.height) || 0) / 2;
+    const screenX = Number.isFinite(anchor.screenX) ? anchor.screenX : centerX;
+    const screenY = Number.isFinite(anchor.screenY) ? anchor.screenY : centerY;
+
+    const targetCellX = viewport.offsetX + (screenX - centerX) / currentCellSize;
+    const targetCellY = viewport.offsetY + (screenY - centerY) / currentCellSize;
+
+    return {
+      offsetX: targetCellX - (screenX - centerX) / nextCellSize,
+      offsetY: targetCellY - (screenY - centerY) / nextCellSize
+    };
+  }
+
   // Wheel zoom handler
-  handleWheel(deltaY, event) {
+  handleWheel(deltaY, event, anchor = {}) {
     const viewport = this.model.getViewport();
-    const currentCellSize = this.view.renderer.viewport.cellSize || 8; // Get cellSize from renderer
+    const currentCellSize = this.view.renderer.viewport.cellSize || viewport.cellSize || 8;
     const newCellSize = this.calculateNewCellSize(currentCellSize, deltaY);
 
     if (newCellSize !== currentCellSize) {
+      const nextOffsets = this.computeAnchoredOffsets(viewport, currentCellSize, newCellSize, anchor);
       // Update renderer viewport with new cellSize
-      this.view.renderer.setViewport(viewport.offsetX, viewport.offsetY, newCellSize);
+      this.view.renderer.setViewport(nextOffsets.offsetX, nextOffsets.offsetY, newCellSize);
       // Update model viewport with new cellSize so viewportChanged event fires
-      this.model.setViewportModel(viewport.offsetX, viewport.offsetY, newCellSize, viewport.zoom);
+      this.model.setViewportModel(nextOffsets.offsetX, nextOffsets.offsetY, newCellSize, viewport.zoom);
       // Refresh overlay to use updated cellSize for cursor coordinate calculations
       this.updateToolOverlay();
     }
 
-    if (event.cancelable) {
+    if (event?.cancelable) {
       event.preventDefault();
     }
   }
@@ -625,18 +706,15 @@ export class GameController {
     nextSize = Math.min(Math.max(nextSize, minCellSize), maxCellSize);
     if (!Number.isFinite(nextSize) || nextSize === currentSize) return;
 
-    const screenX = Number.isFinite(center?.screenX) ? center.screenX : center?.canvasCenterX || 0;
-    const screenY = Number.isFinite(center?.screenY) ? center.screenY : center?.canvasCenterY || 0;
-    const canvasCenterX = Number.isFinite(center?.canvasCenterX) ? center.canvasCenterX : screenX;
-    const canvasCenterY = Number.isFinite(center?.canvasCenterY) ? center.canvasCenterY : screenY;
-    const targetCellX = Number.isFinite(center?.cellX) ? center.cellX : viewport.offsetX;
-    const targetCellY = Number.isFinite(center?.cellY) ? center.cellY : viewport.offsetY;
-
-    const newOffsetX = targetCellX - (screenX - canvasCenterX) / nextSize;
-    const newOffsetY = targetCellY - (screenY - canvasCenterY) / nextSize;
+    const nextOffsets = this.computeAnchoredOffsets(viewport, currentSize, nextSize, {
+      screenX: center?.screenX,
+      screenY: center?.screenY,
+      canvasCenterX: center?.canvasCenterX,
+      canvasCenterY: center?.canvasCenterY
+    });
     // Update renderer directly and model offset
-    this.view.renderer.setViewport(newOffsetX, newOffsetY, nextSize);
-    this.model.setOffsetModel(newOffsetX, newOffsetY);
+    this.view.renderer.setViewport(nextOffsets.offsetX, nextOffsets.offsetY, nextSize);
+    this.model.setViewportModel(nextOffsets.offsetX, nextOffsets.offsetY, nextSize, viewport.zoom);
   }
 
   // Keyboard handlers
@@ -702,19 +780,19 @@ export class GameController {
         handled = true;
         break;
       case '1': // Tool selection
-        this.model.setSelectedTool('draw');
+        this.model.setSelectedTool('toggle');
         handled = true;
         break;
       case '2':
-        this.model.setSelectedTool('eraser');
+        this.model.setSelectedTool('draw');
         handled = true;
         break;
       case '3':
-        this.model.setSelectedTool('pan');
+        this.model.setSelectedTool('erase');
         handled = true;
         break;
       case '4':
-        this.model.setSelectedTool('shapes');
+        this.model.setSelectedTool('line');
         handled = true;
         break;
       case '5':
@@ -722,7 +800,7 @@ export class GameController {
         handled = true;
         break;
       case '6':
-        this.model.setSelectedTool('line');
+        this.model.setSelectedTool('square');
         handled = true;
         break;
       case '7':
@@ -730,6 +808,14 @@ export class GameController {
         handled = true;
         break;
       case '8':
+        this.model.setSelectedTool('oval');
+        handled = true;
+        break;
+      case '9':
+        this.model.setSelectedTool('randomRect');
+        handled = true;
+        break;
+      case '0':
         this.model.setSelectedTool('capture');
         handled = true;
         break;
