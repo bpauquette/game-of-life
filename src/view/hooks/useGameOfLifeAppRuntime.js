@@ -19,6 +19,7 @@ import { setupGameDaoFromMVC } from '../../controller/setupGameDao.js';
 import { setupToolDaoFromMVC } from '../../controller/setupToolDao.js';
 import { startMemoryLogger } from '../../utils/memoryLogger.js';
 import { computePopulationChange } from '../../utils/stabilityMetrics.js';
+import { classifyStablePatternType } from '../utils/stablePatternType.js';
 import hashlifeAdapter from '../../model/hashlife/adapter.js';
 import { eventToCellFromCanvas } from '../../controller/utils/canvasUtils.js';
 
@@ -97,7 +98,9 @@ export function useGameOfLifeAppRuntime() {
   const optionsOpenDao = useUiDao(state => state.optionsOpen);
 
   React.useEffect(() => {
-    setOnCloseCaptureDialog(() => () => setCaptureDialogOpen(false));
+    setOnCloseCaptureDialog(() => {
+      setCaptureDialogOpen(false);
+    });
   }, [setOnCloseCaptureDialog, setCaptureDialogOpen]);
 
   // Now, after ALL destructuring/hooks/refs, place your debug logs:
@@ -620,9 +623,10 @@ export function useGameOfLifeAppRuntime() {
         if (steady && typeof mvc.detectPeriod === 'function') {
           period = mvc.detectPeriod(Math.min(popWindowSize, 120)) || 0;
         }
+        const stableByRepeatedState = steady && period > 0;
         
         // Log only first detection and major milestones
-        const firstDetection = steady && !steadyInfo?.steady;
+        const firstDetection = stableByRepeatedState && !steadyInfo?.steady;
         if (firstDetection) {
           // Stability detected log removed
           
@@ -635,7 +639,7 @@ export function useGameOfLifeAppRuntime() {
             } else {
               try { console.debug('[GameOfLifeApp] stability detected before any generations advanced; skipping auto-pause'); } catch (e) { console.error(e); }
             }
-        } else if (!steady && modelPopHistory.length % 100 === 0) {
+        } else if (!stableByRepeatedState && modelPopHistory.length % 100 === 0) {
           // Still evolving log removed
         }
       } catch (err) {
@@ -648,7 +652,7 @@ export function useGameOfLifeAppRuntime() {
       // Convert GameModel's populationHistory (numbers) for computePopulationChange
       const modelPopHistory = mvc.model?.populationHistory || [];
       const { popChanging } = computePopulationChange(modelPopHistory, popWindowSize, popTolerance);
-      const nextInfo = { steady, period, popChanging };
+      const nextInfo = { steady: steady && period > 0, period, popChanging };
       
       // Check if we just detected stability for the first time
       const wasStable = steadyInfo.steady;
@@ -661,7 +665,11 @@ export function useGameOfLifeAppRuntime() {
         if (populationCount === 0 || generation === 0) {
           try { console.debug('[GameOfLifeApp] stable detected but either empty or no generations yet; skipping dialog'); } catch (e) { console.error(e); }
         } else {
-        const patternType = period === 0 ? 'Still Life' : period === 1 ? 'Still Life' : `Period ${period} Oscillator`;
+        const patternType = classifyStablePatternType({
+          period,
+          popChanging,
+          populationCount
+        });
         
           setStableDetectionInfo({
             generation,

@@ -27,6 +27,7 @@ The Game of Life Scripting Language allows you to programmatically create patter
 - STEP n - Run n generations of the Game of Life
 - CAPTURE name - Capture current pattern with given name
 - COUNT varName - Store current cell count in variable
+- UNTIL_STEADY varName maxSteps - Step until confident steady-state detection, else -1
 - CLEAR - Clear all cells from the grid
 - PRINT expression - Output value to console/debug log
 
@@ -64,6 +65,10 @@ The Game of Life Scripting Language allows you to programmatically create patter
 - Expressions: x = y + 5, area = width * height
 - Conditions: x < 10, name == "test", count >= 100
 - String concatenation: message = "Hello " + name
+- UNTIL_STEADY metadata:
+  - varName: detected step or -1
+  - varName_mode: still-life, oscillator, spaceship, periodic-with-emission, or inconclusive
+  - varName_period, varName_dx, varName_dy, varName_confidence, varName_reason
 
 ## Variables
 Use variables to store values:
