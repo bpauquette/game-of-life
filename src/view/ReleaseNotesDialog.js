@@ -12,6 +12,12 @@ const RELEASE_NOTES = {
   currentTag: 'game-of-life/v0.1.4',
   previousTag: 'game-of-life/v0.1.3',
   releasedOn: 'February 22, 2026',
+  commitItems: [
+    '[e02e473b] Hardened auth/backend integration plumbing (protected actions, backend API integration paths, and guardrails).',
+    '[67e4bd27] Unified controller input handling and added a robust Toggle tool implementation plus coverage.',
+    '[cee4b55a] Improved scripting stability analysis and stable-pattern labeling for UNTIL_STEADY behavior.',
+    '[b5b83e8d] Refreshed UI/help/dialog flows, toolbar behavior, and release-note surfaces.'
+  ],
   highlights: [
     'Fixed Toggle tool click behavior so selecting the mouse tool and clicking a cell always flips live/dead state once per click.',
     'Standardized ADA compliance behavior and legal messaging across the application.',
@@ -44,6 +50,17 @@ export default function ReleaseNotesDialog({ open, onClose }) {
         <Typography variant="body2" sx={{ mb: 2 }}>
           <strong>Release date:</strong> {RELEASE_NOTES.releasedOn}
         </Typography>
+
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+          Commit-by-commit breakdown
+        </Typography>
+        <Box component="ul" sx={{ pl: 3, mt: 0, mb: 2 }}>
+          {RELEASE_NOTES.commitItems.map((item) => (
+            <li key={item}>
+              <Typography variant="body2">{item}</Typography>
+            </li>
+          ))}
+        </Box>
 
         <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
           What changed since the last release
