@@ -9,9 +9,9 @@ All global UI keyboard shortcuts must be handled via a dedicated React hook: `us
 
 **Current shortcuts:**
 
-- `P` — Open palette
-- `G` — Toggle chart
-- `H` — Toggle UI controls
+- `P` - Open palette
+- `G` - Toggle chart
+- `H` - Toggle UI controls
 
 This approach is React-idiomatic, architecture-compliant, and ensures all side effects are managed in hooks/components, not in pure logic or model/controller layers.
 # Architecture Contract
@@ -67,11 +67,46 @@ This application uses a strict MVC + Hooks architecture.
 - Composition happens in hooks or controllers
 - Non-React code may access DAOs via adapters only
 
-[ DAOs ]        ← raw state
-[ Hooks ]       ← lifecycle + composition
-[ Controllers ] ← orchestration + invariants
-[ Views ]       ← rendering only
-[ DAOs ]        ← raw state
-[ Hooks ]       ← lifecycle + composition
-[ Controllers ] ← orchestration + invariants
-[ Views ]       ← rendering only
+[ DAOs ]        <- raw state
+[ Hooks ]       <- lifecycle + composition
+[ Controllers ] <- orchestration + invariants
+[ Views ]       <- rendering only
+[ DAOs ]        <- raw state
+[ Hooks ]       <- lifecycle + composition
+[ Controllers ] <- orchestration + invariants
+[ Views ]       <- rendering only
+
+## Donation-Gated Community Publishing
+
+### Decision Summary
+
+1. Authorization is backend-owned; UI never assumes entitlement.
+2. Frontend reflects capability state and explains blocked actions.
+3. Public-sharing controls are disabled when donation is not verified.
+4. Private saves remain available for authenticated users across shapes, grids, and scripts.
+
+### Backend Contract This UI Relies On
+
+- Non-donor attempts to publish/share return:
+  - HTTP `403`
+  - `code: "DONATION_REQUIRED"`
+  - explanatory `error` message
+
+### Frontend Behavior
+
+- Save flow (`saveCapturedShapeToBackend`) allows private saves and propagates donation-required messages only for publish attempts.
+- My Shapes dialog:
+  - shows that private saves are allowed
+  - prevents enabling `public` for non-donors
+  - still allows changing public -> private
+- Save Grid dialog:
+  - allows private grid saves for authenticated users
+  - disables public publish toggle for non-donors
+- Script save dialog:
+  - allows private script saves for authenticated users
+  - disables public publish toggle for non-donors
+
+### Why This Split
+
+- Security and policy enforcement must not live only in browser code.
+- UX should reduce confusion and unnecessary failing requests while still deferring authority to the API.

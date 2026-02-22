@@ -16,6 +16,28 @@ function buildUrl(id) {
   return `${trimmed}${API_PATH}${suffix}`;
 }
 
+function getAuthToken() {
+  return sessionStorage.getItem('authToken');
+}
+
+function buildAuthHeaders(extra = {}) {
+  const token = getAuthToken();
+  return {
+    ...extra,
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+}
+
+async function readErrorMessage(res, fallback) {
+  try {
+    const body = await res.json();
+    if (body?.error) return body.error;
+  } catch {
+    // ignore parse failure
+  }
+  return `${fallback}: ${res.status}`;
+}
+
 const GridsDao = {
   /**
    * Fetch all grids (returns array of grid objects)
@@ -43,10 +65,10 @@ const GridsDao = {
   async saveGrid(grid) {
     const res = await fetch(buildUrl(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(grid)
     });
-    if (!res.ok) throw new Error(`Failed to save grid: ${res.status}`);
+    if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to save grid'));
     return await res.json();
   },
 
@@ -55,9 +77,10 @@ const GridsDao = {
    */
   async deleteGrid(id) {
     const res = await fetch(buildUrl(id), {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: buildAuthHeaders()
     });
-    if (!res.ok) throw new Error(`Failed to delete grid: ${res.status}`);
+    if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to delete grid'));
     return true;
   }
 };

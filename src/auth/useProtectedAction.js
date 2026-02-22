@@ -1,5 +1,4 @@
-
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useAuth } from './AuthProvider.js';
 import Login from './Login.jsx';
 import Register from './Register.jsx';
@@ -23,32 +22,54 @@ export function useProtectedAction(action) {
   const [dialogMode, setDialogMode] = useState('login');
   const { token } = useAuth();
   const [initialEmail, setInitialEmail] = useState('');
+  const pendingActionRef = useRef(null);
+
+  const executeAction = useCallback(async (args = []) => {
+    return await action(...args);
+  }, [action]);
 
   const wrappedAction = useCallback((...args) => {
     if (token) {
-      // User is authenticated, execute the action
-      action(...args);
-    } else {
-      // User not authenticated, determine dialog mode based on stored email
-      const lastEmail = getLastCheckedEmail();
-      if (lastEmail) {
-        setInitialEmail(lastEmail);
-        setDialogMode('login');
-      } else {
-        // No cached email -> encourage registration flow first
-        setInitialEmail('');
-        setDialogMode('register');
-      }
-
-      setShowDialog(true);
+      return executeAction(args);
     }
-  }, [action, token]);
 
-  const handleLoginSuccess = useCallback(() => {
+    // User not authenticated, determine dialog mode based on stored email
+    const lastEmail = getLastCheckedEmail();
+    if (lastEmail) {
+      setInitialEmail(lastEmail);
+      setDialogMode('login');
+    } else {
+      // No cached email -> encourage registration flow first
+      setInitialEmail('');
+      setDialogMode('register');
+    }
+    setShowDialog(true);
+
+    return new Promise((resolve, reject) => {
+      // Replace any stale pending action.
+      if (pendingActionRef.current?.reject) {
+        pendingActionRef.current.reject(new Error('AUTH_REQUIRED'));
+      }
+      pendingActionRef.current = { args, resolve, reject };
+    });
+  }, [executeAction, token]);
+
+  const resolvePendingAction = useCallback(async () => {
+    const pending = pendingActionRef.current;
+    pendingActionRef.current = null;
+    if (!pending) return;
+    try {
+      const result = await executeAction(pending.args || []);
+      pending.resolve(result);
+    } catch (error) {
+      pending.reject(error);
+    }
+  }, [executeAction]);
+
+  const handleLoginSuccess = useCallback(async () => {
     setShowDialog(false);
-    // Now that user is logged in, execute the original action
-    action();
-  }, [action]);
+    await resolvePendingAction();
+  }, [resolvePendingAction]);
 
   const handleLoginError = useCallback(async (error, email) => {
     if (error === 'Invalid login' && email) {
@@ -69,15 +90,18 @@ export function useProtectedAction(action) {
     setDialogMode('register');
   }, []);
 
-  const handleRegisterSuccess = useCallback(() => {
+  const handleRegisterSuccess = useCallback(async () => {
     setShowDialog(false);
-    // After successful registration, user should be logged in, so execute action
-    action();
-  }, [action]);
+    await resolvePendingAction();
+  }, [resolvePendingAction]);
 
   const handleClose = useCallback(() => {
     setShowDialog(false);
     setDialogMode('login');
+    if (pendingActionRef.current?.reject) {
+      pendingActionRef.current.reject(new Error('AUTH_REQUIRED'));
+    }
+    pendingActionRef.current = null;
   }, []);
 
   // Render the dialog

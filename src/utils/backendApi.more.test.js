@@ -157,6 +157,27 @@ describe('backendApi additional coverage', () => {
     expect(logout).toHaveBeenCalledTimes(1);
   });
 
+  test('saveCapturedShapeToBackend surfaces donation required errors', async () => {
+    global.fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: [], total: 0 }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        json: async () => ({
+          code: 'DONATION_REQUIRED',
+          error: 'Donation required to publish content publicly.',
+        }),
+      });
+
+    await expect(
+      saveCapturedShapeToBackend({ name: 'shape', pattern: [[0, 0]], width: 1, height: 1 })
+    ).rejects.toThrow('Donation required to publish content publicly.');
+  });
+
   test('saveCapturedShapeToBackend throws generic HTTP error when payload has no message', async () => {
     global.fetch
       .mockResolvedValueOnce({
