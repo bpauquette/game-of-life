@@ -35,7 +35,6 @@ describe('GameController undo/redo', () => {
     controller.setSelectedTool('draw');
     // Reset tool state for each test
     controller.toolState = {};
-    // Set drawToggleMode in localStorage for test environment
     if (!globalThis.localStorage) {
       let store = {};
       globalThis.localStorage = {
@@ -44,7 +43,6 @@ describe('GameController undo/redo', () => {
         removeItem: key => { delete store[key]; }
       };
     }
-    globalThis.localStorage.setItem('drawToggleMode', 'false');
   });
 
   it('undo/redo single cell draw', () => {
@@ -55,7 +53,7 @@ describe('GameController undo/redo', () => {
     controller._setCellAliveForUndo = makeSetCellAliveForUndo(model, controller);
     // Initialize toolState for drawTool
   controller.toolState = { start: { x: 1, y: 2 }, last: { x: 1, y: 2 }, setCellAlive: controller._setCellAliveForUndo };
-  drawTool.onMouseDown(controller.toolState, 1, 2);
+  drawTool.onMouseDown(controller.toolState, 1, 2, controller._setCellAliveForUndo);
   drawTool.onMouseUp(controller.toolState);
     controller.recordDiff(controller._currentDiff);
     controller._currentDiff = null;
@@ -73,7 +71,7 @@ describe('GameController undo/redo', () => {
     controller._setCellAliveForUndo = makeSetCellAliveForUndo(model, controller);
     // Initialize toolState for drawTool
     controller.toolState = { start: { x: 1, y: 2 }, last: { x: 1, y: 2 } };
-    drawTool.onMouseDown(controller.toolState, 1, 2);
+    drawTool.onMouseDown(controller.toolState, 1, 2, controller._setCellAliveForUndo);
     for (let y = 2; y <= 5; y++) {
       drawTool.onMouseMove(controller.toolState, 1, y, controller._setCellAliveForUndo, model.isCellAlive.bind(model));
       controller.toolState.last = { x: 1, y };

@@ -18,6 +18,7 @@ function createHarness({ selectedTool = 'draw', running = false, selectedShape =
   let tool = selectedTool;
   let isRunning = running;
   let shape = selectedShape;
+  let viewport = { offsetX: 0, offsetY: 0, cellSize: 8, zoom: 1 };
 
   const model = {
     addObserver: jest.fn(),
@@ -29,8 +30,12 @@ function createHarness({ selectedTool = 'draw', running = false, selectedShape =
     setSelectedShapeModel: jest.fn((next) => { shape = next; }),
     setOverlay: jest.fn(),
     getOverlay: jest.fn(() => null),
+    setCursorPositionModel: jest.fn(),
     getCursorPosition: jest.fn(() => null),
-    getViewport: jest.fn(() => ({ offsetX: 0, offsetY: 0, cellSize: 8 })),
+    getViewport: jest.fn(() => viewport),
+    setViewportModel: jest.fn((offsetX, offsetY, cellSize = 8, zoom = 1) => {
+      viewport = { offsetX, offsetY, cellSize, zoom };
+    }),
     getLiveCells: jest.fn(() => []),
     getIsRunning: jest.fn(() => isRunning),
     setRunningModel: jest.fn((next) => { isRunning = !!next; }),
@@ -71,6 +76,40 @@ describe('GameController complexity helper coverage', () => {
     expect(drawTool.onMouseDown).not.toHaveBeenCalled();
   });
 
+  test('handleMouseDown ignores duplicate dispatches until mouseup resets state', () => {
+    const { controller } = createHarness({ selectedTool: 'toggle' });
+    const toggleTool = { onMouseDown: jest.fn(), onMouseMove: jest.fn(), onMouseUp: jest.fn() };
+    controller.registerTool('toggle', toggleTool);
+
+    controller.handleMouseDown({ x: 4, y: 4 }, { button: 0 });
+    // Simulate the second dispatch from the React canvas handler path.
+    controller.handleMouseDown({ x: 4, y: 4 });
+    expect(toggleTool.onMouseDown).toHaveBeenCalledTimes(1);
+
+    controller.handleMouseUp({ x: 4, y: 4 });
+    controller.handleMouseDown({ x: 4, y: 4 }, { button: 0 });
+    expect(toggleTool.onMouseDown).toHaveBeenCalledTimes(2);
+  });
+
+  test('shift+left drag pans viewport and does not invoke tool handlers', () => {
+    const { controller, model } = createHarness({ selectedTool: 'draw' });
+    const drawTool = { onMouseDown: jest.fn(), onMouseMove: jest.fn(), onMouseUp: jest.fn() };
+    controller.registerTool('draw', drawTool);
+
+    controller.handleMouseDown({ x: 4, y: 4 }, { button: 0, shiftKey: true, clientX: 100, clientY: 120 });
+    controller.handleMouseMove({ x: 4, y: 4 }, { clientX: 140, clientY: 152 });
+    controller.handleMouseUp({ x: 4, y: 4 });
+
+    expect(drawTool.onMouseDown).not.toHaveBeenCalled();
+    expect(drawTool.onMouseMove).not.toHaveBeenCalled();
+    expect(drawTool.onMouseUp).not.toHaveBeenCalled();
+    expect(model.setViewportModel).toHaveBeenCalled();
+    const lastCall = model.setViewportModel.mock.calls[model.setViewportModel.mock.calls.length - 1];
+    expect(lastCall[0]).toBeCloseTo(-5, 4);
+    expect(lastCall[1]).toBeCloseTo(-4, 4);
+    expect(controller.panState.isPanning).toBe(false);
+  });
+
   test('handleMouseDown blocks drawing while running when preference is off', () => {
     const { controller } = createHarness({ selectedTool: 'draw', running: true });
     const drawTool = { onMouseDown: jest.fn() };
@@ -90,7 +129,13 @@ describe('GameController complexity helper coverage', () => {
 
     controller.handleMouseDown({ x: 5, y: 6, fx: 5.25, fy: 6.5 }, { button: 0 });
 
-    expect(shapeTool.onMouseDown).toHaveBeenCalledWith(expect.any(Object), 5, 6);
+    expect(shapeTool.onMouseDown).toHaveBeenCalledWith(
+      expect.any(Object),
+      5,
+      6,
+      expect.any(Function),
+      expect.any(Function)
+    );
     expect(controller.toolState.start).toMatchObject({ x: 5, y: 6, fx: 5.25, fy: 6.5 });
     expect(controller.toolState.selectedShapeData).toEqual(selectedShape);
   });

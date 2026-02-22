@@ -118,6 +118,8 @@ export class GameView {
 
       const screenX = (e && typeof e.clientX === 'number') ? (e.clientX - rect.left) : 0;
       const screenY = (e && typeof e.clientY === 'number') ? (e.clientY - rect.top) : 0;
+      const canvasCenterX = (rect.width || this.canvas?.width || 0) / 2;
+      const canvasCenterY = (rect.height || this.canvas?.height || 0) / 2;
       const exactCell = this.renderer?.screenToCellExact
         ? this.renderer.screenToCellExact(screenX, screenY)
         : this.screenToCell(screenX, screenY);
@@ -129,7 +131,7 @@ export class GameView {
             fy: exactCell.y
           }
         : this.screenToCell(screenX, screenY);
-      return { screenX, screenY, cellCoords };
+      return { screenX, screenY, canvasCenterX, canvasCenterY, cellCoords };
     };
 
     const getCanvasRect = () => (
@@ -246,14 +248,11 @@ export class GameView {
       this.canvas.addEventListener('pointerup', onPointerUp, { passive: false });
       this.canvas.addEventListener('pointercancel', onPointerUp, { passive: false });
       this.canvas.addEventListener('click', onClick);
-      // Wheel zoom still useful on trackpads/mice
-      // Use a passive wheel listener to avoid the browser delaying the
-      // handler when the main thread is busy. We set touchAction='none'
-      // above so preventing default browser scroll isn't necessary.
+      // Wheel zoom still useful on trackpads/mice.
       this.canvas.addEventListener('wheel', (e) => {
         const coords = getMouseCoords(e);
         this.emit('wheel', { event: e, deltaY: e.deltaY, ...coords });
-      }, { passive: true });
+      }, { passive: false });
     } else {
       // Mouse fallback
       // Mouse down
@@ -370,11 +369,10 @@ export class GameView {
       }, { passive: false });
 
       // Mouse wheel (zoom)
-      // Mouse wheel (zoom) - make passive for improved responsiveness.
       this.canvas.addEventListener('wheel', (e) => {
         const coords = getMouseCoords(e);
         this.emit('wheel', { event: e, deltaY: e.deltaY, ...coords });
-      }, { passive: true });
+      }, { passive: false });
     }
 
     // Context menu

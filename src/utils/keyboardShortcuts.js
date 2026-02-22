@@ -13,7 +13,7 @@ export const SHORTCUTS = {
   ZOOM_IN: { key: '=', ctrl: false, shift: false, alt: false, label: '=', description: 'Zoom in' },
   ZOOM_OUT: { key: '-', ctrl: false, shift: false, alt: false, label: '-', description: 'Zoom out' },
   CENTER: { key: 'f', ctrl: false, shift: false, alt: false, label: 'F', description: 'Center on live cells' },
-  TOGGLE_CHROME: { key: 'h', ctrl: false, shift: false, alt: false, label: 'H', description: 'Toggle UI chrome (hide/show)' },
+  TOGGLE_CHROME: { key: 'h', ctrl: false, shift: false, alt: false, label: 'H', description: 'Toggle Focus Mode (minimal run bar + grid)' },
   
   // Tools
   TOOL_DRAW: { key: '1', ctrl: false, shift: false, alt: false, label: '1', description: 'Select Draw tool' },
