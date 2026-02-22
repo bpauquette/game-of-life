@@ -90,8 +90,14 @@ function SimpleScriptPanel({
   const [cloudScripts, setCloudScripts] = useState([]);
   const [loadingScripts, setLoadingScripts] = useState(false);
   const [activeTab, setActiveTab] = useState(0); // Added for tab selection
-  const { token } = useAuth();
+  const { token, hasDonated } = useAuth();
   const isAuthenticated = !!token;
+
+  useEffect(() => {
+    if (!hasDonated && isPublic) {
+      setIsPublic(false);
+    }
+  }, [hasDonated, isPublic]);
 
   // Simple Conway step used for script execution (runs in worker-free mode)
   const lifeStep = useCallback((liveCells) => {
@@ -234,7 +240,7 @@ function SimpleScriptPanel({
         body: JSON.stringify({
           name: scriptName,
           content: script,
-          public: isPublic,
+          public: hasDonated ? isPublic : false,
           meta: {}
         })
       });
@@ -251,7 +257,7 @@ function SimpleScriptPanel({
     } catch (error) {
       setMessage({ type: 'error', text: `Error saving script: ${error.message}` });
     }
-  }, [isAuthenticated, token, scriptName, script, isPublic, loadCloudScripts]);
+  }, [isAuthenticated, token, scriptName, script, isPublic, hasDonated, loadCloudScripts]);
 
   const handleLoadScript = useCallback((cloudScript) => {
     setScript(cloudScript.content);
@@ -309,7 +315,7 @@ function SimpleScriptPanel({
           body: JSON.stringify({
             name,
             content,
-            public: isPublic,
+            public: hasDonated ? isPublic : false,
             meta: { autosave: true }
           })
         });
@@ -323,7 +329,7 @@ function SimpleScriptPanel({
     } else {
       persistDraftLocally(content);
     }
-  }, [isAuthenticated, isPublic, persistDraftLocally, scriptName, token]);
+  }, [isAuthenticated, isPublic, persistDraftLocally, scriptName, token, hasDonated]);
 
   const handleRun = useCallback(async () => {
     cancelRequested.current = false;
@@ -617,6 +623,7 @@ function SimpleScriptPanel({
                   <Switch
                     checked={isPublic}
                     onChange={(e) => setIsPublic(e.target.checked)}
+                    disabled={!hasDonated}
                     icon={<LockIcon />}
                     checkedIcon={<PublicIcon />}
                   />
@@ -628,6 +635,11 @@ function SimpleScriptPanel({
                   </Box>
                 }
               />
+              {!hasDonated && (
+                <Alert severity="info">
+                  Private script saves are available. Donation is required to publish scripts publicly.
+                </Alert>
+              )}
             </Box>
           </DialogContent>
           <DialogActions>

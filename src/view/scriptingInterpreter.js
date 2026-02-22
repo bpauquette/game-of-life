@@ -1,6 +1,7 @@
 // src/view/scriptingInterpreter.js
 // Interpreter and block execution logic for GOL ScriptPanel scripting
 import { parseValue, evalExpr, evalCondCompound } from './scriptingEngine.js';
+import { UntilSteadyHeuristicDetector } from '../model/stepping/untilSteadyHeuristicDetector.js';
 
 // Block parser: returns array of {type, line, indent, raw}
 function parseBlocks(rawLines) {
@@ -260,13 +261,10 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
   }
 
   // UNTIL_STEADY varName maxSteps
-  console.log('[Script Debug] Checking line for UNTIL_STEADY:', line);
   let untilSteadyMatch = line.match(/^UNTIL_STEADY\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(\S+)$/i);
-  console.log('[Script Debug] UNTIL_STEADY match result:', untilSteadyMatch);
   if (untilSteadyMatch) {
-    console.log('[Script Debug] UNTIL_STEADY command detected:', line);
     const varName = untilSteadyMatch[1];
-    const maxSteps = Math.floor(parseValue(untilSteadyMatch[2], state));
+    const maxSteps = Math.max(1, Math.floor(parseValue(untilSteadyMatch[2], state)));
     
     if (!ticks || typeof ticks !== 'function') {
       throw new Error('UNTIL_STEADY requires game simulation (ticks function not available)');
@@ -283,17 +281,13 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
       }));
     }
     
-    const historySize = 10;
-    const history = [];
+    const detector = new UntilSteadyHeuristicDetector();
+    detector.observe(0, state.cells);
+
     let stepCount = 0;
-    let stable = false;
-    let oscillatorPeriod = 0;
+    let detection = null;
     
-    const cellsToString = (cells) => Array.from(cells).sort().join('|');
-    
-    while (stepCount < maxSteps && !stable && !shouldAbort()) {
-      const currentState = cellsToString(state.cells);
-      
+    while (stepCount < maxSteps && !detection && !shouldAbort()) {
       const cellsArr = Array.from(state.cells).map(s => {
         const [x, y] = s.split(',').map(Number);
         return { x, y };
@@ -307,6 +301,7 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
       if (onStep) onStep(new Set(state.cells));
       
       stepCount++;
+      detection = detector.observe(stepCount, state.cells);
       
       // Emit progress event
       if (typeof globalThis !== 'undefined') {
@@ -320,34 +315,22 @@ async function executeStateCommand(line, blocks, i, state, onStep, emitStepEvent
           } 
         }));
       }
-      
-      const nextState = cellsToString(state.cells);
-      if (currentState === nextState) {
-        stable = true;
-        oscillatorPeriod = 1;
-        break;
+
+      if (stepCount % 8 === 0) {
+        await new Promise(res => setTimeout(res, 0));
       }
-      
-      for (let h = 0; h < history.length; h++) {
-        if (history[h] === nextState) {
-          stable = true;
-          oscillatorPeriod = history.length - h + 1;
-          break;
-        }
-      }
-      
-      if (stable) break;
-      
-      history.push(currentState);
-      if (history.length > historySize) history.shift();
-      
-      await new Promise(res => setTimeout(res, 16));
     }
-    
-    state.vars[varName] = stable ? stepCount : -1;
-    if (stable && oscillatorPeriod > 0) {
-      state.vars[varName + '_period'] = oscillatorPeriod;
-    }
+
+    const mode = detection?.mode || 'inconclusive';
+    const isSteady = mode === 'still-life' || mode === 'oscillator' || mode === 'spaceship';
+
+    state.vars[varName] = isSteady && detection ? detection.step : -1;
+    state.vars[`${varName}_mode`] = mode;
+    state.vars[`${varName}_period`] = detection?.period ?? -1;
+    state.vars[`${varName}_dx`] = detection?.dx ?? 0;
+    state.vars[`${varName}_dy`] = detection?.dy ?? 0;
+    state.vars[`${varName}_confidence`] = detection?.confidence ?? 0;
+    state.vars[`${varName}_reason`] = detection?.reason || 'max steps exhausted before confident detection';
     
     // Emit completion event
     if (typeof globalThis !== 'undefined') {
