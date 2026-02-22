@@ -14,6 +14,7 @@ import {
   FormControlLabel,
   Switch
 } from '@mui/material';
+import { useAuth } from '../auth/AuthProvider.js';
 import { BUTTONS, STATUS } from '../utils/Constants.js';
 // logger not needed here after preview removal
 
@@ -23,6 +24,8 @@ const CaptureShapeDialog = ({
   captureData, 
   onSave 
 }) => {
+  const auth = useAuth();
+  const hasDonated = !!auth?.hasDonated;
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -31,6 +34,7 @@ const CaptureShapeDialog = ({
   const [isPublic, setIsPublic] = useState(false); // Default to private
   // Preview canvas removed; keep only name input ref
   const nameInputRef = useRef(null);
+  const saveInFlightRef = useRef(false);
 
   // Reset form when dialog opens and focus the name field
   useEffect(() => {
@@ -51,6 +55,8 @@ const CaptureShapeDialog = ({
   }, [open]);
 
   const handleSave = async () => {
+    if (saveInFlightRef.current || saving) return;
+
     if (!name.trim()) {
       setError('Shape name is required');
       return;
@@ -62,8 +68,10 @@ const CaptureShapeDialog = ({
     }
 
     console.log('CaptureShapeDialog: Starting save process', { name: name.trim(), cellCount: captureData.cellCount });
+    saveInFlightRef.current = true;
     setSaving(true);
     setError('');
+    setDuplicate(false);
 
     try {
       // Convert cells to the format expected by the shapes API
@@ -75,7 +83,7 @@ const CaptureShapeDialog = ({
         height: captureData.height,
         cellCount: captureData.cellCount,
         type: 'captured',
-        public: isPublic, // Include public flag
+        public: hasDonated ? isPublic : false,
         created: new Date().toISOString()
       };
 
@@ -86,6 +94,9 @@ const CaptureShapeDialog = ({
     } catch (err) {
       console.error('CaptureShapeDialog: Save failed', err);
       const msg = err?.message || '';
+      if (msg === 'AUTH_REQUIRED') {
+        setError('Please log in to save shapes.');
+      } else
       if (typeof msg === 'string' && msg.startsWith('DUPLICATE_NAME:')) {
         const dupName = msg.split(':')[1] || name.trim();
         setError(`A shape named "${dupName}" already exists.`);
@@ -94,6 +105,7 @@ const CaptureShapeDialog = ({
         setError(msg || 'Failed to save shape');
       }
     } finally {
+      saveInFlightRef.current = false;
       setSaving(false);
     }
   };
@@ -164,7 +176,7 @@ const CaptureShapeDialog = ({
                 <Switch
                   checked={isPublic}
                   onChange={(e) => setIsPublic(e.target.checked)}
-                  disabled={saving}
+                  disabled={saving || !hasDonated}
                   color="primary"
                 />
               }
@@ -172,7 +184,9 @@ const CaptureShapeDialog = ({
                 <Box>
                   <Typography variant="body1">Share publicly</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Make this shape visible to all users in the community gallery
+                    {hasDonated
+                      ? 'Make this shape visible to all users in the community gallery'
+                      : 'Donation required for community sharing'}
                   </Typography>
                 </Box>
               }

@@ -1,6 +1,7 @@
 // Tool id to human-readable description mapping
 
 const TOOL_DESCRIPTIONS = {
+  toggle: 'Select/Toggle',
   draw: 'Freehand Draw',
   line: 'Line Tool',
   rect: 'Rectangle Tool',
@@ -11,7 +12,7 @@ const TOOL_DESCRIPTIONS = {
   capture: 'Capture Area',
   randomRect: 'Random Rectangle',
   palette: 'Shape Palette',
-  eraser: 'Eraser (Clear Rectangle)',
+  erase: 'Eraser (Clear Rectangle)',
 };
 
 export default TOOL_DESCRIPTIONS;

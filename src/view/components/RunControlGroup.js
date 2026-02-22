@@ -27,8 +27,7 @@ export default function RunControlGroup({
   engineMode = 'normal',
   onStartNormalMode,
   onStartHashlifeMode,
-  onStopAllEngines,
-  onSetEngineMode
+  onStopAllEngines
 }) {
 
   
@@ -70,35 +69,6 @@ export default function RunControlGroup({
     >
 
       <Stack direction="row" spacing={0.5} alignItems="center">
-        {/* Engine selection dropdown */}
-        <Tooltip title="Select simulation engine">
-          <Box>
-            <select
-              aria-label="Engine mode"
-              value={engineMode}
-              onChange={e => {
-                if (typeof onSetEngineMode === 'function') {
-                  onSetEngineMode(e.target.value);
-                }
-              }}
-              style={{
-                fontSize: '0.9rem',
-                padding: '2px 8px',
-                borderRadius: 4,
-                border: '1px solid #888',
-                background: '#222',
-                color: '#fff',
-                marginRight: 8,
-                minWidth: 90
-              }}
-              data-testid="engine-mode-select"
-            >
-              <option value="normal">Normal</option>
-              <option value="hashlife">Hashlife</option>
-            </select>
-          </Box>
-        </Tooltip>
-
         {/* Step button - only for normal engine */}
         {engineMode === 'normal' && (
           <Tooltip title="Step once">
@@ -272,7 +242,6 @@ RunControlGroup.propTypes = {
   onStartNormalMode: PropTypes.func,
   onStartHashlifeMode: PropTypes.func,
   onStopAllEngines: PropTypes.func,
-  onSetEngineMode: PropTypes.func,
   useHashlife: PropTypes.bool,
   // Hashlife batch size
   generationBatchSize: PropTypes.number,

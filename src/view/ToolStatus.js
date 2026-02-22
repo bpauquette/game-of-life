@@ -26,7 +26,7 @@ function getShapeToolStatus(selectedShape, cursorCell) {
 }
 
 // Helpers to reduce complexity in ToolStatus
-const twoPointToolsSet = new Set(['line', 'rect', 'square', 'oval', 'circle', 'capture', 'randomRect']);
+const twoPointToolsSet = new Set(['erase', 'line', 'rect', 'square', 'oval', 'circle', 'capture', 'randomRect']);
 
 function isTwoPointTool(tool) {
   return twoPointToolsSet.has(tool);

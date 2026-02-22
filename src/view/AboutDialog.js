@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import { GitHub as GitHubIcon, Info as InfoIcon, Code as CodeIcon, BugReport as BugReportIcon } from '@mui/icons-material';
 
-export default function AboutDialog({ open, onClose, onOpenPrivacy }) {
+export default function AboutDialog({ open, onClose, onOpenPrivacy, onOpenReleaseNotes }) {
   // Get version from package.json - in a real app you might import this
   const version = "0.1.0";
   const buildDate = new Date().toLocaleDateString();
@@ -156,12 +156,12 @@ export default function AboutDialog({ open, onClose, onOpenPrivacy }) {
           <CardContent>
             <Typography variant="body2" sx={{ mb: 2 }}>
               <strong>Life Lexicon Integration:</strong> This application includes patterns 
-              from the Life Lexicon, Release 29 (July 2, 2018), compiled by Stephen A. Silver 
+              from the Life Lexicon, Release 29 (July 2018), compiled by Stephen A. Silver 
               and updated by Dave Greene and David Bell.
             </Typography>
             <Typography variant="body2" sx={{ mb: 2 }}>
-              <strong>Copyright:</strong> © Stephen Silver, 1997-2018. Used under Creative 
-              Commons Attribution-ShareAlike 3.0 Unported License (CC BY-SA 3.0).
+              <strong>Copyright:</strong> © Stephen A. Silver, 1997–2018. Used under the Creative
+              Commons Attribution-ShareAlike 3.0 license (CC BY-SA 3.0).
             </Typography>
             <Typography variant="body2" sx={{ mb: 1 }}>
               <strong>Contributors:</strong> John Conway, Dean Hickerson, David Bell, Bill Gosper, 
@@ -230,16 +230,26 @@ export default function AboutDialog({ open, onClose, onOpenPrivacy }) {
           Built with ❤️ for exploring the beauty of emergent complexity
         </Typography>
 
-        <Button 
-          size="small" 
-          onClick={() => {
-            onClose();
-            onOpenPrivacy?.();
-          }}
-          sx={{ display: 'block', margin: '8px auto 0' }}
-        >
-          Privacy Policy
-        </Button>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, mt: 1 }}>
+          <Button
+            size="small"
+            onClick={() => {
+              onClose();
+              onOpenReleaseNotes?.();
+            }}
+          >
+            Release Notes
+          </Button>
+          <Button
+            size="small"
+            onClick={() => {
+              onClose();
+              onOpenPrivacy?.();
+            }}
+          >
+            Privacy Policy
+          </Button>
+        </Box>
       </DialogContent>
 
       <DialogActions>
@@ -255,4 +265,5 @@ AboutDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onOpenPrivacy: PropTypes.func,
+  onOpenReleaseNotes: PropTypes.func,
 };

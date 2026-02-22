@@ -33,6 +33,8 @@ import AssistantDialog from './AssistantDialog.js';
 // import { useGameContext } from '../context/GameContext.js';
 import SaveGridDialog from './SaveGridDialog.js';
 import ScriptPanel from './ScriptPanel.js';
+import PrivacyPolicyDialog from './PrivacyPolicyDialog.js';
+import ReleaseNotesDialog from './ReleaseNotesDialog.js';
 
 export default function HeaderBar({
   // Only keep local/component-specific props
@@ -75,7 +77,7 @@ export default function HeaderBar({
   // Zustand selectors (including all UI/dialog state)
 
   // Auth and user info (must come before callbacks that depend on logout)
-  const { token, email, logout } = useAuth();
+  const { token, email, logout, hasDonated } = useAuth();
 
   // UI state from uiDao (helpOpen and setHelpOpen must come first for hook order)
   const helpOpen = useUiDao(state => state.helpOpen);
@@ -87,6 +89,8 @@ export default function HeaderBar({
   // UI actions (wired via DAO)
   const setShowChart = useUiDao(state => state.setShowChart);
   const [assistantAvailable, setAssistantAvailable] = useState(false);
+  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false);
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
 
   // UI state from uiDao
   const colorScheme = useUiDao(state => state.colorScheme);
@@ -274,18 +278,16 @@ export default function HeaderBar({
   const handleOk = () => { setOptionsOpen(false); if (wasRunningBeforeOptions) setIsRunning(true); };
   const handleCancel = () => { setOptionsOpen(false); if (wasRunningBeforeOptions) setIsRunning(true); };
 
-  const handleSaveGrid = useCallback(async (name, description) => {
+  const handleSaveGrid = useCallback(async (name, description, isPublic) => {
     // Pause simulation during save to capture a consistent snapshot and avoid contention
     const wasRunning = isRunning;
     try {
       if (wasRunning) setIsRunning(false);
-      // Capture live cells just to display count in dialog; the hook will fetch its own copy too
-      const liveCells = getLiveCells();
-      await saveGrid(name, description, liveCells, generation);
+      await saveGrid(name, description, isPublic);
     } finally {
       if (wasRunning) setIsRunning(true);
     }
-  }, [getLiveCells, saveGrid, generation, isRunning, setIsRunning]);
+  }, [saveGrid, isRunning, setIsRunning]);
 
   const handleLoadGrid = useCallback(async (gridId) => {
     const grid = await loadGrid(gridId);
@@ -299,7 +301,7 @@ export default function HeaderBar({
       {/* Three-row header: RunControlGroup, ToolGroup, RecentShapesStrip */}
       <Box ref={headerRef} sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30, width: '100%', backgroundColor: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.2)', overflowX: 'hidden' }}>
         {/* First row: Save/Load and Run controls */}
-        <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, gap: 0.5 }}>
+        <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, gap: 0.5, position: 'relative', zIndex: 63 }}>
           <Stack direction="row" spacing={0.5} alignItems="center">
             <SaveLoadGroup compact={isSmall} openSaveGrid={openSaveDialogAndPause} openLoadGrid={openLoadDialogAndPause} />
           </Stack>
@@ -361,6 +363,8 @@ export default function HeaderBar({
                             <span>Logged in as <b>{email}</b></span>
                           </div>
                           <button onClick={() => { setUserDialogOpen(false); onOpenMyShapes(); }} style={{ marginRight: 8 }}>My Shapes</button>
+                          <button onClick={() => { setUserDialogOpen(false); setReleaseNotesOpen(true); }} style={{ marginRight: 8 }}>Release Notes</button>
+                          <button onClick={() => { setUserDialogOpen(false); setPrivacyPolicyOpen(true); }} style={{ marginRight: 8 }}>Privacy Policy</button>
                           <button onClick={handleLogout} style={{ marginRight: 8 }}>Logout</button>
                         </>
                       );
@@ -388,13 +392,13 @@ export default function HeaderBar({
         </Box>
         {/* Second row: ToolGroup */}
         {showToolsRow && (
-          <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(0,0,0,0.28)', borderBottom: '1px solid rgba(255,255,255,0.18)', zIndex: 40, pointerEvents: 'auto', overflowX: 'hidden' }}>
+          <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(0,0,0,0.28)', borderBottom: '1px solid rgba(255,255,255,0.18)', zIndex: 62, pointerEvents: 'auto', overflowX: 'hidden' }}>
             <ToolGroup isSmall={isSmall} shapesEnabled={shapesReady} />
             {/* Only show chip if enough space for both chip and tool icons */}
             {/* ToolGroup now handles selectedTool via context; chip can be moved there if needed */}
             <Box sx={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}>
-              <Tooltip title="Hide controls">
-                <IconButton size={isSmall ? 'small' : 'medium'} aria-label="hide-controls" onClick={onToggleChrome} sx={{ backgroundColor: 'rgba(0,0,0,0.35)' }}>
+              <Tooltip title="Enter Focus Mode">
+                <IconButton size={isSmall ? 'small' : 'medium'} aria-label="enter-focus-mode" onClick={onToggleChrome} sx={{ backgroundColor: 'rgba(0,0,0,0.35)' }}>
                   <FullscreenExitIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
@@ -414,12 +418,11 @@ export default function HeaderBar({
             px: 1,
             backgroundColor: 'rgba(20,20,25,0.98)',
             borderBottom: '1px solid rgba(255,255,255,0.08)',
-            zIndex: 41,
+            zIndex: 61,
             pointerEvents: 'auto',
-            overflow: 'visible',
+            overflow: 'hidden',
             mt: 0,
-            minHeight: 90,
-            maxHeight: 120,
+            minHeight: 120,
             boxShadow: '0 2px 8px 0 rgba(0,0,0,0.10)'
           }}
         >
@@ -463,7 +466,14 @@ export default function HeaderBar({
 
       <HelpDialog open={helpOpen} onClose={handleHelpClose} />
       <AssistantDialog open={assistantOpen} onClose={() => setAssistantOpen(false)} />
-      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <AboutDialog
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        onOpenPrivacy={() => setPrivacyPolicyOpen(true)}
+        onOpenReleaseNotes={() => setReleaseNotesOpen(true)}
+      />
+      <ReleaseNotesDialog open={releaseNotesOpen} onClose={() => setReleaseNotesOpen(false)} />
+      <PrivacyPolicyDialog open={privacyPolicyOpen} onClose={() => setPrivacyPolicyOpen(false)} />
       <PaymentDialog open={donateOpen} onClose={() => setDonateOpen(false)} />
       <PhotosensitivityTestDialog
         open={photoTestOpen}
@@ -479,6 +489,7 @@ export default function HeaderBar({
         error={gridError}
         liveCellsCount={getLiveCells().size}
         generation={generation}
+        hasDonated={hasDonated}
       />
 
       <LoadGridDialog

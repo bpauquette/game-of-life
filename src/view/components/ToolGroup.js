@@ -8,7 +8,7 @@ import RubberEraserIcon from './icons/RubberEraserIcon.js';
 import TOOL_DESCRIPTIONS from './toolDescriptions.js';
 // icons are imported above from @mui/icons-material
 import OvalIcon from '../components/OvalIcon.js';
-import { Widgets as WidgetsIcon, Edit as EditIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Colorize as ColorizeIcon, HorizontalRule as HorizontalRuleIcon } from '@mui/icons-material';
+import { Widgets as WidgetsIcon, Edit as EditIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Colorize as ColorizeIcon, HorizontalRule as HorizontalRuleIcon, Mouse as MouseIcon } from '@mui/icons-material';
 
 // ToolGroup groups the primary tools into a single, reusable control
 export default function ToolGroup({ isSmall = false }) {
@@ -75,18 +75,19 @@ export default function ToolGroup({ isSmall = false }) {
         }
       }}
     >
-      {/* Shapes tool first, to the left of Draw */}
-  <ToggleButton value="shapes" aria-label="shapes" disableRipple onClick={() => { if (selectedTool === 'shapes') requestToolChange('shapes'); }}>
-    <Tooltip title={TOOL_DESCRIPTIONS.shapes}>
-      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-        <WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} />
-      </span>
-    </Tooltip>
-  </ToggleButton>
-  <ToggleButton value="draw" aria-label="draw" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.draw}><EditIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+      <ToggleButton value="toggle" aria-label="toggle" disableRipple>
+        <Tooltip title={TOOL_DESCRIPTIONS.toggle}>
+          <MouseIcon fontSize={isSmall ? 'medium' : 'small'} />
+        </Tooltip>
+      </ToggleButton>
+      <ToggleButton value="draw" aria-label="draw" disableRipple>
+        <Tooltip title={TOOL_DESCRIPTIONS.draw}>
+          <EditIcon fontSize={isSmall ? 'medium' : 'small'} />
+        </Tooltip>
+      </ToggleButton>
     {!hideOptionalTools && (
-      <ToggleButton value="eraser" aria-label="eraser" disableRipple>
-        <Tooltip title={TOOL_DESCRIPTIONS.eraser}>
+      <ToggleButton value="erase" aria-label="erase" disableRipple>
+        <Tooltip title={TOOL_DESCRIPTIONS.erase}>
           <RubberEraserIcon fontSize={isSmall ? 'medium' : 'small'} />
         </Tooltip>
       </ToggleButton>
@@ -98,6 +99,13 @@ export default function ToolGroup({ isSmall = false }) {
   <ToggleButton value="oval" aria-label="oval" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.oval}><OvalIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
   {!hideOptionalTools && <ToggleButton value="randomRect" aria-label="randomRect" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.randomRect}><CasinoIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>}
   <ToggleButton value="capture" aria-label="capture" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.capture}><ColorizeIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+  <ToggleButton value="shapes" aria-label="shapes" disableRipple onClick={() => { if (selectedTool === 'shapes') requestToolChange('shapes'); }}>
+    <Tooltip title={TOOL_DESCRIPTIONS.shapes}>
+      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+        <WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} />
+      </span>
+    </Tooltip>
+  </ToggleButton>
     </ToggleButtonGroup>
   );
 }

@@ -15,7 +15,8 @@ import {
   Box,
   Chip,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Tooltip
 } from '@mui/material';
 import { Delete as DeleteIcon, Public as PublicIcon, Lock as LockIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import { useAuth } from '../auth/AuthProvider.js';
@@ -58,6 +59,11 @@ const MyShapesDialog = ({ open, onClose }) => {
   }, [open, token, loadShapes]);
 
   const togglePublic = async (shapeId, currentPublic) => {
+    if (!hasDonated && !currentPublic) {
+      setError('Donation required to share shapes publicly.');
+      return;
+    }
+
     setToggling(shapeId);
     try {
       const response = await fetch(`${baseUrl}/v1/shapes/${shapeId}/public`, {
@@ -69,10 +75,13 @@ const MyShapesDialog = ({ open, onClose }) => {
         body: JSON.stringify({ public: !currentPublic })
       });
 
-      if (!response.ok) throw new Error('Failed to update shape');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update shape');
+      }
 
       // Update local state
-      setShapes(shapes.map(shape =>
+      setShapes((prevShapes) => prevShapes.map((shape) =>
         shape.id === shapeId ? { ...shape, public: !currentPublic } : shape
       ));
     } catch (err) {
@@ -94,7 +103,7 @@ const MyShapesDialog = ({ open, onClose }) => {
         }
       });
       if (!response.ok) throw new Error('Failed to delete shape');
-      setShapes(shapes.filter(shape => shape.id !== shapeId));
+      setShapes((prevShapes) => prevShapes.filter((shape) => shape.id !== shapeId));
     } catch (err) {
       setError(err.message);
     }
@@ -114,7 +123,7 @@ const MyShapesDialog = ({ open, onClose }) => {
         </Box>
         {!hasDonated && (
           <Alert severity="info" sx={{ mb: 1 }}>
-            Your saved shapes are available here. To save new shapes, please donate to support the project.
+            Private shape saves are available. Donation is required to share shapes publicly.
           </Alert>
         )}
         {hasDonated && (
@@ -151,14 +160,18 @@ const MyShapesDialog = ({ open, onClose }) => {
                 }
               />
               <ListItemSecondaryAction>
-                <IconButton
-                  edge="end"
-                  aria-label="toggle public"
-                  onClick={() => togglePublic(shape.id, shape.public)}
-                  disabled={toggling === shape.id}
-                >
-                  {shape.public ? <PublicIcon /> : <LockIcon />}
-                </IconButton>
+                <Tooltip title={!hasDonated && !shape.public ? 'Donate to share publicly' : (shape.public ? 'Set private' : 'Set public')}>
+                  <span>
+                    <IconButton
+                      edge="end"
+                      aria-label="toggle public"
+                      onClick={() => togglePublic(shape.id, shape.public)}
+                      disabled={toggling === shape.id || (!hasDonated && !shape.public)}
+                    >
+                      {shape.public ? <PublicIcon /> : <LockIcon />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
                 <IconButton
                   edge="end"
                   aria-label="delete"

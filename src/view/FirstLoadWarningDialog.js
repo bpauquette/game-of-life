@@ -189,10 +189,11 @@ export default function FirstLoadWarningDialog({ open, onClose }) {
                 <Divider sx={{ my: 1 }} />
                 
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                  Need help? Check Help (? icon) or visit{' '}
+                  Need help with this application? Check Help (? icon). For external Conway pattern reference material, visit{' '}
                   <Link href="https://conwaylife.com/wiki/Main_Page" target="_blank" rel="noopener" sx={{ fontSize: 'inherit' }}>
                     LifeWiki
                   </Link>
+                  .
                 </Typography>
               </CardContent>
             </Card>

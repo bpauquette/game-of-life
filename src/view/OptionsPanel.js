@@ -16,6 +16,7 @@ import Alert from '@mui/material/Alert';
 import { Info as InfoIcon } from '@mui/icons-material';
 import { useTheme } from './context/ThemeContext.js';
 import { useToolDao } from '../model/dao/toolDao.js';
+import { useGameDao } from '../model/dao/gameDao.js';
 import { useUiDao } from '../model/dao/uiDao.js';
 import { usePopulationDao } from '../model/dao/populationDao.js';
 import { usePerformanceDao } from '../model/dao/performanceDao.js';
@@ -28,10 +29,6 @@ const ADA_OFF_MAX_FPS = 120;
 const ADA_OFF_MAX_GPS = 60;
 
 const OptionsPanel = ({
-  // Backend toggle (still managed by parent/runtime)
-  backendType = 'node',
-  setBackendType,
-
   onOk,
   onCancel
 }) => {
@@ -61,12 +58,10 @@ const OptionsPanel = ({
   const maxChartGenerations = usePopulationDao(state => state.maxChartGenerations);
   const setMaxChartGenerations = usePopulationDao(state => state.setMaxChartGenerations);
   const setShowFirstLoadWarning = useDialogDao(state => state.setShowFirstLoadWarning);
+  const engineMode = useGameDao(state => state.engineMode);
+  const setEngineMode = useGameDao(state => state.setEngineMode);
+  const onSetEngineMode = useGameDao(state => state.onSetEngineMode);
   const [localScheme, setLocalScheme] = useState(colorSchemeKey || 'bio');
-  const [localBackendType, setLocalBackendType] = useState(() => {
-  const stored = globalThis.localStorage.getItem('backendType');
-  if (stored === 'node' || stored === 'java') return stored;
-  return backendType || 'node';
-  });
   const [localWindow, setLocalWindow] = useState(popWindowSize);
   const [localTolerance, setLocalTolerance] = useState(popTolerance);
   const [localShowSpeedGauge, setLocalShowSpeedGauge] = useState(showSpeedGauge);
@@ -96,7 +91,6 @@ const OptionsPanel = ({
   });
   const [localUseWebWorker, setLocalUseWebWorker] = useState(useWebWorker);
   const [localConfirmOnClear, setLocalConfirmOnClear] = useState(confirmOnClear);
-  const [localDrawToggleMode, setLocalDrawToggleMode] = useState(false); // default to off
   const [localDrawWhileRunning, setLocalDrawWhileRunning] = useState(() => {
   const v = globalThis.localStorage.getItem('drawWhileRunning');
   if (v != null) return JSON.parse(v);
@@ -126,6 +120,7 @@ const OptionsPanel = ({
   if (stored != null) return Boolean(JSON.parse(stored));
   return enableAdaCompliance;
 });
+  const [localEngineMode, setLocalEngineMode] = useState(engineMode === 'hashlife' ? 'hashlife' : 'normal');
 
   // Theme selection
   const { themeMode, setThemeMode, availableThemes } = useTheme();
@@ -143,8 +138,6 @@ const OptionsPanel = ({
   const turnedAdaOffThisSave = prevAda && !localEnableAdaCompliance;
   const finalColorScheme = localEnableAdaCompliance ? 'adaSafe' : 'bio';
   setColorSchemeKey(finalColorScheme);
-  setBackendType?.(localBackendType);
-  globalThis.localStorage.setItem('backendType', localBackendType);
   // Apply theme change
   setThemeMode(localThemeMode);
   // Clamp and default globalThis size
@@ -199,7 +192,6 @@ const OptionsPanel = ({
   globalThis.localStorage.setItem('confirmOnClear', JSON.stringify(!!localConfirmOnClear));
   globalThis.localStorage.setItem('maxChartGenerations', String(localMaxChartGenerations));
   globalThis.localStorage.setItem('detectStablePopulation', JSON.stringify(!!localDetectStablePopulation));
-  globalThis.localStorage.setItem('drawToggleMode', JSON.stringify(localDrawToggleMode));
   globalThis.localStorage.setItem('randomRectPercent', String(Math.max(0, Math.min(100, Number(localRandomRectPercent)))));
   globalThis.localStorage.setItem('enableAdaCompliance', JSON.stringify(!!localEnableAdaCompliance));
   globalThis.localStorage.setItem('drawWhileRunning', JSON.stringify(localDrawWhileRunning));
@@ -223,6 +215,11 @@ const OptionsPanel = ({
     globalThis.dispatchEvent(new CustomEvent('gol:adaChanged', { detail }));
     globalThis.dispatchEvent(new CustomEvent('gol:adaPolicyReset', { detail }));
   }
+  const normalizedEngineMode = localEngineMode === 'hashlife' ? 'hashlife' : 'normal';
+  if (normalizedEngineMode !== (engineMode === 'hashlife' ? 'hashlife' : 'normal')) {
+    if (typeof onSetEngineMode === 'function') onSetEngineMode(normalizedEngineMode);
+    else setEngineMode?.(normalizedEngineMode);
+  }
   onOk?.();
   };
 
@@ -241,18 +238,6 @@ const OptionsPanel = ({
       <DialogTitle>Options</DialogTitle>
       <DialogContent>
         {/* Options content here */}
-        <TextField
-                  select
-                  label="Backend"
-                  value={localBackendType}
-                  onChange={e => setLocalBackendType(e.target.value)}
-                  helperText="Switch between Node (port 55000) and Java (port 55001) backends"
-                  size="small"
-                  sx={{ mb: 2 }}
-                >
-                  <MenuItem value="node">Node (port 55000)</MenuItem>
-                  <MenuItem value="java">Java (port 55001)</MenuItem>
-                </TextField>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {/* App Theme Selector */}
           <TextField
@@ -427,6 +412,23 @@ const OptionsPanel = ({
           </div>
 
           <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, marginTop: 16 }}>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', color: 'var(--text-primary)' }}>Advanced</h2>
+            <TextField
+              select
+              fullWidth
+              size="small"
+              label="Engine mode"
+              value={localEngineMode}
+              onChange={(e) => setLocalEngineMode(e.target.value === 'hashlife' ? 'hashlife' : 'normal')}
+              helperText="Normal is best for step-by-step editing. HashLife is best for large generation jumps."
+              inputProps={{ 'aria-label': 'Engine mode' }}
+            >
+              <MenuItem value="normal">Normal</MenuItem>
+              <MenuItem value="hashlife">HashLife</MenuItem>
+            </TextField>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, marginTop: 16 }}>
             <h2 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', color: 'var(--text-primary)' }}>Performance Settings</h2>
             
             <Stack spacing={2}>
@@ -579,18 +581,6 @@ const OptionsPanel = ({
                 Draw while running
               </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)' }}>
-              <input
-                type="checkbox"
-                checked={!localDrawToggleMode}
-                onChange={(e) => setLocalDrawToggleMode(!e.target.checked)}
-                style={{ marginRight: 8 }}
-                id="toggle-draw-mode-checkbox"
-              />
-              <label htmlFor="toggle-draw-mode-checkbox" style={{ margin: 0 }}>
-                Toggle Draw Mode
-              </label>
-            </div>
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, color: 'var(--text-primary)' }}>
               <input
                 type="checkbox"
@@ -679,8 +669,6 @@ const OptionsPanel = ({
 };
 
 OptionsPanel.propTypes = {
-  backendType: PropTypes.string,
-  setBackendType: PropTypes.func,
   onOk: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired
 };

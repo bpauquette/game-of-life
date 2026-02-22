@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Tabs, Tab, Link, List, ListItem, ListItemText, Divider, Card, CardContent, Chip } from '@mui/material';
-import { Brush as BrushIcon, ShowChart as LineAxisIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Widgets as WidgetsIcon, PlayArrow as PlayArrowIcon, BarChart as BarChartIcon, Settings as SettingsIcon, Backspace as BackspaceIcon } from '@mui/icons-material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Tabs, Tab, Link, List, ListItem, ListItemText, ListItemIcon, Divider, Card, CardContent, Chip } from '@mui/material';
+import { Brush as BrushIcon, ShowChart as LineAxisIcon, CropSquare as CropSquareIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, Casino as CasinoIcon, Widgets as WidgetsIcon, PlayArrow as PlayArrowIcon, Stop as StopIcon, SkipNext as SkipNextIcon, DeleteSweep as DeleteSweepIcon, RestartAlt as RestartAltIcon, BarChart as BarChartIcon, Settings as SettingsIcon, Backspace as BackspaceIcon, Mouse as MouseIcon, Colorize as ColorizeIcon } from '@mui/icons-material';
 import OvalIcon from './components/OvalIcon.js';
 
 function TabPanel({ children, value, index, ...other }) {
@@ -21,6 +21,7 @@ TabPanel.propTypes = {
 export default function HelpDialog({ open, onClose }) {
   const [tabValue, setTabValue] = useState(0);
   const ICON_COLOR_PRIMARY = 'primary.main';
+  const iconSlotSx = { minWidth: 34 };
   const handleTabChange = (_e, newValue) => setTabValue(newValue);
 
   return (
@@ -54,16 +55,19 @@ export default function HelpDialog({ open, onClose }) {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          <Typography variant="h5" component="h2" gutterBottom>Drawing Tools</Typography>
+          <Typography variant="h5" component="h2" gutterBottom>Drawing Tools (Toolbar Order)</Typography>
           <List>
-            <ListItem><BrushIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Freehand Draw" secondary="Click-drag to paint cells. Single-click toggles a cell with the current tool overlay." /></ListItem>
-            <ListItem><BackspaceIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Erase" secondary="Scrub away cells with the same precision as drawing—great for trimming edges or carving tunnels." /></ListItem>
-            <ListItem><LineAxisIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Line Tool" secondary="Press-drag-release to place a straight line. The translucent preview shows the exact segment before you commit." /></ListItem>
-            <ListItem><CropSquareIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Rectangle Tool" secondary="Press-drag-release to place an outline rectangle. Great for borders and staging areas." /></ListItem>
-            <ListItem><RadioButtonUncheckedIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Circle Tool" secondary="Press-drag-release to place a circle that snaps to the current cell size." /></ListItem>
-            <ListItem><OvalIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Oval Tool" secondary="Press-drag-release to place an ellipse with live overlay feedback." /></ListItem>
-            <ListItem><CasinoIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Random Rectangle" secondary="Fill a region with randomized live cells for entropy tests." /></ListItem>
-            <ListItem><WidgetsIcon sx={{ mr: 2, color: ICON_COLOR_PRIMARY }} /><ListItemText primary="Shapes Library" secondary="Search or browse curated patterns atop a whiz-bang virtual list, so even thousands of shapes stay silky smooth. A preview follows the cursor (or finger) until you click/tap to place." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}><MouseIcon fontSize="small" /></ListItemIcon><ListItemText primary="Select" secondary="Flip cells on/off directly. Best for quick edits while keeping strokes precise." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}><BrushIcon fontSize="small" /></ListItemIcon><ListItemText primary="Freehand Draw" secondary="Click-drag to paint live cells." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}><BackspaceIcon fontSize="small" /></ListItemIcon><ListItemText primary="Erase" secondary="Scrub away cells with the same precision as drawing—great for trimming edges or carving tunnels." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}><LineAxisIcon fontSize="small" /></ListItemIcon><ListItemText primary="Line Tool" secondary="Press-drag-release to place a straight line. The translucent preview shows the exact segment before you commit." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}><CropSquareIcon fontSize="small" /></ListItemIcon><ListItemText primary="Rectangle Tool" secondary="Press-drag-release to place an outline rectangle. Great for borders and staging areas." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}><CropSquareIcon fontSize="small" /></ListItemIcon><ListItemText primary="Square Tool" secondary="Press-drag-release to place a square outline with equal width and height." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}><RadioButtonUncheckedIcon fontSize="small" /></ListItemIcon><ListItemText primary="Circle Tool" secondary="Press-drag-release to place a circle that snaps to the current cell size." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}><OvalIcon fontSize="small" /></ListItemIcon><ListItemText primary="Oval Tool" secondary="Press-drag-release to place an ellipse with live overlay feedback." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}><CasinoIcon fontSize="small" /></ListItemIcon><ListItemText primary="Random Fill" secondary="Fill a region with randomized live cells for entropy tests." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}><ColorizeIcon fontSize="small" /></ListItemIcon><ListItemText primary="Capture Tool" secondary="Drag a rectangle to capture cells for recent reuse or saving." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}><WidgetsIcon fontSize="small" /></ListItemIcon><ListItemText primary="Shapes Library" secondary="Search or browse curated patterns atop a whiz-bang virtual list, so even thousands of shapes stay silky smooth. A preview follows the cursor (or finger) until you click/tap to place." /></ListItem>
           </List>
 
           <Divider sx={{ my: 2 }} />
@@ -76,16 +80,46 @@ export default function HelpDialog({ open, onClose }) {
 
           <Typography variant="h5" component="h2" gutterBottom>Simulation Controls</Typography>
           <List>
-            <ListItem><PlayArrowIcon sx={{ mr: 2, color: 'success.main' }} /><ListItemText primary="Start/Stop" secondary="Toggle simulation (Spacebar)." /></ListItem>
-            <ListItem><ListItemText primary="Step" secondary="Advance exactly one generation." sx={{ ml: 4 }} /></ListItem>
-            <ListItem><ListItemText primary="Clear" secondary="Reset to generation 0 and clear all cells." sx={{ ml: 4 }} /></ListItem>
+            <ListItem>
+              <ListItemIcon sx={{ ...iconSlotSx, color: 'success.main', display: 'flex', gap: 0.25 }}>
+                <PlayArrowIcon fontSize="small" />
+                <StopIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Start/Stop" secondary="Toggle simulation (Spacebar)." />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}>
+                <SkipNextIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Step" secondary="Advance exactly one generation." />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}>
+                <DeleteSweepIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Clear" secondary="Clear all live cells." />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon sx={{ ...iconSlotSx, color: ICON_COLOR_PRIMARY }}>
+                <RestartAltIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Reset to Generation 0" secondary="Restore the original starting pattern and set generation back to zero." />
+            </ListItem>
+          </List>
+
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="h5" component="h2" gutterBottom>Engine Modes (Simple)</Typography>
+          <List>
+            <ListItem><ListItemText primary="Normal mode" secondary="Best for drawing, stepping, and watching changes frame-by-frame." /></ListItem>
+            <ListItem><ListItemText primary="HashLife mode" secondary="Best for jumping far ahead quickly (thousands to millions of generations) when you care about long-term outcomes." /></ListItem>
+            <ListItem><ListItemText primary="How to switch" secondary="Open Options (gear icon) → Advanced → Engine mode." /></ListItem>
           </List>
 
           <Divider sx={{ my: 2 }} />
           <Typography variant="h5" component="h2" gutterBottom>Visualization & Analysis</Typography>
           <List>
-            <ListItem><BarChartIcon sx={{ mr: 2, color: 'info.main' }} /><ListItemText primary="Population Chart" secondary="Live-updating graph that stays in sync with every generation, even while fast-forwarding." /></ListItem>
-            <ListItem><SettingsIcon sx={{ mr: 2, color: 'action.active' }} /><ListItemText primary="Settings" secondary="Switch color schemes, tweak performance budgets, and enable diagnostics—changes redraw instantly." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: 'info.main' }}><BarChartIcon fontSize="small" /></ListItemIcon><ListItemText primary="Population Chart" secondary="Live-updating graph that stays in sync with every generation, even while fast-forwarding." /></ListItem>
+            <ListItem><ListItemIcon sx={{ ...iconSlotSx, color: 'action.active' }}><SettingsIcon fontSize="small" /></ListItemIcon><ListItemText primary="Settings" secondary="Switch color schemes, tweak performance budgets, and enable diagnostics—changes redraw instantly." /></ListItem>
           </List>
 
           <Divider sx={{ my: 2 }} />
@@ -124,13 +158,18 @@ export default function HelpDialog({ open, onClose }) {
             </ListItem>
             <ListItem>
               <ListItemText
-                primary="Toggle Draw Mode"
-                secondary="Stores localStorage.drawToggleMode; when true the draw tool uses the legacy 'flip whatever you drag over' path in drawTool.js, otherwise it paints continuously." />
+                primary="Select tool (mouse icon)"
+                secondary="Use the dedicated Select tool in the toolbar to flip cells on/off; Draw now always paints cells on." />
             </ListItem>
             <ListItem>
               <ListItemText
                 primary="Detect Stable Population"
-                secondary="Flips the detectStablePopulation flag via setDetectStablePopulation so the steady-state indicator knows you've opted in as soon as its detector wiring lands." />
+                secondary="Enables steady-state detection and the stable-pattern dialog during long runs." />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary="Advanced: Engine mode"
+                secondary="Choose Normal for detailed editing or HashLife for large generation jumps." />
             </ListItem>
           </List>
 
@@ -167,8 +206,8 @@ export default function HelpDialog({ open, onClose }) {
                 </ListItem>
                 <ListItem sx={{ py: 0 }}>
                   <ListItemText 
-                    primary="• Script execution HUD hidden" 
-                    secondary="Removes translucent overlays that could contribute to flash area" 
+                    primary="• Run controls remain available" 
+                    secondary="Simulation can still run in ADA mode, but conservative caps stay enforced" 
                   />
                 </ListItem>
                 <ListItem sx={{ py: 0 }}>
@@ -230,19 +269,22 @@ export default function HelpDialog({ open, onClose }) {
             <ListItem><ListItemText primary={<><strong>+/=</strong> - Zoom in</>} /></ListItem>
             <ListItem><ListItemText primary={<><strong>-</strong> - Zoom out</>} /></ListItem>
             <ListItem><ListItemText primary={<><strong>F</strong> - Center on live cells</>} /></ListItem>
-            <ListItem><ListItemText primary={<><strong>H</strong> - Hide/Show UI controls</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>H</strong> - Toggle Focus Mode (minimal run bar + grid)</>} /></ListItem>
           </List>
 
-          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>Tool Selection</Typography>
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>Tool Selection (Toolbar Order)</Typography>
           <List dense>
-            <ListItem><ListItemText primary={<><strong>1</strong> - Draw tool</>} /></ListItem>
-            <ListItem><ListItemText primary={<><strong>2</strong> - Eraser tool</>} /></ListItem>
-            <ListItem><ListItemText primary={<><strong>3</strong> - Pan tool</>} /></ListItem>
-            <ListItem><ListItemText primary={<><strong>4</strong> - Shapes tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>1</strong> - Select tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>2</strong> - Draw tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>3</strong> - Erase tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>4</strong> - Line tool</>} /></ListItem>
             <ListItem><ListItemText primary={<><strong>5</strong> - Rectangle tool</>} /></ListItem>
-            <ListItem><ListItemText primary={<><strong>6</strong> - Line tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>6</strong> - Square tool</>} /></ListItem>
             <ListItem><ListItemText primary={<><strong>7</strong> - Circle tool</>} /></ListItem>
-            <ListItem><ListItemText primary={<><strong>8</strong> - Capture tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>8</strong> - Oval tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>9</strong> - Random Fill tool</>} /></ListItem>
+            <ListItem><ListItemText primary={<><strong>0</strong> - Capture tool</>} /></ListItem>
+            <ListItem><ListItemText primary="Shapes tool (select from toolbar; no default number key)" /></ListItem>
           </List>
 
           <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>Editing</Typography>
@@ -254,18 +296,9 @@ export default function HelpDialog({ open, onClose }) {
           <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>Dialogs & Windows</Typography>
           <List dense>
             <ListItem><ListItemText primary={<><strong>P</strong> - Open shape palette</>} /></ListItem>
-            <ListItem><ListItemText primary={<><strong>O</strong> - Open options</>} /></ListItem>
-            <ListItem><ListItemText primary={<><strong>?</strong> - Open help (this dialog)</>} /></ListItem>
             <ListItem><ListItemText primary={<><strong>G</strong> - Toggle population chart</>} /></ListItem>
-            <ListItem><ListItemText primary={<><strong>Ctrl+S</strong> - Save grid</>} /></ListItem>
-            <ListItem><ListItemText primary={<><strong>Ctrl+L</strong> - Load grid</>} /></ListItem>
+            <ListItem><ListItemText primary="Help and Options are available from the toolbar icons." /></ListItem>
             <ListItem><ListItemText primary={<><strong>Esc</strong> - Close dialog/cancel</>} /></ListItem>
-          </List>
-
-          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>Color Schemes</Typography>
-          <List dense>
-            <ListItem><ListItemText primary={<><strong>T</strong> - Next color scheme</>} /></ListItem>
-            <ListItem><ListItemText primary={<><strong>Shift+T</strong> - Previous color scheme</>} /></ListItem>
           </List>
         </TabPanel>
 
