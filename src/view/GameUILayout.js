@@ -4,6 +4,7 @@ import { useCanvasManager } from './hooks/useCanvasManager.js';
 import { useGameContext } from '../context/GameContext.js';
 import { useUiDao } from '../model/dao/uiDao.js';
 import HeaderBar from './HeaderBar.js';
+import RunControlGroup from './components/RunControlGroup.js';
 import PalettePortal from './PalettePortal.js';
 import CaptureDialogPortal from './CaptureDialogPortal.js';
 import MyShapesDialog from './MyShapesDialog.js';
@@ -65,9 +66,6 @@ function GameUILayout({
   const localOffsetRef = useRef({ x: 0, y: 0 });
   const offsetRef = providedOffsetRef || localOffsetRef;
   const {
-    handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
     resizeCanvas
   } = useCanvasManager({
     offsetRef,
@@ -77,6 +75,7 @@ function GameUILayout({
 
   const showUIControls = useUiDao(state => state.showUIControls ?? true);
   const showChart = useUiDao(state => state.showChart ?? false);
+  const confirmOnClear = useUiDao(state => state.confirmOnClear ?? true);
   const headerRef = useRef(null);
   const [headerTop, setHeaderTop] = useState(0);
 
@@ -232,12 +231,6 @@ function GameUILayout({
             canvasRef.current = el;
             if (el) initCanvas();
           }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onPointerDown={handleMouseDown}
-          onPointerMove={handleMouseMove}
-          onPointerUp={handleMouseUp}
           style={
             showUIControls
               ? {
@@ -275,18 +268,50 @@ function GameUILayout({
                   WebkitUserSelect: 'none',
                   userSelect: 'none',
                   boxSizing: 'border-box',
-                  zIndex: 9999
+                  zIndex: 10
                 }
           }
         />
         {showUIControls && <BottomStatusBar />}
         {!showUIControls && (
-          <Box sx={{ position: 'fixed', top: 8, right: 8, zIndex: 11000 }}>
-            <Tooltip title="Show controls">
+          <Box
+            sx={{
+              position: 'fixed',
+              top: 8,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 11000,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              pointerEvents: 'auto'
+            }}
+          >
+            <RunControlGroup
+              isRunning={!!controlsProps?.isRunning}
+              setIsRunning={controlsProps?.setIsRunning || (() => {})}
+              step={step}
+              draw={draw}
+              clear={clear}
+              resetToGenerationZero={controlsProps?.resetToGenerationZero}
+              snapshotsRef={snapshotsRef}
+              setSteadyInfo={setSteadyInfo || (() => {})}
+              confirmOnClear={confirmOnClear}
+              engineMode={controlsProps?.engineMode}
+              isHashlifeMode={controlsProps?.isHashlifeMode}
+              onStartNormalMode={controlsProps?.onStartNormalMode}
+              onStartHashlifeMode={controlsProps?.onStartHashlifeMode}
+              onStopAllEngines={controlsProps?.onStopAllEngines}
+              onSetEngineMode={controlsProps?.onSetEngineMode}
+              useHashlife={controlsProps?.useHashlife}
+              generationBatchSize={controlsProps?.generationBatchSize}
+              onSetGenerationBatchSize={controlsProps?.onSetGenerationBatchSize}
+            />
+            <Tooltip title="Exit Focus Mode (show all controls)">
               <IconButton
                 size={isSmall ? 'small' : 'medium'}
                 color="default"
-                aria-label="show-controls"
+                aria-label="exit-focus-mode"
                 onClick={handleToggleChrome}
                 sx={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
               >

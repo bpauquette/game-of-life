@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext.js';
 import { useUiDao } from '../model/dao/uiDao.js';
 import { useDialogDao } from '../model/dao/dialogDao.js';
 import { usePerformanceDao } from '../model/dao/performanceDao.js';
+import { useGameDao } from '../model/dao/gameDao.js';
 
 describe('OptionsPanel ADA enforcement', () => {
   beforeEach(() => {
@@ -25,6 +26,10 @@ describe('OptionsPanel ADA enforcement', () => {
         enableFPSCap: false,
         enableGPSCap: false
       }
+    });
+    useGameDao.setState({
+      engineMode: 'normal',
+      onSetEngineMode: jest.fn()
     });
   });
 
@@ -61,6 +66,18 @@ describe('OptionsPanel ADA enforcement', () => {
     expect(
       screen.getByText('Photosensitivity testing is available only when ADA Compliance Mode is enabled.')
     ).toBeInTheDocument();
+  });
+
+  test('does not expose backend selector in options UI', () => {
+    render(
+      <ThemeProvider>
+        <OptionsPanel onOk={() => {}} onCancel={() => {}} />
+      </ThemeProvider>
+    );
+
+    expect(screen.queryByLabelText('Backend')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Node \(port 55000\)/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Java \(port 55001\)/i)).not.toBeInTheDocument();
   });
 
   test('resets privacy controls and reopens first-load warning flow', () => {
@@ -118,5 +135,23 @@ describe('OptionsPanel ADA enforcement', () => {
     expect(localStorage.getItem('maxGPS')).toBe('60');
     expect(localStorage.getItem('enableFPSCap')).toBe('true');
     expect(localStorage.getItem('enableGPSCap')).toBe('true');
+  });
+
+  test('moves engine mode control into options and applies it on OK', () => {
+    const onSetEngineMode = jest.fn();
+    useGameDao.setState({ engineMode: 'normal', onSetEngineMode });
+
+    render(
+      <ThemeProvider>
+        <OptionsPanel onOk={() => {}} onCancel={() => {}} />
+      </ThemeProvider>
+    );
+
+    const engineSelect = screen.getByLabelText('Engine mode');
+    fireEvent.mouseDown(engineSelect);
+    fireEvent.click(screen.getByRole('option', { name: 'HashLife' }));
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    expect(onSetEngineMode).toHaveBeenCalledWith('hashlife');
   });
 });

@@ -18,6 +18,8 @@ import InfoIcon from '@mui/icons-material/Info';
 // OvalIcon used in ToolGroupOverlay
 import HelpDialog from './HelpDialog.js';
 import AboutDialog from './AboutDialog.js';
+import PrivacyPolicyDialog from './PrivacyPolicyDialog.js';
+import ReleaseNotesDialog from './ReleaseNotesDialog.js';
 import RunControlGroup from './components/RunControlGroup.js';
 import SaveLoadGroup from './components/SaveLoadGroup.js';
 import ToolGroup from './components/ToolGroup.js';
@@ -60,6 +62,12 @@ function ControlsDialogs({
   closeHelp,
   aboutOpen,
   closeAbout,
+  openReleaseNotes,
+  releaseNotesOpen,
+  closeReleaseNotes,
+  openPrivacyPolicy,
+  privacyPolicyOpen,
+  closePrivacyPolicy,
   saveDialogOpen,
   closeSaveGrid,
   onSaveGrid,
@@ -67,6 +75,7 @@ function ControlsDialogs({
   gridError,
   liveCellsCount,
   generation,
+  hasDonated,
   loadDialogOpen,
   closeLoadGrid,
   onLoadGrid,
@@ -86,7 +95,14 @@ function ControlsDialogs({
       )}
 
       <HelpDialog open={helpOpen} onClose={closeHelp} />
-      <AboutDialog open={aboutOpen} onClose={closeAbout} />
+      <AboutDialog
+        open={aboutOpen}
+        onClose={closeAbout}
+        onOpenReleaseNotes={openReleaseNotes}
+        onOpenPrivacy={openPrivacyPolicy}
+      />
+      <ReleaseNotesDialog open={releaseNotesOpen} onClose={closeReleaseNotes} />
+      <PrivacyPolicyDialog open={privacyPolicyOpen} onClose={closePrivacyPolicy} />
 
       <SaveGridDialog
         open={saveDialogOpen}
@@ -96,6 +112,7 @@ function ControlsDialogs({
         error={gridError}
         liveCellsCount={liveCellsCount}
         generation={generation}
+        hasDonated={hasDonated}
       />
 
       <LoadGridDialog
@@ -119,6 +136,12 @@ ControlsDialogs.propTypes = {
   closeHelp: PropTypes.func.isRequired,
   aboutOpen: PropTypes.bool.isRequired,
   closeAbout: PropTypes.func.isRequired,
+  openReleaseNotes: PropTypes.func.isRequired,
+  releaseNotesOpen: PropTypes.bool.isRequired,
+  closeReleaseNotes: PropTypes.func.isRequired,
+  openPrivacyPolicy: PropTypes.func.isRequired,
+  privacyPolicyOpen: PropTypes.bool.isRequired,
+  closePrivacyPolicy: PropTypes.func.isRequired,
   saveDialogOpen: PropTypes.bool.isRequired,
   closeSaveGrid: PropTypes.func.isRequired,
   onSaveGrid: PropTypes.func.isRequired,
@@ -126,6 +149,7 @@ ControlsDialogs.propTypes = {
   gridError: PropTypes.any,
   liveCellsCount: PropTypes.number.isRequired,
   generation: PropTypes.number.isRequired,
+  hasDonated: PropTypes.bool,
   loadDialogOpen: PropTypes.bool.isRequired,
   closeLoadGrid: PropTypes.func.isRequired,
   onLoadGrid: PropTypes.func.isRequired,
@@ -157,6 +181,7 @@ const ControlsBar = ({
   selectedShape,
   openPalette,
   generation,
+  hasDonated = false,
   // Grid management props
   onLoadGrid,
   // Viewport helpers
@@ -181,6 +206,8 @@ const ControlsBar = ({
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
+  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false);
   // paletteOpen is now controlled by parent (GameOfLife)
   const [wasRunningBeforeOptions, setWasRunningBeforeOptions] = useState(false);
 
@@ -232,9 +259,8 @@ const ControlsBar = ({
   const closeAbout = () => setAboutOpen(false);
 
   // Grid management handlers
-  const handleSaveGrid = async (name, description) => {
-    const liveCells = getLiveCells();
-    await saveGrid(name, description, liveCells, generation);
+  const handleSaveGrid = async (name, description, isPublic) => {
+    await saveGrid(name, description, isPublic);
   };
 
   const handleLoadGrid = async (gridId) => {
@@ -316,6 +342,12 @@ const ControlsBar = ({
         closeHelp={closeHelp}
         aboutOpen={aboutOpen}
         closeAbout={closeAbout}
+        openReleaseNotes={() => setReleaseNotesOpen(true)}
+        releaseNotesOpen={releaseNotesOpen}
+        closeReleaseNotes={() => setReleaseNotesOpen(false)}
+        openPrivacyPolicy={() => setPrivacyPolicyOpen(true)}
+        privacyPolicyOpen={privacyPolicyOpen}
+        closePrivacyPolicy={() => setPrivacyPolicyOpen(false)}
         saveDialogOpen={saveDialogOpen}
         closeSaveGrid={closeSaveDialog}
         onSaveGrid={handleSaveGrid}
@@ -323,6 +355,7 @@ const ControlsBar = ({
         gridError={gridError}
         liveCellsCount={getLiveCells().size}
         generation={generation}
+        hasDonated={hasDonated}
         loadDialogOpen={loadDialogOpen}
         closeLoadGrid={closeLoadDialog}
         onLoadGrid={handleLoadGrid}
@@ -360,6 +393,7 @@ ControlsBar.propTypes = {
   selectedShape: PropTypes.object,
   openPalette: PropTypes.func.isRequired,
   generation: PropTypes.number.isRequired,
+  hasDonated: PropTypes.bool,
   onLoadGrid: PropTypes.func.isRequired,
   onCenterViewport: PropTypes.func,
   // Engine control callbacks

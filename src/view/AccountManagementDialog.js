@@ -243,7 +243,7 @@ export default function AccountManagementDialog({ open, onClose }) {
                 sx={{ fontWeight: 600 }}
               />
               <Typography variant="body2" color="text.secondary">
-                {hasDonated ? 'Thank you for supporting the project.' : 'Donate to enable saving grids, shapes, and scripts.'}
+                {hasDonated ? 'Thank you for supporting the project.' : 'Private saves are available. Donate to publish grids, shapes, and scripts publicly.'}
               </Typography>
             </Box>
             {/* Account Status Summary */}
