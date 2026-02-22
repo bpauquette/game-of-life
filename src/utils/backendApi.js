@@ -81,6 +81,9 @@ function handleSaveError(response, errorData, logout) {
     err.existingShape = errorData.existingShape;
     throw err;
   }
+  if (response.status === 403 && errorData.code === 'DONATION_REQUIRED') {
+    throw new Error(errorData.error || 'Donation required to publish content publicly.');
+  }
   if (errorData.error === 'Invalid or expired token') {
     if (typeof logout === 'function') logout();
     throw new Error('Please log in again to save shapes');
