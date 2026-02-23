@@ -128,8 +128,8 @@ export const useUiDao = create((set) => ({
   setAssistantOpen: (assistantOpen) => set({ assistantOpen }),
   aboutOpen: false,
   setAboutOpen: (aboutOpen) => set({ aboutOpen }),
-  donateOpen: false,
-  setDonateOpen: (donateOpen) => set({ donateOpen }),
+  supportOpen: false,
+  setSupportOpen: (supportOpen) => set({ supportOpen }),
   photoTestOpen: false,
   setPhotoTestOpen: (photoTestOpen) => set((state) => {
     const requestedOpen = Boolean(photoTestOpen);
@@ -234,3 +234,4 @@ export const useUiDao = create((set) => ({
     });
   },
 }));
+

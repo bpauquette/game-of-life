@@ -241,7 +241,7 @@ describe('uiDao', () => {
       ['setWasRunningBeforeOptions', 'wasRunningBeforeOptions'],
       ['setScriptOpen', 'scriptOpen'],
       ['setAboutOpen', 'aboutOpen'],
-      ['setDonateOpen', 'donateOpen'],
+      ['setSupportOpen', 'supportOpen'],
       ['setPhotoTestOpen', 'photoTestOpen'],
       ['setUserDialogOpen', 'userDialogOpen'],
       ['setShowRegister', 'showRegister'],
@@ -516,3 +516,4 @@ describe('performanceDao', () => {
     expect(localStorage.getItem('memoryTelemetryEnabled')).toBe('true');
   });
 });
+

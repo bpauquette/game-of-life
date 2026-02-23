@@ -5,7 +5,7 @@ Matches found:
 - docker-compose.yml:40:      - SERVER_NAME=gol-conway.hopto.org
 - nginx.conf:7:    server_name gol-conway.hopto.org _;
 - nginx.conf:23:    server_name gol-conway.hopto.org _;
-- src/view/PaymentDialog.js:33:          <Button href="/donate" variant="contained" color="primary">Donate</Button>
+- src/view/PaymentDialog.js:33:          <Button href="/support" variant="contained" color="primary">Support</Button>
 
 Notes:
 - No explicit patreon/opencollective/github.com/sponsors/buymeacoffee/paypal domains found in tracked frontend source files (excludes package-lock.json and node_modules).

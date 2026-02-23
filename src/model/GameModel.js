@@ -4,6 +4,7 @@ import hashlifeAdapter from './hashlife/adapter.js';
 
 import { step as gameStep } from './gameLogic.js';
 import { colorSchemes } from './colorSchemes.js';
+import { getEnableAdaCompliance } from './dao/uiDao.js';
 import logger from '../controller/utils/logger.js';
 
 // Helpers for bulk updates (module-scope to keep method complexity low)
@@ -28,6 +29,8 @@ function applyBulkUpdate(liveCells, upd) {
   return { add: 0, rem: 0 };
 }
 const CONST_UISTATECHANGED = 'uiStateChanged';
+const ADA_SAFE_MAX_FPS = 2;
+const ADA_SAFE_MAX_GPS = 2;
 const clampNumber = (value, min, max) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return null;
@@ -170,6 +173,30 @@ function applyBooleanPerformanceSetting(next, settings, key) {
   if (boolValue === next[key]) return false;
   next[key] = boolValue;
   return true;
+}
+
+function enforceAdaPerformanceCapsForNormalMode(next, engineMode) {
+  if (engineMode !== 'normal') return false;
+  if (!getEnableAdaCompliance()) return false;
+  let changed = false;
+
+  if (next.maxFPS > ADA_SAFE_MAX_FPS) {
+    next.maxFPS = ADA_SAFE_MAX_FPS;
+    changed = true;
+  }
+  if (next.maxGPS > ADA_SAFE_MAX_GPS) {
+    next.maxGPS = ADA_SAFE_MAX_GPS;
+    changed = true;
+  }
+  if (!next.enableFPSCap) {
+    next.enableFPSCap = true;
+    changed = true;
+  }
+  if (!next.enableGPSCap) {
+    next.enableGPSCap = true;
+    changed = true;
+  }
+  return changed;
 }
 
 export class GameModel {
@@ -358,7 +385,15 @@ export class GameModel {
     if (mode === 'normal' || mode === 'hashlife') {
       logger.debug('[GameModel] setEngineMode called:', mode);
       this.engineMode = mode;
+      const nextPerformance = { ...this.performanceSettings };
+      const performanceChanged = enforceAdaPerformanceCapsForNormalMode(nextPerformance, this.engineMode);
+      if (performanceChanged) {
+        this.performanceSettings = nextPerformance;
+      }
       this.notifyObservers('engineModeChanged', { engineMode: mode });
+      if (performanceChanged) {
+        this.notifyObservers('performanceSettingsChanged', { ...this.performanceSettings });
+      }
     }
   }
 
@@ -861,7 +896,8 @@ export class GameModel {
       applyNumericPerformanceSetting(next, settings, 'populationTolerance', 0, 1000),
       applyBooleanPerformanceSetting(next, settings, 'useWebWorker'),
       applyBooleanPerformanceSetting(next, settings, 'enableFPSCap'),
-      applyBooleanPerformanceSetting(next, settings, 'enableGPSCap')
+      applyBooleanPerformanceSetting(next, settings, 'enableGPSCap'),
+      enforceAdaPerformanceCapsForNormalMode(next, this.engineMode)
     ].some(Boolean);
 
     if (changed) {

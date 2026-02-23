@@ -9,30 +9,18 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 
 const RELEASE_NOTES = {
-  currentTag: 'game-of-life/v0.1.4',
-  previousTag: 'game-of-life/v0.1.3',
+  currentTag: 'game-of-life/v0.1.5',
+  previousTag: 'game-of-life/v0.1.4',
   releasedOn: 'February 22, 2026',
   commitItems: [
-    '[e02e473b] Hardened auth/backend integration plumbing (protected actions, backend API integration paths, and guardrails).',
-    '[67e4bd27] Unified controller input handling and added a robust Toggle tool implementation plus coverage.',
-    '[cee4b55a] Improved scripting stability analysis and stable-pattern labeling for UNTIL_STEADY behavior.',
-    '[b5b83e8d] Refreshed UI/help/dialog flows, toolbar behavior, and release-note surfaces.'
+    '[policy-accuracy] Added explicit Published date and corrected privacy-policy security wording to match backend behavior.',
+    '[support-contact] Updated privacy-policy support contact to use relative in-app URLs for support request (/requestsupport) and support purchase (/support).',
+    '[release-docs] Refreshed release-note metadata and highlights for this support-contact patch.'
   ],
   highlights: [
-    'Fixed Toggle tool click behavior so selecting the mouse tool and clicking a cell always flips live/dead state once per click.',
-    'Standardized ADA compliance behavior and legal messaging across the application.',
-    'Standardized zoom anchoring: wheel zoom now locks to cursor position and pinch/spread zoom locks to pinch center.',
-    'Updated React wheel listeners to non-passive mode so browser scrolling does not override in-canvas zoom behavior.',
-    'Added Focus Mode (H) so nonessential UI chrome can be hidden while keeping simulation controls accessible.',
-    'Kept the run bar visible in Focus Mode for safer, uninterrupted control while fullscreen testing.',
-    'Standardized Focus Mode naming in tooltips and Help text for consistency.',
-    'Fixed toolbar layering when Recent Shapes updates so controls are no longer obscured.',
-    'Moved Engine mode into Options → Advanced and removed it from the run bar.',
-    'Aligned toolbar order with tool shortcut order and in-app help text.',
-    'Added reset-to-generation-zero and plain-language HashLife guidance in Help.',
-    'Standardized Life Lexicon attribution wording and links.',
-    'Standardized privacy policy support and dialog access from About/account flows.',
-    'Refreshed help content to match current behavior and controls.'
+    'Privacy Policy now includes explicit Published metadata and revised security wording aligned with current backend implementation.',
+    'Privacy/support contact now uses relative in-app URL routing (/requestsupport and /support).',
+    'Release metadata advanced to game-of-life/v0.1.5.'
   ]
 };
 

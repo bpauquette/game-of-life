@@ -157,7 +157,7 @@ describe('backendApi additional coverage', () => {
     expect(logout).toHaveBeenCalledTimes(1);
   });
 
-  test('saveCapturedShapeToBackend surfaces donation required errors', async () => {
+  test('saveCapturedShapeToBackend surfaces support access required errors', async () => {
     global.fetch
       .mockResolvedValueOnce({
         ok: true,
@@ -168,14 +168,14 @@ describe('backendApi additional coverage', () => {
         status: 403,
         statusText: 'Forbidden',
         json: async () => ({
-          code: 'DONATION_REQUIRED',
-          error: 'Donation required to publish content publicly.',
+          code: 'SUPPORT_ACCESS_REQUIRED',
+          error: 'Support access required to publish content publicly.',
         }),
       });
 
     await expect(
       saveCapturedShapeToBackend({ name: 'shape', pattern: [[0, 0]], width: 1, height: 1 })
-    ).rejects.toThrow('Donation required to publish content publicly.');
+    ).rejects.toThrow('Support access required to publish content publicly.');
   });
 
   test('saveCapturedShapeToBackend throws generic HTTP error when payload has no message', async () => {

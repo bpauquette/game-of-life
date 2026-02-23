@@ -119,8 +119,8 @@ export const useGameStore = create((set) => ({
   setHelpOpen: (helpOpen) => set({ helpOpen }),
   aboutOpen: false,
   setAboutOpen: (aboutOpen) => set({ aboutOpen }),
-  donateOpen: false,
-  setDonateOpen: (donateOpen) => set({ donateOpen }),
+  supportOpen: false,
+  setSupportOpen: (supportOpen) => set({ supportOpen }),
   photoTestOpen: false,
   setPhotoTestOpen: (photoTestOpen) => set({ photoTestOpen }),
   userDialogOpen: false,
@@ -132,3 +132,4 @@ export const useGameStore = create((set) => ({
   confirmOnClear: true,
   setConfirmOnClear: (confirmOnClear) => set({ confirmOnClear }),
 }));
+

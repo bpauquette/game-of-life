@@ -10,7 +10,7 @@ function buildProps(overrides = {}) {
     onOpenOptions: jest.fn(),
     onOpenUser: jest.fn(),
     onOpenImport: jest.fn(),
-    onOpenDonate: jest.fn(),
+    onOpenSupport: jest.fn(),
     onOpenPhotoTest: jest.fn(),
     onOpenScript: jest.fn(),
     onOpenAssistant: jest.fn(),
@@ -58,3 +58,4 @@ describe('AuxActions AI button visibility', () => {
     expect(onOpenPhotoTest).toHaveBeenCalledTimes(1);
   });
 });
+

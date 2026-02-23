@@ -32,7 +32,7 @@ const SaveGridDialog = ({
   userId = null,
   currentUserId = null,
   initialPublic = false,
-  hasDonated = false
+  hasSupportAccess = false
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -69,7 +69,7 @@ const SaveGridDialog = ({
       return;
     }
     try {
-      await onSave(trimmedName, description.trim(), hasDonated ? isPublic : false);
+      await onSave(trimmedName, description.trim(), hasSupportAccess ? isPublic : false);
       // Reset form on successful save
       setName('');
       setDescription('');
@@ -165,18 +165,18 @@ const SaveGridDialog = ({
         <FormControlLabel
           control={
             <Checkbox
-              checked={hasDonated ? isPublic : false}
+              checked={hasSupportAccess ? isPublic : false}
               onChange={e => setIsPublic(e.target.checked)}
-              disabled={!!userId && currentUserId !== userId || !hasDonated}
+              disabled={!!userId && currentUserId !== userId || !hasSupportAccess}
               color="primary"
             />
           }
           label={isPublic ? 'Public grid (visible to all users)' : 'Private grid (only you can see)'}
           sx={{ mb: 2 }}
         />
-        {!hasDonated && (
+        {!hasSupportAccess && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            Private grid saves are available. Donation is required to publish grids publicly.
+            Private grid saves are available. Support access is required to publish grids publicly.
           </Alert>
         )}
 
@@ -233,7 +233,8 @@ SaveGridDialog.propTypes = {
   userId: PropTypes.string,
   currentUserId: PropTypes.string,
   initialPublic: PropTypes.bool,
-  hasDonated: PropTypes.bool
+  hasSupportAccess: PropTypes.bool
 };
 
 export default SaveGridDialog;
+

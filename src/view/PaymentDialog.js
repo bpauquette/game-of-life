@@ -15,58 +15,69 @@ PaymentDialog.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-// Donation dialog supporting both Stripe and PayPal.
+// Paid-access dialog supporting both Stripe and PayPal.
 export default function PaymentDialog({ open, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [paymentConfig, setPaymentConfig] = useState({ paypal: { enabled: false } });
-  const { user } = useAuth();
+  const { token, email, refreshMe } = useAuth();
+  const supporterEmail = String(email || '').trim();
 
   // Canonical project URLs — update to match repository/location
   const repoUrl = 'https://github.com/bpauquette/game-of-life';
   const issuesUrl = repoUrl + '/issues/new/choose';
 
-  // Keep frontend links minimal to avoid exposing donation targets.
+  // Keep frontend links minimal to avoid exposing payment targets.
   const links = [
     { label: 'Project (GitHub)', url: repoUrl },
     { label: 'Report a bug / Request a feature', url: issuesUrl }
   ];
 
-  const recordPayPalDonation = useCallback(async (transactionId) => {
+  const recordPayPalPayment = useCallback(async (transactionId) => {
     setLoading(true);
     setError(null);
     try {
-      const email = user?.email || 'unknown@paypal.donor';
-      const response = await fetch('/api/donations/paypal', {
+      if (!supporterEmail) {
+        throw new Error('Please login before purchasing support access.');
+      }
+      const response = await fetch('/api/payments/paypal/record', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         credentials: 'include',
         body: JSON.stringify({
           transactionId,
-          email,
-          amount: 5.00,
+          email: supporterEmail,
+          amount: 10.00,
           currency: 'USD'
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to record donation: ${response.statusText}`);
+        throw new Error(`Failed to record payment: ${response.statusText}`);
       }
 
+      await refreshMe?.();
       setLoading(false);
       onClose();
-      alert('Thank you for your donation! Your donation has been recorded.');
+      alert('Thank you for your support! Your payment has been recorded.');
     } catch (err) {
-      console.error('Error recording PayPal donation:', err);
-      setError('Failed to record donation. Please contact support.');
+      console.error('Error recording PayPal payment:', err);
+      setError('Failed to record payment. Please contact support.');
       setLoading(false);
     }
-  }, [onClose, user]);
+  }, [onClose, refreshMe, supporterEmail, token]);
 
   const initializePayPalButtons = useCallback(() => {
     const container = document.getElementById('paypal-button-container');
     if (container && globalThis.paypal) {
       container.innerHTML = '';
+      if (!supporterEmail) {
+        setError('Please login before purchasing support access.');
+        return;
+      }
 
       globalThis.paypal.Buttons({
         createOrder(data, actions) {
@@ -74,7 +85,7 @@ export default function PaymentDialog({ open, onClose }) {
             purchase_units: [
               {
                 amount: {
-                  value: '5.00',
+                  value: '10.00',
                 }
               }
             ]
@@ -82,7 +93,7 @@ export default function PaymentDialog({ open, onClose }) {
         },
         onApprove(data, actions) {
           return actions.order.capture().then(() => {
-            recordPayPalDonation(data.id);
+            return recordPayPalPayment(data.id);
           });
         },
         onError(err) {
@@ -92,7 +103,7 @@ export default function PaymentDialog({ open, onClose }) {
         }
       }).render(container);
     }
-  }, [recordPayPalDonation]);
+  }, [recordPayPalPayment, supporterEmail]);
 
   const loadPayPalSDK = useCallback((clientId) => {
     if (!clientId) {
@@ -152,7 +163,10 @@ export default function PaymentDialog({ open, onClose }) {
     try {
       const response = await fetch('/api/payments/stripe/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         credentials: 'include'
       });
 
@@ -186,13 +200,19 @@ export default function PaymentDialog({ open, onClose }) {
       <DialogContent>
         <Typography variant="body1" paragraph>
           If you enjoy this app and would like to support its continued development,
-          please consider donating. Any contribution helps cover hosting, development time,
+          you can purchase supporter access. This helps cover hosting, development time,
           and tooling costs.
         </Typography>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
+          </Alert>
+        )}
+
+        {!supporterEmail && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Login is required so supporter access can be attached to your account.
           </Alert>
         )}
 
@@ -203,7 +223,7 @@ export default function PaymentDialog({ open, onClose }) {
           <Box>
             {paymentConfig.paypal?.enabled && (
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Donate with PayPal
+                Pay with PayPal
               </Typography>
             )}
             <Box
@@ -223,7 +243,7 @@ export default function PaymentDialog({ open, onClose }) {
               disabled={loading}
               sx={{ mt: 2 }}
             >
-              Donate with Stripe
+              Pay with Stripe
             </Button>
           )}
 
@@ -234,7 +254,7 @@ export default function PaymentDialog({ open, onClose }) {
           )}
 
           <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-            PayPal is a secure payment method. Your donation helps support this project.
+            PayPal is a secure payment method. Your support purchase helps sustain this project.
           </Typography>
 
           {links.map((l) => (

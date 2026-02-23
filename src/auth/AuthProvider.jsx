@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
     return stored;
   });
   const [email, setEmail] = useState(() => sessionStorage.getItem('authEmail'));
-  const [hasDonated, setHasDonated] = useState(false);
+  const [hasSupportAccess, setHasSupportAccess] = useState(false);
 
   const refreshMe = async () => {
     try {
@@ -47,7 +47,7 @@ export function AuthProvider({ children }) {
       const resp = await fetch(`${base}/v1/me?_ts=${Date.now()}`, { headers: { Authorization: `Bearer ${tokenNow}`, 'Cache-Control': 'no-cache' }, cache: 'no-store' });
       if (!resp.ok) return;
       const data = await resp.json();
-      if (data?.hasDonated !== undefined) setHasDonated(!!data.hasDonated);
+      if (data?.hasSupportAccess !== undefined) setHasSupportAccess(!!data.hasSupportAccess);
       if (data && typeof data.email === 'string') setEmail(data.email);
     } catch (e) {
       // ignore refresh errors
@@ -59,7 +59,7 @@ export function AuthProvider({ children }) {
     setToken(token);
     sessionStorage.setItem('authToken', token);
     sessionStorage.setItem('authEmail', email);
-    // Refresh current user info to populate hasDonated
+    // Refresh current user info to populate hasSupportAccess
     refreshMe();
   };
 
@@ -82,7 +82,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, email, hasDonated, login, logout, refreshMe }}>
+    <AuthContext.Provider value={{ token, email, hasSupportAccess, login, logout, refreshMe }}>
       {children}
     </AuthContext.Provider>
   );
@@ -93,3 +93,4 @@ export function AuthProvider({ children }) {
  * @returns {Object} The auth context with token, email, login, and logout.
  */
 export const useAuth = () => useContext(AuthContext);
+

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart as BarChartIcon, CloudDownload as ImportIcon, Help as HelpIcon, Info as InfoIcon, Language as LanguageIcon, LockPerson as UserLoggedInIcon, PsychologyAlt as UserIcon, Settings as SettingsIcon, VolunteerActivism as DonateIcon } from '@mui/icons-material';
+import { BarChart as BarChartIcon, CloudDownload as ImportIcon, Help as HelpIcon, Info as InfoIcon, Language as LanguageIcon, LockPerson as UserLoggedInIcon, PsychologyAlt as UserIcon, Settings as SettingsIcon, VolunteerActivism as SupportIcon } from '@mui/icons-material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import CodeIcon from '@mui/icons-material/Code';
@@ -16,7 +16,7 @@ function AuxActions({
   onOpenOptions,
   onOpenUser,
   onOpenImport,
-  onOpenDonate,
+  onOpenSupport,
   onOpenPhotoTest,
   onOpenScript,
   onOpenAssistant,
@@ -56,7 +56,7 @@ function AuxActions({
       <IconButton size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
       <IconButton size="small" onClick={onOpenImport} aria-label="import"><Tooltip title="Import Shape"><ImportIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={openLifeWiki} aria-label="lifewiki"><Tooltip title="LifeWiki"><LanguageIcon fontSize="small" /></Tooltip></IconButton>
-      <IconButton size="small" onClick={onOpenDonate} aria-label="donate"><Tooltip title="Donate"><DonateIcon fontSize="small" /></Tooltip></IconButton>
+      <IconButton size="small" onClick={onOpenSupport} aria-label="support"><Tooltip title="Support Access"><SupportIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
       <Tooltip title={`Version: v${FRONTEND_VERSION}\nBuild: ${FRONTEND_TIMESTAMP}`.replace(/\n/g, '\u000A')} placement="bottom">
         <span>
@@ -83,10 +83,11 @@ AuxActions.propTypes = {
   showAssistant: PropTypes.bool,
   showPhotoTest: PropTypes.bool,
   photoTestEnabled: PropTypes.bool,
-  onOpenDonate: PropTypes.func,
+  onOpenSupport: PropTypes.func,
   onOpenUser: PropTypes.func,
   onOpenPhotoTest: PropTypes.func,
   loggedIn: PropTypes.bool
 };
 
 export default AuxActions;
+

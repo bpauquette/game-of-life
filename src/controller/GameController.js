@@ -1016,7 +1016,10 @@ export class GameController {
     // setSpeed is deprecated; prefer applyPerformanceSettings
     // This is a compatibility wrapper for keyboard shortcuts.
     const nextFps = Math.max(1, Math.min(Number(fps) || 60, 120));
-    this.applyPerformanceSettings({ maxFPS: nextFps, enableFPSCap: true });
+    const nextSettings = typeof this.model?.setPerformanceSettingsModel === 'function'
+      ? this.model.setPerformanceSettingsModel({ maxFPS: nextFps, enableFPSCap: true })
+      : { maxFPS: nextFps, enableFPSCap: true };
+    this.applyPerformanceSettings(nextSettings);
   }
 
   _updateNumericPerformanceCap(settings, settingKey, capKey, min, max) {

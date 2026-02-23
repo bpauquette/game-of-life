@@ -76,25 +76,25 @@ This application uses a strict MVC + Hooks architecture.
 [ Controllers ] <- orchestration + invariants
 [ Views ]       <- rendering only
 
-## Donation-Gated Community Publishing
+## Support-Gated Community Publishing
 
 ### Decision Summary
 
 1. Authorization is backend-owned; UI never assumes entitlement.
 2. Frontend reflects capability state and explains blocked actions.
-3. Public-sharing controls are disabled when donation is not verified.
+3. Public-sharing controls are disabled when support is not verified.
 4. Private saves remain available for authenticated users across shapes, grids, and scripts.
 
 ### Backend Contract This UI Relies On
 
 - Non-donor attempts to publish/share return:
   - HTTP `403`
-  - `code: "DONATION_REQUIRED"`
+  - `code: "SUPPORT_ACCESS_REQUIRED"`
   - explanatory `error` message
 
 ### Frontend Behavior
 
-- Save flow (`saveCapturedShapeToBackend`) allows private saves and propagates donation-required messages only for publish attempts.
+- Save flow (`saveCapturedShapeToBackend`) allows private saves and propagates support-required messages only for publish attempts.
 - My Shapes dialog:
   - shows that private saves are allowed
   - prevents enabling `public` for non-donors
