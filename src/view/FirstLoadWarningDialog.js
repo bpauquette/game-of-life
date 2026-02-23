@@ -14,7 +14,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
-import { Warning as WarningIcon, Info as InfoIcon, LocalActivity as DonateIcon } from '@mui/icons-material';
+import { Warning as WarningIcon, Info as InfoIcon, LocalActivity as SupportIcon } from '@mui/icons-material';
 import PropTypes from 'prop-types';
 import { ADA_LEGAL_LIABILITY_NOTICE } from './legalNotices.js';
 import { useUiDao } from '../model/dao/uiDao.js';
@@ -22,7 +22,7 @@ import { useUiDao } from '../model/dao/uiDao.js';
 /**
  * First Load Warning Dialog
  * Displays important information about photosensitivity, ADA compliance,
- * and the donation/community model on app's first load.
+ * and the support/community model on app's first load.
  * Only shows once per browser (stored in localStorage).
  */
 export default function FirstLoadWarningDialog({ open, onClose }) {
@@ -133,10 +133,10 @@ export default function FirstLoadWarningDialog({ open, onClose }) {
 
         {/* Two-column layout for Community and Getting Started */}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-          {/* Community & Donation Model */}
+          {/* Community & Support Model */}
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <DonateIcon sx={{ color: 'primary.main' }} /> Community Features
+              <SupportIcon sx={{ color: 'primary.main' }} /> Community Features
             </Typography>
             <Card variant="outlined" sx={{ mb: 2 }}>
               <CardContent>
@@ -145,7 +145,7 @@ export default function FirstLoadWarningDialog({ open, onClose }) {
                 </Typography>
                 
                 <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 600, mb: 1 }}>
-                  Optional Donation ($5-10):
+                  One-Time Lifetime Support Membership ($10):
                 </Typography>
                 <List dense sx={{ ml: 0 }}>
                   <ListItem disableGutters sx={{ py: 0.25 }}>
@@ -173,10 +173,10 @@ export default function FirstLoadWarningDialog({ open, onClose }) {
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>
-                  1. Donate (optional):
+                  1. Support access ($10 one-time lifetime membership):
                 </Typography>
                 <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary' }}>
-                  Click heart icon → Make donation → Confirm email
+                  Click heart icon → Complete checkout → Confirm email
                 </Typography>
                 
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>

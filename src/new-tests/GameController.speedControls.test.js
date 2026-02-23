@@ -64,5 +64,26 @@ describe('GameController speed controls', () => {
     controller.increaseSpeed();
     expect(setSpeedSpy).toHaveBeenCalledWith(43);
   });
-});
 
+  test('setSpeed applies model-sanitized settings when available', () => {
+    const { controller, model } = createController({
+      setPerformanceSettingsModel: jest.fn(() => ({
+        maxFPS: 2,
+        maxGPS: 2,
+        enableFPSCap: true,
+        enableGPSCap: true
+      }))
+    });
+    const applySpy = jest.spyOn(controller, 'applyPerformanceSettings').mockImplementation(() => {});
+
+    controller.setSpeed(120);
+
+    expect(model.setPerformanceSettingsModel).toHaveBeenCalledWith({ maxFPS: 120, enableFPSCap: true });
+    expect(applySpy).toHaveBeenCalledWith({
+      maxFPS: 2,
+      maxGPS: 2,
+      enableFPSCap: true,
+      enableGPSCap: true
+    });
+  });
+});

@@ -40,8 +40,35 @@ export function getBackendApiBase() {
   return '/api';
 }
 
+export function getAuthApiBase() {
+  const base = getBackendApiBase();
+  return base.endsWith('/api') ? `${base}/auth` : `${base}/api/auth`;
+}
+
 function getAuthToken() {
   return sessionStorage.getItem('authToken');
+}
+
+export async function submitSupportRequest({ contactInfo, requestText }) {
+  const url = `${getAuthApiBase()}/requestsupport`;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      contactInfo: String(contactInfo || '').trim(),
+      requestText: String(requestText || '').trim()
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to submit support request (${response.status})`);
+  }
+  return data;
 }
 
 
@@ -81,8 +108,8 @@ function handleSaveError(response, errorData, logout) {
     err.existingShape = errorData.existingShape;
     throw err;
   }
-  if (response.status === 403 && errorData.code === 'DONATION_REQUIRED') {
-    throw new Error(errorData.error || 'Donation required to publish content publicly.');
+  if (response.status === 403 && errorData.code === 'SUPPORT_ACCESS_REQUIRED') {
+    throw new Error(errorData.error || 'Support access required to publish content publicly.');
   }
   if (errorData.error === 'Invalid or expired token') {
     if (typeof logout === 'function') logout();

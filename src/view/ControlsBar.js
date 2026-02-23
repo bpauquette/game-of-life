@@ -75,7 +75,7 @@ function ControlsDialogs({
   gridError,
   liveCellsCount,
   generation,
-  hasDonated,
+  hasSupportAccess,
   loadDialogOpen,
   closeLoadGrid,
   onLoadGrid,
@@ -112,7 +112,7 @@ function ControlsDialogs({
         error={gridError}
         liveCellsCount={liveCellsCount}
         generation={generation}
-        hasDonated={hasDonated}
+        hasSupportAccess={hasSupportAccess}
       />
 
       <LoadGridDialog
@@ -149,7 +149,7 @@ ControlsDialogs.propTypes = {
   gridError: PropTypes.any,
   liveCellsCount: PropTypes.number.isRequired,
   generation: PropTypes.number.isRequired,
-  hasDonated: PropTypes.bool,
+  hasSupportAccess: PropTypes.bool,
   loadDialogOpen: PropTypes.bool.isRequired,
   closeLoadGrid: PropTypes.func.isRequired,
   onLoadGrid: PropTypes.func.isRequired,
@@ -181,7 +181,7 @@ const ControlsBar = ({
   selectedShape,
   openPalette,
   generation,
-  hasDonated = false,
+  hasSupportAccess = false,
   // Grid management props
   onLoadGrid,
   // Viewport helpers
@@ -355,7 +355,7 @@ const ControlsBar = ({
         gridError={gridError}
         liveCellsCount={getLiveCells().size}
         generation={generation}
-        hasDonated={hasDonated}
+        hasSupportAccess={hasSupportAccess}
         loadDialogOpen={loadDialogOpen}
         closeLoadGrid={closeLoadDialog}
         onLoadGrid={handleLoadGrid}
@@ -393,7 +393,7 @@ ControlsBar.propTypes = {
   selectedShape: PropTypes.object,
   openPalette: PropTypes.func.isRequired,
   generation: PropTypes.number.isRequired,
-  hasDonated: PropTypes.bool,
+  hasSupportAccess: PropTypes.bool,
   onLoadGrid: PropTypes.func.isRequired,
   onCenterViewport: PropTypes.func,
   // Engine control callbacks
@@ -410,4 +410,5 @@ ControlsBar.propTypes = {
 };
 
 export default ControlsBar;
+
 

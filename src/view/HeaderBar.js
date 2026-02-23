@@ -28,13 +28,15 @@ import OptionsPanel from './OptionsPanel.js';
 import PaymentDialog from './PaymentDialog.js';
 import PhotosensitivityTestDialog from './PhotosensitivityTestDialog.js';
 import RecentShapesStrip from './RecentShapesStrip.js';
-import { getBackendApiBase, getBackendHealthDetails } from '../utils/backendApi.js';
+import { getBackendHealthDetails } from '../utils/backendApi.js';
 import AssistantDialog from './AssistantDialog.js';
 // import { useGameContext } from '../context/GameContext.js';
 import SaveGridDialog from './SaveGridDialog.js';
 import ScriptPanel from './ScriptPanel.js';
+import AccountManagementDialog from './AccountManagementDialog.js';
 import PrivacyPolicyDialog from './PrivacyPolicyDialog.js';
 import ReleaseNotesDialog from './ReleaseNotesDialog.js';
+import SupportRequestDialog from './SupportRequestDialog.js';
 
 export default function HeaderBar({
   // Only keep local/component-specific props
@@ -77,7 +79,7 @@ export default function HeaderBar({
   // Zustand selectors (including all UI/dialog state)
 
   // Auth and user info (must come before callbacks that depend on logout)
-  const { token, email, logout, hasDonated } = useAuth();
+  const { token, email, logout, hasSupportAccess } = useAuth();
 
   // UI state from uiDao (helpOpen and setHelpOpen must come first for hook order)
   const helpOpen = useUiDao(state => state.helpOpen);
@@ -89,8 +91,10 @@ export default function HeaderBar({
   // UI actions (wired via DAO)
   const setShowChart = useUiDao(state => state.setShowChart);
   const [assistantAvailable, setAssistantAvailable] = useState(false);
+  const [accountManagementOpen, setAccountManagementOpen] = useState(false);
   const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false);
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
+  const [supportRequestOpen, setSupportRequestOpen] = useState(false);
 
   // UI state from uiDao
   const colorScheme = useUiDao(state => state.colorScheme);
@@ -104,8 +108,8 @@ export default function HeaderBar({
   const setWasRunningBeforeOptions = useUiDao(state => state.setWasRunningBeforeOptions);
   const aboutOpen = useUiDao(state => state.aboutOpen);
   const setAboutOpen = useUiDao(state => state.setAboutOpen);
-  const donateOpen = useUiDao(state => state.donateOpen);
-  const setDonateOpen = useUiDao(state => state.setDonateOpen);
+  const supportOpen = useUiDao(state => state.supportOpen);
+  const setSupportOpen = useUiDao(state => state.setSupportOpen);
   const photoTestOpen = useUiDao(state => state.photoTestOpen);
   const setPhotoTestOpen = useUiDao(state => state.setPhotoTestOpen);
   const userDialogOpen = useUiDao(state => state.userDialogOpen);
@@ -254,27 +258,16 @@ export default function HeaderBar({
     if (isRunning) setIsRunning(false);
     setOptionsOpen(true);
   };
-  const getDonateUrl = useCallback(() => {
-    const apiBase = getBackendApiBase();
-    if (apiBase.endsWith('/api')) return `${apiBase.slice(0, -4)}/donate`;
-    return `${apiBase.replace(/\/+$/, '')}/donate`;
+  const openSupport = useCallback(() => {
+    if (!token) {
+      globalThis.dispatchEvent(new CustomEvent('auth:needLogin', { detail: { message: 'Please login to purchase support access.' } }));
+      return;
+    }
+    setSupportOpen(true);
+  }, [setSupportOpen, token]);
+  const openSupportRequest = useCallback(() => {
+    setSupportRequestOpen(true);
   }, []);
-  const openDonate = useCallback(() => {
-    const donateUrl = getDonateUrl();
-    let popup = null;
-    try {
-      popup = globalThis.open?.(donateUrl, '_blank', 'noopener,noreferrer') ?? null;
-    } catch (e) {
-      console.error('[HeaderBar] failed to open donate popup', e);
-    }
-    if (!popup) {
-      try {
-        globalThis.location?.assign?.(donateUrl);
-      } catch (e) {
-        console.error('[HeaderBar] failed to navigate to donate URL', e);
-      }
-    }
-  }, [getDonateUrl]);
   const handleOk = () => { setOptionsOpen(false); if (wasRunningBeforeOptions) setIsRunning(true); };
   const handleCancel = () => { setOptionsOpen(false); if (wasRunningBeforeOptions) setIsRunning(true); };
 
@@ -340,7 +333,7 @@ export default function HeaderBar({
               showAssistant={assistantAvailable}
               showPhotoTest={true}
               photoTestEnabled={enableAdaCompliance}
-              onOpenDonate={openDonate}
+              onOpenSupport={openSupport}
               onOpenPhotoTest={() => {
                 if (enableAdaCompliance) {
                   setPhotoTestOpen(true);
@@ -363,6 +356,7 @@ export default function HeaderBar({
                             <span>Logged in as <b>{email}</b></span>
                           </div>
                           <button onClick={() => { setUserDialogOpen(false); onOpenMyShapes(); }} style={{ marginRight: 8 }}>My Shapes</button>
+                          <button onClick={() => { setUserDialogOpen(false); setAccountManagementOpen(true); }} style={{ marginRight: 8 }}>Account &amp; Privacy</button>
                           <button onClick={() => { setUserDialogOpen(false); setReleaseNotesOpen(true); }} style={{ marginRight: 8 }}>Release Notes</button>
                           <button onClick={() => { setUserDialogOpen(false); setPrivacyPolicyOpen(true); }} style={{ marginRight: 8 }}>Privacy Policy</button>
                           <button onClick={handleLogout} style={{ marginRight: 8 }}>Logout</button>
@@ -384,6 +378,9 @@ export default function HeaderBar({
                       );
                     }
                   })()}
+                  <button onClick={() => { setUserDialogOpen(false); openSupportRequest(); }} style={{ marginTop: 8 }}>
+                    Request Support
+                  </button>
                   <button onClick={() => setUserDialogOpen(false)} style={{ marginTop: 16 }}>Close</button>
                 </Box>
               </Box>
@@ -474,7 +471,9 @@ export default function HeaderBar({
       />
       <ReleaseNotesDialog open={releaseNotesOpen} onClose={() => setReleaseNotesOpen(false)} />
       <PrivacyPolicyDialog open={privacyPolicyOpen} onClose={() => setPrivacyPolicyOpen(false)} />
-      <PaymentDialog open={donateOpen} onClose={() => setDonateOpen(false)} />
+      <AccountManagementDialog open={accountManagementOpen} onClose={() => setAccountManagementOpen(false)} />
+      <PaymentDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
+      <SupportRequestDialog open={supportRequestOpen} onClose={() => setSupportRequestOpen(false)} />
       <PhotosensitivityTestDialog
         open={photoTestOpen}
         onClose={() => setPhotoTestOpen(false)}
@@ -489,7 +488,7 @@ export default function HeaderBar({
         error={gridError}
         liveCellsCount={getLiveCells().size}
         generation={generation}
-        hasDonated={hasDonated}
+        hasSupportAccess={hasSupportAccess}
       />
 
       <LoadGridDialog
@@ -540,3 +539,4 @@ HeaderBar.propTypes = {
   generationBatchSize: PropTypes.number,
   onSetGenerationBatchSize: PropTypes.func
 };
+

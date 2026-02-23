@@ -39,7 +39,7 @@ Implemented GDPR/CCPA compliant account deletion and data export features for th
        - Public scripts → title/description set to '[deleted]'
        - Login history → email '[deleted]', IP '[redacted]'
      - **LEGAL records** → Retained:
-       - Donation records kept for 7 years (tax law compliance)
+       - Support records kept for 7 years (tax law compliance)
    - Creates audit log entry with deletion details
    - Returns counts of deleted/anonymized items
 
@@ -159,7 +159,7 @@ Enhanced sections to reflect actual implementation:
    - Added instructions: "Account Management dialog (User Profile → Account Management)"
    - Added grace period details
    - Added anonymization vs deletion clarification
-   - Added tax law compliance note (7-year donation records)
+   - Added tax law compliance note (7-year support records)
 
 2. **Section 7.1 - Access & Portability (GDPR Article 20)**
    - Added download link location
@@ -219,7 +219,7 @@ Enhanced sections to reflect actual implementation:
 ✅ **Audit Logging** - All deletions tracked for compliance  
 ✅ **Data Minimization** - Passwords excluded from exports, IPs redacted  
 ✅ **Public Content Preservation** - Community contributions preserved but anonymized  
-✅ **Legal Record Retention** - Donation records kept for tax compliance (7 years)  
+✅ **Legal Record Retention** - Support records kept for tax compliance (7 years)  
 ✅ **Clear Communication** - Privacy policy updated with exact procedures  
 ✅ **Easy Access** - One-click access from user profile menu  
 ✅ **Confirmation Steps** - Prevents accidental deletion  
@@ -306,7 +306,7 @@ This implementation satisfies:
 - **GDPR Article 17 (Right to Erasure):** ✅
   - User can request deletion
   - Deletion processes without undue delay (30 days max)
-  - Exceptions properly handled (legal requirements for donation records)
+  - Exceptions properly handled (legal requirements for support records)
   
 - **GDPR Article 20 (Right to Data Portability):** ✅
   - Data provided in structured, commonly used format (JSON)

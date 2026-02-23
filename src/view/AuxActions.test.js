@@ -11,7 +11,7 @@ describe('AuxActions', () => {
     const onOpenOptions = jest.fn();
     const onOpenUser = jest.fn();
     const onOpenImport = jest.fn();
-    const onOpenDonate = jest.fn();
+    const onOpenSupport = jest.fn();
     const onOpenPhotoTest = jest.fn();
     const onOpenScript = jest.fn();
     const onOpenAssistant = jest.fn();
@@ -25,7 +25,7 @@ describe('AuxActions', () => {
         onOpenOptions={onOpenOptions}
         onOpenUser={onOpenUser}
         onOpenImport={onOpenImport}
-        onOpenDonate={onOpenDonate}
+        onOpenSupport={onOpenSupport}
         onOpenPhotoTest={onOpenPhotoTest}
         onOpenScript={onOpenScript}
         onOpenAssistant={onOpenAssistant}
@@ -41,7 +41,7 @@ describe('AuxActions', () => {
     fireEvent.click(screen.getByLabelText('chart'));
     fireEvent.click(screen.getByLabelText('import'));
     fireEvent.click(screen.getByLabelText('lifewiki'));
-    fireEvent.click(screen.getByLabelText('donate'));
+    fireEvent.click(screen.getByLabelText('support'));
     fireEvent.click(screen.getByLabelText('help'));
     fireEvent.click(screen.getByLabelText('about'));
     fireEvent.click(screen.getByLabelText('options'));
@@ -52,7 +52,7 @@ describe('AuxActions', () => {
     expect(onOpenPhotoTest).toHaveBeenCalledTimes(1);
     expect(onOpenChart).toHaveBeenCalledTimes(1);
     expect(onOpenImport).toHaveBeenCalledTimes(1);
-    expect(onOpenDonate).toHaveBeenCalledTimes(1);
+    expect(onOpenSupport).toHaveBeenCalledTimes(1);
     expect(onOpenHelp).toHaveBeenCalledTimes(1);
     expect(onOpenAbout).toHaveBeenCalledTimes(1);
     expect(onOpenOptions).toHaveBeenCalledTimes(1);
@@ -62,3 +62,4 @@ describe('AuxActions', () => {
     openSpy.mockRestore();
   });
 });
+

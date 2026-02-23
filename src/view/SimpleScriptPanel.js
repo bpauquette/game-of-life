@@ -90,14 +90,14 @@ function SimpleScriptPanel({
   const [cloudScripts, setCloudScripts] = useState([]);
   const [loadingScripts, setLoadingScripts] = useState(false);
   const [activeTab, setActiveTab] = useState(0); // Added for tab selection
-  const { token, hasDonated } = useAuth();
+  const { token, hasSupportAccess } = useAuth();
   const isAuthenticated = !!token;
 
   useEffect(() => {
-    if (!hasDonated && isPublic) {
+    if (!hasSupportAccess && isPublic) {
       setIsPublic(false);
     }
-  }, [hasDonated, isPublic]);
+  }, [hasSupportAccess, isPublic]);
 
   // Simple Conway step used for script execution (runs in worker-free mode)
   const lifeStep = useCallback((liveCells) => {
@@ -240,7 +240,7 @@ function SimpleScriptPanel({
         body: JSON.stringify({
           name: scriptName,
           content: script,
-          public: hasDonated ? isPublic : false,
+          public: hasSupportAccess ? isPublic : false,
           meta: {}
         })
       });
@@ -257,7 +257,7 @@ function SimpleScriptPanel({
     } catch (error) {
       setMessage({ type: 'error', text: `Error saving script: ${error.message}` });
     }
-  }, [isAuthenticated, token, scriptName, script, isPublic, hasDonated, loadCloudScripts]);
+  }, [isAuthenticated, token, scriptName, script, isPublic, hasSupportAccess, loadCloudScripts]);
 
   const handleLoadScript = useCallback((cloudScript) => {
     setScript(cloudScript.content);
@@ -315,7 +315,7 @@ function SimpleScriptPanel({
           body: JSON.stringify({
             name,
             content,
-            public: hasDonated ? isPublic : false,
+            public: hasSupportAccess ? isPublic : false,
             meta: { autosave: true }
           })
         });
@@ -329,7 +329,7 @@ function SimpleScriptPanel({
     } else {
       persistDraftLocally(content);
     }
-  }, [isAuthenticated, isPublic, persistDraftLocally, scriptName, token, hasDonated]);
+  }, [isAuthenticated, isPublic, persistDraftLocally, scriptName, token, hasSupportAccess]);
 
   const handleRun = useCallback(async () => {
     cancelRequested.current = false;
@@ -492,7 +492,23 @@ function SimpleScriptPanel({
                   </Select>
                 </FormControl>
               </Box>
-              {/* Script editor UI goes here */}
+              <Box sx={{ display: 'grid', gap: 1.5 }}>
+                <TextField
+                  label="Script Editor"
+                  value={script}
+                  onChange={(e) => setScript(e.target.value)}
+                  fullWidth
+                  multiline
+                  minRows={14}
+                  maxRows={28}
+                  disabled={scriptRunning}
+                  placeholder="Enter script commands (for example: CLEAR, PENDOWN, RECT 4 3, STEP 10)"
+                  inputProps={{ 'aria-label': 'Script editor' }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  {`Lines: ${script.split('\n').length}`}
+                </Typography>
+              </Box>
             </TabPanel>
             <TabPanel value={activeTab} index={1}>
               <Box sx={{ height: 300, overflow: 'auto' }}>
@@ -623,7 +639,7 @@ function SimpleScriptPanel({
                   <Switch
                     checked={isPublic}
                     onChange={(e) => setIsPublic(e.target.checked)}
-                    disabled={!hasDonated}
+                    disabled={!hasSupportAccess}
                     icon={<LockIcon />}
                     checkedIcon={<PublicIcon />}
                   />
@@ -635,9 +651,9 @@ function SimpleScriptPanel({
                   </Box>
                 }
               />
-              {!hasDonated && (
+              {!hasSupportAccess && (
                 <Alert severity="info">
-                  Private script saves are available. Donation is required to publish scripts publicly.
+                  Private script saves are available. Support access is required to publish scripts publicly.
                 </Alert>
               )}
             </Box>
@@ -673,3 +689,4 @@ TabPanel.propTypes = {
 };
 
 export default SimpleScriptPanel;
+

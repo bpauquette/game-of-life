@@ -42,6 +42,16 @@ describe('SimpleScriptPanel run flow', () => {
     globalThis.removeEventListener('gol:script:clearGrid', handler);
   });
 
+  test('renders an editable script editor in the Editor tab', () => {
+    render(<SimpleScriptPanel open onClose={() => {}} isRunning={false} setIsRunning={() => {}} />);
+
+    const editor = screen.getByLabelText(/script editor/i);
+    fireEvent.change(editor, { target: { value: 'CLEAR\nPENDOWN\nRECT 1 1' } });
+
+    expect(editor.value).toContain('CLEAR');
+    expect(editor.value).toContain('RECT 1 1');
+  });
+
   test('runs script content, emits events, and autosaves locally when logged out', async () => {
     const startListener = jest.fn();
     const endListener = jest.fn();

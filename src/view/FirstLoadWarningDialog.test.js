@@ -17,7 +17,7 @@ describe('FirstLoadWarningDialog', () => {
     expect(continueButton).toBeEnabled();
     expect(screen.queryByLabelText('I acknowledge.')).not.toBeInTheDocument();
     expect(screen.getByText('Community Features')).toBeInTheDocument();
-    expect(screen.getByText('Optional Donation ($5-10):')).toBeInTheDocument();
+    expect(screen.getByText('One-Time Lifetime Support Membership ($10):')).toBeInTheDocument();
 
     fireEvent.click(continueButton);
     expect(onClose).toHaveBeenCalledTimes(1);

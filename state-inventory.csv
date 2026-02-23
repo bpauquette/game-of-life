@@ -28,7 +28,7 @@ uiDao,optionsOpen,Options modal visibility,yes,unit,no,
 uiDao,scriptOpen,Script dialog visibility,yes,unit,no,
 uiDao,setScriptOpen,Setter for script dialog visibility,yes,unit,no,HeaderBar toggles script panel
 uiDao,aboutOpen,About dialog visibility,yes,unit,no,
-uiDao,donateOpen,Donate dialog visibility,yes,unit,no,
+uiDao,supportOpen,Support dialog visibility,yes,unit,no,
 uiDao,photoTestOpen,Photosensitivity test dialog visibility,yes,unit,no,
 uiDao,userDialogOpen,Auth dialog visibility,yes,unit,no,
 uiDao,showRegister,Auth dialog register toggle,yes,unit,no,

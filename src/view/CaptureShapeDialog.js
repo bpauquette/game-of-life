@@ -25,7 +25,7 @@ const CaptureShapeDialog = ({
   onSave 
 }) => {
   const auth = useAuth();
-  const hasDonated = !!auth?.hasDonated;
+  const hasSupportAccess = !!auth?.hasSupportAccess;
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -83,7 +83,7 @@ const CaptureShapeDialog = ({
         height: captureData.height,
         cellCount: captureData.cellCount,
         type: 'captured',
-        public: hasDonated ? isPublic : false,
+        public: hasSupportAccess ? isPublic : false,
         created: new Date().toISOString()
       };
 
@@ -176,7 +176,7 @@ const CaptureShapeDialog = ({
                 <Switch
                   checked={isPublic}
                   onChange={(e) => setIsPublic(e.target.checked)}
-                  disabled={saving || !hasDonated}
+                  disabled={saving || !hasSupportAccess}
                   color="primary"
                 />
               }
@@ -184,9 +184,9 @@ const CaptureShapeDialog = ({
                 <Box>
                   <Typography variant="body1">Share publicly</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {hasDonated
+                    {hasSupportAccess
                       ? 'Make this shape visible to all users in the community gallery'
-                      : 'Donation required for community sharing'}
+                      : 'Support access required for community sharing'}
                   </Typography>
                 </Box>
               }
@@ -253,3 +253,4 @@ CaptureShapeDialog.propTypes = {
 };
 
 export default CaptureShapeDialog;
+

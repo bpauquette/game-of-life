@@ -25,7 +25,7 @@ import { getBackendApiBase } from '../utils/backendApi.js';
 const baseUrl = getBackendApiBase();
 
 const MyShapesDialog = ({ open, onClose }) => {
-  const { token, hasDonated } = useAuth();
+  const { token, hasSupportAccess } = useAuth();
   const [shapes, setShapes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -59,8 +59,8 @@ const MyShapesDialog = ({ open, onClose }) => {
   }, [open, token, loadShapes]);
 
   const togglePublic = async (shapeId, currentPublic) => {
-    if (!hasDonated && !currentPublic) {
-      setError('Donation required to share shapes publicly.');
+    if (!hasSupportAccess && !currentPublic) {
+      setError('Support access required to share shapes publicly.');
       return;
     }
 
@@ -115,20 +115,20 @@ const MyShapesDialog = ({ open, onClose }) => {
       <Box sx={{ px: 3, pt: 2, pb: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <Chip
-            color={hasDonated ? 'success' : 'default'}
-            label={hasDonated ? 'Donation: Verified' : 'Donation: Not donated'}
+            color={hasSupportAccess ? 'success' : 'default'}
+            label={hasSupportAccess ? 'Support: Active' : 'Support: Standard'}
             icon={<CheckCircleIcon />}
             sx={{ fontWeight: 600 }}
           />
         </Box>
-        {!hasDonated && (
+        {!hasSupportAccess && (
           <Alert severity="info" sx={{ mb: 1 }}>
-            Private shape saves are available. Donation is required to share shapes publicly.
+            Private shape saves are available. Support access is required to share shapes publicly.
           </Alert>
         )}
-        {hasDonated && (
+        {hasSupportAccess && (
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            Thank you for donating! You can save and manage shapes here.
+            Thank you for supporting! You can save and manage shapes here.
           </Typography>
         )}
       </Box>
@@ -160,13 +160,13 @@ const MyShapesDialog = ({ open, onClose }) => {
                 }
               />
               <ListItemSecondaryAction>
-                <Tooltip title={!hasDonated && !shape.public ? 'Donate to share publicly' : (shape.public ? 'Set private' : 'Set public')}>
+                <Tooltip title={!hasSupportAccess && !shape.public ? 'Support access required to share publicly' : (shape.public ? 'Set private' : 'Set public')}>
                   <span>
                     <IconButton
                       edge="end"
                       aria-label="toggle public"
                       onClick={() => togglePublic(shape.id, shape.public)}
-                      disabled={toggling === shape.id || (!hasDonated && !shape.public)}
+                      disabled={toggling === shape.id || (!hasSupportAccess && !shape.public)}
                     >
                       {shape.public ? <PublicIcon /> : <LockIcon />}
                     </IconButton>
@@ -199,3 +199,4 @@ MyShapesDialog.propTypes = {
 };
 
 export default MyShapesDialog;
+
