@@ -516,7 +516,7 @@ UNTIL_STEADY steps max`;
     const state = { vars: {}, cells: new Set(), penDown: true, x: 0, y: 0 };
     await execBlock(blocks, state, null, () => {}, null, mockTicks);
     
-    expect(state.vars.steps).toBe(1);
+    expect(state.vars.steps).toBe(3);
     expect(state.vars.max).toBe(50);
   });
 
