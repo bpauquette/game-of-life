@@ -120,12 +120,6 @@ export default function HeaderBar({
   const enableAdaCompliance = useUiDao(state => state.enableAdaCompliance);
 
   useEffect(() => {
-    if (!enableAdaCompliance && photoTestOpen) {
-      setPhotoTestOpen(false);
-    }
-  }, [enableAdaCompliance, photoTestOpen, setPhotoTestOpen]);
-
-  useEffect(() => {
     let active = true;
 
     (async () => {
@@ -332,13 +326,9 @@ export default function HeaderBar({
               onOpenAssistant={() => setAssistantOpen(true)}
               showAssistant={assistantAvailable}
               showPhotoTest={true}
-              photoTestEnabled={enableAdaCompliance}
+              photoTestEnabled={true}
               onOpenSupport={openSupport}
-              onOpenPhotoTest={() => {
-                if (enableAdaCompliance) {
-                  setPhotoTestOpen(true);
-                }
-              }}
+              onOpenPhotoTest={() => setPhotoTestOpen(true)}
               onOpenUser={handleUserIconClick}
               loggedIn={!!token}
             />
