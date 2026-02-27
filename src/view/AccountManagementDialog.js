@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import PropTypes from 'prop-types';
 import {
   Dialog,
   DialogTitle,
@@ -26,7 +25,7 @@ import {
   Info as InfoIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
-import { getAuthApiBase } from '../utils/backendApi.js';
+import { getBackendApiBase } from '../utils/backendApi.js';
 import { useAuth } from '../auth/AuthProvider.js';
 
 /**
@@ -39,8 +38,8 @@ import { useAuth } from '../auth/AuthProvider.js';
  * - View deletion status and countdown
  */
 export default function AccountManagementDialog({ open, onClose }) {
-  const authApiBase = getAuthApiBase();
-  const { hasSupportAccess } = useAuth();
+  const backendUrl = getBackendApiBase();
+  const { hasSupported } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -58,7 +57,7 @@ export default function AccountManagementDialog({ open, onClose }) {
         return;
       }
 
-      const response = await fetch(`${authApiBase}/account/status`, {
+      const response = await fetch(`${backendUrl}/v1/auth/account/status`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -77,7 +76,7 @@ export default function AccountManagementDialog({ open, onClose }) {
     } finally {
       setLoading(false);
     }
-  }, [authApiBase]);
+  }, [backendUrl]);
 
   // Fetch deletion status when dialog opens
   useEffect(() => {
@@ -98,7 +97,7 @@ export default function AccountManagementDialog({ open, onClose }) {
         return;
       }
 
-      const response = await fetch(`${authApiBase}/account/export`, {
+      const response = await fetch(`${backendUrl}/v1/auth/account/export`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -143,7 +142,7 @@ export default function AccountManagementDialog({ open, onClose }) {
         return;
       }
 
-      const response = await fetch(`${authApiBase}/account`, {
+      const response = await fetch(`${backendUrl}/v1/auth/account`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -180,7 +179,7 @@ export default function AccountManagementDialog({ open, onClose }) {
         return;
       }
 
-      const response = await fetch(`${authApiBase}/account/cancel-deletion`, {
+      const response = await fetch(`${backendUrl}/v1/auth/account/cancel-deletion`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -235,16 +234,16 @@ export default function AccountManagementDialog({ open, onClose }) {
 
         {!loading && (
           <>
-            {/* Support Access Status */}
+            {/* Support Status */}
             <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
               <Chip
-                color={hasSupportAccess ? 'success' : 'default'}
-                label={hasSupportAccess ? 'Support Status: Active' : 'Support Status: Standard'}
+                color={hasSupported ? 'success' : 'default'}
+                label={hasSupported ? 'Support Status: Verified' : 'Support Status: Not verified'}
                 icon={<CheckCircleIcon />}
                 sx={{ fontWeight: 600 }}
               />
               <Typography variant="body2" color="text.secondary">
-                {hasSupportAccess ? 'Thank you for supporting the project.' : 'Private saves are available. Support access is required to publish grids, shapes, and scripts publicly.'}
+                {hasSupported ? 'Thank you for supporting the project.' : 'Support to enable saving grids, shapes, and scripts.'}
               </Typography>
             </Box>
             {/* Account Status Summary */}
@@ -427,4 +426,3 @@ AccountManagementDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
 };
-

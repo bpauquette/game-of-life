@@ -16,34 +16,20 @@ import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import { Warning as WarningIcon, Info as InfoIcon, LocalActivity as SupportIcon } from '@mui/icons-material';
 import PropTypes from 'prop-types';
-import { ADA_LEGAL_LIABILITY_NOTICE } from './legalNotices.js';
-import { useUiDao } from '../model/dao/uiDao.js';
 
 /**
  * First Load Warning Dialog
  * Displays important information about photosensitivity, ADA compliance,
- * and the support/community model on app's first load.
+ * and the Support/community model on app's first load.
  * Only shows once per browser (stored in localStorage).
  */
 export default function FirstLoadWarningDialog({ open, onClose }) {
   const [understood, setUnderstood] = useState(false);
-  const enableAdaCompliance = useUiDao((state) => state.enableAdaCompliance);
-  const setEnableAdaCompliance = useUiDao((state) => state.setEnableAdaCompliance);
-  const requiresLegalAcknowledgment = !enableAdaCompliance;
-
-  const handleAdaToggle = (event) => {
-    const enabled = !!event.target.checked;
-    setEnableAdaCompliance(enabled);
-    if (enabled) {
-      setUnderstood(false);
-    }
-  };
 
   const handleClose = () => {
-    if (!requiresLegalAcknowledgment || understood) {
+    if (understood) {
       // Mark that user has seen this dialog
       globalThis.localStorage?.setItem('gol-first-load-warning-seen', 'true');
-      setUnderstood(false);
       onClose();
     }
   };
@@ -94,40 +80,31 @@ export default function FirstLoadWarningDialog({ open, onClose }) {
               </ListItem>
               <ListItem disableGutters sx={{ py: 0.25 }}>
                 <ListItemIcon sx={{ minWidth: 24 }}>•</ListItemIcon>
+                <ListItemText sx={{ typography: 'body2' }} primary="Restricts canvas to 160×160 pixels" />
+              </ListItem>
+              <ListItem disableGutters sx={{ py: 0.25 }}>
+                <ListItemIcon sx={{ minWidth: 24 }}>•</ListItemIcon>
                 <ListItemText sx={{ typography: 'body2' }} primary="Uses low-contrast colors to reduce flash risk" />
               </ListItem>
             </List>
+            <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+              You can disable ADA Mode in Options, but doing so increases seizure risk and means you assume all legal liability.
+            </Typography>
           </CardContent>
         </Card>
 
-        <Card variant="outlined" sx={{ mb: 2.5, borderLeft: '4px solid', borderLeftColor: 'primary.main', bgcolor: 'var(--warning-surface)', borderColor: 'var(--warning-border)' }}>
-          <CardContent sx={{ pb: 2 }}>
-            <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
-              Accessibility Setup
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-              <input
-                type="checkbox"
-                checked={enableAdaCompliance}
-                onChange={handleAdaToggle}
-                id="enable-ada-first-load-checkbox"
-                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-              />
-              <label htmlFor="enable-ada-first-load-checkbox" style={{ margin: 0, cursor: 'pointer', fontSize: '0.95rem' }}>
-                ADA Enabled (Recommended)
-              </label>
-            </Box>
-            {enableAdaCompliance ? (
-              <Typography variant="body2">
-                Current status: ADA protections are ON.
-              </Typography>
-            ) : (
-              <Typography variant="body2">
-                {ADA_LEGAL_LIABILITY_NOTICE}
-              </Typography>
-            )}
-          </CardContent>
-        </Card>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+          <input
+            type="checkbox"
+            checked={understood}
+            onChange={(e) => setUnderstood(e.target.checked)}
+            id="understand-checkbox"
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <label htmlFor="understand-checkbox" style={{ margin: 0, cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            I understand the photosensitivity risks and community model
+          </label>
+        </Box>
 
         <Divider sx={{ my: 2 }} />
 
@@ -145,7 +122,7 @@ export default function FirstLoadWarningDialog({ open, onClose }) {
                 </Typography>
                 
                 <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 600, mb: 1 }}>
-                  One-Time Lifetime Support Membership ($10):
+                  Optional Support ($5-10):
                 </Typography>
                 <List dense sx={{ ml: 0 }}>
                   <ListItem disableGutters sx={{ py: 0.25 }}>
@@ -173,52 +150,36 @@ export default function FirstLoadWarningDialog({ open, onClose }) {
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>
-                  1. Support access ($10 one-time lifetime membership):
-                </Typography>
-                <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary' }}>
-                  Click heart icon → Complete checkout → Confirm email
-                </Typography>
-                
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>
-                  2. Create account:
+                  1. Create account:
                 </Typography>
                 <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary' }}>
                   Click user icon (top right) → Register → Enter email/password
+                </Typography>
+
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>
+                  2. Support access (optional):
+                </Typography>
+                <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary' }}>
+                  After registering, click heart icon → Provide support → Confirm email
                 </Typography>
                 
                 <Divider sx={{ my: 1 }} />
                 
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                  Need help with this application? Check Help (? icon). For external Conway pattern reference material, visit{' '}
+                  Need help? Check Help (? icon) or visit{' '}
                   <Link href="https://conwaylife.com/wiki/Main_Page" target="_blank" rel="noopener" sx={{ fontSize: 'inherit' }}>
                     LifeWiki
                   </Link>
-                  .
                 </Typography>
               </CardContent>
             </Card>
           </Box>
         </Box>
-
       </DialogContent>
 
-      <DialogActions sx={{ p: 2.5, bgcolor: 'var(--surface-modal)' }}>
-        {requiresLegalAcknowledgment ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-            <input
-              type="checkbox"
-              checked={understood}
-              onChange={(e) => setUnderstood(e.target.checked)}
-              id="understand-checkbox"
-              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-            />
-            <label htmlFor="understand-checkbox" style={{ margin: 0, cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              I acknowledge.
-            </label>
-          </Box>
-        ) : <Box sx={{ flex: 1 }} />}
-        <Button onClick={handleClose} disabled={requiresLegalAcknowledgment && !understood} variant="contained" color="primary">
-          {enableAdaCompliance ? 'Continue with ADA ON' : 'Continue with ADA OFF'}
+      <DialogActions sx={{ p: 2.5, bgcolor: 'var(--surface-modal)', justifyContent: 'flex-end' }}>
+        <Button onClick={handleClose} disabled={!understood} variant="contained" color="primary">
+          Got It!
         </Button>
       </DialogActions>
 

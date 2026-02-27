@@ -9,22 +9,7 @@ import Tooltip from '@mui/material/Tooltip';
 import PropTypes from 'prop-types';
 import { FRONTEND_TIMESTAMP, FRONTEND_VERSION } from '../version.js';
 
-function AuxActions({
-  onOpenChart,
-  onOpenHelp,
-  onOpenAbout,
-  onOpenOptions,
-  onOpenUser,
-  onOpenImport,
-  onOpenSupport,
-  onOpenPhotoTest,
-  onOpenScript,
-  onOpenAssistant,
-  showAssistant = false,
-  showPhotoTest = true,
-  photoTestEnabled = true,
-  loggedIn
-}) {
+function AuxActions({ onOpenChart, onOpenHelp, onOpenAbout, onOpenOptions, onOpenUser, onOpenImport, onOpenSupport, onOpenPhotoTest, onOpenScript, onOpenAssistant, showAssistant = false, showPhotoTest = true, loggedIn }) {
   const openLifeWiki = () => {
     globalThis.open('https://conwaylife.com/wiki/Main_Page', '_blank');
   };
@@ -40,23 +25,14 @@ function AuxActions({
         </Tooltip>
       ) : null}
       {showPhotoTest ? (
-        <Tooltip title={photoTestEnabled ? 'Photosensitivity Test' : 'Enable ADA Compliance Mode to use Photosensitivity Test'}>
-          <span>
-            <IconButton
-              size="small"
-              onClick={onOpenPhotoTest}
-              aria-label="photosensitivity-test"
-              disabled={!photoTestEnabled}
-            >
-              <BugReportIcon fontSize="small" />
-            </IconButton>
-          </span>
+        <Tooltip title="Photosensitivity Test">
+          <IconButton size="small" onClick={onOpenPhotoTest} aria-label="photosensitivity-test"><BugReportIcon fontSize="small" /></IconButton>
         </Tooltip>
       ) : null}
       <IconButton size="small" onClick={onOpenChart} aria-label="chart" data-testid="toggle-chart"><BarChartIcon fontSize="small" /></IconButton>
       <IconButton size="small" onClick={onOpenImport} aria-label="import"><Tooltip title="Import Shape"><ImportIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={openLifeWiki} aria-label="lifewiki"><Tooltip title="LifeWiki"><LanguageIcon fontSize="small" /></Tooltip></IconButton>
-      <IconButton size="small" onClick={onOpenSupport} aria-label="support"><Tooltip title="Support Access"><SupportIcon fontSize="small" /></Tooltip></IconButton>
+      <IconButton size="small" onClick={onOpenSupport} aria-label="support"><Tooltip title="Support"><SupportIcon fontSize="small" /></Tooltip></IconButton>
       <IconButton size="small" onClick={onOpenHelp} aria-label="help"><Tooltip title="Help"><HelpIcon fontSize="small" /></Tooltip></IconButton>
       <Tooltip title={`Version: v${FRONTEND_VERSION}\nBuild: ${FRONTEND_TIMESTAMP}`.replace(/\n/g, '\u000A')} placement="bottom">
         <span>
@@ -82,7 +58,6 @@ AuxActions.propTypes = {
   onOpenAssistant: PropTypes.func,
   showAssistant: PropTypes.bool,
   showPhotoTest: PropTypes.bool,
-  photoTestEnabled: PropTypes.bool,
   onOpenSupport: PropTypes.func,
   onOpenUser: PropTypes.func,
   onOpenPhotoTest: PropTypes.func,
@@ -90,4 +65,3 @@ AuxActions.propTypes = {
 };
 
 export default AuxActions;
-

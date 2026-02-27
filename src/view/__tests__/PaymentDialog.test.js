@@ -30,7 +30,7 @@ describe('PaymentDialog', () => {
     }
   });
 
-  it('renders the support dialog with title', () => {
+  it('renders the Support dialog with title', () => {
     render(
       <AuthProvider>
         <PaymentDialog open={true} onClose={() => {}} />
@@ -60,7 +60,7 @@ describe('PaymentDialog', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Pay with Stripe/i)).toBeInTheDocument();
+      expect(screen.getByText(/support with Stripe/i)).toBeInTheDocument();
     });
   });
 
@@ -150,7 +150,7 @@ describe('PaymentDialog', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Pay with Stripe/i)).toBeInTheDocument();
+      expect(screen.getByText(/support with Stripe/i)).toBeInTheDocument();
     });
 
     // This test would ideally verify that clicking the button
@@ -160,7 +160,7 @@ describe('PaymentDialog', () => {
 
   it('handles missing auth user gracefully for PayPal', async () => {
     // AuthProvider should provide a user context; PaymentDialog should fall back
-    // to 'unknown@paypal.customer' email when user is not authenticated
+    // to 'unknown@paypal.donor' email when user is not authenticated
     render(
       <AuthProvider>
         <PaymentDialog open={true} onClose={() => {}} />
@@ -171,7 +171,7 @@ describe('PaymentDialog', () => {
       expect(screen.getByTestId('paypal-button-container')).toBeInTheDocument();
     });
 
-    // If PayPal payment recording was triggered, it should use fallback email
+    // If PayPal Support was triggered, it should use fallback email
     // This is tested at integration level with actual PayPal SDK mock
   });
 });

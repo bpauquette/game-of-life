@@ -159,7 +159,7 @@ Enhanced sections to reflect actual implementation:
    - Added instructions: "Account Management dialog (User Profile → Account Management)"
    - Added grace period details
    - Added anonymization vs deletion clarification
-   - Added tax law compliance note (7-year support records)
+   - Added tax law compliance note (7-year Support records)
 
 2. **Section 7.1 - Access & Portability (GDPR Article 20)**
    - Added download link location
@@ -306,7 +306,7 @@ This implementation satisfies:
 - **GDPR Article 17 (Right to Erasure):** ✅
   - User can request deletion
   - Deletion processes without undue delay (30 days max)
-  - Exceptions properly handled (legal requirements for support records)
+  - Exceptions properly handled (legal requirements for Support records)
   
 - **GDPR Article 20 (Right to Data Portability):** ✅
   - Data provided in structured, commonly used format (JSON)

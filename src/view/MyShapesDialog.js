@@ -15,8 +15,7 @@ import {
   Box,
   Chip,
   Alert,
-  CircularProgress,
-  Tooltip
+  CircularProgress
 } from '@mui/material';
 import { Delete as DeleteIcon, Public as PublicIcon, Lock as LockIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import { useAuth } from '../auth/AuthProvider.js';
@@ -25,7 +24,7 @@ import { getBackendApiBase } from '../utils/backendApi.js';
 const baseUrl = getBackendApiBase();
 
 const MyShapesDialog = ({ open, onClose }) => {
-  const { token, hasSupportAccess } = useAuth();
+  const { token, hasSupported } = useAuth();
   const [shapes, setShapes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -59,11 +58,6 @@ const MyShapesDialog = ({ open, onClose }) => {
   }, [open, token, loadShapes]);
 
   const togglePublic = async (shapeId, currentPublic) => {
-    if (!hasSupportAccess && !currentPublic) {
-      setError('Support access required to share shapes publicly.');
-      return;
-    }
-
     setToggling(shapeId);
     try {
       const response = await fetch(`${baseUrl}/v1/shapes/${shapeId}/public`, {
@@ -75,13 +69,10 @@ const MyShapesDialog = ({ open, onClose }) => {
         body: JSON.stringify({ public: !currentPublic })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to update shape');
-      }
+      if (!response.ok) throw new Error('Failed to update shape');
 
       // Update local state
-      setShapes((prevShapes) => prevShapes.map((shape) =>
+      setShapes(shapes.map(shape =>
         shape.id === shapeId ? { ...shape, public: !currentPublic } : shape
       ));
     } catch (err) {
@@ -103,7 +94,7 @@ const MyShapesDialog = ({ open, onClose }) => {
         }
       });
       if (!response.ok) throw new Error('Failed to delete shape');
-      setShapes((prevShapes) => prevShapes.filter((shape) => shape.id !== shapeId));
+      setShapes(shapes.filter(shape => shape.id !== shapeId));
     } catch (err) {
       setError(err.message);
     }
@@ -115,18 +106,18 @@ const MyShapesDialog = ({ open, onClose }) => {
       <Box sx={{ px: 3, pt: 2, pb: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <Chip
-            color={hasSupportAccess ? 'success' : 'default'}
-            label={hasSupportAccess ? 'Support: Active' : 'Support: Standard'}
+            color={hasSupported ? 'success' : 'default'}
+            label={hasSupported ? 'Support: Verified' : 'Support: Not verified'}
             icon={<CheckCircleIcon />}
             sx={{ fontWeight: 600 }}
           />
         </Box>
-        {!hasSupportAccess && (
+        {!hasSupported && (
           <Alert severity="info" sx={{ mb: 1 }}>
-            Private shape saves are available. Support access is required to share shapes publicly.
+            Your saved shapes are available here. To save new shapes, please support the project.
           </Alert>
         )}
-        {hasSupportAccess && (
+        {hasSupported && (
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             Thank you for supporting! You can save and manage shapes here.
           </Typography>
@@ -160,18 +151,14 @@ const MyShapesDialog = ({ open, onClose }) => {
                 }
               />
               <ListItemSecondaryAction>
-                <Tooltip title={!hasSupportAccess && !shape.public ? 'Support access required to share publicly' : (shape.public ? 'Set private' : 'Set public')}>
-                  <span>
-                    <IconButton
-                      edge="end"
-                      aria-label="toggle public"
-                      onClick={() => togglePublic(shape.id, shape.public)}
-                      disabled={toggling === shape.id || (!hasSupportAccess && !shape.public)}
-                    >
-                      {shape.public ? <PublicIcon /> : <LockIcon />}
-                    </IconButton>
-                  </span>
-                </Tooltip>
+                <IconButton
+                  edge="end"
+                  aria-label="toggle public"
+                  onClick={() => togglePublic(shape.id, shape.public)}
+                  disabled={toggling === shape.id}
+                >
+                  {shape.public ? <PublicIcon /> : <LockIcon />}
+                </IconButton>
                 <IconButton
                   edge="end"
                   aria-label="delete"
@@ -199,4 +186,3 @@ MyShapesDialog.propTypes = {
 };
 
 export default MyShapesDialog;
-

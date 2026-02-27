@@ -10,7 +10,7 @@
 - **ADA compliance state recovery**: When toggling ADA mode off, preferred performance settings now restore correctly. Previously, caps were lost because preferred state wasn't separate.
 
 ## Lower Priority
-- **Support status not refreshed on PayPal success**: Currently relies on `refreshMe()` on login. If a user pays for support without logout, `hasSupportAccess` won't update until next session. Mitigation: Call `refreshMe()` in PaymentDialog after successful support record.
+- **Support status not refreshed on PayPal success**: Currently relies on `refreshMe()` on login. If user supports without logout, `hasSupported` won't update until next session. Mitigation: Call `refreshMe()` in PaymentDialog after successful support record.
 - **Photosensitivity tester gated to ADA mode**: Checkbox disabled unless ADA on; button hidden unless both ADA and tester enabled. Works but UX could be clearer (add explanatory tooltip).
 - **SQLite migrations manual**: If schema changes, need to manually run migrations on existing databases. No automated migration runner.
 
