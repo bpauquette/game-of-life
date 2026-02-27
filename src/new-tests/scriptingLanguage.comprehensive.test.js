@@ -523,10 +523,13 @@ UNTIL_STEADY steps max`;
   it('should handle UNTIL_STEADY timeout (pattern never stabilizes)', async () => {
     let stepCounter = 0;
     const mockTicks = () => {
-      // Return different pattern each time (never stabilizes)
+      // Return a shape that keeps changing in normalized form so no cycle/translation can confirm.
       const unstable = new Set();
-      unstable.add(`${stepCounter},0`);
-      stepCounter++;
+      stepCounter += 1;
+      for (let i = 0; i <= stepCounter; i++) {
+        unstable.add(`${i},${i % 3}`);
+      }
+      unstable.add(`${stepCounter},${stepCounter}`);
       return unstable;
     };
 
