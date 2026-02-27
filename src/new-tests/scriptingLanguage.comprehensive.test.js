@@ -496,7 +496,7 @@ UNTIL_STEADY steps 100`;
     const state = { vars: {}, cells: new Set(), penDown: true, x: 0, y: 0 };
     await execBlock(blocks, state, null, () => {}, null, mockTicks);
     
-    expect(state.vars.steps).toBe(1); // Stable after 1 step
+    expect(state.vars.steps).toBe(3); // Confidence confirms still-life after 3 repeated observations
   });
 
   it('should support UNTIL_STEADY with variable max steps', async () => {
