@@ -77,29 +77,4 @@ describe('RecentShapesStrip integration', () => {
     });
   });
 
-  it.skip('clears all recent shapes when the clear button is clicked', async () => {
-    // NOTE: The 'recent-clear-button' was removed from the component.
-    // This test is invalid. Re-enable when button is re-added.
-    const shape = {
-      id: 'clearable-shape',
-      name: 'Clearable shape',
-      pattern: [
-        [0, 0],
-        [1, 0]
-      ]
-    };
-
-    render(<StripHarness shape={shape} enablePersistenceControls />);
-    await waitFor(() => {
-      const rects = screen.getAllByTestId('clearable-shape-rect');
-      expect(rects.length).toBe(2);
-    });
-
-    fireEvent.click(screen.getByTestId('recent-clear-button'));
-
-    await waitFor(() => {
-      const rects = screen.queryAllByTestId('clearable-shape-rect');
-      expect(rects.length).toBe(0);
-    });
-  });
 });

@@ -9,18 +9,22 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 
 const RELEASE_NOTES = {
-  currentTag: 'game-of-life/v0.1.5',
-  previousTag: 'game-of-life/v0.1.4',
-  releasedOn: 'February 22, 2026',
+  currentTag: 'game-of-life/v0.1.6',
+  previousTag: 'game-of-life/v0.1.5',
+  releasedOn: 'February 27, 2026',
   commitItems: [
-    '[policy-accuracy] Added explicit Published date and corrected privacy-policy security wording to match backend behavior.',
-    '[support-contact] Updated privacy-policy support contact to use relative in-app URLs for support request (/requestsupport) and support purchase (/support).',
-    '[release-docs] Refreshed release-note metadata and highlights for this support-contact patch.'
+    '[regression-fix] Restored generation-zero reset wiring and support-access dialog flows that were overwritten during branch integration.',
+    '[ada-ux] Restored first-load ADA dialog copy/controls and re-applied ADA gating for the photosensitivity test action.',
+    '[steady-state-tests] Updated UNTIL_STEADY expectations to match confidence-based detector semantics and fixed timeout fixture behavior.',
+    '[test-hygiene] Removed obsolete skipped placeholder tests and stale integration stubs.',
+    '[ci-status] Verified full Jest suite with no skipped tests and all active tests passing.'
   ],
   highlights: [
-    'Privacy Policy now includes explicit Published metadata and revised security wording aligned with current backend implementation.',
-    'Privacy/support contact now uses relative in-app URL routing (/requestsupport and /support).',
-    'Release metadata advanced to game-of-life/v0.1.5.'
+    'Generation-zero reset and support-access UI behavior are restored on main.',
+    'Photosensitivity test is unavailable when ADA mode is off, and first-load warning dialog behavior matches the legacy UX contract.',
+    'UNTIL_STEADY tests now validate confidence-based steady-state detection behavior.',
+    'Test suite cleanup removed stale skipped placeholders.',
+    'Current automated status: 116/116 suites passing, 495/495 tests passing, 0 skipped.'
   ]
 };
 

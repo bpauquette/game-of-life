@@ -71,60 +71,6 @@ function createMockCanvas({ width = 300, height = 200 } = {}) {
   };
 }
 
-describe('GameController animation loop', () => {
-
-  let originalRAF;
-  let originalCAF;
-  let rafId = 0;
-  // Removed unused rafCalls array
-  const cafCalls = [];
-
-  const installRAFMock = () => {
-    originalRAF = globalThis.requestAnimationFrame;
-    originalCAF = globalThis.cancelAnimationFrame;
-    rafId = 0;
-    rafCalls.length = 0;
-    cafCalls.length = 0;
-    globalThis.requestAnimationFrame = () => {
-      const id = ++rafId;
-      rafCalls.push(id);
-      return id;
-    };
-    globalThis.cancelAnimationFrame = (id) => {
-      cafCalls.push(id);
-    };
-  };
-
-  const uninstallRAFMock = () => {
-  globalThis.requestAnimationFrame = originalRAF;
-  globalThis.cancelAnimationFrame = originalCAF;
-  };
-
-
-
-  beforeEach(() => {
-    installRAFMock();
-  });
-
-  afterEach(() => {
-    uninstallRAFMock();
-  });
-
-
-
-  test.skip('startGameLoop is idempotent; stop cancels', () => {
-    // Skipped: browser animation frame cannot be reliably simulated in Jest
-  });
-
-  test.skip('loops steps and renders when running, throttled by frameInterval', () => {
-    // Skipped: browser animation frame cannot be reliably simulated in Jest
-  });
-
-  test.skip('stops on running=false and does not schedule further frames', () => {
-    // Skipped: browser animation frame cannot be reliably simulated in Jest
-  });
-});
-
 // Helper functions for Worker mocking (used by multiple describe blocks)
 
 function uninstallWorkerMock() {
@@ -199,16 +145,6 @@ describe('GameController Web Worker loop (optional feature)', () => {
     const view = new GameView(createMockCanvas(), {}, model);
     const controller = new GameController(model, view, { defaultSpeed: 30 });
     expect(() => controller.startWorkerLoop()).not.toThrow();
-  });
-});
-
-describe('GameController loop mode selection', () => {
-  afterEach(() => {
-    uninstallWorkerMock();
-  });
-
-  test.skip('supports switching between traditional RAF loop and Web Worker loop', async () => {
-    // Skipped: browser animation frame cannot be reliably simulated in Jest
   });
 });
 
