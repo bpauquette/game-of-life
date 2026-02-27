@@ -28,11 +28,15 @@ import OptionsPanel from './OptionsPanel.js';
 import PaymentDialog from './PaymentDialog.js';
 import PhotosensitivityTestDialog from './PhotosensitivityTestDialog.js';
 import RecentShapesStrip from './RecentShapesStrip.js';
-import { getBackendApiBase, getBackendHealthDetails } from '../utils/backendApi.js';
+import { getBackendHealthDetails } from '../utils/backendApi.js';
 import AssistantDialog from './AssistantDialog.js';
 // import { useGameContext } from '../context/GameContext.js';
 import SaveGridDialog from './SaveGridDialog.js';
 import ScriptPanel from './ScriptPanel.js';
+import AccountManagementDialog from './AccountManagementDialog.js';
+import PrivacyPolicyDialog from './PrivacyPolicyDialog.js';
+import ReleaseNotesDialog from './ReleaseNotesDialog.js';
+import SupportRequestDialog from './SupportRequestDialog.js';
 
 export default function HeaderBar({
   // Only keep local/component-specific props
@@ -53,6 +57,7 @@ export default function HeaderBar({
   step,
   draw,
   clear,
+  resetToGenerationZero,
   snapshotsRef,
   setSteadyInfo,
   isRunning: isRunningProp,
@@ -74,7 +79,7 @@ export default function HeaderBar({
   // Zustand selectors (including all UI/dialog state)
 
   // Auth and user info (must come before callbacks that depend on logout)
-  const { token, email, logout } = useAuth();
+  const { token, email, logout, hasSupportAccess } = useAuth();
 
   // UI state from uiDao (helpOpen and setHelpOpen must come first for hook order)
   const helpOpen = useUiDao(state => state.helpOpen);
@@ -86,6 +91,10 @@ export default function HeaderBar({
   // UI actions (wired via DAO)
   const setShowChart = useUiDao(state => state.setShowChart);
   const [assistantAvailable, setAssistantAvailable] = useState(false);
+  const [accountManagementOpen, setAccountManagementOpen] = useState(false);
+  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false);
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
+  const [supportRequestOpen, setSupportRequestOpen] = useState(false);
 
   // UI state from uiDao
   const colorScheme = useUiDao(state => state.colorScheme);
@@ -109,6 +118,12 @@ export default function HeaderBar({
   const setShowRegister = useUiDao(state => state.setShowRegister);
   const confirmOnClear = useUiDao(state => state.confirmOnClear);
   const enableAdaCompliance = useUiDao(state => state.enableAdaCompliance);
+
+  useEffect(() => {
+    if (!enableAdaCompliance && photoTestOpen) {
+      setPhotoTestOpen(false);
+    }
+  }, [enableAdaCompliance, photoTestOpen, setPhotoTestOpen]);
 
   useEffect(() => {
     let active = true;
@@ -243,42 +258,29 @@ export default function HeaderBar({
     if (isRunning) setIsRunning(false);
     setOptionsOpen(true);
   };
-  const getSupportUrl = useCallback(() => {
-    const apiBase = getBackendApiBase();
-    if (apiBase.endsWith('/api')) return `${apiBase.slice(0, -4)}/support`;
-    return `${apiBase.replace(/\/+$/, '')}/support`;
-  }, []);
   const openSupport = useCallback(() => {
-    const supportUrl = getSupportUrl();
-    let popup = null;
-    try {
-      popup = globalThis.open?.(supportUrl, '_blank', 'noopener,noreferrer') ?? null;
-    } catch (e) {
-      console.error('[HeaderBar] failed to open Support popup', e);
+    if (!token) {
+      globalThis.dispatchEvent(new CustomEvent('auth:needLogin', { detail: { message: 'Please login to purchase support access.' } }));
+      return;
     }
-    if (!popup) {
-      try {
-        globalThis.location?.assign?.(supportUrl);
-      } catch (e) {
-        console.error('[HeaderBar] failed to navigate to Support URL', e);
-      }
-    }
-  }, [getSupportUrl]);
+    setSupportOpen(true);
+  }, [setSupportOpen, token]);
+  const openSupportRequest = useCallback(() => {
+    setSupportRequestOpen(true);
+  }, []);
   const handleOk = () => { setOptionsOpen(false); if (wasRunningBeforeOptions) setIsRunning(true); };
   const handleCancel = () => { setOptionsOpen(false); if (wasRunningBeforeOptions) setIsRunning(true); };
 
-  const handleSaveGrid = useCallback(async (name, description) => {
+  const handleSaveGrid = useCallback(async (name, description, isPublic) => {
     // Pause simulation during save to capture a consistent snapshot and avoid contention
     const wasRunning = isRunning;
     try {
       if (wasRunning) setIsRunning(false);
-      // Capture live cells just to display count in dialog; the hook will fetch its own copy too
-      const liveCells = getLiveCells();
-      await saveGrid(name, description, liveCells, generation);
+      await saveGrid(name, description, isPublic);
     } finally {
       if (wasRunning) setIsRunning(true);
     }
-  }, [getLiveCells, saveGrid, generation, isRunning, setIsRunning]);
+  }, [saveGrid, isRunning, setIsRunning]);
 
   const handleLoadGrid = useCallback(async (gridId) => {
     const grid = await loadGrid(gridId);
@@ -292,7 +294,7 @@ export default function HeaderBar({
       {/* Three-row header: RunControlGroup, ToolGroup, RecentShapesStrip */}
       <Box ref={headerRef} sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30, width: '100%', backgroundColor: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.2)', overflowX: 'hidden' }}>
         {/* First row: Save/Load and Run controls */}
-        <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, gap: 0.5 }}>
+        <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, gap: 0.5, position: 'relative', zIndex: 63 }}>
           <Stack direction="row" spacing={0.5} alignItems="center">
             <SaveLoadGroup compact={isSmall} openSaveGrid={openSaveDialogAndPause} openLoadGrid={openLoadDialogAndPause} />
           </Stack>
@@ -303,6 +305,7 @@ export default function HeaderBar({
               step={step}
               draw={draw}
               clear={clear}
+              resetToGenerationZero={resetToGenerationZero}
               snapshotsRef={snapshotsRef}
               setSteadyInfo={setSteadyInfo}
               confirmOnClear={confirmOnClear}
@@ -328,9 +331,14 @@ export default function HeaderBar({
               onOpenScript={() => setScriptOpen(true)}
               onOpenAssistant={() => setAssistantOpen(true)}
               showAssistant={assistantAvailable}
-              showPhotoTest={enableAdaCompliance}
+              showPhotoTest={true}
+              photoTestEnabled={enableAdaCompliance}
               onOpenSupport={openSupport}
-              onOpenPhotoTest={() => setPhotoTestOpen(true)}
+              onOpenPhotoTest={() => {
+                if (enableAdaCompliance) {
+                  setPhotoTestOpen(true);
+                }
+              }}
               onOpenUser={handleUserIconClick}
               loggedIn={!!token}
             />
@@ -348,6 +356,9 @@ export default function HeaderBar({
                             <span>Logged in as <b>{email}</b></span>
                           </div>
                           <button onClick={() => { setUserDialogOpen(false); onOpenMyShapes(); }} style={{ marginRight: 8 }}>My Shapes</button>
+                          <button onClick={() => { setUserDialogOpen(false); setAccountManagementOpen(true); }} style={{ marginRight: 8 }}>Account &amp; Privacy</button>
+                          <button onClick={() => { setUserDialogOpen(false); setReleaseNotesOpen(true); }} style={{ marginRight: 8 }}>Release Notes</button>
+                          <button onClick={() => { setUserDialogOpen(false); setPrivacyPolicyOpen(true); }} style={{ marginRight: 8 }}>Privacy Policy</button>
                           <button onClick={handleLogout} style={{ marginRight: 8 }}>Logout</button>
                         </>
                       );
@@ -367,6 +378,9 @@ export default function HeaderBar({
                       );
                     }
                   })()}
+                  <button onClick={() => { setUserDialogOpen(false); openSupportRequest(); }} style={{ marginTop: 8 }}>
+                    Request Support
+                  </button>
                   <button onClick={() => setUserDialogOpen(false)} style={{ marginTop: 16 }}>Close</button>
                 </Box>
               </Box>
@@ -375,13 +389,13 @@ export default function HeaderBar({
         </Box>
         {/* Second row: ToolGroup */}
         {showToolsRow && (
-          <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(0,0,0,0.28)', borderBottom: '1px solid rgba(255,255,255,0.18)', zIndex: 40, pointerEvents: 'auto', overflowX: 'hidden' }}>
+          <Box sx={{ position: 'relative', left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 1, backgroundColor: 'rgba(0,0,0,0.28)', borderBottom: '1px solid rgba(255,255,255,0.18)', zIndex: 62, pointerEvents: 'auto', overflowX: 'hidden' }}>
             <ToolGroup isSmall={isSmall} shapesEnabled={shapesReady} />
             {/* Only show chip if enough space for both chip and tool icons */}
             {/* ToolGroup now handles selectedTool via context; chip can be moved there if needed */}
             <Box sx={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}>
-              <Tooltip title="Hide controls">
-                <IconButton size={isSmall ? 'small' : 'medium'} aria-label="hide-controls" onClick={onToggleChrome} sx={{ backgroundColor: 'rgba(0,0,0,0.35)' }}>
+              <Tooltip title="Enter Focus Mode">
+                <IconButton size={isSmall ? 'small' : 'medium'} aria-label="enter-focus-mode" onClick={onToggleChrome} sx={{ backgroundColor: 'rgba(0,0,0,0.35)' }}>
                   <FullscreenExitIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
@@ -401,12 +415,11 @@ export default function HeaderBar({
             px: 1,
             backgroundColor: 'rgba(20,20,25,0.98)',
             borderBottom: '1px solid rgba(255,255,255,0.08)',
-            zIndex: 41,
+            zIndex: 61,
             pointerEvents: 'auto',
-            overflow: 'visible',
+            overflow: 'hidden',
             mt: 0,
-            minHeight: 90,
-            maxHeight: 120,
+            minHeight: 120,
             boxShadow: '0 2px 8px 0 rgba(0,0,0,0.10)'
           }}
         >
@@ -450,9 +463,22 @@ export default function HeaderBar({
 
       <HelpDialog open={helpOpen} onClose={handleHelpClose} />
       <AssistantDialog open={assistantOpen} onClose={() => setAssistantOpen(false)} />
-      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <AboutDialog
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        onOpenPrivacy={() => setPrivacyPolicyOpen(true)}
+        onOpenReleaseNotes={() => setReleaseNotesOpen(true)}
+      />
+      <ReleaseNotesDialog open={releaseNotesOpen} onClose={() => setReleaseNotesOpen(false)} />
+      <PrivacyPolicyDialog open={privacyPolicyOpen} onClose={() => setPrivacyPolicyOpen(false)} />
+      <AccountManagementDialog open={accountManagementOpen} onClose={() => setAccountManagementOpen(false)} />
       <PaymentDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
-      <PhotosensitivityTestDialog open={photoTestOpen} onClose={() => setPhotoTestOpen(false)} />
+      <SupportRequestDialog open={supportRequestOpen} onClose={() => setSupportRequestOpen(false)} />
+      <PhotosensitivityTestDialog
+        open={photoTestOpen}
+        onClose={() => setPhotoTestOpen(false)}
+        enableAdaCompliance={enableAdaCompliance}
+      />
 
       <SaveGridDialog
         open={saveDialogOpen}
@@ -462,6 +488,7 @@ export default function HeaderBar({
         error={gridError}
         liveCellsCount={getLiveCells().size}
         generation={generation}
+        hasSupportAccess={hasSupportAccess}
       />
 
       <LoadGridDialog
@@ -497,6 +524,7 @@ HeaderBar.propTypes = {
   step: PropTypes.func.isRequired,
   draw: PropTypes.func.isRequired,
   clear: PropTypes.func.isRequired,
+  resetToGenerationZero: PropTypes.func,
   snapshotsRef: PropTypes.object.isRequired,
   setSteadyInfo: PropTypes.func,
   isRunning: PropTypes.bool,
@@ -511,3 +539,4 @@ HeaderBar.propTypes = {
   generationBatchSize: PropTypes.number,
   onSetGenerationBatchSize: PropTypes.func
 };
+

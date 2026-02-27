@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -19,7 +20,8 @@ export default function PrivacyPolicyDialog({ open, onClose }) {
       <DialogContent sx={{ pt: 2 }}>
         <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
 {`PRIVACY POLICY
-Last Updated: January 8, 2026
+Published: February 22, 2026
+Last Updated: February 22, 2026
 
 1. INTRODUCTION
 This Privacy Policy describes how Conway's Game of Life ("we," "us," or "the App") collects, uses, and protects your information when you use our web application.
@@ -29,42 +31,39 @@ This Privacy Policy describes how Conway's Game of Life ("we," "us," or "the App
 2.1 Account Information
 When you create an account, we collect:
 - Email address
-- Password (hashed and encrypted)
+- Password (stored only as a salted bcrypt hash; raw password is not retained)
 - Display name (optional)
 
 2.2 User-Generated Content
-- Shapes and patterns you create or save
-- Grids and simulations you store
-- Shape names, descriptions, and metadata
+- Shapes, grids, and scripts you create or save
+- Names, descriptions, metadata, and public/private visibility choices
 
-2.3 Support Information
-- Support amount and date
-- Stripe payment information (processed by Stripe, we do not store card details)
-- Email confirmation of Support
+2.3 Support Purchase Information
+- One-time lifetime support membership purchase amount ($10 USD) and date
+- PayPal transaction identifiers and payer email confirmation
+- We do not store full credit card or bank account details
 
-2.4 Usage Data
-- Patterns you run or load
-- Settings preferences (FPS, color scheme, ADA compliance)
-- Telemetry about app performance (optional, opt-in via settings)
-- Device type and browser information (standard web logs)
+2.4 Usage and Device Data
+- Patterns and grids you run or load
+- Settings preferences (for example FPS, color scheme, ADA compliance)
+- Device and browser information from standard server logs
 
 2.5 Cookies & Storage
 - Browser localStorage stores your settings and preferences locally
 - Session tokens for authentication
-- No third-party tracking cookies
+- No third-party advertising cookies
 
 3. HOW WE USE YOUR INFORMATION
 
-3.1 Essential Functions
+3.1 Core App Functions
 - To provide and maintain the application
 - To create and authenticate your account
-- To store your saved grids and shapes
-- To process Support and send confirmations
+- To store your saved grids, shapes, and scripts
+- To process one-time PayPal support membership payments and send confirmations
 
 3.2 Community Features
 - To display your published shapes in the community gallery
 - To attribute shapes to your account (if you choose to publish)
-- To notify you of interactions with your shared content
 
 3.3 Improvement & Support
 - To debug technical issues
@@ -84,7 +83,7 @@ When you create an account, we collect:
 - We do not share your email with third parties (except as required below)
 
 4.2 Limited Sharing
-- Stripe (payment processing): Only Support amount and email
+- PayPal (payment processing): Payment transaction details required to complete checkout
 - Web hosting provider: Standard server logs (IP, browser type)
 - Legal authorities: Only if required by law
 
@@ -93,63 +92,52 @@ When you create an account, we collect:
 - Published shapes include your attribution (account name)
 - You control what you publish; unpublished content is private
 
-5. DATA RETENTION
+5. USER CONTROLS AVAILABLE IN THE APPS
+- Open the Privacy Policy from the account/about menus at any time
+- Create, save, and delete grids, shapes, and scripts through in-app dialogs
+- Choose public/private visibility when saving content and change visibility later
+- Download your account data (including shapes, grids, and scripts) from Account & Privacy
+- Schedule account deletion with a 30-day grace period and cancel during that period
+- Use the Support actions (heart icon/menu) to open the PayPal checkout flow
 
-5.1 How Long We Keep Your Data
+6. DATA RETENTION
+
+6.1 How Long We Keep Your Data
 - Account information: As long as your account exists
-- Saved grids and shapes: Until you delete them
+- Saved grids, shapes, and scripts: Until you delete them
 - Published community shapes: Until you unpublish or delete
-- Support records: Required by tax law (7 years)
+- Payment records: Up to 7 years for accounting and legal compliance
 - Usage logs: 30 days (for troubleshooting)
 - Backup copies: Up to 90 days after deletion
 
-5.2 Right to Deletion
-- You can delete your account anytime from the Account Management dialog (User Profile → Account Management)
-- You can delete individual saved grids or shapes
-- You can request export of all your data
-- Account deletion has a 30-day grace period (you can cancel during this time)
-- After grace period: private content permanently deleted, public content anonymized but preserved
-- Support records retained for 7 years (tax law compliance)
+6.2 Content Deletion
+- You can delete individual saved grids, shapes, and scripts in the app
+- Public content can be switched back to private or removed from your account
+- You can schedule full account deletion in-app and cancel during the grace period
 
-6. SECURITY
+7. SECURITY
 
-6.1 Protection Measures
+7.1 Protection Measures
 - HTTPS encryption for all data in transit
 - Hashed passwords (bcrypt with salt)
-- Database encryption at rest
+- Environment-scoped access controls for application databases
 - Regular security updates and patching
 - Access controls and authentication required
 
-6.2 Limitations
+7.2 Limitations
 - No security system is 100% secure
 - We cannot guarantee absolute protection against all attacks
 - We will notify you of any confirmed data breaches affecting your account
 
-7. YOUR RIGHTS
+8. YOUR RIGHTS
+- You can request access, correction, export, or deletion of your personal data
+- You can request account-level privacy support through the in-app Support Request form at /requestsupport
+- You can use the Support Access purchase form at /support for one-time lifetime support membership payments
+- We respond to verified privacy requests within 30 days
 
-7.1 Access & Portability (GDPR Article 20)
-- You can view all your account information
-- You can export your saved grids and shapes as files
-- You can download a complete data export from Account Management (includes all shapes, grids, scripts, and profile data in JSON format)
+9. INTERNATIONAL USERS
 
-7.2 Correction & Deletion (GDPR Article 17)
-- You can update your account email and settings anytime
-- You can delete your account from Account Management with a 30-day grace period
-- You can cancel deletion during the grace period
-- After grace period: private content deleted, public content anonymized
-
-7.3 Opt-Out Rights
-- You can disable telemetry data collection in Settings
-- You can make your profile private (unpublish all shapes)
-- You can unsubscribe from email notifications
-
-7.4 Do Not Track
-- We respect browser DNT (Do Not Track) signals
-- We do not track you across other websites
-
-8. INTERNATIONAL USERS
-
-8.1 GDPR (Europe)
+9.1 GDPR (Europe)
 If you are in the EU, you have rights under GDPR including:
 - Right to access your data
 - Right to correction
@@ -159,37 +147,37 @@ If you are in the EU, you have rights under GDPR including:
 - Right to object to processing
 - Right to lodge a complaint with your data protection authority
 
-8.2 CCPA (California)
+9.2 CCPA (California)
 California residents have the right to:
 - Know what personal information is collected (see Section 2)
 - Know whether personal information is shared or sold (we do not sell data)
-- Access your personal information (Account Management → Download My Data)
-- Delete personal information (Account Management → Delete My Account)
-- Opt-out of any future sales or sharing (we don't sell or share for profit)
+- Access and delete personal information through supported in-app controls or by request
+- Opt-out of any future sales or sharing (we do not sell data)
 - Non-discrimination for exercising CCPA rights
 
-8.3 Other Jurisdictions
+9.3 Other Jurisdictions
 We comply with data protection laws in your jurisdiction. If you believe your rights are violated, contact us.
 
-9. CHANGES TO THIS POLICY
+10. CHANGES TO THIS POLICY
 
 - We may update this policy periodically
 - Material changes will be announced in-app
 - Continued use after updates constitutes acceptance
 - We will maintain a version history accessible upon request
 
-10. CONTACT US
+11. CONTACT US
 
 If you have questions about this privacy policy or our practices:
 
-Email: privacy@gol-conway.hopto.org
-Or use the Help dialog (?) in the app to contact support
+Support Request URL: /requestsupport
+Support Purchase URL: /support
+Open either support form from the support actions in the app
 
 We will respond to privacy inquiries within 30 days.
 
 ---
 
-This privacy policy is effective as of January 8, 2026 and applies to all users of the Game of Life application.
+This privacy policy was published on February 22, 2026, is effective as of February 22, 2026, and applies to all users of the Game of Life application.
 `}
         </Typography>
       </DialogContent>
