@@ -186,6 +186,8 @@ function GameUILayout({
           showToolsRow
           shapesReady={shapesReady}
           selectedShape={controlsProps?.selectedShape}
+          getLiveCells={controlsProps?.getLiveCells}
+          onLoadGrid={controlsProps?.onLoadGrid}
           isRunning={controlsProps?.isRunning}
           setIsRunning={controlsProps?.setIsRunning}
           engineMode={controlsProps?.engineMode}

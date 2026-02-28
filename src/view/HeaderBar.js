@@ -55,6 +55,8 @@ export default function HeaderBar({
   showToolsRow = true,
   shapesReady,
   selectedShape,
+  getLiveCells: getLiveCellsProp,
+  onLoadGrid: onLoadGridProp,
   step,
   draw,
   clear,
@@ -167,6 +169,7 @@ export default function HeaderBar({
   const setIsRunning = typeof setIsRunningProp === 'function' ? setIsRunningProp : storeSetIsRunning;
   const storeEngineMode = useGameDao(state => state.engineMode);
   const storeIsHashlifeMode = useGameDao(state => state.isHashlifeMode);
+  const storeGetLiveCells = useGameDao(state => state.getLiveCells);
   const storeOnStartNormalMode = useGameDao(state => state.onStartNormalMode);
   const storeOnStartHashlifeMode = useGameDao(state => state.onStartHashlifeMode);
   const storeOnStopAllEngines = useGameDao(state => state.onStopAllEngines);
@@ -186,14 +189,14 @@ export default function HeaderBar({
   const onSetGenerationBatchSize = typeof onSetGenerationBatchSizeProp === 'function'
     ? onSetGenerationBatchSizeProp
     : storeOnSetGenerationBatchSize;
+  const getLiveCells = typeof getLiveCellsProp === 'function' ? getLiveCellsProp : storeGetLiveCells;
+  const fallbackOnLoadGrid = useCallback(() => {}, []);
+  const onLoadGrid = typeof onLoadGridProp === 'function' ? onLoadGridProp : fallbackOnLoadGrid;
 
   // Population state from populationDao
   const generation = usePopulationDao(state => state.generation);
 
-  // Placeholder refs and handlers for missing logic
-  // snapshotsRef is now passed as a prop from GameUILayout/GameOfLifeApp
-  const getLiveCells = useCallback(() => new Set(), []); // TODO: Replace with real logic
-  // step, draw, clear, snapshotsRef, setSteadyInfo are now passed from props (from GameOfLifeApp)
+  // step, draw, clear, snapshotsRef, setSteadyInfo are passed from GameUILayout/GameOfLifeApp
   const handleRotateShapeFromStrip = useCallback((rotatedShape, index, opts) => {
     if (typeof onRotateShape === 'function') {
       onRotateShape(rotatedShape, index, opts);
@@ -224,7 +227,6 @@ export default function HeaderBar({
     }
   }, [onRotateShape]);
   const onSwitchToShapesTool = useCallback(() => {}, []); // TODO: Replace with real logic
-  const onLoadGrid = useCallback(() => {}, []); // TODO: Replace with real logic
 
   // Grid file manager
   const {
@@ -527,6 +529,8 @@ HeaderBar.propTypes = {
   showToolsRow: PropTypes.bool,
   shapesReady: PropTypes.bool,
   selectedShape: PropTypes.any,
+  getLiveCells: PropTypes.func,
+  onLoadGrid: PropTypes.func,
   step: PropTypes.func.isRequired,
   draw: PropTypes.func.isRequired,
   clear: PropTypes.func.isRequired,

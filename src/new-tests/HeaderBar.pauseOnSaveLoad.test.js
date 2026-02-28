@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 jest.mock('../view/RecentShapesStrip.js', () => ({
@@ -124,5 +124,48 @@ describe('HeaderBar - pause on Save/Load click', () => {
     await userEvent.click(screen.getByTestId('mock-rotate-shape'));
 
     expect(onRotateShape).toHaveBeenCalledWith({ id: 'rotated-shape' }, 3, { inPlace: true });
+  });
+
+  test('loads selected grid and forwards liveCells to runtime onLoadGrid handler', async () => {
+    const loadedCells = new Map([['3,4', true]]);
+    const loadGrid = jest.fn().mockResolvedValue({
+      id: 'grid-1',
+      name: 'Grid One',
+      liveCells: loadedCells,
+      generation: 12,
+      createdAt: '2025-01-01T00:00:00.000Z'
+    });
+    useGridFileManager.mockReturnValue({
+      saveGrid: jest.fn(),
+      loadGrid,
+      deleteGrid: jest.fn(),
+      grids: [{
+        id: 'grid-1',
+        name: 'Grid One',
+        description: 'Example',
+        liveCells: [{ x: 3, y: 4 }],
+        generation: 12,
+        createdAt: '2025-01-01T00:00:00.000Z'
+      }],
+      loading: false,
+      error: null,
+      loadingGrids: false,
+      saveDialogOpen: false,
+      loadDialogOpen: true,
+      openSaveDialog: jest.fn(),
+      closeSaveDialog: jest.fn(),
+      openLoadDialog: jest.fn(),
+      closeLoadDialog: jest.fn()
+    });
+
+    const onLoadGrid = jest.fn();
+    const props = makeProps({ onLoadGrid });
+    render(<AuthProvider><HeaderBar {...props} /></AuthProvider>);
+
+    await userEvent.click(screen.getByText('Grid One'));
+    await userEvent.click(screen.getByRole('button', { name: /load grid/i }));
+
+    await waitFor(() => expect(loadGrid).toHaveBeenCalledWith('grid-1'));
+    await waitFor(() => expect(onLoadGrid).toHaveBeenCalledWith(loadedCells));
   });
 });
