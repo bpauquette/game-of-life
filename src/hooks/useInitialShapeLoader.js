@@ -17,19 +17,23 @@ function yieldToBrowser() {
 // Fetch the full catalog from the backend in paged requests and write to IDB.
 
 // Move fetchAllPages to outer scope
-async function fetchAllPages(base, page, abortedRef, progressCb) {
-  let offset = 0;
+async function fetchAllPages(base, pageSize, abortedRef, progressCb) {
+  let page = 1;
   const all = [];
+  const normalizedPageSize = Math.max(1, Number(pageSize) || 200);
   while (!abortedRef.current) {
-    const out = await fetchShapes(base, '', page, offset);
+    // fetchShapes signature: fetchShapes(q, backendBase, page, pageSize)
+    const out = await fetchShapes('', base, page, normalizedPageSize);
     if (!out.ok) throw new Error(`Failed to fetch shapes: status ${out.status}`);
     const items = out.items || [];
     const total = out.total || 0;
-    if (offset === 0 && typeof progressCb === 'function') progressCb({ done: 0, total });
+    if (page === 1 && typeof progressCb === 'function') progressCb({ done: 0, total });
     if (!items.length) break;
     all.push(...items);
-    offset += items.length;
-    if (all.length >= total) break;
+    if (typeof progressCb === 'function') progressCb({ done: all.length, total: total || all.length });
+    if (all.length >= total && total > 0) break;
+    if (items.length < normalizedPageSize) break;
+    page += 1;
     await yieldToBrowser();
   }
   return all;
@@ -46,12 +50,14 @@ function dedupeItems(all) {
     else if (s) {
       const name = s.name || s.meta?.name || '';
       const cells = s.cells || s.pattern || s.liveCells || [];
-      try {
-        key = `nm:${name}#c:${JSON.stringify(cells)}`;
-      } catch (e) {
-        logger.error('dedupeItems: failed to stringify cells', e);
-        key = `nm:${name}#c:${cells.length||0}`;
-      }
+      const len = Array.isArray(cells) ? cells.length : 0;
+      const first = len > 0 ? cells[0] : null;
+      const last = len > 1 ? cells[len - 1] : null;
+      const firstX = Array.isArray(first) ? first[0] : first?.x;
+      const firstY = Array.isArray(first) ? first[1] : first?.y;
+      const lastX = Array.isArray(last) ? last[0] : last?.x;
+      const lastY = Array.isArray(last) ? last[1] : last?.y;
+      key = `nm:${name}#len:${len}#f:${firstX ?? ''},${firstY ?? ''}#l:${lastX ?? ''},${lastY ?? ''}`;
     }
     if (!seen.has(key)) { seen.add(key); deduped.push(s); }
   }
@@ -73,8 +79,8 @@ export default function useInitialShapeLoader({ batchSize = 200, autoStart = fal
     try {
       // Ignore backendBase, always use getBackendApiBase
       const base = getBackendApiBase();
-      const page = batchSize || 200;
-      const all = await fetchAllPages(base, page, aborted, setProgress);
+      const pageSize = batchSize || 200;
+      const all = await fetchAllPages(base, pageSize, aborted, setProgress);
       if (!aborted.current) {
         const deduped = dedupeItems(all);
         setProgress({ done: deduped.length, total: deduped.length });

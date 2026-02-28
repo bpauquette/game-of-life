@@ -9,22 +9,22 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 
 const RELEASE_NOTES = {
-  currentTag: 'game-of-life/v0.1.6',
-  previousTag: 'game-of-life/v0.1.5',
-  releasedOn: 'February 27, 2026',
+  currentTag: 'game-of-life/v0.1.7',
+  previousTag: 'game-of-life/v0.1.6',
+  releasedOn: 'February 28, 2026',
   commitItems: [
-    '[regression-fix] Restored generation-zero reset wiring and support-access dialog flows that were overwritten during branch integration.',
-    '[ada-ux] Restored first-load ADA dialog copy/controls and re-applied ADA gating for the photosensitivity test action.',
-    '[steady-state-tests] Updated UNTIL_STEADY expectations to match confidence-based detector semantics and fixed timeout fixture behavior.',
-    '[test-hygiene] Removed obsolete skipped placeholder tests and stale integration stubs.',
-    '[ci-status] Verified full Jest suite with no skipped tests and all active tests passing.'
+    '[render-loop] Coalesced controller render scheduling to prevent redundant RAF renders and reduce pointer-interaction stalls (INP improvement).',
+    '[shape-loader] Corrected paged shape fetch argument ordering and switched dedupe keys to lightweight shape fingerprints.',
+    '[import-shape] Added URL resolution for LifeWiki and GitHub blob inputs, with robust RLE block extraction before backend import.',
+    '[import-success] Rewired import success handling to add/select imported shapes and avoid stale no-op callback behavior.',
+    '[test-coverage] Added import URL parsing/resolution tests plus dialog integration tests for direct RLE and URL-based import flows.'
   ],
   highlights: [
-    'Generation-zero reset and support-access UI behavior are restored on main.',
-    'Photosensitivity test is unavailable when ADA mode is off, and first-load warning dialog behavior matches the legacy UX contract.',
-    'UNTIL_STEADY tests now validate confidence-based steady-state detection behavior.',
-    'Test suite cleanup removed stale skipped placeholders.',
-    'Current automated status: 116/116 suites passing, 495/495 tests passing, 0 skipped.'
+    'Render request throttling now suppresses duplicate frame work during bursty UI interactions.',
+    'Initial shape preload paging now matches backend API contract and reduces client-side dedupe overhead.',
+    'Import Shape accepts LifeWiki page URLs, direct RLE URLs, GitHub blob URLs, and pasted RLE text.',
+    'Imported shapes immediately appear in recents and become the active shape for placement.',
+    'Current automated status: 119/119 suites passing, 505/505 tests passing, 0 skipped.'
   ]
 };
 

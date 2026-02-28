@@ -916,11 +916,24 @@ export function useGameOfLifeAppRuntime() {
   const preloadStrategy = (typeof globalThis !== 'undefined' && globalThis.GOL_PRELOAD_STRATEGY) || process.env.REACT_APP_PRELOAD_SHAPES || 'background';
   const { loading: shapesLoading, progress: shapesProgress, error: shapesError, ready: shapesReady, start: shapesStart } = useInitialShapeLoader({ strategy: preloadStrategy, autoStart: false });
 
+  const importSuccessHandlerRef = useRef(() => {});
+
   useEffect(() => {
-    if (shapeManager?.refreshShapes) {
-      setOnImportSuccess(() => () => shapeManager.refreshShapes());
-    }
-  }, [setOnImportSuccess, shapeManager]);
+    importSuccessHandlerRef.current = (importedShape) => {
+      if (!importedShape) return;
+      try {
+        shapeManager?.addRecentShape?.(importedShape);
+        shapeManager?.selectShape?.(importedShape);
+        gameRef.current?.setSelectedTool?.('shapes');
+      } catch (error) {
+        console.error('[useGameOfLifeAppRuntime] Failed to apply imported shape:', error);
+      }
+    };
+  }, [gameRef, shapeManager]);
+
+  useEffect(() => {
+    setOnImportSuccess(() => (...args) => importSuccessHandlerRef.current?.(...args));
+  }, [setOnImportSuccess]);
 
   // Notification snackbar when shapes catalog becomes ready
   useEffect(() => {

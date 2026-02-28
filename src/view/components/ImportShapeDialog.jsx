@@ -13,6 +13,7 @@ import {
 import PropTypes from 'prop-types';
 import { useAuth } from '../../auth/AuthProvider.js';
 import { getBackendApiBase } from '../../utils/backendApi.js';
+import { resolveImportInput } from './importShapeInput.js';
 
 const ImportShapeDialog = ({ open, onClose, onImportSuccess }) => {
   const { token } = useAuth();
@@ -30,6 +31,7 @@ const ImportShapeDialog = ({ open, onClose, onImportSuccess }) => {
     setError('');
 
     try {
+      const { rle } = await resolveImportInput(input);
       const base = getBackendApiBase();
       const response = await fetch(`${base}/v1/import-rle`, {
         method: 'POST',
@@ -38,7 +40,7 @@ const ImportShapeDialog = ({ open, onClose, onImportSuccess }) => {
           ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify({
-          rle: input,
+          rle,
         }),
       });
 
@@ -72,7 +74,7 @@ const ImportShapeDialog = ({ open, onClose, onImportSuccess }) => {
       <DialogContent>
         <Box sx={{ mb: 2 }}>
           <Typography variant="body2" color="text.secondary">
-            Enter a LifeWiki URL or paste RLE data directly. The shape will be added to your catalogue.
+            Enter a direct RLE URL, a LifeWiki page URL, or paste RLE data directly. The shape will be added to your catalogue.
           </Typography>
         </Box>
 
@@ -83,7 +85,7 @@ const ImportShapeDialog = ({ open, onClose, onImportSuccess }) => {
           rows={4}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="https://conwaylife.com/wiki/Galumpher or paste RLE here..."
+          placeholder="https://conwaylife.com/wiki/Glider or paste RLE here..."
           sx={{ mb: 2 }}
         />
 

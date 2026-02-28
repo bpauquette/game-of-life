@@ -1099,6 +1099,12 @@ export class GameController {
   }
 
   requestRender(now = Date.now(), minRenderInterval = 0) {
+    // Coalesce multiple render requests into one RAF callback so rapid model
+    // updates (mouse move, tool overlay updates, game ticks) don't flood the
+    // main thread with redundant renders.
+    if (this.renderScheduled) {
+      return;
+    }
     if (minRenderInterval > 0 && this._lastRenderTime && (now - this._lastRenderTime) < minRenderInterval) {
       return;
     }
@@ -1107,24 +1113,29 @@ export class GameController {
     this.renderScheduled = true;
 
     const doRender = () => {
+      // Always clear scheduled state, even if render throws.
       this.renderScheduled = false;
-      const renderStart = performance.now();
-      const liveCells = this.model.getLiveCells();
-      const modelViewport = this.model.getViewport();
-      const cellSize = this.view.renderer.viewport.cellSize || 8;
-      const viewport = { ...modelViewport, cellSize };
-      this.view.render(liveCells, viewport);
+      try {
+        const renderStart = performance.now();
+        const liveCells = this.model.getLiveCells();
+        const modelViewport = this.model.getViewport();
+        const cellSize = this.view.renderer.viewport.cellSize || 8;
+        const viewport = { ...modelViewport, cellSize };
+        this.view.render(liveCells, viewport);
 
-      // Track last render time for FPS throttling
-      this._lastRenderTime = Date.now();
+        // Track last render time for FPS throttling
+        this._lastRenderTime = Date.now();
 
-      const renderTime = performance.now() - renderStart;
+        const renderTime = performance.now() - renderStart;
 
-      if (globalThis.speedGaugeTracker) {
-        globalThis.speedGaugeTracker(renderTime, renderTime);
-      }
-      for (const callback of this.performanceCallbacks) {
-        callback(renderTime);
+        if (globalThis.speedGaugeTracker) {
+          globalThis.speedGaugeTracker(renderTime, renderTime);
+        }
+        for (const callback of this.performanceCallbacks) {
+          callback(renderTime);
+        }
+      } catch (err) {
+        console.error('[GameController] requestRender failed', err);
       }
     };
 

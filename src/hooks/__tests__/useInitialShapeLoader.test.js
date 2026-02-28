@@ -37,6 +37,7 @@ Harness.propTypes = {
 describe('useInitialShapeLoader', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    getBackendApiBase.mockImplementation(() => 'https://example.test');
     global.requestIdleCallback = (cb) => cb();
   });
 
@@ -62,6 +63,8 @@ describe('useInitialShapeLoader', () => {
     });
 
     expect(fetchShapes).toHaveBeenCalledTimes(2);
+    expect(fetchShapes).toHaveBeenNthCalledWith(1, '', 'https://example.test', 1, 2);
+    expect(fetchShapes).toHaveBeenNthCalledWith(2, '', 'https://example.test', 2, 2);
     expect(getBackendApiBase).toHaveBeenCalled();
   });
 
