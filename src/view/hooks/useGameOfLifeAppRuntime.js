@@ -454,7 +454,11 @@ export function useGameOfLifeAppRuntime() {
     const newValue = Boolean(enabled);
     const broadcast = options.broadcast !== false;
     const source = options.source || 'runtime';
-    const newColorScheme = newValue ? 'adaSafe' : 'bio';
+    const requestedColorScheme = typeof options.colorScheme === 'string' ? options.colorScheme : '';
+    const currentColorScheme = useUiDao.getState().colorSchemeKey || 'bio';
+    const fallbackColorScheme = requestedColorScheme
+      || (currentColorScheme !== 'adaSafe' ? currentColorScheme : 'bio');
+    const newColorScheme = newValue ? 'adaSafe' : fallbackColorScheme;
     const computedCaps = {
       maxFPS: newValue ? 2 : 120,
       maxGPS: newValue ? 2 : 60,
@@ -522,7 +526,11 @@ export function useGameOfLifeAppRuntime() {
       const detail = event?.detail || {};
       if (detail.source === 'runtime') return;
       if (typeof detail.enabled === 'undefined') return;
-      applyAdaPolicy(Boolean(detail.enabled), { broadcast: false, source: detail.source || 'event' });
+      applyAdaPolicy(Boolean(detail.enabled), {
+        broadcast: false,
+        source: detail.source || 'event',
+        colorScheme: detail.colorScheme
+      });
     };
     globalThis.addEventListener('gol:adaChanged', handleAdaEvent);
     globalThis.addEventListener('gol:adaPolicyReset', handleAdaEvent);

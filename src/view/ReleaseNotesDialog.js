@@ -9,22 +9,22 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 
 const RELEASE_NOTES = {
-  currentTag: 'game-of-life/v0.1.7',
-  previousTag: 'game-of-life/v0.1.6',
+  currentTag: 'game-of-life/v0.1.8',
+  previousTag: 'game-of-life/v0.1.7',
   releasedOn: 'February 28, 2026',
   commitItems: [
-    '[render-loop] Coalesced controller render scheduling to prevent redundant RAF renders and reduce pointer-interaction stalls (INP improvement).',
-    '[shape-loader] Corrected paged shape fetch argument ordering and switched dedupe keys to lightweight shape fingerprints.',
-    '[import-shape] Added URL resolution for LifeWiki and GitHub blob inputs, with robust RLE block extraction before backend import.',
-    '[import-success] Rewired import success handling to add/select imported shapes and avoid stale no-op callback behavior.',
-    '[test-coverage] Added import URL parsing/resolution tests plus dialog integration tests for direct RLE and URL-based import flows.'
+    '[options-panel] Stopped forcing color scheme to BioLife on every save when ADA mode is off, preserving user-selected themes.',
+    '[ada-sync] Updated ADA policy propagation to carry explicit color-scheme intent during ADA toggle events instead of defaulting to bio.',
+    '[state-ordering] Adjusted options save order so ADA updates only run on actual toggle changes and selected scheme persists reliably.',
+    '[test-coverage] Added regression coverage for keeping selected color scheme while ADA mode remains disabled.',
+    '[ci-status] Re-ran full build and full Jest suite after the fix.'
   ],
   highlights: [
-    'Render request throttling now suppresses duplicate frame work during bursty UI interactions.',
-    'Initial shape preload paging now matches backend API contract and reduces client-side dedupe overhead.',
-    'Import Shape accepts LifeWiki page URLs, direct RLE URLs, GitHub blob URLs, and pasted RLE text.',
-    'Imported shapes immediately appear in recents and become the active shape for placement.',
-    'Current automated status: 119/119 suites passing, 505/505 tests passing, 0 skipped.'
+    'Color scheme selection in Options now persists across save/apply cycles when ADA mode is off.',
+    'ADA toggle synchronization no longer resets non-ADA color schemes back to BioLife.',
+    'Runtime ADA event handling now respects scheme data from the originating options event.',
+    'Regression test added to lock in expected color-scheme persistence behavior.',
+    'Current automated status: 119/119 suites passing, 506/506 tests passing, 0 skipped.'
   ]
 };
 

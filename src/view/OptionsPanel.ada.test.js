@@ -14,6 +14,7 @@ describe('OptionsPanel ADA enforcement', () => {
       colorSchemeKey: 'bio',
       enableAdaCompliance: false,
       colorSchemes: {
+        neon: { name: 'Neon' },
         bio: { name: 'Bio' },
         adaSafe: { name: 'ADA Safe (Low Contrast)' }
       }
@@ -135,6 +136,33 @@ describe('OptionsPanel ADA enforcement', () => {
     expect(localStorage.getItem('maxGPS')).toBe('60');
     expect(localStorage.getItem('enableFPSCap')).toBe('true');
     expect(localStorage.getItem('enableGPSCap')).toBe('true');
+  });
+
+  test('preserves selected color scheme when ADA mode stays off', () => {
+    useUiDao.setState({
+      colorSchemeKey: 'bio',
+      enableAdaCompliance: false,
+      colorSchemes: {
+        neon: { name: 'Neon' },
+        bio: { name: 'Bio' },
+        adaSafe: { name: 'ADA Safe (Low Contrast)' }
+      }
+    });
+
+    render(
+      <ThemeProvider>
+        <OptionsPanel onOk={() => {}} onCancel={() => {}} />
+      </ThemeProvider>
+    );
+
+    const schemeSelect = screen.getByLabelText('Color scheme');
+    fireEvent.mouseDown(schemeSelect);
+    fireEvent.click(screen.getByRole('option', { name: 'Neon' }));
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    expect(useUiDao.getState().enableAdaCompliance).toBe(false);
+    expect(useUiDao.getState().colorSchemeKey).toBe('neon');
+    expect(localStorage.getItem('colorSchemeKey')).toBe('neon');
   });
 
   test('moves engine mode control into options and applies it on OK', () => {

@@ -136,8 +136,13 @@ const OptionsPanel = ({
 
   const handleOk = () => {
   const turnedAdaOffThisSave = prevAda && !localEnableAdaCompliance;
-  const finalColorScheme = localEnableAdaCompliance ? 'adaSafe' : 'bio';
-  setColorSchemeKey(finalColorScheme);
+  const fallbackSchemeKey = Object.hasOwn(colorSchemes, colorSchemeKey)
+    ? colorSchemeKey
+    : (Object.hasOwn(colorSchemes, 'bio') ? 'bio' : Object.keys(colorSchemes)[0]);
+  const selectedSchemeKey = Object.hasOwn(colorSchemes, localScheme)
+    ? localScheme
+    : (fallbackSchemeKey || 'bio');
+  const finalColorScheme = localEnableAdaCompliance ? 'adaSafe' : selectedSchemeKey;
   // Apply theme change
   setThemeMode(localThemeMode);
   // Clamp and default globalThis size
@@ -174,7 +179,10 @@ const OptionsPanel = ({
   setConfirmOnClear?.(!!localConfirmOnClear);
   setMaxChartGenerations?.(Number(localMaxChartGenerations) || 5000);
   setRandomRectPercentDao?.(Math.max(0, Math.min(100, Number(localRandomRectPercent))));
-  setEnableAdaCompliance?.(!!localEnableAdaCompliance);
+  if (prevAda !== !!localEnableAdaCompliance) {
+    setEnableAdaCompliance?.(!!localEnableAdaCompliance);
+  }
+  setColorSchemeKey(finalColorScheme);
   // Persist all options so they are remembered across sessions
   globalThis.localStorage.setItem('colorSchemeKey', String(finalColorScheme));
   globalThis.localStorage.setItem('popWindowSize', String(win));
