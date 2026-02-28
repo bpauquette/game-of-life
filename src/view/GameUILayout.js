@@ -31,6 +31,7 @@ function GameUILayout({
   onSaveRecentShapes,
   onClearRecentShapes,
   onSelectShape,
+  onRotateShape,
   startPaletteDrag,
   shapesReady,
   onOpenMyShapes,
@@ -174,6 +175,7 @@ function GameUILayout({
           recentShapes={recentShapes}
           recentShapesPersistence={recentShapesPersistence}
           selectShape={onSelectShape}
+          onRotateShape={onRotateShape}
           startPaletteDrag={startPaletteDrag}
           onSaveRecentShapes={onSaveRecentShapes}
           onClearRecentShapes={onClearRecentShapes}
@@ -331,6 +333,7 @@ GameUILayout.propTypes = {
   onSaveRecentShapes: PropTypes.func,
   onClearRecentShapes: PropTypes.func,
   onSelectShape: PropTypes.func,
+  onRotateShape: PropTypes.func,
   startPaletteDrag: PropTypes.func,
   shapesReady: PropTypes.bool,
   onOpenMyShapes: PropTypes.func,

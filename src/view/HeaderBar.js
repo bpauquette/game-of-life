@@ -43,6 +43,7 @@ export default function HeaderBar({
   recentShapes,
   recentShapesPersistence,
   selectShape,
+  onRotateShape,
   startPaletteDrag,
   onSaveRecentShapes,
   onClearRecentShapes,
@@ -193,7 +194,11 @@ export default function HeaderBar({
   // snapshotsRef is now passed as a prop from GameUILayout/GameOfLifeApp
   const getLiveCells = useCallback(() => new Set(), []); // TODO: Replace with real logic
   // step, draw, clear, snapshotsRef, setSteadyInfo are now passed from props (from GameOfLifeApp)
-  const onRotateShape = useCallback((rotatedShape) => {
+  const handleRotateShapeFromStrip = useCallback((rotatedShape, index, opts) => {
+    if (typeof onRotateShape === 'function') {
+      onRotateShape(rotatedShape, index, opts);
+      return;
+    }
     try {
       // Prefer toolDao to keep selected shape in sync
       useToolDao.getState().setSelectedShape?.(rotatedShape);
@@ -217,7 +222,7 @@ export default function HeaderBar({
     } catch (e) {
       console.error('[HeaderBar] failed to update recent shapes with rotated shape', e);
     }
-  }, []);
+  }, [onRotateShape]);
   const onSwitchToShapesTool = useCallback(() => {}, []); // TODO: Replace with real logic
   const onLoadGrid = useCallback(() => {}, []); // TODO: Replace with real logic
 
@@ -428,7 +433,7 @@ export default function HeaderBar({
             selectShape={selectShape}
             colorScheme={colorScheme}
             selectedShape={selectedShape}
-            onRotateShape={onRotateShape}
+            onRotateShape={handleRotateShapeFromStrip}
             onSwitchToShapesTool={onSwitchToShapesTool}
             startPaletteDrag={startPaletteDrag}
             onSaveRecentShapes={onSaveRecentShapes}
@@ -510,6 +515,7 @@ HeaderBar.propTypes = {
   recentShapes: PropTypes.array,
   recentShapesPersistence: PropTypes.object,
   selectShape: PropTypes.func,
+  onRotateShape: PropTypes.func,
   startPaletteDrag: PropTypes.func,
   onSaveRecentShapes: PropTypes.func,
   onClearRecentShapes: PropTypes.func,

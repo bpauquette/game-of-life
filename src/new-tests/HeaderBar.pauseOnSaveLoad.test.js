@@ -2,6 +2,19 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+jest.mock('../view/RecentShapesStrip.js', () => ({
+  __esModule: true,
+  default: ({ onRotateShape }) => (
+    <button
+      type="button"
+      data-testid="mock-rotate-shape"
+      onClick={() => onRotateShape?.({ id: 'rotated-shape' }, 3, { inPlace: true })}
+    >
+      Rotate shape
+    </button>
+  )
+}));
+
 import HeaderBar from '../view/HeaderBar.js';
 import { AuthProvider } from '../auth/AuthProvider.js';
 import useGridFileManager from '../view/hooks/useGridFileManager.js';
@@ -70,6 +83,11 @@ function makeProps(overrides = {}) {
     onToggleSidebar: jest.fn(),
     isSidebarOpen: false,
     isSmall: false,
+    recentShapes: [],
+    recentShapesPersistence: {},
+    selectShape: jest.fn(),
+    onRotateShape: jest.fn(),
+    startPaletteDrag: jest.fn(),
     selectedTool: 'draw',
     setSelectedTool: jest.fn(),
     showToolsRow: false,
@@ -96,5 +114,15 @@ describe('HeaderBar - pause on Save/Load click', () => {
     await userEvent.click(loadButton);
 
     expect(props.setIsRunning).toHaveBeenCalledWith(false);
+  });
+
+  test('forwards rotate actions from recent strip to runtime onRotateShape handler', async () => {
+    const onRotateShape = jest.fn();
+    const props = makeProps({ onRotateShape });
+    render(<AuthProvider><HeaderBar {...props} /></AuthProvider>);
+
+    await userEvent.click(screen.getByTestId('mock-rotate-shape'));
+
+    expect(onRotateShape).toHaveBeenCalledWith({ id: 'rotated-shape' }, 3, { inPlace: true });
   });
 });
