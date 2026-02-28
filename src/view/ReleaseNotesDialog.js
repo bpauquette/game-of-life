@@ -9,22 +9,22 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 
 const RELEASE_NOTES = {
-  currentTag: 'game-of-life/v0.1.8',
-  previousTag: 'game-of-life/v0.1.7',
+  currentTag: 'game-of-life/v0.1.9',
+  previousTag: 'game-of-life/v0.1.8',
   releasedOn: 'February 28, 2026',
   commitItems: [
-    '[options-panel] Stopped forcing color scheme to BioLife on every save when ADA mode is off, preserving user-selected themes.',
-    '[ada-sync] Updated ADA policy propagation to carry explicit color-scheme intent during ADA toggle events instead of defaulting to bio.',
-    '[state-ordering] Adjusted options save order so ADA updates only run on actual toggle changes and selected scheme persists reliably.',
-    '[test-coverage] Added regression coverage for keeping selected color scheme while ADA mode remains disabled.',
-    '[ci-status] Re-ran full build and full Jest suite after the fix.'
+    '[grid-load] Restored load-grid runtime wiring in HeaderBar so selected saved grids are actually applied to the live game state.',
+    '[layout-props] Forwarded getLiveCells/onLoadGrid from GameUILayout controlsProps into HeaderBar to remove no-op fallbacks.',
+    '[save-load-path] Kept Save/Load dialog behavior while fixing load callback propagation through the header stack.',
+    '[test-coverage] Added a HeaderBar regression test that selects a saved grid and verifies onLoadGrid receives loaded liveCells.',
+    '[ci-status] Re-ran targeted Jest coverage for HeaderBar save/load and LoadGridDialog integration after the fix.'
   ],
   highlights: [
-    'Color scheme selection in Options now persists across save/apply cycles when ADA mode is off.',
-    'ADA toggle synchronization no longer resets non-ADA color schemes back to BioLife.',
-    'Runtime ADA event handling now respects scheme data from the originating options event.',
-    'Regression test added to lock in expected color-scheme persistence behavior.',
-    'Current automated status: 119/119 suites passing, 506/506 tests passing, 0 skipped.'
+    'Loading a saved grid from the Load Grid dialog now reliably updates the active simulation again.',
+    'HeaderBar now consumes runtime grid callbacks instead of placeholder no-op handlers.',
+    'GameUILayout now passes through the grid callbacks required by save/load controls.',
+    'Regression coverage now locks in the full HeaderBar load path from selection to runtime callback.',
+    'Current automated status: targeted suites passing (`HeaderBar.pauseOnSaveLoad`, `LoadGridDialog.integration`).'
   ]
 };
 
