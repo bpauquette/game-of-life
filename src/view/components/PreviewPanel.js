@@ -175,6 +175,7 @@ function computeBounds(cells = []) {
 
 function PreviewPanel(props) {
   const { preview, maxSvgSize = 200, colorScheme, colorSchemeKey, onAddRecent } = props;
+  const mobileCompact = !!(props.isMobile || props.compact);
   const canvasRef = useRef(null);
   const transforms = ['identity', 'flipH', 'flipV', 'diag1', 'diag2'];
   // Controlled props with safe fallbacks to local state
@@ -237,20 +238,41 @@ function PreviewPanel(props) {
     ctx.strokeRect(0, 0, drawW, drawH);
   }, [canvasRef, preview, cachedDataUrl, imgError, cells, bounds, drawW, drawH, cellSize, colorScheme]);
 
-  if (!preview) return <Box sx={{ minWidth: 260, minHeight: 220 }} />;
+  if (!preview) {
+    return (
+      <Box
+        sx={{
+          width: '100%',
+          minWidth: mobileCompact ? 0 : 260,
+          minHeight: mobileCompact ? 160 : 220
+        }}
+      />
+    );
+  }
 
   // Use a key prop to force remount on preview change and transformation
   const previewKey = preview ? `${preview.name || ''}-${preview.description || ''}-${JSON.stringify(preview.cells)}-${transformIndex}-${rotationAngle}` : 'empty';
 
   return (
-    <Box sx={{ minWidth: 260, minHeight: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} data-testid="hover-preview-panel">
+    <Box
+      sx={{
+        width: '100%',
+        minWidth: mobileCompact ? 0 : 260,
+        minHeight: mobileCompact ? 170 : 220,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+      data-testid="hover-preview-panel"
+    >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
         {cachedDataUrl && !imgError ? (
           <img
             key={previewKey}
             src={cachedDataUrl}
             alt={preview.name || 'shape preview'}
-            style={{ width: drawW, height: drawH, objectFit: 'contain', ...PREVIEW_BORDER_STYLE }}
+            style={{ width: drawW, height: drawH, maxWidth: '100%', objectFit: 'contain', ...PREVIEW_BORDER_STYLE }}
             onError={() => setImgError(true)}
           />
         ) : (
@@ -259,10 +281,10 @@ function PreviewPanel(props) {
             ref={canvasRef}
             width={drawW}
             height={drawH}
-            style={{ width: drawW, height: drawH, ...PREVIEW_BORDER_STYLE }}
+            style={{ width: drawW, height: drawH, maxWidth: '100%', ...PREVIEW_BORDER_STYLE }}
           />
         )}
-        <Box sx={{ maxWidth: 320, maxHeight: 200, overflow: 'hidden', textAlign: 'center' }}>
+        <Box sx={{ maxWidth: mobileCompact ? '100%' : 320, maxHeight: mobileCompact ? 180 : 200, overflow: 'hidden', textAlign: 'center' }}>
           <Typography
             sx={{
               fontWeight: 700,
@@ -295,7 +317,7 @@ function PreviewPanel(props) {
           )}
         </Box>
       </Box>
-      <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center' }}>
+      <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
         {/* Flip Horizontal */}
         <Tooltip title="Flip Horizontal" arrow>
           <IconButton
@@ -488,13 +510,15 @@ PreviewPanel.propTypes = {
   colorScheme: PropTypes.object,
   colorSchemeKey: PropTypes.string,
   onAddRecent: PropTypes.func,
-  cellSize: PropTypes.number
-  , transformIndex: PropTypes.number
-  , rotationAngle: PropTypes.number
-  , imgError: PropTypes.bool
-  , setTransformIndex: PropTypes.func
-  , setRotationAngle: PropTypes.func
-  , setImgError: PropTypes.func
+  cellSize: PropTypes.number,
+  compact: PropTypes.bool,
+  isMobile: PropTypes.bool,
+  transformIndex: PropTypes.number,
+  rotationAngle: PropTypes.number,
+  imgError: PropTypes.bool,
+  setTransformIndex: PropTypes.func,
+  setRotationAngle: PropTypes.func,
+  setImgError: PropTypes.func
 };
 
 export default PreviewPanel;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGameContext } from '../../context/GameContext.js';
 import PropTypes from 'prop-types';
+import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -44,69 +45,86 @@ export default function ToolGroup({ isSmall = false }) {
   }, []);
 
   const hideOptionalTools = isSmall && isPortrait;
+  // Keep touch targets at least 44x44 for ADA-friendly pointer access.
+  const compactButtonSize = 44;
 
   return (
-    <ToggleButtonGroup
-      value={selectedTool}
-      exclusive
-      size={isSmall ? 'medium' : 'small'}
-      color="primary"
-      onChange={(_, v) => v && requestToolChange(v)}
+    <Box
       sx={{
-        '& .MuiToggleButton-root': {
-          minWidth: 44,
-          minHeight: 44,
-          borderColor: 'rgba(255,255,255,0.25)',
-          transition: 'background-color 120ms ease-out, transform 120ms ease-out',
-          backgroundColor: 'rgba(0,0,0,0.25)'
-        },
-        '& .MuiToggleButton-root:hover': {
-          backgroundColor: 'rgba(255,255,255,0.08)'
-        },
-        '& .MuiToggleButton-root.Mui-selected': {
-          bgcolor: 'primary.main',
-          color: 'black',
-          borderColor: 'primary.light',
-          transform: 'scale(1.08)',
-          boxShadow: '0 0 0 2px rgba(255,255,255,0.25) inset',
-        },
-        '& .MuiToggleButton-root.Mui-selected:hover': {
-          bgcolor: 'primary.main',
-        }
+        width: '100%',
+        maxWidth: isSmall ? '100%' : 'none',
+        overflowX: isSmall ? 'auto' : 'visible',
+        overflowY: 'hidden',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'thin',
+        display: 'flex',
+        justifyContent: 'center'
       }}
     >
-      <ToggleButton value="toggle" aria-label="toggle" disableRipple>
-        <Tooltip title={TOOL_DESCRIPTIONS.toggle}>
-          <MouseIcon fontSize={isSmall ? 'medium' : 'small'} />
-        </Tooltip>
-      </ToggleButton>
-      <ToggleButton value="draw" aria-label="draw" disableRipple>
-        <Tooltip title={TOOL_DESCRIPTIONS.draw}>
-          <EditIcon fontSize={isSmall ? 'medium' : 'small'} />
-        </Tooltip>
-      </ToggleButton>
-    {!hideOptionalTools && (
-      <ToggleButton value="erase" aria-label="erase" disableRipple>
-        <Tooltip title={TOOL_DESCRIPTIONS.erase}>
-          <RubberEraserIcon fontSize={isSmall ? 'medium' : 'small'} />
-        </Tooltip>
-      </ToggleButton>
-    )}
-      <ToggleButton value="line" aria-label="line" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.line}><HorizontalRuleIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  <ToggleButton value="rect" aria-label="rect" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.rect}><CropSquareIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  <ToggleButton value="square" aria-label="square" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.square}><CropSquareIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  <ToggleButton value="circle" aria-label="circle" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.circle}><RadioButtonUncheckedIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  <ToggleButton value="oval" aria-label="oval" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.oval}><OvalIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  {!hideOptionalTools && <ToggleButton value="randomRect" aria-label="randomRect" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.randomRect}><CasinoIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>}
-  <ToggleButton value="capture" aria-label="capture" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.capture}><ColorizeIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
-  <ToggleButton value="shapes" aria-label="shapes" disableRipple onClick={() => { if (selectedTool === 'shapes') requestToolChange('shapes'); }}>
-    <Tooltip title={TOOL_DESCRIPTIONS.shapes}>
-      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-        <WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} />
-      </span>
-    </Tooltip>
-  </ToggleButton>
-    </ToggleButtonGroup>
+      <ToggleButtonGroup
+        value={selectedTool}
+        exclusive
+        size={isSmall ? 'medium' : 'small'}
+        color="primary"
+        onChange={(_, v) => v && requestToolChange(v)}
+        sx={{
+          display: 'inline-flex',
+          minWidth: 'max-content',
+          '& .MuiToggleButton-root': {
+            minWidth: compactButtonSize,
+            minHeight: compactButtonSize,
+            borderColor: 'rgba(255,255,255,0.25)',
+            transition: 'background-color 120ms ease-out, transform 120ms ease-out',
+            backgroundColor: 'rgba(0,0,0,0.25)'
+          },
+          '& .MuiToggleButton-root:hover': {
+            backgroundColor: 'rgba(255,255,255,0.08)'
+          },
+          '& .MuiToggleButton-root.Mui-selected': {
+            bgcolor: 'primary.main',
+            color: 'black',
+            borderColor: 'primary.light',
+            transform: 'scale(1.08)',
+            boxShadow: '0 0 0 2px rgba(255,255,255,0.25) inset',
+          },
+          '& .MuiToggleButton-root.Mui-selected:hover': {
+            bgcolor: 'primary.main',
+          }
+        }}
+      >
+        <ToggleButton value="toggle" aria-label="toggle" disableRipple>
+          <Tooltip title={TOOL_DESCRIPTIONS.toggle}>
+            <MouseIcon fontSize={isSmall ? 'medium' : 'small'} />
+          </Tooltip>
+        </ToggleButton>
+        <ToggleButton value="draw" aria-label="draw" disableRipple>
+          <Tooltip title={TOOL_DESCRIPTIONS.draw}>
+            <EditIcon fontSize={isSmall ? 'medium' : 'small'} />
+          </Tooltip>
+        </ToggleButton>
+      {!hideOptionalTools && (
+        <ToggleButton value="erase" aria-label="erase" disableRipple>
+          <Tooltip title={TOOL_DESCRIPTIONS.erase}>
+            <RubberEraserIcon fontSize={isSmall ? 'medium' : 'small'} />
+          </Tooltip>
+        </ToggleButton>
+      )}
+        <ToggleButton value="line" aria-label="line" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.line}><HorizontalRuleIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+    <ToggleButton value="rect" aria-label="rect" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.rect}><CropSquareIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+    <ToggleButton value="square" aria-label="square" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.square}><CropSquareIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+    <ToggleButton value="circle" aria-label="circle" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.circle}><RadioButtonUncheckedIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+    <ToggleButton value="oval" aria-label="oval" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.oval}><OvalIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+    {!hideOptionalTools && <ToggleButton value="randomRect" aria-label="randomRect" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.randomRect}><CasinoIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>}
+    <ToggleButton value="capture" aria-label="capture" disableRipple><Tooltip title={TOOL_DESCRIPTIONS.capture}><ColorizeIcon fontSize={isSmall ? 'medium' : 'small'} /></Tooltip></ToggleButton>
+    <ToggleButton value="shapes" aria-label="shapes" disableRipple onClick={() => { if (selectedTool === 'shapes') requestToolChange('shapes'); }}>
+      <Tooltip title={TOOL_DESCRIPTIONS.shapes}>
+        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <WidgetsIcon fontSize={isSmall ? 'medium' : 'small'} />
+        </span>
+      </Tooltip>
+    </ToggleButton>
+      </ToggleButtonGroup>
+    </Box>
   );
 }
 

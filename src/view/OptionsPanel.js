@@ -13,6 +13,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Slider from '@mui/material/Slider';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { Info as InfoIcon } from '@mui/icons-material';
 import { useTheme } from './context/ThemeContext.js';
 import { useToolDao } from '../model/dao/toolDao.js';
@@ -121,6 +122,7 @@ const OptionsPanel = ({
   return enableAdaCompliance;
 });
   const [localEngineMode, setLocalEngineMode] = useState(engineMode === 'hashlife' ? 'hashlife' : 'normal');
+  const isMobile = useMediaQuery('(max-width:600px)');
 
   // Theme selection
   const { themeMode, setThemeMode, availableThemes } = useTheme();
@@ -242,11 +244,11 @@ const OptionsPanel = ({
   };
 
   return (
-    <Dialog open onClose={handleCancel} maxWidth="sm" fullWidth>
+    <Dialog open onClose={handleCancel} maxWidth="sm" fullWidth fullScreen={isMobile}>
       <DialogTitle>Options</DialogTitle>
-      <DialogContent>
+      <DialogContent dividers={isMobile}>
         {/* Options content here */}
-        <Stack spacing={2} sx={{ mt: 1 }}>
+        <Stack spacing={isMobile ? 1.5 : 2} sx={{ mt: 1 }}>
           {/* App Theme Selector */}
           <TextField
             select
@@ -297,11 +299,12 @@ const OptionsPanel = ({
             ))}
           </TextField>
 
-          <Stack direction="row" spacing={2}>
+          <Stack direction={isMobile ? 'column' : 'row'} spacing={2}>
             <TextField
               label="Steady globalThis (generations)"
               type="number"
               size="small"
+              fullWidth
               value={(() => { 
                 const v = Number.parseInt(localWindow, 10);
                 if (Number.isNaN(v) || v < 1) return 1;
@@ -331,6 +334,7 @@ const OptionsPanel = ({
               label="Population tolerance"
               type="number"
               size="small"
+              fullWidth
               value={(() => { 
                 const v = Number.parseInt(localTolerance, 10);
                 if (Number.isNaN(v) || v < 0) return 0;
@@ -367,7 +371,7 @@ const OptionsPanel = ({
               </Typography>
             </Alert>
 
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, color: 'var(--text-primary)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, color: 'var(--text-primary)', flexWrap: 'wrap', rowGap: 8 }}>
               <input
                 type="checkbox"
                 checked={!!localEnableAdaCompliance}
@@ -389,7 +393,7 @@ const OptionsPanel = ({
                 Enable ADA Compliance Mode
               </label>
               <Tooltip title="When enabled, animation and simulation are capped at 2 FPS/GPS for photosensitivity safety.">
-                <InfoIcon fontSize="small" style={{ marginLeft: '8px', cursor: 'pointer', color: 'var(--text-secondary)' }} />
+                <InfoIcon fontSize="small" style={{ marginLeft: '8px', cursor: 'pointer', color: 'var(--text-secondary)', flexShrink: 0 }} />
               </Tooltip>
             </div>
 
@@ -440,7 +444,7 @@ const OptionsPanel = ({
             <h2 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', color: 'var(--text-primary)' }}>Performance Settings</h2>
             
             <Stack spacing={2}>
-              <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)', flexWrap: 'wrap', rowGap: 6 }}>
                 <input
                   type="checkbox"
                   checked={localShowSpeedGauge}
@@ -453,7 +457,7 @@ const OptionsPanel = ({
                 </label>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)', flexWrap: 'wrap', rowGap: 6 }}>
                 <input
                   type="checkbox"
                   checked={localEnableAdaCompliance ? true : !!localEnableFPSCap}
@@ -467,7 +471,7 @@ const OptionsPanel = ({
                 </label>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)', flexWrap: 'wrap', rowGap: 6 }}>
                 <input
                   type="checkbox"
                   checked={localEnableAdaCompliance ? true : !!localEnableGPSCap}
@@ -565,7 +569,7 @@ const OptionsPanel = ({
 
           <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, marginTop: 16 }}>
             <h2 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', color: 'var(--text-primary)' }}>Interaction</h2>
-            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-primary)', flexWrap: 'wrap', rowGap: 6 }}>
               <input
                 type="checkbox"
                 checked={!!localConfirmOnClear}
@@ -577,7 +581,7 @@ const OptionsPanel = ({
                 Confirm before clearing grid
               </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, color: 'var(--text-primary)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, color: 'var(--text-primary)', flexWrap: 'wrap', rowGap: 6 }}>
               <input
                 type="checkbox"
                 checked={!!localDrawWhileRunning}
@@ -589,7 +593,7 @@ const OptionsPanel = ({
                 Draw while running
               </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, color: 'var(--text-primary)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, color: 'var(--text-primary)', flexWrap: 'wrap', rowGap: 6 }}>
               <input
                 type="checkbox"
                 checked={!!localDetectStablePopulation}
@@ -601,7 +605,7 @@ const OptionsPanel = ({
                 Detect Stable Population
               </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', rowGap: 6 }}>
               <input
                 type="checkbox"
                 checked={!!localMemoryTelemetryEnabled}
@@ -613,7 +617,7 @@ const OptionsPanel = ({
                 Enable memory telemetry (experimental)
               </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', rowGap: 6 }}>
               <label htmlFor="max-chart-generations-input" style={{ marginRight: 8 }}>
                 Max generations in chart
               </label>
@@ -632,7 +636,7 @@ const OptionsPanel = ({
                 <Typography variant="body2">Random rectangle fill (%)</Typography>
                 <Typography variant="caption" color="text.secondary">0 = all off, 100 = all on</Typography>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexDirection: isMobile ? 'column' : 'row' }}>
                 <Slider
                   value={localRandomRectPercent}
                   onChange={(e, v) => {
@@ -644,7 +648,7 @@ const OptionsPanel = ({
                   min={0}
                   max={100}
                   valueLabelDisplay="auto"
-                  sx={{ flex: 1 }}
+                  sx={{ flex: 1, width: isMobile ? '100%' : 'auto' }}
                 />
                 <input
                   id="random-rect-percent-input"
@@ -660,7 +664,7 @@ const OptionsPanel = ({
                     setLocalRandomRectPercent(v);
                       setRandomRectPercentDao?.(v);
                   }}
-                  style={{ width: 72 }}
+                  style={{ width: isMobile ? '100%' : 72, maxWidth: isMobile ? 160 : 'none' }}
                 />
               </div>
             </div>

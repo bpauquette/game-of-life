@@ -4,7 +4,7 @@ import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import { Close as CloseIcon } from '@mui/icons-material';
 
-export default function SearchBar({ value, onChange, onClose }) {
+export default function SearchBar({ value, onChange, onClose, isMobile }) {
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -15,8 +15,17 @@ export default function SearchBar({ value, onChange, onClose }) {
     }
   }, []);
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>
-      <div style={{ flex: 1 }}>
+    <div
+      data-testid="shape-search-bar"
+      style={{
+        display: 'flex',
+        gap: 8,
+        alignItems: isMobile ? 'stretch' : 'flex-start',
+        marginBottom: 8,
+        flexWrap: isMobile ? 'wrap' : 'nowrap'
+      }}
+    >
+      <div style={{ flex: '1 1 240px', minWidth: 0 }}>
         <TextField
           label="Search shapes"
           inputRef={inputRef}
@@ -27,8 +36,17 @@ export default function SearchBar({ value, onChange, onClose }) {
           size="small"
         />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-         {typeof onClose === 'function' && (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'row' : 'column',
+          gap: 8,
+          alignItems: isMobile ? 'center' : 'flex-end',
+          justifyContent: isMobile ? 'flex-end' : 'flex-start',
+          width: isMobile ? '100%' : 'auto'
+        }}
+      >
+        {typeof onClose === 'function' && (
           <IconButton aria-label="close" size="small" onClick={onClose}>
             <CloseIcon />
           </IconButton>
@@ -41,9 +59,11 @@ export default function SearchBar({ value, onChange, onClose }) {
 SearchBar.propTypes = {
   value: PropTypes.string.isRequired,
   onChange: PropTypes.func.isRequired,
-  onClose: PropTypes.func
+  onClose: PropTypes.func,
+  isMobile: PropTypes.bool
 };
 
 SearchBar.defaultProps = {
   onClose: undefined,
+  isMobile: false,
 };

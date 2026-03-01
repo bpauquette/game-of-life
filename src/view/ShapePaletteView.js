@@ -68,13 +68,35 @@ export default function ShapePaletteView({
         maxWidth={isMobile ? 'xs' : 'xl'}
         fullWidth
         fullScreen={isMobile}
-        PaperProps={!isMobile ? { sx: { height: 'auto', maxHeight: '80vh' } } : undefined}
+        PaperProps={{
+          sx: isMobile
+            ? {
+                height: '100dvh',
+                maxHeight: '100dvh',
+                m: 0
+              }
+            : {
+                height: 'auto',
+                maxHeight: '80vh'
+              }
+        }}
         data-testid="shapes-palette"
       >
         <DialogTitle>Insert shape from catalog</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 2, overflowX: 'hidden', overflowY: 'visible' }}>
+        <DialogContent
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            p: isMobile ? 1.25 : 2,
+            pb: isMobile ? 'calc(12px + env(safe-area-inset-bottom))' : 2,
+            overflowX: 'hidden',
+            overflowY: 'auto',
+            minHeight: 0
+          }}
+        >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <SearchBar value={inputValue} onChange={setInputValue} onClose={onClose} />
+            <SearchBar value={inputValue} onChange={setInputValue} onClose={onClose} isMobile={isMobile} />
             <Box sx={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 1, p: 0 }}>
               <PreviewPanel
                 key={selectedShape?.id || selectedShape?.name || 'preview'}
@@ -82,8 +104,9 @@ export default function ShapePaletteView({
                 colorScheme={colorScheme}
                 colorSchemeKey={colorSchemeKey}
                 onAddRecent={onAddRecent}
-                compact={true}
-                maxSvgSize={80}
+                compact={isMobile}
+                maxSvgSize={isMobile ? 72 : 80}
+                isMobile={isMobile}
               />
             </Box>
           </Box>
@@ -91,8 +114,7 @@ export default function ShapePaletteView({
           <Box
             sx={{
               position: 'relative',
-              flex: 1,
-              minHeight: 260,
+              minHeight: isMobile ? 180 : 260,
               gap: isMobile ? 2 : 1
             }}
             data-testid="shapes-list-scroll"
@@ -146,6 +168,7 @@ export default function ShapePaletteView({
             onNextPage={onNextPage}
             loading={loading}
             busy={paging}
+            isMobile={isMobile}
           />
 
           <DeleteConfirmDialog

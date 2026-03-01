@@ -301,11 +301,41 @@ export default function HeaderBar({
       {/* Three-row header: RunControlGroup, ToolGroup, RecentShapesStrip */}
       <Box ref={headerRef} sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30, width: '100%', backgroundColor: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.2)', overflowX: 'hidden' }}>
         {/* First row: Save/Load and Run controls */}
-        <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, gap: 0.5, position: 'relative', zIndex: 63 }}>
-          <Stack direction="row" spacing={0.5} alignItems="center">
+        <Box
+          sx={{
+            minHeight: 48,
+            display: 'flex',
+            flexWrap: isSmall ? 'wrap' : 'nowrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            px: 1,
+            py: isSmall ? 0.5 : 0,
+            columnGap: 0.5,
+            rowGap: isSmall ? 0.5 : 0,
+            position: 'relative',
+            zIndex: 63
+          }}
+        >
+          <Stack
+            direction="row"
+            spacing={0.5}
+            alignItems="center"
+            sx={{
+              order: isSmall ? 1 : 0
+            }}
+          >
             <SaveLoadGroup compact={isSmall} openSaveGrid={openSaveDialogAndPause} openLoadGrid={openLoadDialogAndPause} />
           </Stack>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flex: isSmall ? '1 1 100%' : 1,
+              minWidth: 0,
+              order: 0
+            }}
+          >
             <RunControlGroup
               isRunning={isRunning}
               setIsRunning={setIsRunning}
@@ -328,7 +358,17 @@ export default function HeaderBar({
               onSetGenerationBatchSize={onSetGenerationBatchSize}
             />
           </Box>
-          <Stack direction="row" spacing={0.5} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={0.5}
+            alignItems="center"
+            sx={{
+              order: isSmall ? 2 : 0,
+              flex: isSmall ? '1 1 0' : '0 0 auto',
+              minWidth: 0,
+              justifyContent: 'flex-end'
+            }}
+          >
             <AuxActions
               onOpenChart={() => setShowChart(true)}
               onOpenImport={onOpenImport}
@@ -348,6 +388,7 @@ export default function HeaderBar({
               }}
               onOpenUser={handleUserIconClick}
               loggedIn={!!token}
+              compact={isSmall}
             />
             {/* Version info is now shown as a tooltip on the About icon */}
             {/* User authentication dialog/modal */}
@@ -426,7 +467,7 @@ export default function HeaderBar({
             pointerEvents: 'auto',
             overflow: 'hidden',
             mt: 0,
-            minHeight: 120,
+            minHeight: isSmall ? 96 : 120,
             boxShadow: '0 2px 8px 0 rgba(0,0,0,0.10)'
           }}
         >

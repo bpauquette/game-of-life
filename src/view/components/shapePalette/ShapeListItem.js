@@ -5,6 +5,7 @@ import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import ListItemButton from '@mui/material/ListItemButton';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { Delete as DeleteIcon, Public as PublicIcon, PublicOff as PublicOffIcon } from '@mui/icons-material';
 import Checkbox from '@mui/material/Checkbox';
 import Tooltip from '@mui/material/Tooltip';
@@ -74,6 +75,7 @@ const ShapeListItem = memo(function ShapeListItem({
 }) {
   const [publicLoading, setPublicLoading] = useState(false);
   const [isPublic, setIsPublic] = useState(!!shape.public);
+  const isNarrow = useMediaQuery('(max-width:600px)');
 
   const tRef = useRef(Date.now());
   const canvasRef = useRef(null);
@@ -132,7 +134,7 @@ const ShapeListItem = memo(function ShapeListItem({
         display: 'flex',
         alignItems: 'center',
         width: '100%',
-        px: 1,
+        px: isNarrow ? 0.5 : 1,
         py: 0.5,
         minHeight: 32,
         justifyContent: 'center',
@@ -218,11 +220,11 @@ const ShapeListItem = memo(function ShapeListItem({
 
       {/* Shape Name - Constrained width centered */}
       <Box sx={{
-        flex: '0 1 200px',
-        minWidth: 120,
-        maxWidth: 250,
+        flex: '1 1 auto',
+        minWidth: isNarrow ? 80 : 120,
+        maxWidth: isNarrow ? 160 : 250,
         display: 'flex',
-        justifyContent: 'center',
+        justifyContent: isNarrow ? 'flex-start' : 'center',
         px: 0.5
       }}>
         <ListItemButton
@@ -234,7 +236,7 @@ const ShapeListItem = memo(function ShapeListItem({
             minHeight: 28,
             width: '100%',
             display: 'flex',
-            justifyContent: 'center'
+            justifyContent: isNarrow ? 'flex-start' : 'center'
           }}
         >
           <Typography
@@ -246,7 +248,7 @@ const ShapeListItem = memo(function ShapeListItem({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              textAlign: 'center',
+              textAlign: isNarrow ? 'left' : 'center',
               maxWidth: '100%'
             }}
             data-testid="shape-label"

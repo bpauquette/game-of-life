@@ -4,7 +4,7 @@ import ShapeSlot from './components/ShapeSlot.js';
 
 import { useGameContext } from '../context/GameContext.js';
 
-const thumbnailSize = 64;
+const DEFAULT_THUMBNAIL_SIZE = 64;
 
 const RecentShapesStrip = ({
   recentShapes = [],
@@ -16,6 +16,37 @@ const RecentShapesStrip = ({
   startPaletteDrag,
 }) => {
   const { drawWithOverlay } = useGameContext();
+  const [isNarrow, setIsNarrow] = useState(() => {
+    if (typeof globalThis !== 'undefined' && globalThis.matchMedia) {
+      return globalThis.matchMedia('(max-width: 600px)').matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof globalThis === 'undefined' || !globalThis.matchMedia) return undefined;
+    const mq = globalThis.matchMedia('(max-width: 600px)');
+    const handler = (ev) => setIsNarrow(ev.matches);
+    try {
+      if (typeof mq.addEventListener === 'function') mq.addEventListener('change', handler);
+      else if (typeof mq.addListener === 'function') mq.addListener(handler);
+    } catch (e) {
+      // ignore
+    }
+    return () => {
+      try {
+        if (typeof mq.removeEventListener === 'function') mq.removeEventListener('change', handler);
+        else if (typeof mq.removeListener === 'function') mq.removeListener(handler);
+      } catch (e) {
+        // ignore
+      }
+    };
+  }, []);
+
+  const slotWidth = isNarrow ? 104 : 130;
+  const slotHeight = isNarrow ? 92 : 110;
+  const slotGap = isNarrow ? 8 : 12;
+  const thumbnailSize = isNarrow ? 52 : DEFAULT_THUMBNAIL_SIZE;
   const getShapeTitle = (shape, index) => {
     return shape?.name || shape?.meta?.name || shape?.id || `shape ${index}`;
   };
@@ -205,12 +236,12 @@ const RecentShapesStrip = ({
   const pageScroll = useCallback((direction = 1) => {
     const el = scrollRef.current;
     if (!el) return;
-    // Scroll by approximately 3-4 shape slots (130px + 12px gap = 142px per slot)
-    const slotWidth = 142;
+    // Scroll by approximately 3-4 shape slots
+    const slotScrollWidth = slotWidth + slotGap;
     const slotsToScroll = 3;
-    const amount = slotWidth * slotsToScroll * direction;
+    const amount = slotScrollWidth * slotsToScroll * direction;
     scrollByAmount(amount);
-  }, [scrollByAmount]);
+  }, [scrollByAmount, slotGap, slotWidth]);
 
   const startHoldScroll = useCallback((direction = 1) => {
     if (holdIntervalRef.current) return;
@@ -320,7 +351,7 @@ const RecentShapesStrip = ({
         overflowY: 'hidden',
         display: 'flex',
         alignItems: 'center',
-        gap: 16
+        gap: isNarrow ? 10 : 16
       }}
     >
       
@@ -376,7 +407,7 @@ const RecentShapesStrip = ({
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
-            gap: 12,
+            gap: slotGap,
             width: '100%',
             overflowX: 'auto',
             overflowY: 'hidden',
@@ -406,10 +437,10 @@ const RecentShapesStrip = ({
           const selected = isShapeSelected(shape);
           // Simplified: no scaling, shadow, or scrollIntoView
           const slotStyle = {
-            width: 130,
-            height: 110,
-            minWidth: 130,
-            maxWidth: 130,
+            width: slotWidth,
+            height: slotHeight,
+            minWidth: slotWidth,
+            maxWidth: slotWidth,
             flexShrink: 0,
             scrollSnapAlign: 'center',
             display: 'flex',
