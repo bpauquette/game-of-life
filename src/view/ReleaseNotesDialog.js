@@ -9,22 +9,20 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 
 const RELEASE_NOTES = {
-  currentTag: 'game-of-life/v0.1.9',
-  previousTag: 'game-of-life/v0.1.8',
-  releasedOn: 'February 28, 2026',
+  currentTag: 'game-of-life/v0.1.10',
+  previousTag: 'game-of-life/v0.1.9',
+  releasedOn: 'March 11, 2026',
   commitItems: [
-    '[grid-load] Restored load-grid runtime wiring in HeaderBar so selected saved grids are actually applied to the live game state.',
-    '[layout-props] Forwarded getLiveCells/onLoadGrid from GameUILayout controlsProps into HeaderBar to remove no-op fallbacks.',
-    '[save-load-path] Kept Save/Load dialog behavior while fixing load callback propagation through the header stack.',
-    '[test-coverage] Added a HeaderBar regression test that selects a saved grid and verifies onLoadGrid receives loaded liveCells.',
-    '[ci-status] Re-ran targeted Jest coverage for HeaderBar save/load and LoadGridDialog integration after the fix.'
+    '[toggle-direction] Updated the left-most toggle tool so left click paints cells alive and right click paints cells dead.',
+    '[draw-scope] Kept the second draw tool as normal alive-only drawing so directional paint is isolated to the toggle tool.',
+    '[toggle-tests] Expanded toggle and controller coverage to lock in right-click dead-paint behavior for the primary toolbar tool.',
+    '[ci-status] Re-ran targeted Jest coverage for toggle, draw, and controller input handling after the fix.'
   ],
   highlights: [
-    'Loading a saved grid from the Load Grid dialog now reliably updates the active simulation again.',
-    'HeaderBar now consumes runtime grid callbacks instead of placeholder no-op handlers.',
-    'GameUILayout now passes through the grid callbacks required by save/load controls.',
-    'Regression coverage now locks in the full HeaderBar load path from selection to runtime callback.',
-    'Current automated status: targeted suites passing (`HeaderBar.pauseOnSaveLoad`, `LoadGridDialog.integration`).'
+    'The left-most toggle tool now works as directional paint: left click makes a cell alive and right click makes it dead.',
+    'The second draw tool remains a standard draw tool and was not repurposed for erase-on-right-click.',
+    'Controller input handling now accepts right-click only for the toggle tool, preventing accidental behavior changes in other tools.',
+    'Current automated status: targeted suites passing (`drawTool`, `toggleTool`, `GameController.complexityCoverage`).'
   ]
 };
 

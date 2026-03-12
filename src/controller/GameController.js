@@ -314,6 +314,10 @@ export class GameController {
     return button === 0;
   }
 
+  _isDirectionalPaintButton(selectedTool, button) {
+    return selectedTool === 'toggle' && (button === 0 || button === 2);
+  }
+
   _isBlockedDrawingToolWhileRunning(selectedTool) {
     const drawWhileRunning = this._getDrawWhileRunning();
     return (
@@ -402,6 +406,7 @@ export class GameController {
 
   handleMouseDown(cellCoords, event) {
     const button = this._isLeftMouseButton(event) ? 0 : (event && typeof event.button === 'number' ? event.button : 0);
+    const selectedTool = this.model.getSelectedTool();
     // Ignore nested pointerdown/mousedown sequences until mouseup resets state.
     if (this.mouseState.isDown) return;
     this.mouseState.isDown = true;
@@ -412,13 +417,15 @@ export class GameController {
     }
     // Start a new diff buffer for undo tracking
     this._currentDiff = [];
-    if (button !== 0) return;
+    if (!this._isDirectionalPaintButton(selectedTool, button) && button !== 0) return;
 
-    const selectedTool = this.model.getSelectedTool();
     const tool = this.toolMap[selectedTool];
     if (this._isBlockedDrawingToolWhileRunning(selectedTool)) return;
 
     this._setMouseDownToolState(selectedTool, cellCoords);
+    if (selectedTool === 'toggle') {
+      this.toolState.drawAlive = button !== 2;
+    }
     this._initializeUndoDiffCollector();
     this._invokeToolMouseDown(tool, cellCoords);
   }
@@ -441,8 +448,8 @@ export class GameController {
       // Block drawing tools while running if option is off
       return;
     }
-    // Only process tool movement when left button is held from a prior mouseDown
-    if (this.mouseState.isDown && this.mouseState.button === 0 && tool?.onMouseMove) {
+    // Only process tool movement when the active button matches the tool gesture.
+    if (this.mouseState.isDown && (this.mouseState.button === 0 || this._isDirectionalPaintButton(selectedTool, this.mouseState.button)) && tool?.onMouseMove) {
       // Use wrapped setCellAlive for undo tracking
       const setCellAlive = this._setCellAliveForUndo || ((x, y, alive) => this.model.setCellAliveModel(x, y, alive));
       if (selectedTool === 'capture') {

@@ -65,14 +65,25 @@ describe('GameController complexity helper coverage', () => {
     jest.clearAllMocks();
   });
 
-  test('handleMouseDown ignores non-left clicks', () => {
+  test('handleMouseDown routes right click through toggle tool as dead paint', () => {
+    const { controller } = createHarness({ selectedTool: 'toggle' });
+    const toggleTool = { onMouseDown: jest.fn() };
+    controller.registerTool('toggle', toggleTool);
+
+    controller.handleMouseDown({ x: 1, y: 2 }, { button: 2 });
+
+    expect(controller.mouseState.button).toBe(2);
+    expect(controller.toolState.drawAlive).toBe(false);
+    expect(toggleTool.onMouseDown).toHaveBeenCalledTimes(1);
+  });
+
+  test('handleMouseDown still ignores right click for non-draw tools', () => {
     const { controller } = createHarness({ selectedTool: 'draw' });
     const drawTool = { onMouseDown: jest.fn() };
     controller.registerTool('draw', drawTool);
 
     controller.handleMouseDown({ x: 1, y: 2 }, { button: 2 });
 
-    expect(controller.mouseState.button).toBe(2);
     expect(drawTool.onMouseDown).not.toHaveBeenCalled();
   });
 

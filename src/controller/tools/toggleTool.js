@@ -1,6 +1,6 @@
-// Toggle tool: flips cell alive/dead state while dragging.
+// Toggle tool: left drag paints cells alive, right drag paints cells dead.
 export const toggleTool = {
-  onMouseDown(toolState, x, y, setCellAlive, isCellAlive = () => false) {
+  onMouseDown(toolState, x, y, setCellAlive) {
     // Ignore duplicate mouse-down dispatches for the same gesture.
     // The controller pre-populates start/last before calling into tool handlers,
     // so we must not key off start/last here.
@@ -10,10 +10,10 @@ export const toggleTool = {
     toolState.start = { x, y };
     toolState.last = { x, y };
     toolState._toggledCells = new Set();
-    this._toggleCellOnce(toolState, x, y, setCellAlive, isCellAlive);
+    this._paintCellOnce(toolState, x, y, setCellAlive);
   },
 
-  onMouseMove(toolState, x, y, setCellAlive, isCellAlive = () => false) {
+  onMouseMove(toolState, x, y, setCellAlive) {
     const last = toolState.last;
     if (!last) {
       toolState.last = { x, y };
@@ -31,7 +31,7 @@ export const toggleTool = {
     for (let i = 1; i <= steps; i += 1) {
       const px = Math.round(lx + (dx * i) / steps);
       const py = Math.round(ly + (dy * i) / steps);
-      this._toggleCellOnce(toolState, px, py, setCellAlive, isCellAlive);
+      this._paintCellOnce(toolState, px, py, setCellAlive);
     }
 
     toolState.last = { x, y };
@@ -48,12 +48,12 @@ export const toggleTool = {
     // no-op
   },
 
-  _toggleCellOnce(toolState, x, y, setCellAlive, isCellAlive) {
+  _paintCellOnce(toolState, x, y, setCellAlive) {
     const toggledCells = this._getToggledCells(toolState);
     const key = `${x},${y}`;
     if (toggledCells.has(key)) return;
     toggledCells.add(key);
-    this._toggleCell(x, y, setCellAlive, isCellAlive);
+    this._paintCell(toolState, x, y, setCellAlive);
   },
 
   _getToggledCells(toolState) {
@@ -63,9 +63,8 @@ export const toggleTool = {
     return toolState._toggledCells;
   },
 
-  _toggleCell(x, y, setCellAlive, isCellAlive) {
+  _paintCell(toolState, x, y, setCellAlive) {
     if (typeof setCellAlive !== 'function') return;
-    const alive = typeof isCellAlive === 'function' ? !!isCellAlive(x, y) : false;
-    setCellAlive(x, y, !alive);
+    setCellAlive(x, y, toolState.drawAlive !== false);
   }
 };
