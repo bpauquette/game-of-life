@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	repoPath = `C:\Users\bryan\repos\game-of-life`
-	srcPath  = `C:\Users\bryan\repos\game-of-life\src`
-	goScript = `C:\Users\bryan\repos\game-of-life\autoapprove.go`
-	errFile  = `C:\Users\bryan\repos\game-of-life\build-error.txt`
+	repoPath = `C:\projects\game-of-life`
+	srcPath  = `C:\projects\game-of-life\src`
+	goScript = `C:\projects\game-of-life\autoapprove.go`
+	errFile  = `C:\projects\game-of-life\build-error.txt`
 )
 
 func getMtimes(root string) map[string]int64 {

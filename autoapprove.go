@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	repoPath := `C:\Users\bryan\repos\game-of-life`
+	repoPath, _ := os.Getwd()
 	os.Chdir(repoPath)
 
 	// Run build and capture output

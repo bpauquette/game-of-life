@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
-	repoPath := `C:\Users\bryan\repos\game-of-life`
-	srcPath := `C:\Users\bryan\repos\game-of-life\src`
+	repoPath := `C:\projects\game-of-life`
+	srcPath := `C:\projects\game-of-life\src`
 	os.Chdir(repoPath)
 
 	seen := make(map[string]bool)
