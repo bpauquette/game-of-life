@@ -57,12 +57,16 @@ localhost {
 react-blue.localhost {
 	handle_path /api/* { uri strip_prefix /api
 		reverse_proxy gol-backend-blue:55000 }
+	@support path /support*
+	handle @support { reverse_proxy gol-backend-blue:55000 }
 	handle { reverse_proxy gol-frontend-blue:80 }
 	tls internal
 }
 react-green.localhost {
 	handle_path /api/* { uri strip_prefix /api
 		reverse_proxy gol-backend-green:55000 }
+	@support path /support*
+	handle @support { reverse_proxy gol-backend-green:55000 }
 	handle { reverse_proxy gol-frontend-green:80 }
 	tls internal
 }
