@@ -11,10 +11,16 @@
 		reverse_proxy gol-backend:55000
 	}
 	@support path /support*
-	handle @support { reverse_proxy gol-backend:55000 }
-	handle { reverse_proxy gol-frontend:80 }
-	log { output stdout
-		format json }
+	handle @support {
+		reverse_proxy gol-backend:55000
+	}
+	handle {
+		reverse_proxy gol-frontend:80
+	}
+	log {
+		output stdout
+		format json
+	}
 	tls {$CADDY_EMAIL}
 }
 
@@ -30,10 +36,16 @@
 		reverse_proxy gol-backend:55000
 	}
 	@support path /support*
-	handle @support { reverse_proxy gol-backend:55000 }
-	handle { reverse_proxy gol-frontend:80 }
-	log { output stdout
-		format json }
+	handle @support {
+		reverse_proxy gol-backend:55000
+	}
+	handle {
+		reverse_proxy gol-frontend:80
+	}
+	log {
+		output stdout
+		format json
+	}
 	tls {$CADDY_EMAIL}
 }
 
@@ -49,28 +61,51 @@ localhost {
 		reverse_proxy gol-backend:55000
 	}
 	@support path /support*
-	handle @support { reverse_proxy gol-backend:55000 }
-	handle { reverse_proxy gol-frontend:80 }
+	handle @support {
+		reverse_proxy gol-backend:55000
+	}
+	handle {
+		reverse_proxy gol-frontend:80
+	}
 	tls internal
 }
 
 react-blue.localhost {
-	handle_path /api/* { uri strip_prefix /api
-		reverse_proxy gol-backend-blue:55000 }
+	handle_path /api/* {
+		uri strip_prefix /api
+		reverse_proxy gol-backend-blue:55000
+	}
 	@support path /support*
-	handle @support { reverse_proxy gol-backend-blue:55000 }
-	handle { reverse_proxy gol-frontend-blue:80 }
+	handle @support {
+		reverse_proxy gol-backend-blue:55000
+	}
+	handle {
+		reverse_proxy gol-frontend-blue:80
+	}
 	tls internal
 }
+
 react-green.localhost {
-	handle_path /api/* { uri strip_prefix /api
-		reverse_proxy gol-backend-green:55000 }
+	handle_path /api/* {
+		uri strip_prefix /api
+		reverse_proxy gol-backend-green:55000
+	}
 	@support path /support*
-	handle @support { reverse_proxy gol-backend-green:55000 }
-	handle { reverse_proxy gol-frontend-green:80 }
+	handle @support {
+		reverse_proxy gol-backend-green:55000
+	}
+	handle {
+		reverse_proxy gol-frontend-green:80
+	}
 	tls internal
 }
-backend-blue.localhost { reverse_proxy gol-backend-blue:55000
-	tls internal }
-backend-green.localhost { reverse_proxy gol-backend-green:55000
-	tls internal }
+
+backend-blue.localhost {
+	reverse_proxy gol-backend-blue:55000
+	tls internal
+}
+
+backend-green.localhost {
+	reverse_proxy gol-backend-green:55000
+	tls internal
+}
